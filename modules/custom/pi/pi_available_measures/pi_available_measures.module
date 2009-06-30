@@ -1,0 +1,366 @@
+<?php
+// $Id: pi_available_measures.module,v 1.1 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "available measurements" node type
+ */
+
+/**
+ * Implementation of pi_available_measures_node_info().
+ */
+function pi_available_measures_node_info() {
+ return array(
+    'pi_available_measures' => array(
+      'name' => t('Available measures'), // Required.
+      'module' => 'pi_available_measures',  // Required.
+      'description' => t('What are you going to measure?'), // Required.
+      'has_title' => TRUE,
+      'title_label' => t('Name'),
+      'has_body' => TRUE,
+      'body_label' => t('Description'),
+      'min_word_count' => 2,
+      'locked' => TRUE
+    )
+  );
+}
+
+/**
+ * Implementation of pi_available_measurements_menu().
+ * This is dormant for future use checked with Trevor, MBG 2009/06/09
+ */
+
+//function pi_available_measures_menu($may_cache) {
+//  $items = array();
+//
+//  // Do not cache this menu item during the development of this module.
+//  if (!$may_cache) {
+//    $items[] = array(
+//      'path' => 'node/add/pi_available_measures',
+//      'title' => t('Available measures'),
+//      'access' => user_access('create available_measures'),
+//    );
+//  }
+//
+//  return $items;
+//}
+
+/**
+ * Implementation of pi_available_measures_perm().
+ */
+
+function pi_available_measures_perm() {
+  return array('create pi_available_measures content', 'edit own pi_available_measures');
+}
+
+/**
+ * Implementation of pi_available_measures_access().
+ */
+
+function pi_available_measures_access($op, $node) {
+  global $user;
+
+  if ($op == 'create') {
+    return (user_access('create pi_available_measures'));
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+    return (user_access('edit own pi_available_measures') && ($user->uid == $node->uid));
+  }
+}
+
+/**
+ * Implementation of pi_available_measures_form().
+ */
+function pi_available_measures_form(&$node) {
+  
+  drupal_set_title(t('Enter measurement'));
+  
+  // Get metadata for this node type
+  // (we use it for labeling title and body fields).
+  // We defined this in pi_available_measures_node_info().
+  $type = node_get_types('type', $node);
+  
+  if (isset($node->image_id)) {
+    $image = node_load($node->image_id);
+    $current_text = '(current image = ' . $image->title . ')';
+  }
+  else {
+    $current_text = '(no image currently selected)';
+  };
+  
+  $form['#attributes']['enctype'] = 'multipart/form-data';
+
+  $form['measurement'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Measurement information'),
+    '#description' => t('Enter the measurement\'s name, description and units.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#weight' => -10
+  );
+  $form['measurement']['title'] = array(
+    '#type' => 'textfield',
+    '#title' => check_plain($type->title_label),
+    '#required' => TRUE,
+    '#default_value' => $node->title,
+    '#weight' => -5
+  );
+  $form['measurement']['body_filter']['body'] = array(
+    '#type' => 'textarea',
+    '#title' => check_plain($type->body_label),
+    '#required' => TRUE,
+    '#default_value' => $node->body,
+    '#resizable' => FALSE,
+    '#rows' => 5,
+    '#weight' => -3
+  );
+  $form['measurement']['symbol'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Symbol / short-name'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol,
+    '#weight' => 1
+  );
+  $form['measurement']['units'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Units'),
+    '#required' => FALSE,
+    '#default_value' => $node->units,
+    '#weight' => 3
+  );
+  $form['measurement']['units_short'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Units symbol / short name'),
+    '#required' => FALSE,
+    '#default_value' => $node->units_short,
+    '#weight' => 5
+  );
+  $form['measurement']['data_type'] = array(
+    '#type' => 'select',
+    '#title' => t('Select data type'),
+    '#required' => TRUE,
+    '#multiple' => FALSE,
+    '#default_value' => $node->data_type,
+    '#options' => array(t('Type a number'),t('Type text'),t('Select menu option')),
+    '#description' => t('Select the type of data field you require.'),
+    '#weight' => 7
+  );
+  $form['measurement']['body_filter']['options'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Menu options [for menus only]'),
+    '#required' => FALSE,
+    '#default_value' => $node->options,
+    '#description' => t('Enter the set of menu options (putting each option on a new line).'),
+    '#resizable' => FALSE,
+    '#rows' => 5,
+    '#weight' => 9
+  );
+  $form['equipment'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Equipment information'),
+    '#description' => t('Enter the device name, instructions and an image of the equipment used to take a measurement.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#weight' => 10
+  );
+  $form['equipment']['measurement_device_name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Device name'),
+    '#required' => FALSE,
+    '#default_value' => $node->measurement_device_name,
+    '#weight' => 3
+  );
+  $form['equipment']['body_filter']['measurement_device_description'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Instructions'),
+    '#required' => FALSE,
+    '#default_value' => $node->measurement_device_description,
+    '#resizable' => FALSE,
+    '#rows' => 5,
+    '#weight' => 5
+  );
+  $form['equipment']['image_filename'] = array(
+    '#type' => 'file',
+    '#title' => t('Picture'),
+    '#size' => 48,
+    '#description' => t('Select an image to illustrate the measurement or measurement device ' . $current_text . '.'),
+    '#weight' => 7
+  );
+    
+  return $form;
+}
+
+/**
+ * Implementation of pi_available_measures_validate().
+ */
+function pi_available_measures_validate($node) {
+
+}
+
+/**
+ * Implementation of pi_available_measures_insert().
+ */
+function pi_available_measures_insert($node) {
+
+    $validators = array(
+        'file_validate_is_image' => array(),
+    );
+
+  if($tdpic = file_save_upload('image_filename', $validators)) {
+    $pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
+    file_copy($tdpic,'images/'.$tdpic->filename);
+    $image_node = image_create_node_from($tdpic->filepath); 
+    $pic_nid = $image_node->nid;
+    db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, data_type, options, measurement_device_name, measurement_device_description, image_id) VALUES (%d, %d, '%s', '%s', '%s', %d, '%s', '%s', '%s', %d)",
+      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->data_type, $node->options, $node->measurement_device_name, $node->measurement_device_description, $pic_nid);
+  }
+
+  else {
+    db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, data_type, options, measurement_device_name, measurement_device_description) VALUES (%d, %d, '%s', '%s', '%s', %d, '%s', '%s', '%s')",
+      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->data_type, $node->options, $node->measurement_device_name, $node->measurement_device_description);
+  };
+}
+
+/**
+ * Implementation of pi_available_measures_update().
+ */
+function pi_available_measures_update($node) {
+  if ($node->revision) {
+    pi_available_measures_insert($node);
+  }
+  else {
+    if($tdpic = file_save_upload('image_filename')) {
+      $pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
+      file_copy($tdpic,'images/'.$tdpic->filename);
+      $image_node = image_create_node_from($tdpic->filepath); 
+      $pic_nid = $image_node->nid;
+      db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', data_type = '%d', options = '%s', measurement_device_name = '%s', measurement_device_description = '%s', image_id = '%d' 
+        WHERE vid = %d", $node->symbol, $node->units, $node->units_short, $node->data_type, $node->options, $node->measurement_device_name, $node->measurement_device_description, $pic_nid, $node->vid);
+    }
+    else {
+      db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', data_type = '%d', options = '%s', measurement_device_name = '%s', measurement_device_description = '%s' WHERE vid = %d",
+        $node->symbol, $node->units, $node->units_short, $node->data_type, $node->options, $node->measurement_device_name, $node->measurement_device_description, $node->vid);
+    };
+  }
+}
+
+/**
+ * Implementation of pi_available_measures_delete().
+ */
+function pi_available_measures_delete(&$node) {
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_available_measures} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of pi_available_measures_load().
+ */
+function pi_available_measures_load($node) {
+  // drupal_add_js('misc/collapse.js');
+  return db_fetch_object(db_query('SELECT symbol, units, units_short, data_type, options, measurement_device_name, measurement_device_description, image_id FROM {pi_available_measures} WHERE vid = %d',
+    $node->vid));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
+  if (!$teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+
+    $node->content['pi_available_measures'] = array(
+      '#value' => theme('pi_available_measures', $node),
+      '#weight' => 2
+      );
+  }
+
+  if ($teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+
+  return $node;
+}
+
+function pi_available_measures_theme() {
+  return array(
+    'pi_available_measures' => array(
+      'arguments' => array('node'),
+    ),
+  );
+}
+
+
+function theme_pi_available_measures($node) {
+  
+  if ($node->image_id) {
+    $page_nid = arg(1);
+    if (is_numeric($page_nid)) {
+      $page = node_load($page_nid);
+      if ($page->type == 'pi_available_measures') {
+        $output = '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/preview") . '" />';
+      }
+      else {
+        $output = '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
+      };
+    }
+    else {
+      $output = '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
+    };
+  };
+  
+  $types = array(t('Type a number'), t('Type text'), t('Select menu option'));
+  
+  $output .= '<p>';
+  if (isset($node->symbol) AND ($node->symbol != '')) {
+    $output .= t('<strong>Symbol / short name: </strong>' . $node->symbol);
+    $output .= '<br />';
+  };
+  if (isset($node->units) AND ($node->units != '')) {
+    $output .= t('<strong>Units: </strong>' . $node->units);
+    $output .= '<br />';
+  };
+  if (isset($node->units_short) AND ($node->units_short != '')) {
+    $output .= t('<strong>Units symbol / short name: </strong>' . $node->units_short);
+  };
+  $output .= '</p>';
+  $output .= '<p>';
+  if (isset($node->data_type)) {
+    $output .= t('<strong>Data type: </strong>' . $types[$node->data_type]);
+    $output .= '<br />';
+  };
+  if (($node->data_type == 2) AND ((isset($node->options)) AND ($node->options != ''))) {
+    $output .= t('<strong>Menu options: </strong>' . str_replace(array("\r\n", "\n", "\r"), '; ', $node->options) . '.');
+  };
+  $output .= '</p>';
+  $output .= '<p>';
+  if (isset($node->measurement_device_name) AND ($node->measurement_device_name != '')) {
+    $output .= t('<strong>Device name: </strong>' . $node->measurement_device_name);
+    $output .= '<br />';
+  };
+  if (isset($node->measurement_device_description) AND ($node->measurement_device_description != '')) {
+    $output .= t('<strong>Instructions: </strong>' . $node->measurement_device_description);
+  };
+  $output .= '</p>';
+  
+  return $output;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

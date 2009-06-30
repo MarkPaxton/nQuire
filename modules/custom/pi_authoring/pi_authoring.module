@@ -1,0 +1,2026 @@
+<?php
+/**
+ * pi_authoring provides some forms to help author an inquiry
+ */
+
+/**
+ * implementation of _help hook for pi_authoring
+ */
+function pi_authoring_help($section='') {
+
+	$output = '';
+
+	switch ($section) {
+		case "admin/help#pi_authoring":
+			$output = '<p>'.  t("Test Authoring for Basic Inquiry Authoring"). '</p>';
+			break;
+	}
+
+	return $output;
+}
+
+/**
+ * implementation of _perm hook i.e. who has access to the authoring pages
+ */
+function pi_authoring_perm() {
+	return array('access pi_authoring content');
+}
+
+/**
+ * implementation of _menu hook which has a info page displaing a table of swim lanes
+ * similar to the paper based one for authoring and a set of numbered links to define
+ * elements of the inquiry i.e. the inquiry, phases, stages and activities along with
+ * audience, groups and individual users who will be able to access them
+ */
+function pi_authoring_menu() {
+	$items = array();
+
+	$items['piauthoring'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('PI Authoring'),
+  	  'page callback' => 'pi_authoring_view',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/newinquiry'] = array(
+	//'path' => 'piauthoring/newinquiry',
+      'title' => t('1. Define the basics'),
+  	  'page callback' => 'pi_authoring_new_inquiry',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/newinquiry/inquiry'] = array(
+	//'path' => 'piauthoring/newinquiry/inquiry',
+      'title' => t('1.1. Inquiry'),
+  	  'page callback' => 'pi_authoring_new_inquiry_inquiry',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/newinquiry/phases'] = array(
+	//'path' => 'piauthoring/newinquiry/phases',
+      'title' => t('1.2. Phases'),
+  	  'page callback' => 'pi_authoring_new_inquiry_phases',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/newinquiry/stages'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('1.3. Stages'),
+  	 'page callback' => 'pi_authoring_new_inquiry_stages',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/firstorganisation'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('2. First Organisation'),
+  	 'page callback' => 'pi_authoring_new_inquiry_first_organisation',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/firstorganisation/stagesphases'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('2.1. Sort Phases Into Stages'),
+  	 'page callback' => 'pi_authoring_new_inquiry_first_organisation_stagesphases',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/usersandgroups'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('3. Users & Groups'),
+  	 'page callback' => 'pi_authoring_new_inquiry_users_and_groups',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/usersandgroups/1'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('3.1. Create Your Users'),
+  	 'page callback' => 'pi_authoring_new_inquiry_add_new_users',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/usersandgroups/2'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('3.2. Create Your Organic Groups'),
+  	 'page callback' => 'pi_authoring_new_inquiry_add_new_groups',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/usersandgroups/3'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('3.3. Define Group Types'),
+  	 'page callback' => 'pi_authoring_new_inquiry_define_group_type',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/actors'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('4. Inquiry, Phases & Stages Actors'),
+  	 'page callback' => 'pi_authoring_new_inquiry_define_inquiry_phases_stages',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/actors/1'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('4.1. Define Actors'),
+  	 'page callback' => 'pi_authoring_new_inquiry_define_inquiry_phases_stages_actors',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/activities'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('5. Authoring Activities'),
+  	 'page callback' => 'pi_authoring_new_activities',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/activities/1'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('5.1. Author Place Holders'),
+  	 'page callback' => 'pi_authoring_new_activities_placeholder',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/activities/2'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('5.2. Install Needed Modules'),
+  	 'page callback' => 'pi_authoring_new_activities_modules',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/activities/3'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('5.3. Author Real Activities'),
+  	 'page callback' => 'pi_authoring_new_activities_real',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/activities/4'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Add Activity'),
+  	 'page callback' => 'pi_authoring_new_activities_placeholder_add',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/5'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Edit Activity'),
+  	 'page callback' => 'pi_authoring_new_activities_real_edit',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/6'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Include Activity'),
+  	 'page callback' => 'pi_authoring_new_activities_include',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/workflow'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('6. Author Workflow Rules'),
+  	 'page callback' => 'pi_authoring_workflow',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/grouping'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('7. Advanced Grouping'),
+  	 'page callback' => 'pi_authoring_advanced_groups',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/grouping/1'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('7.1. Define Groups'),
+  	 'page callback' => 'pi_authoring_advanced_groups_og',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/grouping/2'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('7.2. Create Grouping'),
+  	 'page callback' => 'pi_authoring_advanced_groups_create',
+	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	return $items;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------Table View of Inquiry------------------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+/**
+ * pi_authoring_view: shows a table of swim lanes
+ */
+function pi_authoring_view(){
+	$content = '';
+	//inquiry
+	$query = "SELECT * FROM pi_inquiry";
+	$inquiries = db_query($query);
+	while($inquiry = db_fetch_object($inquiries)){
+		$content .= draw_table($inquiry, 'view');
+		$content .= '<br>';
+	}
+	return $content;
+}
+
+function draw_table($inquiry, $view_type){
+	//get all stage for this inquiry
+	$stages_query = "SELECT * FROM pi_stage ";
+	$stages_query .= "LEFT JOIN pi_inquiry_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
+	$stages_query .= "WHERE pi_inquiry_stage.inquiry_id = '" . $inquiry->inquiry_id . "'";
+	//get all phase for this inquiry
+	$phases_query = "SELECT * FROM pi_phase ";
+	$phases_query .= "LEFT JOIN pi_inquiry_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
+	$phases_query .= "WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry->inquiry_id . "'";
+	
+	/*
+	 * to build up the table we need to know the phases and activities and to which stage they belong to.
+	 * for each phase in the inquiry
+	 *  - 1. print the name and find out if it is part of a stage and colour them green
+	 *  - 2. find out the activities for that phase and for each stage does it belong
+	 * 	- 2.1 if it does belong then colour it green
+	 *  - 2.2 if not then include a link to add the activity to that phase and stage
+	 */
+	 
+	$content = array();
+	$phases = db_query($phases_query);
+	while($phase = db_fetch_object($phases)){
+		$stages = db_query($stages_query);
+		while($stage = db_fetch_object($stages)){
+	 		//1. is this phase in this stage?
+	 		$query = "SELECT * FROM pi_stage_phase WHERE ";
+	 		$query .= "phase_id = '" . $phase->phase_id . "'";
+	 		$query .= " AND stage_id = '" . $stage->stage_id . "'";
+	 		$result = db_fetch_object(db_query($query));
+	 		if($result){
+	 			//echo $phase->name . ", " . $stage->name . ", " . $result->psp_id . "; ";
+	 			//2. does this phase in this stage have activites?
+	 			$activities = array();
+	 			$query2 = "SELECT * FROM pi_stage_phase_activity WHERE psp_id = '" . $result->psp_id . "'";
+	 			$result2 = db_query($query2);
+	 			while($object = db_fetch_object($result2)){
+	 				$activities[] = $object->activity_id;
+	 			}
+	 			//phase is included in this stage
+	 			$content[$stage->stage_id][$phase->phase_id] = $activities;
+	 		}
+	 		else{
+	 			//echo $phase->name . ", " . $stage->name . ", " . "null; ";
+	 			//phase not in this stage
+	 			$content[$stage->stage_id][$phase->phase_id] = 'NULL';
+	 		}
+	 	}
+	 }
+	 
+	 return get_view($inquiry, $content, $stages_query, $phases_query, $view_type);
+}
+
+function get_view($inquiry, $array, $stages_query, $phases_query, $view_type){
+	//content 
+	$content = '<strong>' . $inquiry->name . '</strong><br>';
+	//draw the table of phses, activities and stages
+	$content .= '<table border=1>';
+	
+	//stage name headers
+	$content .= '<tr bgcolor="#eeeeee">';
+	$content .= '<td></td>';
+	$stages_headings = db_query($stages_query);
+	while($stage = db_fetch_object($stages_headings)){
+		$content .= '<td>';
+		$content .= $stage->name;
+		$content .= '</td>';
+	}
+	$content .= '</tr>';
+	
+	//phases and activities
+	$phases = db_query($phases_query);
+	while($phase = db_fetch_object($phases)){
+		//phase name
+		$content .= '<tr>';
+		$content .= '<td bgcolor="#eeeeee">' . $phase->name . '</td>';
+		//if the phase is included in a stage then colour the cell green
+		$stages_repeat_1 = db_query($stages_query);
+		while($stage = db_fetch_object($stages_repeat_1)){
+			//is phase included in this stage?
+			$included = $array[$stage->stage_id][$phase->phase_id];
+			if($included == 'NULL'){
+				$content .= '<td bgcolor="#ff0000">';//red cell
+				$content .= '</td>'; 
+			}
+			else{
+				$content .= '<td bgcolor="#00ff00">'; //green cell
+				$sp_link = get_stage_phase_link($view_type, $inquiry->inquiry_id, $stage->stage_id, $phase->phase_id);
+				if($sp_link != ''){
+					$content .= l("Add Activity", $sp_link);
+				}
+				$content .= '</td>'; 
+			}
+		}
+		$content .= '</tr>';
+		//what activities does this phase include for each stage?
+		$stages_repeat_2 = db_query($stages_query);
+		$already_included = array();
+		while($s = db_fetch_object($stages_repeat_2)){
+			$activity_array = $array[$s->stage_id][$phase->phase_id];
+			if($activity_array != 'NULL' & (count($activity_array)>0)){
+				//foreach
+				foreach($activity_array as $activity){
+					//testing
+					if(in_array($activity,$already_included)){
+						//already shown in the table so don't add a new row
+					}
+					else{
+						$content .= '<tr>';
+						$content .= '<td> -> ' . get_name_of_activity($activity) . '</td>';
+						$stages_repeat_3 = db_query($stages_query);
+						while($st = db_fetch_object($stages_repeat_3)){
+							if($st->stage_id == $s->stage_id){
+								$content .= '<td bgcolor="#00ff00">'; //green cell
+								$link = get_activity_link($view_type, $activity);
+								if($link != ''){
+									$content .= l('edit', $link);
+								}
+								$content .= '</td>'; 
+							}
+							else{
+								$temp_array = $array[$st->stage_id][$phase->phase_id];
+								if($temp_array == 'NULL'){
+									// stage is not included in this phase so no activities
+									$content .= '<td bgcolor="#ff0000"></td>'; //red cell
+								}
+								else if((count($temp_array)==0)){
+									// stage is included in phase but has no activties
+									$link = get_to_include_link($view_type,
+																$phase->phase_id, 
+																$st->stage_id, 
+																$activity);
+									$content .= '<td bgcolor="#ff9900">'; //amber cell
+									if($link != ''){
+										$content .= l('include?',$link);
+									}
+									$content .= '</td>'; 
+								}
+								else{
+									//stage is included in phase and has activities
+									if(in_array($activity, $temp_array)){
+										//activity is in this stage as well
+										$content .= '<td bgcolor="#00ff00"></td>'; //green cell
+									}
+									else{
+										//activity not in this stage
+										$link = get_to_include_link($view_type,
+																	$phase->phase_id, 
+																	$st->stage_id, 
+																	$activity);
+										$content .= '<td bgcolor="#ff9900">';//amber cell
+										if($link != ''){
+											$content .= l('include?',$link); 
+										}
+										$content .= '</td>'; 
+									}								
+								}
+							}
+						}
+						$content .= '</tr>';
+						$already_included[] = $activity;
+					}
+				}
+				//end foreach				
+			}
+		}
+	}
+	
+	$content .= "</table>";
+	return $content;
+}
+
+function get_name_of_activity($activity_id){
+	$query = "SELECT * FROM pi_activity WHERE activity_id = '" . $activity_id . "'";
+	$result = db_fetch_object(db_query($query));
+	return $result->name;
+}
+
+function get_to_include_link($view_type, $phase, $stage, $activity){
+	$link = '';
+	if($view_type != 'view' & $view_type != 'edit'){
+		$link .= "piauthoring/activities/6/" . arg(2) . "/" . arg(3) . "/" . $phase . "/" . $stage . "/" . $activity;
+	}
+	return $link;
+}
+
+function get_stage_phase_link($view_type, $inquiry, $stage, $phase){
+	$link = '';
+	if($view_type != 'view' & $view_type != 'edit'){
+		$query = "SELECT * FROM pi_stage_phase WHERE ";
+		$query .= "phase_id = '" . $phase . "'";
+		$query .= " AND stage_id = '" . $stage . "'";
+		$result = db_fetch_object(db_query($query));
+		$link .= "piauthoring/activities/4/" . $inquiry . "/" . $result->psp_id;
+	}
+	return $link;
+}
+
+function get_activity_link($view_type, $activity_id){
+	$link = '';
+	if($view_type != 'view' & $view_type != 'add'){
+		$link .= 'piauthoring/activities/5/' . $activity_id;
+	}
+	return $link;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+//------------------------------------------------End : Table View of Inquiry----------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------Forms for section 1 of the menu-------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+/**
+ * pi_authoring_new_inquiry: define the basics
+ */
+function pi_authoring_new_inquiry(){
+	$content = "<p>For each new inquiry you need to give it a name and to define the phases and stages.";
+	$content .= "  Each new inquiry needs to include a new set of phases and stages.</p>";
+	$content .= "<p><strong>Phase:</strong>  A phase is a part of the inquiry model.  For example, ";
+	$content .= " Find My Topic, Data Collection and Reflect.</p>";
+	$content .= "<p><strong>Stage:</strong> A stage is a temporal element.  This could be a lesson or ";
+	$content .= "homework or just a group of phases and activities that should be done before another set.";  
+	$content .= "Location is another aspect of a stage as where the activities are to be carried out should"; 
+	$content .= "influence the grouping of phases and activities in the stage.  For example, data collection";
+	$content .= " activities in the Data Collection phase should take into account whether it is taking place ";
+	$content .= "in the classroom, home or on a field trip.</p>";
+	return t($content);
+}
+
+/**
+ * pi_authoring_new_inquiry_inquiry: define new inquiry
+ */
+function pi_authoring_new_inquiry_inquiry(){
+	$page_content = '<p>Create A New Inquiry</p>';
+	$page_content .= drupal_get_form('pi_authoring_new_inquiry_inquiry_form', $node);
+	return $page_content;
+}
+
+function pi_authoring_new_inquiry_inquiry_form($form_state){
+
+	$form['add'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Add A New Inquiry'),
+		'#tree' => TRUE,
+	);
+
+	$form['add']['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Inquiry Name'),
+		'#default_value' => '',
+	);
+
+	$form['add']['description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Inquiry Description'),
+		'#default_value' => '',
+	);
+
+	$form['add']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+function pi_authoring_new_inquiry_inquiry_form_submit($form, &$form_state){
+	$query = "INSERT INTO pi_inquiry SET ";
+	$query .= "name = '" . $form_state['values']['add']['name'] . "' ";
+	$query .= ", description = '" . $form_state['values']['add']['description'] . "'";
+	db_query($query);
+
+	$text = "New Inquiry " . $form_state['values']['add']['name'];
+	$text .= " Added: " . $form_state['values']['add']['description'];
+	drupal_set_message(t($text));
+	drupal_goto("piauthoring/newinquiry/phases");
+}
+
+/**
+ * pi_authoring_new_inquiry_phases: define new phase
+ */
+function pi_authoring_new_inquiry_phases(){
+	$page_content = '<p>Create A New Phase For An Inquiry</p>';
+	$page_content .= drupal_get_form('pi_authoring_new_inquiry_phases_form', $node);
+	return $page_content;
+}
+
+function pi_authoring_new_inquiry_phases_form($form_state){
+	$form['add'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Add A New Phase'),
+		'#tree' => TRUE,
+	);
+	
+	//get all inquiries to add to an option array
+	$query = "SELECT * FROM pi_inquiry";
+	$results = db_query($query);
+	$options = array();
+	while ($r = db_fetch_object($results)) {
+		$options[$r->inquiry_id] = $r->inquiry_id . " : " . $r->name;
+	}
+
+	$form['add']['inquiry_id'] = array(
+		'#type' => 'select',
+		'#title' => t('Phase Belongs to Which Inquiry?'),
+		'#options' => $options,
+	);
+
+	$form['add']['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Phase Name'),
+		'#default_value' => '',
+	);
+
+	$form['add']['description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Phase Description'),
+		'#default_value' => '',
+	);
+
+	$form['add']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+function pi_authoring_new_inquiry_phases_form_submit($form, &$form_state){
+	//insert phase in to pi_phase
+	$query = "INSERT INTO pi_phase SET ";
+	$query .= "name = '" . $form_state['values']['add']['name'] . "'";
+	$query .= ", description = '" . $form_state['values']['add']['description'] . "'";
+	db_query($query);
+
+	//get the newly added phase id
+	$query2 = "SELECT MAX(pi_phase.phase_id) FROM pi_phase";
+	$phase_id = db_result(db_query($query2));
+
+	//get the max position the last added phase
+	$query3 = "SELECT MAX(pi_inquiry_phase.position) FROM pi_inquiry_phase";
+	$position = db_result(db_query($query3));
+
+	//add inquiry and phase to the pi_inquiry_phase table
+	$query4 = "INSERT INTO pi_inquiry_phase SET ";
+	$query4 .= "inquiry_id = '" . $form_state['values']['add']['inquiry_id'] . "'";
+	$query4 .= ", phase_id = '" . $phase_id . "'";
+	$query4 .= ", position = '" . ($position+1) . "'";
+	db_query($query4);
+
+	$text = "New Phase " . $form_state['values']['add']['name'];
+	$text .= " Added: " . $form_state['values']['add']['description'];
+	$text .= "<br> If you have finished adding Phases move on to 1.3. to define Stages";
+	drupal_set_message(t($text));
+	drupal_goto("piauthoring/newinquiry/phases");
+}
+
+/**
+ * pi_authoring_new_inquiry_stages: define new stage
+ */
+function pi_authoring_new_inquiry_stages(){
+	$page_content = '<p>Create A New Stage For An Inquiry</p>';
+	$page_content .= drupal_get_form('pi_authoring_new_inquiry_stages_form', $node);
+	return $page_content;
+}
+
+function pi_authoring_new_inquiry_stages_form($form_state){
+	$form['add'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Add A New Stage'),
+		'#tree' => TRUE,
+	);
+	
+	//get all inquiries to add to an option array
+	$query = "SELECT * FROM pi_inquiry";
+	$results = db_query($query);
+	$options = array();
+	while ($r = db_fetch_object($results)) {
+		$options[$r->inquiry_id] = $r->inquiry_id . " : " . $r->name;
+	}
+
+	$form['add']['inquiry_id'] = array(
+		'#type' => 'select',
+		'#title' => t('Stage Belongs to Which Inquiry?'),
+		'#options' => $options,
+	);
+
+	$form['add']['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Stage Name'),
+		'#default_value' => '',
+	);
+
+	$form['add']['description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Stage Description'),
+		'#default_value' => '',
+	);
+
+	$form['add']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+function pi_authoring_new_inquiry_stages_form_submit($form, &$form_state){
+	//insert phase in to pi_phase
+	$query = "INSERT INTO pi_stage SET ";
+	$query .= "name = '" . $form_state['values']['add']['name'] . "'";
+	$query .= ", description = '" . $form_state['values']['add']['description'] . "'";
+	db_query($query);
+
+	//get the newly added phase id
+	$query2 = "SELECT MAX(pi_stage.stage_id) FROM pi_stage";
+	$stage_id = db_result(db_query($query2));
+
+	//get the max position the last added phase
+	$query3 = "SELECT MAX(pi_inquiry_stage.position) FROM pi_inquiry_stage";
+	$position = db_result(db_query($query3));
+
+	//add inquiry and phase to the pi_inquiry_phase table
+	$query4 = "INSERT INTO pi_inquiry_stage SET ";
+	$query4 .= "inquiry_id = '" . $form_state['values']['add']['inquiry_id'] . "'";
+	$query4 .= ", stage_id = '" . $stage_id . "'";
+	$query4 .= ", position = '" . ($position+1) . "'";
+	db_query($query4);
+
+	$text = "New Stage " . $form_state['values']['add']['name'];
+	$text .= " Added: " . $form_state['values']['add']['description'];
+	$text .= "<br> If you have finished adding Stage move on to Section 2. to define which Phases are in Stages";
+	drupal_set_message(t($text));
+	drupal_goto("piauthoring/newinquiry/stages");
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------End : Forms for section 1 of the menu-------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------Forms for section 2 of the menu-------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+function pi_authoring_new_inquiry_first_organisation(){
+	$content = '<p>First Organisation of Content:  You now need to specify which phases belong to which stages</p>';
+	$query = "SELECT * FROM pi_inquiry";
+	$inquiries = db_query($query);
+	while($inquiry = db_fetch_object($inquiries)){
+		//name of inquiry
+		$content .= "<strong>" . $inquiry->name . "</strong><br><br>";
+		$query2 = "SELECT * FROM pi_inquiry_stage ";
+		$query2 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
+		$query2 .= "WHERE inquiry_id = '" . $inquiry->inquiry_id . "'";
+		$query2 .= "ORDER BY pi_inquiry_stage.stage_id";
+		$stages = db_query($query2);
+		while($stage = db_fetch_object($stages)){
+			$content .= "<strong>" . $stage->stage_id . " : " . $stage->name . "</strong>";
+			$query3 = "SELECT * FROM pi_stage_phase ";
+			$query3 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_stage_phase.phase_id ";
+			$query3 .= "WHERE stage_id = '" . $stage->stage_id ."'";
+			$stagephases = db_query($query3);
+			$content .= "<table>";
+			while($stagephase = db_fetch_object($stagephases)){
+				$content .= "<tr><td width=100>" . $stagephase->name . "</td>";
+				$content .= "<td width=100>" . "remove" . "</td></tr>";
+			}
+			$content .= "</table>";
+		}
+	}
+	return $content;
+}
+
+function pi_authoring_new_inquiry_first_organisation_stagesphases(){
+	$page_content = '<p>Sort Phases into Stages</p>';
+	$page_content .= drupal_get_form('pi_authoring_new_inquiry_first_organisation_stagesphases_form', $node);
+	return $page_content;
+}
+
+function pi_authoring_new_inquiry_first_organisation_stagesphases_form($form_state){
+	//declare $form
+	$form = array();
+
+	//ahah helper bit that gets all the inquiries and puts it into a dropdown box
+	//selecting a inquiry from the list will set the varialbe $usage_default_value
+	//which you can use in the rest of the form
+	ahah_helper_register($form, $form_state);
+	//default value
+	if (!isset($form_state['storage']['inquiry_id']['which'])) {
+		$usage_default_value = 'none';
+	}
+	else {
+		$usage_default_value =  $form_state['storage']['inquiry_id']['which'];
+	}
+	//ahah form
+	$query = "SELECT * FROM pi_inquiry";
+	$inquiries = db_query($query);
+	$options = array();
+	$options['none'] = 'none';
+	while($inquiry = db_fetch_object($inquiries)){
+		$options[$inquiry->inquiry_id] = $inquiry->inquiry_id . " : " . $inquiry->name;
+	}
+	$form['inquiry_id'] = array(
+	    '#type'   => 'fieldset',
+	    '#title'  => t('Which Inquiry'),
+	    '#prefix' => '<div id="inquiry-wrapper">', // This is our wrapper div.
+	    '#suffix' => '</div>',
+	    '#tree'   => TRUE, // Don't forget to set #tree!
+	);
+	$form['inquiry_id']['which'] = array(
+	    '#type' => 'select',
+	    '#title' => t('Inquiry ID'),
+	    '#options' => $options,
+	    '#default_value' => $usage_default_value,
+	    '#ahah' => array(
+	      'event'   => 'change',
+	// This is the "magical path". Note that the parameter is an array of
+	// the parents of the form item of the wrapper div!
+	      'path'    => ahah_helper_path(array('inquiry_id')),
+	      'wrapper' => 'inquiry-wrapper',
+	),
+	);
+	$form['inquiry_id']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Update Inquiry'),
+	// Note that we can simply use the generic submit callback provided by the
+	// ahah_helper module here!
+	// All it does, is set $form_state['rebuild'] = TRUE.
+	    '#submit' => array('ahah_helper_generic_submit'),
+	// We set the 'no-js' class, which means this submit button will be hidden
+	// automatically by Drupal if JS is enabled.
+	    '#attributes' => array('class' => 'no-js'),
+	);
+	
+	if($usage_default_value != 'none'){
+		//main form bits that use the inquiry_id in the above ahah helper bit
+		$query2 = "SELECT * FROM pi_inquiry_stage ";
+		$query2 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
+		$query2 .= "WHERE pi_inquiry_stage.inquiry_id = '" . $usage_default_value . "'";
+		$query2 .= " ORDER BY pi_inquiry_stage.position";
+		$all_stages = db_query($query2);
+	
+		$query3 = "SELECT * FROM pi_inquiry_phase ";
+		$query3 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
+		$query3 .= "WHERE pi_inquiry_phase.inquiry_id = '"  . $usage_default_value . "'";
+		$query3 .= " ORDER BY pi_inquiry_phase.position";
+		$all_phases = db_query($query3);
+		$options2 = array();
+		while($phase = db_fetch_object($all_phases)){
+			//echo $phase->name;
+			$options2[$phase->phase_id] = $phase->phase_id . " : " . $phase->name;
+		}
+		$collapsed = FALSE;
+		while($stage = db_fetch_object($all_stages)){
+			$form['inquiry_id']['include'][$stage->stage_id] = array(
+				'#type' => 'fieldset',
+				'#title' => t($stage->name),
+				'#tree' => TRUE,
+				'#collapsible' => FALSE,
+	    		//'#collapsed' => $collapsed,
+			);
+			$form['inquiry_id']['include'][$stage->stage_id]['what'] = array(
+				'#type' => 'checkboxes',
+				'#title' => t('Select Phase To Include In This Stage'),
+				'#options' => $options2,
+			);
+			$collapsed = TRUE;
+		}
+	
+		$form['inquiry_id']['include']['submit'] = array(
+			'#type' => 'submit',
+			'#value' => t('Add'),
+		);
+	}
+
+	return $form;
+}
+
+function pi_authoring_new_inquiry_first_organisation_stagesphases_form_submit($form, &$form_state){
+	$query = "SELECT * FROM pi_stage ORDER BY stage_id";
+	$all_stages = db_query($query);
+
+	while($stage = db_fetch_object($all_stages)){
+		$array = $form_state['values']['inquiry_id']['include'][$stage->stage_id]['what'];
+		if($array != NULL & $array != 0){
+			$content = array_filter($array);
+			foreach($content as $c){
+				$query2 = "INSERT INTO pi_stage_phase SET ";
+				$query2 .= "stage_id = '" . $stage->stage_id . "' ";
+				$query2 .= ", phase_id = '" . $c . "'";
+				db_query($query2);
+			}
+		}
+	}
+	$text = "Added Phases to Stages.  If you have finished then move on to Section 3";
+	drupal_set_message(t($text));
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------End: Forms for section 2 of the menu--------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------Forms for section 3 of the menu-------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+function pi_authoring_new_inquiry_users_and_groups(){
+	$content = "<p>Section 3 is all about your users and the groups they are in.  What you need to do is to";
+	$content .= " create accounts for your users (i.e. students).  If you have authored an inquiry before then ";
+	$content .= "you might already have users set up.  Check the table in 3.1 to view all of your users. </p>";
+	$content .= "<p>You will also need to define in Organic Groups the groups you need for this inquiry.  Again ";
+	$content .= "if you have authored an inquiry before some of these groups will be there.  Section 3.2. shows ";
+	$content .= "you a list of groups.  (NB in section 3.1. groups user belong to are also shown)</p>";
+	$content .= "<p>Groups are used in order to allocate content to a user.  For example, if a user is a member of ";
+	$content .= "Year 9, Class A and Group A they will have different properties to  Year 9, Class A and Group B.";
+	$content .= "  The difference might only be the members of the group and who can see the information submitted";
+	$content .= " by that group but it could be something more such as having two different activities at a particular ";
+	$content .= "phase and stage of the inquiry e.g. one group collected survey data whilst the other collects sensor data.</p>";
+	return $content;
+}
+
+function pi_authoring_new_inquiry_add_new_users(){
+	$content = "<p>You now need to use the Drupal Admin ";
+	$content .= "pages to create your users.  If you have done this before there is a list of current users below</p><br>";
+	//current users
+	$query = "SELECT * FROM users";
+	$all_users = db_query($query);
+	$page_content1_header .= "<strong>Current Users</strong>";
+	$content .= "<table>";
+	$content .= '<tr bgcolor="#EEEEEE"><td>User Name</td><td>OG Group Membership</td></tr>';
+	while($user = db_fetch_object($all_users)){
+		$content .= "<tr>";
+		$content .= "<td>" . $user->name . "</td>";
+		$content .= "<td>" . getusersgroups($user->uid) . "</td>";
+		$content .= "</tr>";
+	}
+	$content .= "</table>";
+	return $content;
+}
+
+//helper function to get all og groups for a uid
+function getusersgroups($uid){
+	$query = "SELECT * FROM og_uid ";
+	$query .= "LEFT JOIN og ON og.nid = og_uid.nid ";
+	$query .= "WHERE og_uid.uid = '" . $uid . "'";
+	$groups = db_query($query);
+	$groups_list = "";
+	while($group = db_fetch_object($groups)){
+		$groups_list .= $group->og_description . ", ";
+	}
+	return $groups_list;
+}
+
+function pi_authoring_new_inquiry_add_new_groups(){
+	$content = "<p>You now need to use the Drupal Admin ";
+	$content .= "pages to create you Organic Groups and to add your users to these Organic Group";
+	$content .= " Below is a list of Organic Groups and members</p><br>";
+	
+	//current og groups
+	$query = "SELECT * FROM og";
+	$all_og = db_query($query);
+	$content .= "<table>";
+	$content .= '<tr bgcolor="#EEEEEE"><td>OG Group Name</td><td>Membership</td></tr>';
+	while($groups = db_fetch_object($all_og)){
+		$content .= "<tr>";
+		$content .= "<td>" . $groups->og_description . "</td>";
+		$content .= "<td>" . getgroupsusers($groups->nid) . "</td>";
+		$content .= "</tr>";
+	}
+	$content .= "</table>";
+	return $content;
+}
+
+//helper function to get all the users who are member of an og group
+function getgroupsusers($og){
+	$query = "SELECT * FROM og_uid ";
+	$query .= "LEFT JOIN users ON users.uid = og_uid.uid ";
+	$query .= "WHERE og_uid.nid = '" . $og . "'";
+	$users = db_query($query);
+	$user_list = "";
+	while($user = db_fetch_object($users)){
+		$user_list .= $user->name . ", ";
+	}
+	return $user_list;
+}
+
+function pi_authoring_new_inquiry_define_group_type(){
+	$page_content = "<p>You now need to define what types the groups are (group, class or multiclass)</p><br>";
+	$page_content .= drupal_get_form('pi_authoring_new_inquiry_define_group_type_form', $node);
+	return $page_content;
+}
+
+function pi_authoring_new_inquiry_define_group_type_form($form_state){
+	$options = array('group'=>'group','class'=>'class','mulitclass'=>'multiclass',);
+
+	$query2 = "SELECT * FROM og";
+	$all_og = db_query($query2);
+	while($group = db_fetch_object($all_og)){
+		$form[$group->nid] = array(
+			'#type' => 'fieldset',
+			'#title' => t($group->og_description),
+			'#tree' => TRUE,
+		);
+		$form[$group->nid]['what'] = array(
+			'#type' => 'select',
+			'#title' => t('Select What This Group Type Is'),
+			'#options' => $options,
+		);
+	}
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+function pi_authoring_new_inquiry_define_group_type_form_submit($form, &$form_state){
+	$query1 = "SELECT * FROM og";
+	$all_og = db_query($query1);
+	while($group = db_fetch_object($all_og)){
+		$query2 = "INSERT INTO pi_group_type SET ";
+		$query2 .= "gid = '" . $group->nid . "' ";
+		$query2 .= ", type = '" . $form_state['values'][$group->nid]['what'] . "'";
+		db_query($query2);
+	}
+	$text = "Defined Groups.  If you have finished then move on to Stage 4";
+	drupal_set_message(t($text));
+}
+
+
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------End: Forms for section 3 of the menu--------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------Forms for section 4 of the menu-------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+function pi_authoring_new_inquiry_define_inquiry_phases_stages(){
+	$content = "<p>Section 4 is all about who will be able to see each phase and stage of the inquiry.  In most cases";
+	$content .= "each of the phases and stages will be visible to the whole class (NB different groups seeing different";
+	$content .= " activities is specified later on when you author the activities).  However, it might be the case that";
+	$content .= " you only want the top set to see particular stages or a particular group of students to see a more ";
+	$content .= "complex phase of the inquiry cycle.";
+	return $content;
+}
+
+function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors(){
+	$content = "<p>You now need to define the actors for the inquiry, phases and stages<br>";
+	$content .= "(NB the group for the inquiry also defines the defaul pi_grouping)</p><br>";
+	$content .= drupal_get_form('pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form', $node);
+	return $content;
+}
+
+function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form($form_state){
+	$form = array();
+	//ahah_helper stuff to filter the phases and stages based on the inquiry_id
+	ahah_helper_register($form, $form_state);
+	//default value
+	if (!isset($form_state['storage']['inquiry_id']['which'])) {
+		$usage_default_value = 'none';
+	}
+	else {
+		$usage_default_value =  $form_state['storage']['inquiry_id']['which'];
+	}
+	//ahah form
+	$query = "SELECT * FROM pi_inquiry";
+	$inquiries = db_query($query);
+	$options = array();
+	$options['none'] = 'none';
+	while($inquiry = db_fetch_object($inquiries)){
+		$options[$inquiry->inquiry_id] = $inquiry->inquiry_id . " : " . $inquiry->name;
+	}
+	$form['inquiry_id'] = array(
+	    '#type'   => 'fieldset',
+	    '#title'  => t('Which Inquiry'),
+	    '#prefix' => '<div id="inquiry-wrapper">', // This is our wrapper div.
+	    '#suffix' => '</div>',
+	    '#tree'   => TRUE, // Don't forget to set #tree!
+	);
+	$form['inquiry_id']['which'] = array(
+	    '#type' => 'select',
+	    '#title' => t('Inquiry ID'),
+	    '#options' => $options,
+	    '#default_value' => $usage_default_value,
+	    '#ahah' => array(
+	      'event'   => 'change',
+	// This is the "magical path". Note that the parameter is an array of
+	// the parents of the form item of the wrapper div!
+	      'path'    => ahah_helper_path(array('inquiry_id')),
+	      'wrapper' => 'inquiry-wrapper',
+	),
+	);
+	$form['inquiry_id']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Update Inquiry'),
+	// Note that we can simply use the generic submit callback provided by the
+	// ahah_helper module here!
+	// All it does, is set $form_state['rebuild'] = TRUE.
+	    '#submit' => array('ahah_helper_generic_submit'),
+	// We set the 'no-js' class, which means this submit button will be hidden
+	// automatically by Drupal if JS is enabled.
+	    '#attributes' => array('class' => 'no-js'),
+	);
+
+	//get all groups as an options
+	$group_options = array();
+	$query2 = "SELECT * FROM og";
+	$all_og = db_query($query2);
+	while($group = db_fetch_object($all_og)){
+		$group_options[$group->nid] = $group->nid . " : " . $group->og_description;
+	}
+
+	//so now based on the selection above we can display the correct stages and phases
+	if($usage_default_value != 'none'){
+		//actor for inquiry
+		$form['inquiry_id']['inquiry']['group'] = array(
+			'#type' => 'select',
+			'#title' => t('Select Actor For This Inquiry: '),
+			'#options' => $group_options,
+		);
+
+		//stages and phases
+		$query2 = "SELECT * ";
+		$query2 .= "FROM pi_inquiry_phase ";
+		$query2 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
+		$query2 .= "WHERE pi_inquiry_phase.inquiry_id = '" . $usage_default_value . "' ";
+		$query2 .= "ORDER BY pi_inquiry_phase.position";
+		$phases = db_query($query2);
+
+		$form['inquiry_id']['phase'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Select Actors for Each Phase Listed Below'),
+			'#collapsible' => TRUE,
+			'#tree' => TRUE,
+		);
+		while($phase = db_fetch_object($phases)){
+			$form['inquiry_id']['phase'][$phase->phase_id] = array(
+				'#type' => 'select',
+				'#title' => t('Select Actor For This Phase: ' . $phase->name),
+				'#options' => $group_options,
+			);
+		}
+
+		$query3 = "SELECT * ";
+		$query3 .= "FROM pi_inquiry_stage ";
+		$query3 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
+		$query3 .= "WHERE pi_inquiry_stage.inquiry_id = '" . $usage_default_value . "' ";
+		$query3 .= "ORDER BY pi_inquiry_stage.position";
+		$stages = db_query($query3);
+
+		$form['inquiry_id']['stage'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Select Actors for Each Stage Listed Below'),
+			'#collapsible' => TRUE,
+			'#tree' => TRUE,
+		);
+		while($stage = db_fetch_object($stages)){
+			$form['inquiry_id']['stage'][$stage->stage_id] = array(
+				'#type' => 'select',
+				'#title' => t('Select Actor For This Stage: ' . $stage->name),
+				'#options' => $group_options,
+			);
+		}
+	}
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form_submit($form, &$form_state){
+	$inquiry_id = $form_state['values']['inquiry_id']['which'];
+	$inquiry_id_group = $form_state['values']['inquiry_id']['inquiry']['group'];
+
+	//set inquiry actor and default grouping
+	$query = "INSERT INTO pi_inquiry_actor SET ";
+	$query .= "inquiry_id = '" . $inquiry_id . "'";
+	$query .= ", gid = '" . $inquiry_id_group . "'";
+	db_query($query);
+
+	$query2 = "INSERT INTO pi_grouping SET ";
+	$query2 .= "name = 'default', description = 'default'";
+	db_query($query2);
+
+	//new grouping id
+	$query3 = "SELECT MAX(pi_grouping.grouping_id) FROM pi_grouping";
+	$group_id = db_result(db_query($query3));
+
+	$query4 = "INSERT INTO pi_group_hierarchy SET ";
+	$query4 .= "gid = '" . $inquiry_id_group . "'";
+	db_query($query4);
+
+	$query5 = "INSERT INTO pi_grouping_group SET ";
+	$query5 .= "grouping_id = '" . $group_id ."'";
+	$query5 .= ", gid = '" . $inquiry_id_group . "'";
+	db_query($query5);
+
+	$query6 = "INSERT INTO pi_inquiry_grouping SET ";
+	$query6 .= "inquiry_id = '" . $inquiry_id . "'";
+	$query6 .= ", grouping_id = '" . $group_id . "'";
+	db_query($query6);
+
+	//now for the stages and phases
+	//stages
+	$query7 = "SELECT * ";
+	$query7 .= "FROM pi_inquiry_stage ";
+	$query7 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
+	$query7 .= "WHERE pi_inquiry_stage.inquiry_id = '" . $inquiry_id . "' ";
+	$query7 .= "ORDER BY pi_inquiry_stage.position";
+	$stages = db_query($query7);
+
+	while($stage = db_fetch_object($stages)){
+		$selected_group = $form_state['values']['inquiry_id']['stage'][$stage->stage_id];
+		$query8 = "INSERT INTO pi_stage_actor SET ";
+		$query8 .= "inquiry_id = '" . $inquiry_id . "'";
+		$query8 .= ", stage_id = '" . $stage->stage_id . "'";
+		$query8 .= ", gid = '" . $selected_group ."'";
+		db_query($query8);
+	}
+
+	//phases
+	$query9 = "SELECT * ";
+	$query9 .= "FROM pi_inquiry_phase ";
+	$query9 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
+	$query9 .= "WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry_id . "' ";
+	$query9 .= "ORDER BY pi_inquiry_phase.position";
+	$phases = db_query($query9);
+	while($phase = db_fetch_object($phases)){
+		$selected_group = $form_state['values']['inquiry_id']['phase'][$phase->phase_id];
+		$query10 = "INSERT INTO pi_phase_actor SET ";
+		$query10 .= "inquiry_id = '" . $inquiry_id . "'";
+		$query10 .= ", phase_id = '" . $phase->phase_id . "'";
+		$query10 .= ", gid = '" . $selected_group ."'";
+		db_query($query10);
+	}
+
+	$text = "Done";
+	drupal_set_message(t($text));
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------End: Forms for section 4 of the menu--------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------Forms for section 5 of the menu-------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+/*
+ * Authoring of activities is going to be a 2 stage process.
+ *
+ * Stage 1 is to use activity_placeholder.module to place dummy content into the system so that in the authoring
+ * interface you are able to quickly generate the inquiry.
+ *
+ * Stage 2 is to replace these dummy activities with the real activities.  The user will have to install the
+ * relevent modules and update the activitiy place holder with the correct information
+ */
+
+function pi_authoring_new_activities(){
+	$content = "<p>Authoring of activities is a 2 part process.</p>";
+	$content .= "<p><strong>Part 1</strong> is to use section 5.1 to place dummy content into the ";
+	$content .= "system so that you are able to quickly generate activities in the inquiry.</p>";
+	$content .= "<p><strong>Part 2</strong> is to replace these dummy activities with the real activities.  First you";
+	$content .= " will have to install the relevent modules (link in 5.2) and then use 5.3 to update the activities with the correct information</p>";
+	
+	$content .= "<p>Below is a list of inquiries to choose from use this page to filter what you see in sections 5.1";
+	$content .= " and 5.3 (default is to display all inquiries in these pages unless set by the links below</p><br>";
+	
+	//table of inquiries to choose from; two links one to placeholder and the other to real
+	//if there are activities in placeholder then the text changes
+	$query = "SELECT * FROM pi_inquiry";
+	$inquiries = db_query($query);
+	
+	$content .= "<table>";
+	$content .= '<tr bgcolor="#EEEEEE"><td>Inquiry Name</td><td>Place Holder</td><td>Real</td></tr>';
+	while($inquiry = db_fetch_object($inquiries)){
+		$content .= "<tr>";
+		$content .= "<td>" . $inquiry->name . "</td>";
+		$content .= "<td>" . l("add", "piauthoring/activities/1/" . $inquiry->inquiry_id) . "</td>";
+		$content .= "<td>" . l("update", "piauthoring/activities/3/" . $inquiry->inquiry_id) . "</td>";
+		$content .= "</tr>";
+	}
+	$content .= "</table>";
+	return $content;
+}
+
+function pi_authoring_new_activities_placeholder(){
+	$content = '';
+	if(arg(3) != NULL){
+		$query = "SELECT * FROM pi_inquiry WHERE inquiry_id = '" . arg(3) . "'";
+		$inquiry = db_fetch_object(db_query($query));
+		$content .= draw_table($inquiry, 'add');
+	}
+	else{
+		$query = "SELECT * FROM pi_inquiry";
+		$inquiries = db_query($query);
+		while($inquiry = db_fetch_object($inquiries)){
+			$content .= draw_table($inquiry, 'add');
+			$content .= '<br>';
+		}
+	}
+	return $content;
+}
+
+function pi_authoring_new_activities_modules(){
+	return "<p> Now use the Admin pages to install the modules you need for the activies you have added placeholders for</p>";
+}
+
+function pi_authoring_new_activities_real(){
+	$content = '';
+if(arg(3) != NULL){
+		$query = "SELECT * FROM pi_inquiry WHERE inquiry_id = '" . arg(3) . "'";
+		$inquiry = db_fetch_object(db_query($query));
+		$content .= draw_table($inquiry, 'edit');
+	}
+	else{
+		$query = "SELECT * FROM pi_inquiry";
+		$inquiries = db_query($query);
+		while($inquiry = db_fetch_object($inquiries)){
+			$content .= draw_table($inquiry, 'edit');
+			$content .= '<br>';
+		}
+	}
+	return $content;
+}
+
+function pi_authoring_new_activities_placeholder_add(){
+	$content = "<p>Add a new activity to this phase and stage.<br>";
+	$content .= "(NB this is a place holder activity so you can quickly define";
+	$content .= " the types of activities you want in your inquiry.  Simply put";
+	$content .= "the name of the activity in, something meanlingful and you will";
+	$content .= "go back later and edit it to the real activit)</p><br>";
+	$content .= drupal_get_form('pi_authoring_new_activities_placeholder_add_form', $node);
+	return $content;
+}
+
+function pi_authoring_new_activities_placeholder_add_form($form_state){
+	$form['add'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Add A New Stage'),
+		'#tree' => TRUE,
+	);
+
+	$form['add']['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Activity Name'),
+		'#default_value' => '',
+	);
+
+	$form['add']['description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Temporary Description'),
+		'#default_value' => '',
+	);
+
+	//get all inquiries to add to an option array
+	$group_options = array();
+	$query2 = "SELECT * FROM og";
+	$all_og = db_query($query2);
+	while($group = db_fetch_object($all_og)){
+		$group_options[$group->nid] = $group->nid . " : " . $group->og_description;
+	}
+
+	$form['add']['group'] = array(
+		'#type' => 'select',
+		'#title' => t('For Which Group?'),
+		'#options' => $group_options,
+	);
+
+	$options = array('individual'=>'individual',
+						'group'=>'group',
+						'class'=>'class',
+						'multiclass'=>'multiclass');
+
+	$form['add']['audience'] = array(
+		'#type' => 'select',
+		'#title' => t('Audience'),
+		'#options' => $options,
+	);
+
+	$form['add']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+function pi_authoring_new_activities_placeholder_add_form_submit($form, &$form_state){
+	$inquiry_id = arg(3);
+	$psp_id = arg(4);
+
+	//echo $inquiry_id . " + " . $psp_id;
+
+	//insert new activity (temp) //
+	$query = "INSERT INTO pi_activity SET ";
+	$query .= "name = '" . $form_state['values']['add']['name'] . "'";
+	$query .= ", description = '" . $form_state['values']['add']['name'] . "'";
+	$query .= ", activity_type = 'pi_authoring_activity'";
+	$query .= ", node_type = 'pi_authoring_activity'";
+	$query .= ", parameters = '" . $form_state['values']['add']['description'] . "'";
+	$query .= ", destination = 'phase'";
+	$query .= ", audience = '" . $form_state['values']['add']['audience'] . "'";
+	db_query($query);
+
+	//get new activity_id
+	$query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
+	$activity_id = db_result(db_query($query2));
+
+	//stage_phase_activity
+	$query3 = "SELECT MAX(pi_stage_phase_activity.position) FROM pi_stage_phase_activity";
+	$position = db_result(db_query($query3));
+	$new_position = $position + 1;
+
+	$query4 = "INSERT INTO pi_stage_phase_activity SET";
+	$query4 .= " psp_id = '" . $psp_id . "'";
+	$query4 .= ", activity_id = '" . $activity_id . "'";
+	$query4 .= ", position = '" . $new_position . "'";
+	db_query($query4);
+
+	//activity_actor
+	$query5 = "INSERT INTO pi_activity_actor SET";
+	$query5 .= " inquiry_id = '" . $inquiry_id . "'";
+	$query5 .= ", activity_id = '" . $activity_id . "'";
+	$query5 .= ", gid = '" . $form_state['values']['add']['group'] . "'";
+	db_query($query5);
+
+	//activity_status //
+	$query6 = "INSERT INTO pi_activity_status SET";
+	$query6 .= " inquiry_id = '" . $inquiry_id . "'";
+	$query6 .= ", activity_id = '" . $activity_id . "'";
+	$query6 .= ", gid = '" . $form_state['values']['add']['group'] . "'";
+	$query6 .= ", node_function = 'add'";
+	$query6 .= ", visible_status = 'start'";
+	db_query($query6);
+
+	//done
+	$text = "Added new placeholder activity";
+	drupal_set_message(t($text));
+	drupal_goto("piauthoring/activities/1/" . $inquiry_id);
+}
+
+function pi_authoring_new_activities_real_edit(){
+	$content = "<p>Edit an activity:.<br>";
+	$content .= "</p><br>";
+	$content .= drupal_get_form('pi_authoring_new_activities_real_edit_form', $node);
+	return $content;
+}
+
+function pi_authoring_new_activities_real_edit_form($form_state){
+	$activity_id = arg(3);
+	
+	/* construct form to edit the details of an activity
+	 * inc. pi_activity, pi_activity_status, pi_activity_actor & pi_stage_phase_activity tables
+	 */
+	$form['edit'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Edit Activity'),
+		'#tree' => TRUE,
+	);
+	
+	//pi_activity table
+	$query = "SELECT * FROM pi_activity WHERE activity_id = '" . $activity_id . "'";
+	$result = db_fetch_object(db_query($query));
+
+	$form['edit']['piactivity']['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Activity Name'),
+		'#default_value' => $result->name,
+	);
+	
+	$form['edit']['piactivity']['description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Activity Description'),
+		'#default_value' => $result->description,
+	);
+	
+	//activity and node type query
+	$nt_query = "SELECT * FROM node_type";
+	$node_type_query = db_query($nt_query);
+	$node_type_options = array();
+	while($nt = db_fetch_object($node_type_query)){
+		$node_type_options[$nt->type] = $nt->name . ' (' . $nt->type . ')';
+	}
+	
+	$form['edit']['piactivity']['activity_type'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Type'),
+		'#options' => $node_type_options,
+		'#default_value' => $result->activity_type,
+	);
+	
+	$form['edit']['piactivity']['node_type'] = array(
+		'#type' => 'select',
+		'#title' => t('Node Type'),
+		'#options' => $node_type_options,
+		'#default_value' => $result->node_type,
+	);
+	
+	$form['edit']['piactivity']['parameters'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Parameters'),
+		'#default_value' => $result->parameters,
+	);
+	
+	$destination_option = array('phase'=>'phase','self'=>'self',);
+	
+	$form['edit']['piactivity']['destination'] = array(
+		'#type' => 'select',
+		'#title' => t('Destination After Completing the Activity (self or phase)'),
+		'#options' => $destination_option,
+		'#default_value' => $result->destination,
+	);
+	
+	$group_options = array('individual'=>'individual',
+						'group'=>'group',
+						'class'=>'class',
+						'multiclass'=>'multiclass');
+	
+	$form['edit']['piactivity']['audience'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Audience'),
+		'#options' => $group_options,
+		'#default_value' => $result->audience,
+	);
+	
+	//pi_activity_status table
+	$query2 = "SELECT * FROM pi_activity_status WHERE activity_id = '" . $activity_id . "'";
+	$result2 = db_fetch_object(db_query($query2));
+	
+	$og_query = "SELECT * FROM og";
+	$og_groups_query = db_query($og_query);
+	$og_groups_options = array();
+	while($og = db_fetch_object($og_groups_query)){
+		$og_groups_options[$og->nid] = $og->og_description . ' (' . $og->nid . ')';
+	}
+
+	$form['edit']['piactivitystatus']['gid'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Group'),
+		'#options' => $og_groups_options,
+		'#default_value' => $result2->gid,
+	);
+	
+	$node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view',);
+	
+	$form['edit']['piactivitystatus']['node_function'] = array(
+		'#type' => 'select',
+		'#title' => t('Node Function'),
+		'#options' => $node_function_options,
+		'#default_value' => $result2->node_function,
+	);
+	
+	$visible_status_options = array('start'=>'start','in_progress'=>'in_progress',
+									'view'=>'view', 'unavailable'=>'unavailable');
+	
+	$form['edit']['piactivitystatus']['visible_status'] = array(
+		'#type' => 'select',
+		'#title' => t('Visible Status'),
+		'#options' => $visible_status_options,
+		'#default_value' => $result2->visible_status,
+	);
+	
+	$form['add']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Update'),
+	);
+	
+	return $form;
+}
+
+function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
+	$activity_id = arg(3);
+	
+	//update pi_activity table
+	$query = "UPDATE pi_activity ";
+	$query .= "SET name = '" . $form_state['values']['edit']['piactivity']['name'] . "'";
+	$query .= ", description = '" . $form_state['values']['edit']['piactivity']['description'] . "'";
+	$query .= ", activity_type = '" . $form_state['values']['edit']['piactivity']['activity_type'] . "'";
+	$query .= ", node_type = '" . $form_state['values']['edit']['piactivity']['node_type'] . "'";
+	$query .= ", parameters = '" . $form_state['values']['edit']['piactivity']['parameters'] . "'";
+	$query .= ", destination = '" . $form_state['values']['edit']['piactivity']['destination'] . "'";
+	$query .= ", audience = '" . $form_state['values']['edit']['piactivity']['audience'] . "'";
+	$query .= " WHERE activity_id = '" . $activity_id ."'";
+	db_query($query);
+	
+	//update pi_activity_status table
+	$query2 = "UPDATE pi_activity_status ";
+	$query2 .= "SET gid = '" . $form_state['values']['edit']['piactivitystatus']['gid'] . "'";
+	$query2 .= ", node_function = '" . $form_state['values']['edit']['piactivitystatus']['node_function'] . "'";
+	$query2 .= ", visible_status = '" . $form_state['values']['edit']['piactivitystatus']['visible_status'] . "'";
+	$query2 .= " WHERE activity_id = '" . $activity_id . "'";
+	db_query($query2);
+	
+	//update pi_activity_actor table - gid should be the same as in pi_activity_status (??)
+	$query3 = "UPDATE pi_activity_actor SET gid = '" . $form_state['values']['edit']['piactivitystatus']['gid'] . "'";
+	$query3 .= " WHERE activity_id ='" . $activity_id ."'";
+	db_query($query3);
+	
+	//done
+	$text = "Updated activity";
+	drupal_set_message(t($text));
+	drupal_goto("piauthoring/activities/3/" . $inquiry_id);
+}
+
+function pi_authoring_new_activities_include(){
+	$phase = arg(5);
+	$stage = arg(6);
+	$activity = arg(7);
+	
+	//find psp_id
+	$query = "SELECT * FROM pi_stage_phase WHERE ";
+	$query .= "phase_id = '" . $phase . "'";
+	$query .= " AND stage_id = '" . $stage . "'";
+	$result = db_fetch_object(db_query($query));
+	
+	//include activity in this stage and phase
+	$query2 = "INSERT INTO pi_stage_phase_activity SET ";
+	$query2 .= "psp_id = '" . $result->psp_id . "'";
+	$query2 .= ", activity_id = '" . $activity . "'";
+	//position
+	db_query($query2);
+	
+	//done
+	$text = "Included activity";
+	drupal_set_message(t($text));
+	$link = "piauthoring/activities/" . arg(3) . "/" . arg(4);
+	drupal_goto($link);
+}
+
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------End: Forms for section 5 of the menu--------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------Forms for section 6 of the menu-------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+function pi_authoring_workflow(){
+	$content = "<p>You have now authored the majority of the inquiry! Now you need to author the workflow rules ";
+	$content .= "that will make the activity guide dynamic.";
+	$content .= "</p><br>";
+	return $content;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------End: Forms for section 6 of the menu--------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------Forms for section 7 of the menu-------------------------------------
+//-------------------------------------------------------------------------------------------------------------------
+
+function pi_authoring_advanced_groups(){
+	$content = "<p>In this section you have the oportunity to author more advanced group configurations ";
+	$content .= "for example, authoring jigsaw group configuration.</p>";
+	$content .= "<p>To do this you need to,</p> ";
+	$content .= "<p><strong>1</strong> create appropriate groups using Organic Group (info about groups in Section 7.1)</p> ";
+	$content .= "<p><strong>2</strong> use section 7.2 to configure group allocation to a particular stage, ";
+	$content .= "phase or activity.  Mostly this will be activities</p>";
+	return $content;
+}
+
+function pi_authoring_advanced_groups_og(){
+	$content = "<p>In this section you will create a more advanced grouping of students into groups which";
+	$content .= " will allow you to author such things as jigsaw activities.  Simply, you define a set of";
+	$content .= " organic groups which you then add to a grouping.  This grouping is then used to allocate";
+	$content .= " students to an activity so for example, you could have one set of students doing one activity";
+	$content .= " and another set of students another activity and half way through a lesson they swap.</p>";
+	$content .= "<p>Below is a list of current Organic Group and a List of current Groupings.</p>";
+	$content .= "<p>If the Organic Groups you need are not listed below then you need to do this now.</p>";
+	
+	//current og groups
+	$query = "SELECT * FROM og";
+	$all_og = db_query($query);
+	$content .= "<table>";
+	$content .= '<tr bgcolor="#EEEEEE"><td>OG Group Name</td><td>Membership</td></tr>';
+	while($groups = db_fetch_object($all_og)){
+		$content .= "<tr>";
+		$content .= "<td>" . $groups->og_description . "</td>";
+		$content .= "<td>" . getgroupsusers($groups->nid) . "</td>";
+		$content .= "</tr>";
+	}
+	$content .= "</table>";
+	
+	$content .= '<br>';
+	
+	//current groupings
+	$query2 = "SELECT * FROM pi_grouping ";
+	$query2 .= "LEFT JOIN pi_grouping_group ON pi_grouping_group.grouping_id = pi_grouping.grouping_id";
+	$all_groupings = db_query($query2);
+	$content .= "<table>";
+	$content .= '<tr bgcolor="#EEEEEE"><td>Grouping Name</td><td>Description</td><td>OG Group</td></tr>';
+	while($grouping = db_fetch_object($all_groupings)){
+		$content .= "<tr>";
+		$content .= "<td>" . $grouping->name . "</td>";
+		$content .= "<td>" . $grouping->description . "</td>";
+		$content .= "<td>" . get_og_group_name($grouping->gid) . "</td>";
+		$content .= "</tr>";
+	}
+	$content .= "</table>";
+	
+	return $content;
+}
+
+//helper function to get all the users who are member of an og group
+function get_og_group_name($og){
+	$query = "SELECT * FROM og ";
+	$query .= "WHERE og.nid = '" . $og . "'";
+	$group = db_fetch_object(db_query($query));
+	return $group->og_description;
+}
+
+function pi_authoring_advanced_groups_create(){
+	$content = "<p>You now need to define the Groupings you wish to use for a particular inquiry,";
+	$content .= "stage, phase and activity.</p><br>";
+	$content .= drupal_get_form('pi_authoring_advanced_groups_create_form', $node);
+	return $content;
+}
+
+function pi_authoring_advanced_groups_create_form($form_state){
+	$form = array();
+	//register ahah helper
+	ahah_helper_register($form, $form_state);
+	
+	$form['add'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Create New Grouping'),
+		'#tree' => TRUE,
+	);
+	
+	//ahah helper stuff to filter the content of the select boxes below based on selections
+	//from other select boxes
+	
+	//set default values 
+	//default values (inquiry)
+	if (isset($form_state['storage']['add']['inquiry']['which'])) {
+		$usage_inquiry_value = $form_state['storage']['add']['inquiry']['which'];
+	}
+	else {
+		$usage_inquiry_value = 'none';
+	}
+	
+	//default values (stage)
+	if (isset($form_state['storage']['add']['stage']['which'])) {
+		$usage_stage_value =  $form_state['storage']['add']['stage']['which'];
+	}
+	else{
+		$usage_stage_value = 'none';
+	}
+	
+	//default values (phase)
+	if (isset($form_state['storage']['add']['phase']['which'])) {
+		$usage_phase_value = $form_state['storage']['add']['phase']['which'];
+	}
+	else {
+		$usage_phase_value = 'none';
+	}
+	
+	//default values (activity)
+	if (isset($form_state['storage']['add']['activity']['which'])) {
+		$usage_activity_value = $form_state['storage']['add']['activity']['which'];
+	}
+	else {
+		$usage_activity_value = 'none';
+	}
+	
+	//inquiry select box
+	$form['add']['inquiry'] = array(
+	    '#type'   => 'fieldset',
+	    '#title'  => t('Grouping Inquiry'),
+	    '#prefix' => '<div id="inquiry-wrapper">', // This is our wrapper div.
+	    '#suffix' => '</div>',
+	    '#tree'   => TRUE, // Don't forget to set #tree!
+	);
+	
+	//inquiry options
+	$inquiry_query = "SELECT * FROM pi_inquiry";
+	$inquiries = db_query($inquiry_query);
+	$inquiry_options = array();
+	$inquiry_options['none'] = 'none';
+	while($inquiry = db_fetch_object($inquiries)){
+		$inquiry_options[$inquiry->inquiry_id] = $inquiry->inquiry_id . " : " . $inquiry->name;
+	}
+	
+	$form['add']['inquiry']['which'] = array(
+	    '#type' => 'select',
+	    '#title' => t('Grouping Applies To Which: Inquiry'),
+	    '#options' => $inquiry_options,
+	    '#default_value' => $usage_inquiry_value,
+	    '#ahah' => array(
+	      'event'   => 'change',
+	      'path'    => ahah_helper_path(array('add','inquiry')),
+	      'wrapper' => 'inquiry-wrapper',
+	),
+	);
+	$form['add']['inquiry']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Filter'),
+	    '#submit' => array('ahah_helper_generic_submit'),
+	    '#attributes' => array('class' => 'js'),
+	);
+	
+	//stage value - dependant on inquiry and phase
+	$form['add']['stage'] = array(
+	    '#type'   => 'fieldset',
+	    '#title'  => t('Grouping Stage'),
+	    '#prefix' => '<div id="stage-wrapper">', // This is our wrapper div.
+	    '#suffix' => '</div>',
+	    '#tree'   => TRUE, // Don't forget to set #tree!
+	);
+	
+	//stage options - constrain on inquiry and phase if values have been selected!
+	$stage_query = get_stage_query($usage_inquiry_value, $usage_phase_value);
+	$stages = db_query($stage_query);
+	$stage_options = array();
+	$stage_options['none'] = 'none';
+	while($stage = db_fetch_object($stages)){
+		$stage_options[$stage->stage_id] = $stage->stage_id . " : " . $stage->name;
+	}
+	
+	$form['add']['stage']['which'] = array(
+	    '#type' => 'select',
+	    '#title' => t('Grouping Applies To Which: Stage'),
+	    '#options' => $stage_options,
+	    '#default_value' => $usage_stage_value,
+	    '#ahah' => array(
+	      'event'   => 'change',
+	      'path'    => ahah_helper_path(array('add','stage')),
+	      'wrapper' => 'stage-wrapper',
+	),
+	);
+	$form['add']['stage']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Filter'),
+	    '#submit' => array('ahah_helper_generic_submit'),
+	    '#attributes' => array('class' => 'js'),
+	);
+	
+	//phase value - dependant on inquiry and stage
+	$form['add']['phase'] = array(
+	    '#type'   => 'fieldset',
+	    '#title'  => t('Grouping Phase'),
+	    '#prefix' => '<div id="phase-wrapper">', // This is our wrapper div.
+	    '#suffix' => '</div>',
+	    '#tree'   => TRUE, // Don't forget to set #tree!
+	);
+	
+	//phase options
+	$phase_query = get_phase_query($usage_inquiry_value, $usage_stage_value);
+	$phases = db_query($phase_query);
+	$phase_options = array();
+	$phase_options['none'] = 'none';
+	while($phase = db_fetch_object($phases)){
+		$phase_options[$phase->phase_id] = $phase->phase_id . " : " . $phase->name;
+	}
+	
+	$form['add']['phase']['which'] = array(
+	    '#type' => 'select',
+	    '#title' => t('Grouping Applies To Which: Phase'),
+	    '#options' => $phase_options,
+	    '#default_value' => $usage_phase_value,
+	    '#ahah' => array(
+	      'event'   => 'change',
+	      'path'    => ahah_helper_path(array('add','phase')),
+	      'wrapper' => 'phase-wrapper',
+		),
+	);
+	$form['add']['phase']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Filter'),
+	    '#submit' => array('ahah_helper_generic_submit'),
+	    '#attributes' => array('class' => 'js'),
+	);
+	
+	//activity value - dependant on inquiry and stage and phase
+	$form['add']['activity'] = array(
+	    '#type'   => 'fieldset',
+	    '#title'  => t('Grouping Activity'),
+	    '#prefix' => '<div id="activity-wrapper">', // This is our wrapper div.
+	    '#suffix' => '</div>',
+	    '#tree'   => TRUE, // Don't forget to set #tree!
+	);
+	
+	//phase options
+	$activity_query = get_activity_query($usage_phase_value, $usage_stage_value);
+	$activities = db_query($activity_query);
+	$activity_options = array();
+	$activity_options['none'] = 'none';
+	while($activity = db_fetch_object($activities)){
+		$activity_options[$activity->activity_id] = $activity->activity_id . " : " . $activity->name;
+	}
+	
+	$form['add']['activity']['which'] = array(
+	    '#type' => 'select',
+	    '#title' => t('Grouping Applies To Which: Activity'),
+	    '#options' => $activity_options,
+	    '#default_value' => $usage_activity_value,
+	    '#ahah' => array(
+	      'event'   => 'change',
+	      'path'    => ahah_helper_path(array('add','activity')),
+	      'wrapper' => 'activity-wrapper',
+		),
+	);
+	$form['add']['activity']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Filter'),
+	    '#submit' => array('ahah_helper_generic_submit'),
+	    '#attributes' => array('class' => 'js'),
+	);
+	
+	//after the filtering add in the grouping details
+	
+	$form['add']['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Grouping Name'),
+		'#default_value' => '',
+	);
+
+	$form['add']['description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Grouping Description'),
+		'#default_value' => '',
+	);
+	
+	$og_query = "SELECT * FROM og";
+	$og_groups_query = db_query($og_query);
+	$og_groups_options = array();
+	while($og = db_fetch_object($og_groups_query)){
+		$og_groups_options[$og->nid] = $og->og_description . ' (' . $og->nid . ')';
+	}
+	
+	$form['add']['gid'] = array(
+		'#type' => 'select',
+		'#title' => t('OG Group of Grouping'),
+		'#options' => $og_groups_options,
+		'#default_value' => '',
+	);
+	
+	$form['add']['parent_gid'] = array(
+		'#type' => 'select',
+		'#title' => t('Parent OG Group of this New Grouping?'),
+		'#options' => $og_groups_options,
+		'#default_value' => '',
+	);
+	
+	$form['add']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+function pi_authoring_advanced_groups_create_form_submit($form, &$form_state){
+	//pi_grouping
+	$query = "INSERT INTO pi_grouping SET";
+	$query .= " name = '" . $form_state['values']['add']['name'] . "'";
+	$query .= ", description = '" . $form_state['values']['add']['description'] . "'";
+	db_query($query);
+	
+	//get grouping_id
+	$query1 = "SELECT MAX(pi_grouping.grouping_id) FROM pi_grouping";
+	$grouping_id = db_result(db_query($query1));
+	
+	//pi_grouping_group
+	$query2 = "INSERT INTO pi_grouping_group SET";
+	$query2 .= " grouping_id = '" . $grouping_id . "'";
+	$query2 .= ", gid = '" . $form_state['values']['add']['gid'] . "'";
+	db_query($query2);
+	
+	//pi_group_hierarchy
+	$query3 = "INSERT INTO pi_group_hierarchy SET";
+	$query3 .= " gid = '" . $form_state['values']['add']['gid'] . "'";
+	$query3 .= ", parent_gid = '" . $form_state['values']['add']['parent_gid'] . "'";
+	db_query($query3);
+	
+	//pi_grouping_group
+	$query4 = "INSERT INTO pi_inquiry_grouping SET";
+	$query4 .= " grouping_id = '" . $grouping_id ."'";
+	$query4 .= ", inquiry_id = '" . $form_state['values']['add']['inquiry']['which'] . "'";
+	if($form_state['values']['add']['stage']['which'] != 'none'){
+		$query4 .= ", stage_id = '" . $form_state['values']['add']['stage']['which'] . "'";
+	}
+	if($form_state['values']['add']['phase']['which'] != 'none'){
+		$query4 .= ", phase_id = '" . $form_state['values']['add']['phase']['which'] . "'";
+	}
+	if($form_state['values']['add']['activity']['which'] != 'none'){
+		$query4 .= ", activity_id = '" . $form_state['values']['add']['activity']['which'] . "'";
+	}
+	db_query($query4);
+}
+
+//helper get stage query function
+function get_stage_query($inquiry_value, $phase_value){
+	$stage_query = "SELECT * FROM pi_stage";
+	//LEFT JOIN'S
+	if($inquiry_value != 'none'){
+		$stage_query .= " LEFT JOIN pi_inquiry_stage ON pi_inquiry_stage.stage_id = pi_stage.stage_id";
+	}
+	if($phase_value != 'none'){
+		$stage_query .= " LEFT JOIN pi_stage_phase ON pi_stage_phase.stage_id = pi_stage.stage_id";
+	}
+	//WHERE'S
+	if($inquiry_value != 'none'){
+		$stage_query .= " WHERE pi_inquiry_stage.inquiry_id = '" . $inquiry_value . "'";
+	}
+	if($phase_value != 'none'){
+		if($inquiry_value != 'none'){
+			$stage_query .= " AND";
+		}
+		else{
+			$stage_query .= " WHERE";
+		}
+		$stage_query .= " pi_stage_phase.phase_id = '" . $phase_value . "'";
+	}
+	return $stage_query;
+}
+
+function get_phase_query($inquiry_value, $stage_value){
+	$phase_query = "SELECT * FROM pi_phase";
+	//LEFT JOIN'S
+	if($inquiry_value != 'none'){
+		$phase_query .= " LEFT JOIN pi_inquiry_phase ON pi_inquiry_phase.phase_id = pi_phase.phase_id";
+	}
+	if($stage_value != 'none'){
+		$phase_query .= " LEFT JOIN pi_stage_phase ON pi_stage_phase.phase_id = pi_phase.phase_id";
+	}
+	//WHERE'S
+	if($inquiry_value != 'none'){
+		$phase_query .= " WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry_value . "'";
+	}
+	if($stage_value != 'none'){
+		if($inquiry_value != 'none'){
+			$phase_query .= " AND";
+		}
+		else{
+			$phase_query .= " WHERE";
+		}
+		$phase_query .= " pi_stage_phase.stage_id = '" . $stage_value . "'";
+	}
+	return $phase_query;
+}
+
+function get_activity_query($phase_value, $stage_value){
+	$activity_query = "SELECT * FROM pi_activity";
+	$activity_query .= " LEFT JOIN pi_stage_phase_activity ON";
+	$activity_query .= " pi_stage_phase_activity.activity_id = pi_activity.activity_id";
+	$activity_query .= " LEFT JOIN pi_stage_phase ON pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id";
+	if($phase_value != 'none'){
+		$activity_query .= " WHERE pi_stage_phase.phase_id = '" . $phase_value . "'";
+	}
+	if($stage_value != 'none'){
+		if($phase_value != 'none'){
+			$activity_query .= " AND";
+		}
+		else{
+			$activity_query .= " WHERE";
+		}
+		$activity_query .= " pi_stage_phase.stage_id = '" . $stage_value . "'";
+	}
+	return $activity_query;
+}
+
+//-------------------------------------------------------------------------------------------------------------------
+//-----------------------------------------------End: Forms for section 7 of the menu--------------------------------
+//-------------------------------------------------------------------------------------------------------------------

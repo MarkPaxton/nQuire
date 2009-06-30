@@ -1,0 +1,793 @@
+<?php
+
+// $Id: pi.install,v 0.1 2009/05/10 09:00:36 tdc5 $
+
+/**
+ * Implementation of hook_install().
+ */
+ 
+function pi_install() {
+  // Create tables.
+  drupal_install_schema('pi');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+ 
+function pi_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pi');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+ 
+function pi_schema() {
+  $schema['pi_inquiry'] = array(
+    'description' => 'PI Inquiry.',
+    'fields' => array(
+      'inquiry_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Inquiry name.',
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Inquiry description.',
+      ),
+    ),
+    'primary key' => array('inquiry_id'),
+  );
+  $schema['pi_inquiry_stage'] = array(
+    'description' => 'PI Inquiry Stage.',
+    'fields' => array(
+      'pis_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Inquiry id.',
+      ),
+      'stage_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Stage id.',
+      ),
+      'position' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'The order of stages in an inquiry.',
+      ),
+    ),
+    'primary key' => array('pis_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+    ),
+  );
+  $schema['pi_stage'] = array(
+    'description' => 'PI Stage.',
+    'fields' => array(
+      'stage_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Stage name.',
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Stage description.',
+      ),
+    ),
+    'primary key' => array('stage_id'),
+  );
+  $schema['pi_inquiry_phase'] = array(
+    'description' => 'PI Inquiry Phase.',
+    'fields' => array(
+      'pip_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Inquiry id.',
+      ),
+      'phase_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Phase id.',
+      ),
+      'position' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'The order of phases in an inquiry.',
+      ),
+    ),
+    'primary key' => array('pip_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+    ),
+  );
+  $schema['pi_stage_phase'] = array(
+    'description' => 'PI Stage Phase.',
+    'fields' => array(
+      'psp_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'stage_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Stage id.',
+      ),
+      'phase_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Phase id.',
+      ),
+    ),
+    'primary key' => array('psp_id'),
+    'indexes' => array(
+      'stage_id' => array('stage_id'),
+      'phase_id' => array('phase_id'),
+    ),
+  );
+  $schema['pi_phase'] = array(
+    'description' => 'PI Phase.',
+    'fields' => array(
+      'phase_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Phase name.',
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Phase description.',
+      ),
+    ),
+    'primary key' => array('phase_id'),
+  );  
+  $schema['pi_stage_phase_activity'] = array(
+    'description' => 'PI Stage Phase Activity.',
+    'fields' => array(
+      'pspa_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'psp_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'PI Stage Phase id.',
+      ),
+      'activity_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Activity id.',
+      ),
+      'position' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'size' => 'tiny',
+        'description' => 'The order of activities in a phase in a stage.',
+      ),
+    ),
+    'primary key' => array('pspa_id'),
+    'indexes' => array(
+      'activity_id' => array('activity_id'),
+    ),
+  );
+  $schema['pi_activity'] = array(
+    'description' => 'PI Activity.',
+    'fields' => array(
+      'activity_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Phase name.',
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Phase description.',
+      ),
+      'activity_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Activity type - category of activity e.g. data collection.',
+      ),
+      'node_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Node type - content type of a node created/used in an activity.',
+      ),
+      'parameters' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Parameters needed to create/use a node in an activity (optional).',
+      ),
+      'destination' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'destination - form destination page after submission e.g. phase, self.',
+      ),
+      'audience' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.',
+      ),
+    ),
+    'primary key' => array('activity_id'),
+  );
+  $schema['pi_activity_node'] = array(
+    'description' => 'PI Activity node.',
+    'fields' => array(
+      'pan_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'PI Inquiry id.',
+      ),
+      'activity_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Activity id.',
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Node id.',
+      ),
+    ),
+    'primary key' => array('pan_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'activity_id' => array('activity_id'),
+    ),
+  );
+  $schema['pi_inquiry_actor'] = array(
+    'description' => 'PI Inquiry actor.',
+    'fields' => array(
+      'pia_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'PI Inquiry id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 10,
+        'description' => 'user id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 11,
+        'description' => 'group id.',
+      ),
+    ),
+    'primary key' => array('pia_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+    ),
+  );  
+  $schema['pi_stage_actor'] = array(
+    'description' => 'PI Stage actor.',
+    'fields' => array(
+      'psa_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'PI Inquiry id.',
+      ),
+      'stage_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'PI Stage id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 10,
+        'description' => 'user id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 11,
+        'description' => 'group id.',
+      ),
+    ),
+    'primary key' => array('psa_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'stage_id' => array('stage_id'),
+    ),
+  ); 
+  $schema['pi_phase_actor'] = array(
+    'description' => 'PI Phase actor.',
+    'fields' => array(
+      'ppa_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'PI Inquiry id.',
+      ),
+      'phase_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'PI Phase id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 10,
+        'description' => 'user id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 11,
+        'description' => 'group id.',
+      ),
+    ),
+    'primary key' => array('ppa_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'phase_id' => array('phase_id'),
+    ),
+  );
+  $schema['pi_activity_actor'] = array(
+    'description' => 'PI Activity actor.',
+    'fields' => array(
+      'paa_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'PI Inquiry id.',
+      ),
+      'activity_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'PI Activity id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 10,
+        'description' => 'user id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 11,
+        'description' => 'group id.',
+      ),
+    ),
+    'primary key' => array('paa_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'activity_id' => array('activity_id'),
+    ),
+  );
+  $schema['pi_grouping'] = array(
+    'description' => 'PI Grouping - used for jigsaw scripts.',
+    'fields' => array(
+      'grouping_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Grouping name.',
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Grouping description.',
+      ),
+    ),
+    'primary key' => array('grouping_id'),
+  );  
+  $schema['pi_grouping_group'] = array(
+    'description' => 'PI grouping group.',
+    'fields' => array(
+      'pgg_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'grouping_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Grouping id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'length' => 11,
+        'description' => 'group id associated with a specific grouping_id.',
+      ),
+    ),
+    'primary key' => array('pgg_id'),
+    'indexes' => array(
+      'grouping_id' => array('grouping_id'),
+    ),
+  );
+  $schema['pi_inquiry_grouping'] = array(
+    'description' => 'PI Inquiry grouping.',
+    'fields' => array(
+      'pig_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'Inquiry id.',
+      ),
+      'stage_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => NULL,
+        length => 10,
+        'description' => 'Stage id.',
+      ),
+      'phase_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => NULL,
+        length => 10,
+        'description' => 'Phase id.',
+      ),
+      'activity_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'Activity id.',
+      ),
+      'grouping_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        length => 10,
+        'description' => 'Grouping id used in a specified inquiry, stage, phase and/or activity.',
+      ),
+    ),
+    'primary key' => array('pig_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'stage_id' => array('stage_id'),
+      'phase_id' => array('phase_id'),
+      'activity_id' => array('activity_id'),
+    ),
+  );
+  $schema['pi_activity_status'] = array(
+    'description' => 'PI Activity status.',
+    'fields' => array(
+      'pas_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'Inquiry id.',
+      ),
+      'activity_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'Activity id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        length => 10,
+        'description' => 'User id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 10,
+        'description' => 'Group id.',
+      ),
+      'node_function' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'node_function - type of drupal node function i.e. add, edit, view.',
+      ),
+      'visible_status' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'visible_status - type of icon used for an activity link i.e. start, in_progress, view, unavailable.',
+      ),
+    ),
+    'primary key' => array('pas_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'activity_id' => array('activity_id'),
+      'uid' => array('uid'),
+      'gid' => array('gid'),
+    ),
+  );
+  $schema['pi_group_type'] = array(
+    'description' => 'PI group type.',
+    'fields' => array(
+      'pgt_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'length' => 11,
+        'description' => 'group id.',
+      ),
+      'type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'type of a group i.e. group, class, multiclass.',
+      ),
+    ),
+    'primary key' => array('pgt_id'),
+    'indexes' => array(
+      'gid' => array('gid'),
+    ),
+  );
+  $schema['pi_current_stage'] = array(
+    'description' => 'PI grouping group.',
+    'fields' => array(
+      'pcs_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'Inquiry id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 10,
+        'description' => 'user id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 11,
+        'description' => 'group id.',
+      ),
+      'stage_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'stage id.',
+      ),
+    ),
+    'primary key' => array('pcs_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'uid' => array('uid'),
+      'gid' => array('gid'),
+    ),
+  );
+  $schema['pi_group_hierarchy'] = array(
+    'description' => 'PI group hierarchy.',
+    'fields' => array(
+      'pgh_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'length' => 11,
+        'description' => 'group id.',
+      ),
+      'parent_gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 11,
+        'description' => 'parent group id.',
+      ),
+    ),
+    'primary key' => array('pgh_id'),
+    'indexes' => array(
+      'gid' => array('gid'),
+      'parent_gid' => array('parent_gid'),
+    ),
+  );
+  return $schema;
+}

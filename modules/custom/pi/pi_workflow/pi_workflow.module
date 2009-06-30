@@ -1,0 +1,40 @@
+<?php
+// $Id: pi_workflow.module,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+
+/**
+ * @file
+ * Implements Activity Guide workflow.
+ */
+ 
+function workflow_for_created_node($node, $user, $node_function, $visible_status) {
+	$path = $node->path;
+	$uid = $user->uid;
+	//get current details
+	//$details = get_inquiry_details_of_node_path($node->path);
+	$details = get_inquiry_details_from_current_path();
+	print "a:" . $details->activity_id;
+	//set the PI activity node
+	set_pi_activity_node_for_activity($details->inquiry_id, $details->activity_id, $node->nid);
+	$activity = load_activity($details->activity_id);
+	$activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
+	if ($activity->audience == "individual") {
+		$activity_status->uid = $uid;
+		unset($activity_status->gid);
+	}
+	else {
+		$activity_status->gid = get_group_of_type($uid, $activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
+		unset($activity_status->uid);
+	}
+	$activity_status->node_function = $node_function;
+	$activity_status->visible_status = $visible_status;
+	save_activity_status($activity_status);
+}
+
+
+function set_pi_activity_node_for_activity($inquiry, $activity, $nid) {
+	$query = "INSERT INTO pi_activity_node SET ";
+	$query .= "inquiry_id = '" . $inquiry . "'";
+	$query .= ", activity_id = '" . $activity . "'";
+	$query .= ", nid = '" . $nid . "'";
+	db_query($query);
+}

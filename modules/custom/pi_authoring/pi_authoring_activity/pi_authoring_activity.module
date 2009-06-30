@@ -1,0 +1,135 @@
+<?php
+
+/**
+ * Implementation of hook_node_info().
+ */
+function pi_authoring_activity_node_info() {
+  // We return an array since a module can define multiple node types.
+  // We're only defining one node type, type 'pi_question'.
+  return array(
+    'pi_authoring_activity' => array(
+      'name' => t('Tempory Activity Place Holder'), // Required.
+      'module' => 'pi_authoring_activity',  // Required.
+      'description' => t('temporary pi authoring activity'), // Required.
+      'has_title' => TRUE,
+      'title_label' => t('Tempory Activity Place Holder'),
+      'has_body' => FALSE,
+      'locked' => TRUE
+    )
+  );
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function pi_authoring_activity_perm() {
+  return array('create pi_authoring_activity', 'edit own pi_authoring_activity');
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_authoring_activity_access($op, $node) {
+  global $user;
+
+  if ($op == 'create') {
+    return (user_access('create pi_authoring_activity'));
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+    return (user_access('edit own pi_authoring_activity') && ($user->uid == $node->uid));
+  }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+ 
+function pi_authoring_activity_form($node, $form_state) {
+  $type = node_get_types('type', $node);
+  
+  $form['title'] = array(
+    '#type' => 'textfield',
+    '#title' => check_plain($type->title_label),
+    '#required' => TRUE,
+    '#default_value' => $node->title,
+    '#weight' => -5
+  );
+  
+  //this is testing showing the audience type in the node 
+  $node_details = get_inquiry_details_from_current_path();
+  $activity = load_activity($node_details->activity_id);
+  $prefix .= "Audience: " . t($activity->audience);
+  
+  $prefix .= "<p>Activity: " . arg(7) . ".</p>";
+  $form['#prefix'] = $prefix;
+  
+  return $form;
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+function pi_authoring_activity_insert($node) {
+  $query = "INSERT INTO authoring_activity SET ";
+  $query .= "placeholder_name = '" . $node->title . "' ";
+  $query .= ", nid = '" . $node->nid . "'";
+  $query .= ", vid = '" . $node->vid . "'";
+  db_query($query);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function pi_authoring_activity_update($node) {
+  if ($node->revision) {
+    pi_authoring_activity_insert($node);
+  }
+  
+  else {
+    $query = "UPDATE authoring_activity SET placeholder_name = '" . $node->title . "'";
+    db_query($query);
+  }
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+function pi_authoring_activity_delete(&$node) {
+	$query = "DELETE FROM authoring_activity WHERE nid = '" . $node->nid . "'";
+  	db_query($query);
+}
+
+function pi_authoring_activity_load($node) {
+	$query = "SELECT * FROM authoring_activity WHERE vid = '" . $node->vid . "'";
+	return db_fetch_object(db_query($query));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_authoring_activity_view($node, $teaser = FALSE, $page = FALSE) {
+  if (!$teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+
+    $node->content['pi_authoring_activity'] = array(
+    '#value' => theme('pi_authoring_activity', $node),
+    '#weight' => 2
+    );
+      
+  }
+
+  if ($teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+
+  return $node;
+}
+
+function theme_pi_authoring_activity($node) {
+  $output = '<div class="pi_authoring_activity">' . check_plain($node->title). '</div><br />';
+  
+  return $output;
+}
