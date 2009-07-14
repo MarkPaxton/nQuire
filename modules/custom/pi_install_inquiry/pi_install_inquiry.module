@@ -1,0 +1,603 @@
+<?php
+
+function pi_install_inquiry_help($section='') {
+
+	$output = '';
+
+	switch ($section) {
+		case "admin/help#pi_install_inquiry":
+			$output = '<p>'.  t("Install Inquiry"). '</p>';
+			break;
+	}
+
+	return $output;
+}
+
+function pi_install_inquiry_perm() {
+	return array('access install inquiry content');
+}
+
+function pi_install_inquiry_menu() {
+	$items = array();
+
+	$items['install'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('Install Inquiry'),
+  	  'page callback' => 'pi_install_inquiry_view',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access student import content'),
+	);
+	
+	$items['install/begnning'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('Before Beginning Inquiry'),
+  	  'page callback' => 'pi_install_inquiry_beginning',
+  	  'type' => MENU_NORMAL_ITEM,
+	  'weight' => 1,
+      'access arguments' => array('access install inquiry content'),
+	);
+	
+	$items['install/afterstart'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('After Start of Inquiry'),
+  	  'page callback' => 'pi_install_inquiry_after',
+  	  'type' => MENU_NORMAL_ITEM,
+	  'weight' => 2,
+      'access arguments' => array('access install inquiry content'),
+	);
+	
+	return $items;
+}
+
+function pi_install_inquiry_view(){
+	//global variable
+	global $db_url;
+	
+	$content = "<p><strong>Installing an Inquiry</strong>This allow you to install an";
+	$content .= "inquiry set up on one machine to another.  You have two options</p>";
+	$content .= "<p><strong>1.</strong> to install before the beginning of the inquiry</p>";
+	$content .= "<p><strong>2.</strong> to install after the inquiry has begun</p>";
+	$content .= "<p>These are two different proceedures but you only need to worry about";
+	$content .= "selecting the right link below</p>";
+	
+	//information about the db servers
+	$content .= "<p><strong>Database Info:</strong></p>";
+	$content .= "<p><strong>This Machine</strong> - " . $db_url['default'] . "</p>";
+	$content .= "<p><strong>Server</strong> - " . $db_url['server'] . "</p>";
+	
+	//module information that needs cheking by the user
+	$content .= "<p><strong>IMPORTANT!! BEFORE YOU START MAKE SURE THE LIST OF MODULES BELOW";
+	$content .= "IS THE SAME ON BOTH MACHINES!</p>";
+	
+	//what modules are installed and active?
+	$query = "SELECT * FROM system WHERE type = 'module' AND status = 1";
+	$results = db_query($query);
+	//put results in a table
+	$content .= "<table>";
+	$content .= "<tr bgcolor='#eeeeee'><td><strong>Module Name</strong></td><td></td><td></td><td></td><td></td></tr>";
+	$count = 1;
+	while($module = db_fetch_object($results)){
+		if($count == 1){
+			$content .= "<tr>";
+		}
+		$content .= "<td>" . $module->name . "</td>";
+		if($count == 5){
+			$content .= "</tr>";
+			$count = 0;
+		}
+		$count = $count + 1;
+	}
+	
+	$content .= "</table>";
+	return $content;
+}
+
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------Before Start Inquiry Install------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------
+
+/*
+ * In the Before Start Inquiry Install all we will be doing is taking the information in the pi_ tables that relate
+ * to the architecture e.g. pi_stage, pi_activity, pi_stage_phase_activity from the server database and then save
+ * them to the local database.  Easy! 
+ * Note Users and OG Groups need to copied over as well! 
+ */
+
+function pi_install_inquiry_beginning(){
+	//global variable
+	global $db_url;
+	
+	$content = "<p><strong>Installing an Inquiry Before the Start of the Inquiry</strong>";
+	$content .= "This will fetch the inquiry data from the server and put it on this machine</p>";
+	
+	//information about the db servers
+	$content .= "<p><strong>Database Info:</strong></p>";
+	$content .= "<p><strong>This Machine</strong> - " . $db_url['default'] . "</p>";
+	$content .= "<p><strong>Server</strong> - " . $db_url['server'] . "</p>";
+	//make sure you are not tring to sync the same machine with itself!
+	if($db_url['default'] != $db_url['server']){
+		$content .= drupal_get_form('pi_install_inquiry_beginning_form', $node);
+	}
+	return $content;
+}
+
+function pi_install_inquiry_beginning_form($form_state){
+
+	$form['go'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Click To Install'),
+		'#tree' => TRUE,
+	);
+
+	$form['go']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Install'),
+	);
+
+	return $form;
+}
+
+function pi_install_inquiry_beginning_form_submit($form, &$form_state){
+	$messages = '';
+	//install users and roles
+	//roles table first
+	$messages .= copy_roles();
+	$messages .= copy_users_and_roles();
+	
+	//install groups (OG)
+	
+	//array of pi_ tables to install
+	$tables = array(0=>'pi_inquiry', 1=>'pi_inquiry_actor', 2=>'pi_inquiry_stage',
+					3=> 'pi_inquiry_phase', 4=>'pi_stage', 5=>'pi_stage_actor',
+					6=>'pi_phase', 7=>'pi_phase_actor', 8=>'pi_stage_phase',
+					9=>'pi_activity', 10=>'pi_activity_actor', 11=>'pi_stage_phase_activity',
+					12=>'pi_activity_status', 13=>'pi_grouping', 14=>'pi_grouping_group',
+					15=>'pi_inquiry_grouping', 16=>'pi_group_hierarchy', 17=>'pi_group_type');
+	//install the inquiry as below (pi_ tables)
+	$count = 0;
+	while($count < count($tables)){
+		$table = $tables[$count];
+		$messages .= copy_pi_table($table);
+		$count = $count + 1;
+	}
+	//done
+	drupal_set_message(t($messages));
+}
+
+//COPY FUNCTIONS
+
+/*
+ * copy users and groups
+ */
+
+//roles table
+function copy_roles(){
+	$message = "Installing roles....<br>";
+	//get roles from the server
+	db_set_active('server');
+	$query = "SELECT * FROM role";
+	$result = db_query($query);
+	while($object = db_fetch_object($result)){
+		//set db to this machine
+		db_set_active('default');
+		//does values already exist?
+		$exists = does_role_exist($object);
+		if($exists != false){
+			//values exists so we dont add it but report it as an error to the user
+			$message .= "....EXIST, not adding <strong>" . $object->name . "</strong>";
+			$message .= "<br>";
+		}
+		else{
+			$message .= insert_role_db($object);
+			$message .= "<br>";
+		}
+		//set db back to server
+		db_set_active('server');
+	}
+	//at the end set the db back to being this machine
+	db_set_active('default');
+	
+	//return message
+	$message .= "<br>";
+	return $message;
+}
+
+//helper function to insert roles
+function does_role_exist($object){
+	$query = "SELECT * FROM role WHERE rid = '" . $object->rid . "'";
+	return db_fetch_object(db_query($query));
+}
+
+function insert_role_db($object){
+	$insert = "INSERT INTO role SET";
+	$insert .= " rid = '" . $object->rid . "'";
+	$insert .= ", name = '" . $object->name . "'";
+	db_query($insert);
+	return "....inserted role " . $object->name . ",";
+}
+
+//user object with associated roles
+function copy_users_and_roles(){
+	$message = "Installing users....<br>";
+	//get roles from the server
+	db_set_active('server');
+	$query = "SELECT * FROM users";
+	$result = db_query($query);
+	while($object = db_fetch_object($result)){
+		//get user object - which includes all roles of this user
+		$user_object = user_load(array('uid'=>$object->uid));
+		//unset($user_object -> uid);
+		$message .= "adding " . $user_object->name . "...";
+		//set db to this machine
+		db_set_active('default');
+		$success = user_save($user_object, array('uid'=>$object->uid));
+		if($success == false){
+			$message .= "failed";
+		}
+		else{
+			$message .= "done (" . $success->uid  . ", " . $success->name . ")";
+		}
+		$message .= "<br>";
+		//set db back to server
+		db_set_active('server');
+	}
+	//at the end set the db back to being this machine
+	db_set_active('default');
+	
+	//return message
+	$message .= "<br>";
+	return $message;
+}
+
+//OG groups stuff
+function copy_groups(){
+	
+}
+
+/* 
+ * copy pi_inquiry from server to local machine
+ * this is done by specifying the query to be exectued and the exists test functions
+ */
+function copy_pi_table($table){
+	$message = "Installing " . $table . "....<br>";
+	//get pi_ table from the server
+	db_set_active('server');
+	$query = "SELECT * FROM " . $table;
+	$result = db_query($query);
+	while($object = db_fetch_object($result)){
+		//set db to this machine
+		db_set_active('default');
+		//does values already exist?
+		$exists = does_value_exist($table, $object);
+		if($exists != false){
+			//values exists so we dont add it but report it as an error to the user
+			$message .= "....ERROR -> VALUE EXISTS";
+			$message .= "<br>";
+		}
+		else{
+			$message .= insert_into_db($table, $object);
+			$message .= "<br>";
+		}
+		//set db back to server
+		db_set_active('server');
+	}
+	//at the end set the db back to being this machine
+	db_set_active('default');
+	
+	//return message
+	$message .= "<br>";
+	return $message;
+}
+
+//function to test if a value exists
+function does_value_exist($table, $object){
+	if($table == 'pi_inquiry'){
+		return does_it_exist($table, 'inquiry_id', $object->inquiry_id);
+	}
+	else if($table == 'pi_inquiry_actor'){
+		return does_it_exist($table, 'pia_id', $object->pia_id);
+	}
+	else if($table == 'pi_inquiry_stage'){
+		return does_it_exist($table, 'pis_id', $object->pis_id);
+	}
+	else if($table == 'pi_inquiry_phase'){
+		return does_it_exist($table, 'pip_id', $object->pip_id);
+	}
+	else if($table == 'pi_stage'){
+		return does_it_exist($table, 'stage_id', $object->stage_id);
+	}
+	else if($table == 'pi_stage_actor'){
+		return does_it_exist($table, 'psa_id', $object->psa_id);
+	}
+	else if($table == 'pi_phase'){
+		return does_it_exist($table, 'phase_id', $object->phase_id);
+	}
+	else if($table == 'pi_phase_actor'){
+		return does_it_exist($table, 'ppa_id', $object->ppa_id);
+	}
+	else if($table == 'pi_stage_phase'){
+		return does_it_exist($table, 'psp_id', $object->psp_id);
+	}
+	else if($table == 'pi_activity'){
+		return does_it_exist($table, 'activity_id', $object->activity_id);
+	}
+	else if($table == 'pi_activity_actor'){
+		return does_it_exist($table, 'paa_id', $object->paa_id);
+	}
+	else if($table == 'pi_stage_phase_activity'){
+		return does_it_exist($table, 'pspa_id', $object->pspa_id);
+	}
+	else if($table == 'pi_activity_status'){
+		return does_it_exist($table, 'pas_id', $object->pas_id);
+	}
+	else if($table == 'pi_grouping'){
+		return does_it_exist($table, 'grouping_id', $object->grouping_id);
+	}
+	else if($table == 'pi_grouping_group'){
+		return does_it_exist($table, 'pgg_id', $object->pgg_id);
+	}
+	else if($table == 'pi_inquiry_grouping'){
+		return does_it_exist($table, 'pig_id', $object->pig_id);
+	}
+	else if($table == 'pi_group_hierarchy'){
+		return does_it_exist($table, 'pgh_id', $object->pgh_id);
+	}
+	else if($table == 'pi_group_type'){
+		return does_it_exist($table, 'pgt_id', $object->pgt_id);
+	}
+}
+
+function does_it_exist($table, $id_name, $id_value){
+	$query = "SELECT * FROM " . $table . " WHERE " . $id_name . " = '" . $id_value . "'";
+	return db_fetch_object(db_query($query));
+}
+
+//functions to build a table query to insert a value
+function insert_into_db($table, $object){
+	if($table == 'pi_inquiry'){
+		return execute_pi_inquiry_query($object);
+	}
+	else if($table == 'pi_inquiry_actor'){
+		return execute_pi_inquiry_actor_query($object);
+	}
+	else if($table == 'pi_inquiry_stage'){
+		return execute_pi_inquiry_stage_query($object);
+	}
+	else if($table == 'pi_inquiry_phase'){
+		return execute_pi_inquiry_phase_query($object);
+	}
+	else if($table == 'pi_stage'){
+		return execute_pi_stage_query($object);
+	}
+	else if($table == 'pi_stage_actor'){
+		return execute_pi_stage_actor_query($object);
+	}
+	else if($table == 'pi_phase'){
+		return execute_pi_phase_query($object);
+	}
+	else if($table == 'pi_phase_actor'){
+		return execute_pi_phase_actor_query($object);
+	}
+	else if($table == 'pi_stage_phase'){
+		return execute_pi_stage_phase_query($object);
+	}
+	else if($table == 'pi_activity'){
+		return execute_pi_activity_query($object);
+	}
+	else if($table == 'pi_activity_actor'){
+		return execute_pi_activity_actor_query($object);
+	}
+	else if($table == 'pi_stage_phase_activity'){
+		return execute_pi_stage_phase_activity_query($object);
+	}
+	else if($table == 'pi_activity_status'){
+		return execute_pi_activity_status_query($object);
+	}
+	else if($table == 'pi_grouping'){
+		return execute_pi_grouping_query($object);
+	}
+	else if($table == 'pi_grouping_group'){
+		return execute_pi_grouping_group_query($object);
+	}
+	else if($table == 'pi_inquiry_grouping'){
+		return execute_pi_inquiry_grouping_query($object);
+	}
+	else if($table == 'pi_group_hierarchy'){
+		return execute_pi_group_hierarchy_query($object);
+	}
+	else if($table == 'pi_group_type'){
+		return execute_pi_group_type_query($object);
+	}
+}
+
+function execute_pi_inquiry_query($object){
+	$insert = "INSERT INTO pi_inquiry SET";
+	$insert .= " inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", name = '" . $object->name . "'";
+	$insert .= ", description = '" . $object->description . "'";
+	db_query($insert);
+	return "....inserted inquiry " . $object->name . ",";
+}
+
+function execute_pi_inquiry_actor_query($object){
+	$insert = "INSERT INTO pi_inquiry_actor SET";
+	$insert .= " pia_id = '" . $object->pia_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", uid = '" . $object->uid . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	db_query($insert);
+	return "....inserted inquiry_actor " . $object->pia_id . ",";
+}
+
+function execute_pi_inquiry_stage_query($object){
+	$insert = "INSERT INTO pi_inquiry_stage SET";
+	$insert .= " pis_id = '" . $object->pis_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", stage_id = '" . $object->stage_id . "'";
+	$insert .= ", position = '" . $object->position . "'";
+	db_query($insert);
+	return "....inserted inquiry_stage " . $object->inquiry_id . " - " . $object->stage_id . ",";
+}
+
+function execute_pi_inquiry_phase_query($object){
+	$insert = "INSERT INTO pi_inquiry_phase SET";
+	$insert .= " pip_id = '" . $object->pip_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", phase_id = '" . $object->phase_id . "'";
+	$insert .= ", position = '" . $object->position . "'";
+	db_query($insert);
+	return "....inserted inquiry_phase " . $object->inquiry_id . " - " . $object->phase_id . ",";
+}
+
+function execute_pi_stage_query($object){
+	$insert = "INSERT INTO pi_stage SET";
+	$insert .= " stage_id = '" . $object->stage_id . "'";
+	$insert .= ", name = '" . $object->name . "'";
+	$insert .= ", description = '" . $object->description . "'";
+	db_query($insert);
+	return "....inserted stage " . $object->name . ",";
+}
+
+function execute_pi_stage_actor_query($object){
+	$insert = "INSERT INTO pi_stage_actor SET";
+	$insert .= " psa_id = '" . $object->psa_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", stage_id = '" . $object->stage_id . "'";
+	$insert .= ", uid = '" . $object->uid . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	db_query($insert);
+	return "....inserted stage_actor " . $object->psa_id . ",";
+}
+
+function execute_pi_phase_query($object){
+	$insert = "INSERT INTO pi_phase SET";
+	$insert .= " phase_id = '" . $object->phase_id . "'";
+	$insert .= ", name = '" . $object->name . "'";
+	$insert .= ", description = '" . $object->description . "'";
+	db_query($insert);
+	return "....inserted phase " . $object->name . ",";
+}
+
+function execute_pi_phase_actor_query($object){
+	$insert = "INSERT INTO pi_phase_actor SET";
+	$insert .= " ppa_id = '" . $object->ppa_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", phase_id = '" . $object->phase_id . "'";
+	$insert .= ", uid = '" . $object->uid . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	db_query($insert);
+	return "....inserted phase_actor " . $object->ppa_id . ",";
+}
+
+function execute_pi_stage_phase_query($object){
+	$insert = "INSERT INTO pi_stage_phase SET";
+	$insert .= " psp_id = '" . $object->psp_id . "'";
+	$insert .= ", stage_id = '" . $object->stage_id . "'";
+	$insert .= ", phase_id = '" . $object->phase_id . "'";
+	db_query($insert);
+	return "....inserted stage_phase " . $object->psp_id . ",";
+}
+
+function execute_pi_activity_query($object){
+	$insert = "INSERT INTO pi_activity SET";
+	$insert .= " activity_id = '" . $object->activity_id . "'";
+	$insert .= ", name = '" . $object->name . "'";
+	$insert .= ", description = '" . $object->description . "'";
+	$insert .= ", activity_type = '" . $object->activity_type . "'";
+	$insert .= ", node_type = '" . $object->node_type . "'";
+	$insert .= ", parameters = '" . $object->parameters . "'";
+	$insert .= ", destination = '" . $object->destination . "'";
+	$insert .= ", audience = '" . $object->audience . "'";
+	db_query($insert);
+	return "....inserted activity " . $object->name . ",";
+}
+
+function execute_pi_activity_actor_query($object){
+	$insert = "INSERT INTO pi_activity_actor SET";
+	$insert .= " paa_id = '" . $object->paa_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", activity_id = '" . $object->activity_id . "'";
+	$insert .= ", uid = '" . $object->uid . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	db_query($insert);
+	return "....inserted activity_actor " . $object->paa_id . ",";
+}
+
+function execute_pi_stage_phase_activity_query($object){
+	$insert = "INSERT INTO pi_stage_phase_activity SET";
+	$insert .= " pspa_id = '" . $object->pspa_id . "'";
+	$insert .= ", psp_id = '" . $object->psp_id . "'";
+	$insert .= ", activity_id = '" . $object->activity_id . "'";
+	$insert .= ", position = '" . $object->position . "'";
+	db_query($insert);
+	return "....inserted stage_phase_activity " . $object->pspa_id . ",";
+}
+
+function execute_pi_activity_status_query($object){
+	$insert = "INSERT INTO pi_activity_status SET";
+	$insert .= " pas_id = '" . $object->pas_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", activity_id = '" . $object->activity_id . "'";
+	$insert .= ", uid = '" . $object->uid . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	$insert .= ", node_function = '" . $object->node_function . "'";
+	$insert .= ", visible_status = '" . $object->visible_status . "'";
+	db_query($insert);
+	return "....inserted activity_status " . $object->pas_id . ",";
+}
+
+function execute_pi_grouping_query($object){
+	$insert = "INSERT INTO pi_grouping SET";
+	$insert .= " grouping_id = '" . $object->grouping_id . "'";
+	$insert .= ", name = '" . $object->name . "'";
+	$insert .= ", description = '" . $object->description . "'";
+	db_query($insert);
+	return "....inserted grouping " . $object->name . ",";
+}
+
+function execute_pi_grouping_group_query($object){
+	$insert = "INSERT INTO pi_grouping_group SET";
+	$insert .= " pgg_id = '" . $object->pgg_id . "'";
+	$insert .= ", grouping_id = '" . $object->grouping_id . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	db_query($insert);
+	return "....inserted grouping_group " . $object->pgg_id . ",";
+}
+
+function execute_pi_inquiry_grouping_query($object){
+	$insert = "INSERT INTO pi_inquiry_grouping SET";
+	$insert .= " pig_id = '" . $object->pig_id . "'";
+	$insert .= ", inquiry_id = '" . $object->inquiry_id . "'";
+	$insert .= ", stage_id = '" . $object->stage_id . "'";
+	$insert .= ", phase_id = '" . $object->phase_id . "'";
+	$insert .= ", activity_id = '" . $object->activity_id . "'";
+	$insert .= ", grouping_id = '" . $object->grouping_id . "'";
+	db_query($insert);
+	return "....inserted inquiry_grouping " . $object->pig_id . ",";
+}
+
+function execute_pi_group_hierarchy_query($object){
+	$insert = "INSERT INTO pi_group_hierarchy SET";
+	$insert .= " pgh_id = '" . $object->pgm_id . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	$insert .= ", parent_gid = '" . $object->parent_gid . "'";
+	db_query($insert);
+	return "....inserted group_hierarchy " . $object->pgh_id . ",";
+}
+
+function execute_pi_group_type_query($object){
+	$insert = "INSERT INTO pi_group_type SET";
+	$insert .= " pgt_id = '" . $object->pgt_id . "'";
+	$insert .= ", gid = '" . $object->gid . "'";
+	$insert .= ", type = '" . $object->type . "'";
+	db_query($insert);
+	return "....inserted group_type " . $object->pgt_id . ",";
+}
+
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------After Start Inquiry Install-------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------
+
+function pi_install_inquiry_after(){
+	return "After";
+}

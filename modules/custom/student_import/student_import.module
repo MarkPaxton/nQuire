@@ -1,0 +1,103 @@
+<?php
+
+function student_import_help($section='') {
+
+	$output = '';
+
+	switch ($section) {
+		case "admin/help#student_import":
+			$output = '<p>'.  t("Import Students into the Toolkit from a CSV file"). '</p>';
+			break;
+	}
+
+	return $output;
+}
+
+function student_import_perm() {
+	return array('access student import content');
+}
+
+function student_import_menu() {
+	$items = array();
+
+	$items['import'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('Import Student Info'),
+  	  'page callback' => 'student_import_view',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access student import content'),
+	);
+	
+	$items['import/haddenpark'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('Import Hadden Park School Student Info'),
+  	  'page callback' => 'student_import_haddenpark',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access student import content'),
+	);
+	
+	return $items;
+}
+
+function student_import_view(){
+	return "Import Stuent Info";
+}
+
+function student_import_haddenpark(){
+	$content = '<p><strong>Hadden Park</strong> Student Info Importer</p>';
+	$content .= drupal_get_form('student_import_haddenpark_form', $node);
+	return $content;
+}
+
+function student_import_haddenpark_form($form_state){
+	$form['#attributes'] = array("enctype" => "multipart/form-data");
+	
+	$form['file'] = array(
+        '#type' => 'file',
+        '#title' => t('Upload File'),
+		'#description' => t('Click "Browse..." to select an file to upload.')
+    );
+    
+    $form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Upload'),
+	);
+
+    return $form;
+}
+
+function student_import_haddenpark_form_submit($form, &$form_state){
+	//save the file to a known directory
+	$file = file_save_upload('file',array(),file_directory_path());
+	
+	//NB what about groups e.g. 7A? - not done at the moment as groups
+	//are handeled by OG and you need to create groups before you can 
+	//add students to them which could be done through this module but
+	//time does not permit me to do this yet.
+	
+	//process the csv file to add new students to the users table
+	$handle = fopen((file_directory_path() . "/" .  $file->filename), "r");
+	$header = true;
+	$name_list = '';
+	while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+	    if(count($data)>0){
+	    	if($header){
+	    		$header = false;
+	    	}
+	    	else{
+	    		list($last, $first) = split(' ', $data[0]);	
+	    		$name = $first . " " . $last;
+	    		$mail = $first . "." . $last . "@student.com";
+	    		$pass = $first . $last;
+	    		//save new user
+	    		user_save('',array(name=>$name, pass=>$pass, mail=>$mail, status=>1));
+	    		$name_list .= $name . ', ';	    		
+	    	}
+	    }
+	}
+	fclose($handle);
+	$text = "Students added: <br>";
+	$text .= $name_list;
+	drupal_set_message(t($text));
+}
+
