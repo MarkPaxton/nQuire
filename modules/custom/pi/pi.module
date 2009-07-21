@@ -115,14 +115,27 @@ function pi_home_view () {
       };
     };
     $stage = load_stage($result->stage_id);
-    $output .= "<div style=' background-color: #CDE3F1; -moz-border-radius: 0.5em; -webkit-border-radius: 0.5em; border: 1px solid #1D71B8; padding: 0.4em; min-width: 5%; float: left; margin-right: 2%' title='" . $stage->description . "'>";
+    
     if ($current_stage_id == $result->stage_id) {
+	  $output .= "<div style='height: 1.5em; background-color:#aaaaaa; border: 1px solid #aaaaaa; padding: 0.4em; min-width: 5%; float: left;' title='" . $stage->description . "'>";
       $output .= "<b>" . $stage->name . "</b>";
+	  $output .= "</div>";
+	  $output .= "<div style='margin-right: 2%; float: left; font-size: 0px; line-height: 0%; width: 0px;
+border-top: 18px solid #f6f6f6;
+border-left: 36px solid #aaaaaa;
+border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
+	  
     }
     else {
+	  $output .= "<div style='height: 1.5em; background-color:#d2d2d2; border: 1px solid #d2d2d2; padding: 0.4em; min-width: 5%; float: left;' title='" . $stage->description . "'>";
       $output .= $stage->name;
+	  $output .= "</div>";
+	  $output .= "<div style='margin-right: 2%; float: left; font-size: 0px; line-height: 0%; width: 0px;
+border-top: 18px solid #f6f6f6;
+border-left: 36px solid #d2d2d2;
+border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
     };
-    $output .= "</div>";
+    
   };
 
   $output .= "</div>";
@@ -132,7 +145,7 @@ function pi_home_view () {
   $current_stage = load_stage($current_stage_id);
 
   $output .= "<div style='display: block; clear: both;'>";
-  $output .= "<h2>" . $current_stage->name . "</h2>";
+  //$output .= "<h2>" . $current_stage->name . "</h2>";
   $output .= "<p>" . $current_stage->description . "</p>";
   $output .= "</div>";
   
@@ -151,7 +164,8 @@ function pi_home_view () {
 	}	
 	
 	$home_link = t(build_home_link($inquiry->inquiry_id, $inquiry->stage_id, $inquiry->phase_id, $activity->activity_id));
-	$output .= "<table>";
+
+	$output .= "<table class=\"home-table\">";
 
 	if ($view_by == "status") {
 		$output .= "<tr><td><b>Activity</b></td><td><b>Status";
@@ -175,7 +189,8 @@ function pi_home_view () {
       $output .= "<tr>";
 	   $output .= "<td>" .  build_activity_link($inquiry->inquiry_id, $inquiry->stage_id, $activity->phase_id, $activity->activity_id, $user->uid) . "</td>";
 	  //$output .= "<td>" . $loaded_activity->name . "</td>";
-	  $output .= "<td>" . ucwords(t($activity->visible_status)) . "</td>";
+	  //$output .= "<td>" . ucwords(t($activity->visible_status)) . "</td>";
+	  $output .= "<td>" . ucwords(t($loaded_activity_status->visible_status)) . "</td>";
 	  //$output .= "<td>" . $loaded_phase->name . "</td>";
 	  $output .= "<td>" . $loaded_phase->name . "</td>";
       $output .= "<td>" . $loaded_activity->description . "</td>";
@@ -184,7 +199,6 @@ function pi_home_view () {
     };
 	
 	$output .= "</table>";
-	
   //};
   
   return $output;
@@ -282,15 +296,9 @@ function pi_phase_view () {
 	
 	$output .= "<dt>" . build_activity_link($inquiry->inquiry_id, $inquiry->stage_id, $inquiry->phase_id, $activity->activity_id, $user->uid) . "</dt>";
 	
-	//$output .= "<dt>" . $loaded_activity_status->visible_status . ' ' . $loaded_activity->name . "</dt>";
-	$output .= "<dd>" . $loaded_activity->description . "</dd>";
+	$output .= "<dd>" .  "<span style='vertical-align: 10%;'>" . $loaded_activity->description . "</span>" . "</dd>";
 	$output .= "</dl>";
 		
-  //  $output .= "<p>";
-   // $output .= "<b>" . $loaded_activity_status->visible_status . "</b> - ";
-   // $output .= "<b>" . $loaded_activity->name . "</b>";
-    //$output .= " " . $loaded_activity->description;
-   // $output .= "</p>";
   };
   
   return $output;
@@ -555,7 +563,7 @@ function get_node_function_of_activity ($inquiry_id, $activity_id, $uid) {
   
   $result = db_fetch_object(db_query($query));
 
-	return $result->node_function;
+  return $result->node_function;
 
 }
 
@@ -1199,6 +1207,7 @@ function get_stages_of_inquiry_and_user ($inquiry_id, $uid) {
 
 }
 
+
 function get_activities_of_stage_phase_and_user ($inquiry_id, $stage_id, $phase_id, $uid) {
 
 /**
@@ -1216,6 +1225,7 @@ function get_activities_of_stage_phase_and_user ($inquiry_id, $stage_id, $phase_
 	else {
 		$phases = array($phase_id);
 	}
+	/*
 	if (is_null($stage_id)) {
 		$db_stages = get_stages_of_inquiry_and_user ($inquiry_id, $uid);
 		$stages = array();
@@ -1225,10 +1235,31 @@ function get_activities_of_stage_phase_and_user ($inquiry_id, $stage_id, $phase_
 	}
 	else {
 		$stages = array($stage_id);
+	}*/
+	
+	$temp = array();
+	
+	if (is_null($stage_id)) {
+		foreach($phases as $p){
+			$query = "SELECT pi_stage_phase.psp_id FROM pi_stage_phase ";
+			$query .= "WHERE pi_stage_phase.phase_id = '" . $p . "'";
+			$query_results = db_query($query);
+			while ($query_result = db_fetch_object($query_results)) {
+				$temp[] = $query_result->psp_id;
+			}
+		}
+	}
+	else {
+		foreach($phases as $p){
+			$query = "SELECT pi_stage_phase.psp_id FROM pi_stage_phase ";
+			$query .= "WHERE pi_stage_phase.stage_id = '" . $stage_id . "' AND ";
+			$query .= "pi_stage_phase.phase_id = '" . $p . "'";
+			$temp[] = db_result(db_query($query));
+		}
 	}
 	
 	//for each of these stages nd phases get the pi_stage_phase psp_id and put it in an array
-	$temp = array();
+	/*$temp = array();
 	
 	foreach($phases as $p){
 		foreach($stages as $s){
@@ -1237,13 +1268,22 @@ function get_activities_of_stage_phase_and_user ($inquiry_id, $stage_id, $phase_
 			$query .= "pi_stage_phase.phase_id = '" . $p . "'";
 			$temp[] = db_result(db_query($query));
 		}
-	}
+	}*/
 	
 	//for each of these psp_id's add the activity_id from pi_stage_phase_activity
 	$activities = array();
 	foreach($temp as $t){
+	/*
 		$query2 = "SELECT * FROM pi_stage_phase_activity ";
-		$query2 .= "WHERE pi_stage_phase_activity.psp_id = '" . $t . "'";
+		$query2 .= "WHERE pi_stage_phase_activity.psp_id = '" . $t . "'";*/
+		
+		$query2 = "SELECT * FROM pi_stage_phase_activity ";
+		$query2 .= "LEFT JOIN pi_activity ON pi_stage_phase_activity.activity_id = pi_activity.activity_id ";
+		$query2 .= "LEFT JOIN pi_activity_actor ON pi_activity.activity_id = pi_activity_actor.activity_id ";
+		$query2 .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
+		$query2 .= "WHERE pi_stage_phase_activity.psp_id = '" . $t . "' ";
+		$query2 .= "AND (og_uid.uid = '" . $uid . "' OR pi_activity_actor.uid = '" . $uid . "') ";
+		
 		//activities are ordered in the array by the position
 		$answer2 = db_query($query2);
 		while ($result2 = db_fetch_object($answer2)) {
@@ -1283,7 +1323,7 @@ function get_current_stage_of_inquiry_and_user ($inquiry_id, $uid) {
  */
 	
   // user's current stage
-	$query = "SELECT pi_current_stage.stage_id ";
+	$query = "SELECT pi_current_stage.stage_id, pi_current_stage.pcs_id ";
 	$query .= "FROM pi_current_stage ";
 	$query .= "WHERE pi_current_stage.inquiry_id = '" . $inquiry_id . "' ";
 	$query .= "AND pi_current_stage.uid =  " . $uid. " ";
@@ -1292,7 +1332,7 @@ function get_current_stage_of_inquiry_and_user ($inquiry_id, $uid) {
 
   //user's group's current stage
   if (isset($result) AND ($result == NULL)) {
-    $query = "SELECT pi_current_stage.stage_id ";
+    $query = "SELECT pi_current_stage.stage_id, pi_current_stage.pcs_id ";
   	$query .= "FROM pi_current_stage ";
   	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_current_stage.gid ";
   	$query .= "WHERE pi_current_stage.inquiry_id = '" . $inquiry_id . "' ";

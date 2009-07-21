@@ -54,14 +54,14 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 	}
 	
 	if ($visible_status == "unavailable") {
-		$output = t("<img src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . $loaded_activity->name);
+		$output = t("<img src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . "</span>");
 	}
 	elseif ($node_function == "add") {
 		$link = build_link("node", $node_function, str_replace("_", "-", $loaded_activity->node_type), $inquiry_id, $stage_id, $phase_id, $activity_id);
 		if ($params) {
 			$link = $link . "/" . $params;
 		}	
-		$output = l(t("<img src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . $loaded_activity->name), $link,  array(html => true, query => $destination));
+		$output = l(t("<img src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . "</span>"), $link,  array(html => true, query => $destination));
 	}
 	else {
 		$nid = get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid);
@@ -70,7 +70,7 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 		if ($params) {
 			$link = $link . "/" . $params;
 		}
-		$output = l(t("<img src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . $loaded_activity->name), $link,  array(html => true, query => $destination));
+		$output = l(t("<img src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . "</span>"), $link,  array(html => true, query => $destination));
 	}
 	
 	return $output;
@@ -87,7 +87,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
     case 'view':
 		
 		global $user;
-
+		$image_path = "images/";
 		$node_details = get_inquiry_details_from_current_path();
 
 		$phases = get_phases_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
@@ -107,12 +107,11 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 		while ($phase = db_fetch_object($phases)) {
 			$loaded_phase = load_phase($phase->phase_id);
 			
-			//placeholder way of flagging current phases
 			if (in_array($phase->phase_id, $phases_of_current_stage)) {
-				$diplayed_phase_name = t($loaded_phase->name . "*");
+				$diplayed_phase_name = t("<div style=\"border: 0px; background-color:#aaaaaa;\">" . "<img src=\"" . $image_path . "folder_empty_current.png\" style=\"margin: 0.4em 0 0 0.2em;\"/><span style='vertical-align: 20%;'>&nbsp;&nbsp;" . $loaded_phase->name . "</span></div>");
 			}
 			else {
-				$diplayed_phase_name = t($loaded_phase->name);
+				$diplayed_phase_name = t("<div style=\"border: 0px; background-color:#d2d2d2;\">"  . "<img src=\"" . $image_path . "folder_empty.png\" style=\"margin: 0.4em 0 0 0.2em;\"/><span style='vertical-align: 20%;'>&nbsp;&nbsp;" . $loaded_phase->name . "</span></div>");
 			}			
 
 			$phase_link = l($diplayed_phase_name, build_link("phase", $phase->phase_id, "view", $node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $node_details->activity_id), array(html => true));
@@ -120,6 +119,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 			$activity_menu_items = array();
 			//expand activities of the phase if it is current
 			if ($phase->phase_id == $node_details->phase_id) {
+				//$activities = get_activities_of_stage_phase_and_user(1, NULL, NULL, 1);
 				$activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->phase_id, $user->uid);
 				foreach($activities as $activity) {
 					
@@ -135,14 +135,14 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
 				
 		/*test area*/
-
-		/*end of text area*/
 		
 		
-		$block['subject'] = l(t("Activity Guide"), t($home_link), array(), NULL, NULL,FALSE,TRUE);
+		$block['subject'] = l(t("Activity Guide&nbsp;" . "<img src=\"" . $image_path . "home.png\"/>"), t($home_link), array(html=>true));
 		//$block['content'] = t("list goes here");
 		
-		$block['content'] = t(theme('item_list', $phase_menu_items));
+		$block_content = t(theme('item_list', $phase_menu_items));
+		
+		$block['content'] = "<div class='activity-guide'>" . $block_content . "</div>";
 		// . $inquiry_details->inquiry_id);
 		
 		

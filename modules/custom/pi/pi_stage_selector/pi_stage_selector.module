@@ -1,0 +1,134 @@
+<?php
+// $Id: pi_stage_selector.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for chaning the inquiry stage
+ */
+
+
+/**
+ * Implementation of pi_stage_selector_node_info().
+ */
+
+function pi_stage_selector_node_info() {
+  return array(
+	'pi_stage_selector' => array(
+	 'name' => t('Stage selector name'), // Required.
+	 'module' => 'pi_stage_selector',  // Required.
+	 'description' => t('Stage selector description'), // Required.
+	 'has_title' => TRUE,
+	 'title_label' => t('Stage selector title label'),
+	 'has_body' => TRUE,
+	 'body_label' => t('Stage selector body label'),
+	 'min_word_count' => 2,
+	 'locked' => TRUE
+	)
+   );
+}
+
+/**
+ * Implementation of pi_hypothesis_perm().
+ */
+
+function pi_stage_selector_perm() {
+  return array('create pi_stage_selector content', 'edit pi_stage_selector');
+}
+
+/**
+ * Implementation of pi_hypothesis_access().
+ */
+function pi_stage_selector_access($op, $node) {
+  global $user;
+  //$inquiry = get_inquiry_details_from_current_path()
+ //$node_function = get_node_function_of_activity ($inquiry->inquiry_id, $inquiry->activity_id, $user->uid)
+  if ($op == 'create') {
+    return TRUE;//return (user_access('create pi_stage_selector'));
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+    return TRUE;//return (user_access('edit own pi_stage_selector') && ($user->uid == $node->uid));
+  }
+}
+
+/**
+ * Implementation of pi_stage_selector_form().
+ */
+
+function pi_stage_selector_form(&$node) {
+
+  // Get metadata for this node type
+  // (we use it for labeling title and body fields).
+  // We defined this in pi_hypothesis_node_info().
+  $type = node_get_types('type', $node);
+  
+  global $user;
+  $inquiry = get_inquiry_details_from_current_path();
+  
+  $form['title'] = array(
+    '#type' => 'hidden',
+    '#title' => check_plain($type->title_label),
+    '#required' => FALSE,
+    '#default_value' => check_plain($type->title_label),
+    '#weight' => -5
+  );
+  
+  $form['stage_options'] = array(
+	'#type' => 'value',
+	'#value' => array(1, 2, 3, 4)
+  );
+  
+  $current_stage = get_current_stage_of_inquiry_and_user ($inquiry->inquiry_id, $user->uid);
+  $current_stage_id = $current_stage->stage_id;
+  
+  $stage_array = $form['stage_options']['#value'];
+  while ($stage_name = current($stage_array)) {
+   if ($stage_name == $current_stage_id) {
+       $real_current_stage =  key($stage_array);
+		}
+		next($stage_array);
+	}
+  
+  $form['selected_stage'] = array(
+	'#title' => t('Selected stage'),
+	'#type' => 'select',
+	'#description' => t('Select the inquiry stage'),
+	'#default_value' =>  array($real_current_stage),
+	'#options' => $form['stage_options']['#value']
+  );
+  
+   $form['pcs_id'] = array(
+	'#type' => 'hidden',
+	'#value' => t($current_stage->pcs_id)
+	);
+  
+  $prefix = "<p>Stage selector prefix.</p>";
+ 
+  $form['#prefix'] = $prefix;
+  
+  return $form;
+
+}
+
+/**
+ * Implementation of pi_stage_selector_insert().
+ */
+
+ 
+function pi_stage_selector_insert($node) {
+  $stages = array(1, 2, 3, 4);
+  $selected_stage = $stages[$node->selected_stage];
+  db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
+}
+
+/**
+ * Implementation of pi_stage_selector_update().
+ */
+
+function pi_stage_selector_update($node) {
+  $stages = array(1, 2, 3, 4);
+  $selected_stage = $stages[$node->selected_stage];
+  db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
+}
+
+
