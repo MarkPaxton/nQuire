@@ -1,0 +1,624 @@
+<?php
+// $Id: pi_data.module,v 1.2 2009/07/13 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_data" node type
+ */
+
+/**
+ * Implementation of pi_data_node_info().
+ */
+
+
+function pi_data_node_info() {
+  // We return an array since a module can define multiple node types.
+  // We're only defining one node type, type 'pi_data'.
+  return array(
+    'pi_data' => array(
+      'name' => t('Data'), // Required.
+      'module' => 'pi_data',  // Required.
+      'description' => t('What is your data?'), // Required.
+      'has_title' => FALSE,
+      'title_label' => t('Data'),
+      'has_body' => TRUE,
+      'body_label' => t('Data'),
+      'locked' => TRUE
+    )
+  );
+}
+
+/**
+ * Implementation of pi_data_perm().
+ */
+function pi_data_perm() {
+  return array('create pi_data', 'edit own pi_data');
+}
+
+/**
+ * Implementation of pi_data_access().
+ */
+function pi_data_access($op, $node) {
+  global $user;
+
+  if ($op == 'create') {
+    return (user_access('create pi_data'));
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+    return (user_access('edit own pi_data'));
+  }
+}
+
+/**
+ * Implementation of pi_data_form().
+ */
+function pi_data_form(&$node) {
+    
+  // Get metadata for this node type
+  // (we use it for labeling title and body fields).
+  // We defined this in pi_data_node_info().
+  $type = node_get_types('type', $node);
+
+  $inquiry_id = arg(3);
+  $location_id = arg(4);
+  
+  $measures_id = array(arg(5), arg(6), arg(7), arg(8), arg(9), arg(10), arg(11), arg(12), arg(13), arg(14), arg(15), arg(16), arg(17), arg(18), arg(19), arg(20), arg(21), arg(22), arg(23), arg(24), arg(25), arg(26), arg(27), arg(28), arg(29));
+  
+  if (!($inquiry_id)) {
+    $inquiry_id = 1;
+  };
+  
+  if (!($location_id)) {
+    $location_id = 99;
+  };
+  
+  $location = node_load($location_id);
+  
+  drupal_set_title(t($location->title));
+  
+  $weight_start = -10;
+  
+  $form['#theme'] = 'form_layout';
+  
+  $form['title'] = array(
+    '#type' => 'hidden',
+    '#title' => t($location->title . " ". $type->title_label),
+    '#required' => FALSE,
+    '#default_value' => t($location->title),
+    '#weight' => $weight_start
+  );
+  $form['body_filter']['body'] = array(
+    '#type' => 'hidden',
+    '#title' => check_plain($type->body_label),
+    '#required' => FALSE,
+    '#default_value' => t($location->body),
+    '#weight' => $weight_start
+  );
+  $form['inquiry_id'] = array(
+    '#type' => 'hidden',
+    '#title' => 'inquiry_id',
+    '#required' => FALSE,
+    '#default_value' => $node->inquiry_id|$inquiry_id,
+    '#weight' => $weight_start
+  );
+  
+  $form['place'] = array(
+    '#title' => t('GPS location'),
+    '#type' => 'fieldset',
+    '#theme' => 'gps_location_layout',
+    '#weight' => $weight_start
+  );
+  if ($node->grid_square) {
+    $grid_square = $node->grid_square;
+  }
+  else {
+    $grid_square = t('SP');
+  };
+  $form['place']['grid_square'] = array(
+    '#title' => t('Grid'),
+    '#type' => 'textfield',
+    '#size' => 2,
+    '#required' => TRUE,
+    '#default_value' => $grid_square,
+    '#weight' => $weight_start
+  );  
+  $form['place']['eastings'] = array(
+    '#title' => t('Easting'),
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#required' => TRUE,
+    '#default_value' => $node->eastings,
+    '#weight' => $weight_start
+  );  
+  $form['place']['northings'] = array(
+    '#title' => t('Northing'),
+    '#type' => 'textfield',
+    '#size' => 5,
+    '#required' => TRUE,
+    '#default_value' => $node->northings,
+    '#weight' => $weight_start
+  );  
+  
+  $weight_start++;
+  $count = 1;
+  
+  $form['data'] = array(
+    '#title' => t('Measurements'),
+    '#type' => 'fieldset',
+    '#theme' => 'data_values_layout',
+    '#weight' => $weight_start
+  );
+  $weight_start++;
+  $form['menus'] = array(
+    '#title' => t('Surveys'),
+    '#type' => 'fieldset',
+    '#theme' => 'menu_values_layout',
+    '#weight' => $weight_start
+  );
+  $weight_start++;
+  $form['text'] = array(
+    '#title' => t('Observations'),
+    '#type' => 'fieldset',
+    '#theme' => 'text_values_layout',
+    '#weight' => $weight_start
+  );
+  $weight_start++;
+
+  foreach ($measures_id as $measure_id) {
+  
+    if ($measure_id) {
+     
+  	  $measure = node_load($measure_id);
+      
+    	$form['value_' . $count . '_type'] = array(
+      	'#type' => 'hidden',
+      	'#title' => t('value_' . $count . 'type'),
+      	'#default_value' => t($measure->data_type)
+    	);
+  
+      // data_type == 0 ~ Type a number
+      if ($measure->data_type == 0) {
+        if (isset($measure->units_short) AND ($measure->units_short !='')) {
+          $units = " (" . $measure->units_short . ")";
+        }
+        elseif (isset($measure->units) AND ($measure->units !='')) {
+          $units = " (" . $measure->units . ")";
+        }
+        else {
+          $units = "";
+        };
+      
+      	$form['data']['value_' . $count] = array(
+        	'#type' => 'textfield',
+        	'#title' => t($measure->title . $units),
+        	'#required' => TRUE,
+        	'#default_value' => t($node->{'value_' . $count}),
+          '#size' => 5,
+        	'#weight' => $weight_start + $count
+      	);
+      }
+      
+      // data_type == 1 ~ Type text
+      elseif ($measure->data_type == 1) {
+      	$form['text']['value_' . $count] = array(
+        	'#type' => 'textarea',
+        	'#title' => t($measure->title),
+        	'#required' => TRUE,
+        	'#default_value' => ($node->{'value_' . $count}),
+          '#resizable' => FALSE,
+          '#cols' => 70,
+          '#rows' => 3,
+        	'#weight' => $weight_start + $count
+      	);
+      }
+      
+      // data_type == 2 ~ Select menu option
+      elseif ($measure->data_type == 2) {
+      
+        if ($measure->options) {
+          $options = array();
+          foreach (explode("\n",$measure->options) as $opt) {
+            $options[] = substr($opt,0,16);
+          };
+        };
+      
+        if (isset($measure->units_short) AND ($measure->units_short !='')) {
+          $units = " (" . $measure->units_short . ")";
+        }
+        elseif (isset($measure->units) AND ($measure->units !='')) {
+          $units = " (" . $measure->units . ")";
+        }
+        else {
+          $units = "";
+        };
+        
+      	$form['menus']['value_' . $count] = array(
+        	'#type' => 'select',
+        	'#title' => t($measure->title . $units),
+        	'#required' => FALSE,
+        	'#default_value' => t($node->{'value_' . $count}),
+          '#options' => $options,
+        	'#weight' => $weight_start + $count
+      	);
+      };
+    };
+    $count = $count + 1;
+  };
+    
+  $prefix = "";
+  
+  // $prefix .= "<p>Now go to '" . $location->title . "' and collect your measurements. How does your data relate to your hypothesis? Make sure you take enough notes to help you interpret the data later.</p>";
+  $prefix .= "<div class='clear_both'>";
+  if (isset($location->map_image_id) AND ($location->map_image_id != 0)) {
+    $prefix .= '<img style="float: left; margin: 0 10px 10px 0;" src="' . url("image/view/" . $location->map_image_id . "/thumbnail") . '" />';
+  };
+  if (isset($location->image_id) AND ($location->image_id != 0)) {
+    $prefix .= '<img style="float: left; margin: 0 10px 10px 0;" src="' . url("image/view/" . $location->image_id . "/thumbnail") . '" />';
+  };
+  $prefix .= "</div>";
+  
+  $form['#prefix'] = $prefix;
+
+  return $form;
+}
+
+function theme_gps_location_layout($form) {
+  $content = '<div class = "pi-gps-location">';
+  $content .= '<div class = "pi-grid-square">';
+  $content .= drupal_render($form['grid_square']);
+  $content .= '</div>';
+  $content .= '<div class = "pi-eastings">';
+  $content .= drupal_render($form['eastings']);
+  $content .= '</div>';
+  $content .= '<div class = "pi-northings">';
+  $content .= drupal_render($form['northings']);
+  $content .= '</div>';
+  $content .= '</div>';
+  return $content;
+}
+
+function theme_data_values_layout ($form) {
+  
+  $values = array('value_1', 'value_2', 'value_3', 'value_4', 'value_5', 'value_6', 'value_7', 'value_8', 'value_9', 'value_10', 'value_11', 'value_12', 'value_13', 'value_14', 'value_15', 'value_16', 'value_17', 'value_19', 'value_20', 'value_21', 'value_22', 'value_23', 'value_24');
+    
+  $content = "";
+  //$content .= '<div class="float_left" style="clear: none;">';
+  foreach ($values as $value) {
+    if (isset($form[$value])) {
+      $content .= '<div class="number_data">' . drupal_render($form[$value]) .'</div>';
+    };
+  };
+  //$content .= '</div>';  
+  
+  return $content;
+}
+
+function theme_menu_values_layout ($form) {
+  
+  $values = array('value_1', 'value_2', 'value_3', 'value_4', 'value_5', 'value_6', 'value_7', 'value_8', 'value_9', 'value_10', 'value_11', 'value_12', 'value_13', 'value_14', 'value_15', 'value_16', 'value_17', 'value_19', 'value_20', 'value_21', 'value_22', 'value_23', 'value_24');
+    
+  $content = "";
+  //$content .= '<div class="float_left">';
+  foreach ($values as $value) {
+    if (isset($form[$value])) {
+      $content .= '<div class="menu_data">' . drupal_render($form[$value]) .'</div>';
+    };
+  };
+  //$content .= '</div>';  
+  
+  return $content;
+}
+
+function theme_text_values_layout ($form) {
+  
+  $values = array('value_1', 'value_2', 'value_3', 'value_4', 'value_5', 'value_6', 'value_7', 'value_8', 'value_9', 'value_10', 'value_11', 'value_12', 'value_13', 'value_14', 'value_15', 'value_16', 'value_17', 'value_19', 'value_20', 'value_21', 'value_22', 'value_23', 'value_24');
+    
+  $content = "";
+  $content .= '<div class="clear_both">';
+  foreach ($values as $value) {
+    if (isset($form[$value])) {
+      $content .= '<div class="text_data">' . drupal_render($form[$value]) .'</div>';
+    };
+  };
+  $content .= '</div>';  
+  
+  return $content;
+}
+
+function theme_form_layout($form) {
+
+  $content = "";
+
+  $content .= '<div style="display: block; float: left; margin-top: -1em;">';
+  $content .= drupal_render($form['place']);
+  $content .= '</div>';  
+  $content .= '<div class="clear_both"></div>';  
+  $content .= '<div style="display: block; float: left; margin-right: 1em;">';
+  $content .= drupal_render($form['data']);
+  $content .= '</div>';
+  $content .= '<div style="display: block; float: left; margin-right: 1em;">';
+  $content .= drupal_render($form['menus']);
+  $content .= '</div>';
+  $content .= '<div style="display: block; clear: left; float: left;">';
+  $content .= drupal_render($form['text']);
+  $content .= '</div>';
+  
+  $content .= '<div class="clear_both"></div>';  
+   
+  $content .= drupal_render($form);
+  return $content;
+}
+
+
+function pi_data_form_alter ($form_id, &$form) {
+  
+  unset ($form['preview']); 
+  
+  global $user;
+  if (($user->uid != 1) AND (($form_id=="pi_hypothesis_node_form") OR ($form_id=="pi_selected_measures_node_form") 
+        OR ($form_id=="pi_selected_locations_node_form") OR ($form_id=="pi_data_node_form"))) {
+    unset ($form['delete']);
+  };
+}
+
+/**
+ * Implementation of hook_validate().
+ */
+function pi_data_validate($node) {
+ 
+ 	// check grid square
+  if (!isset($node->grid_square)) {
+	  form_set_error('grid_square', t('An Ordinance Survey grid square letter code must be specified (e.g. SP).'));
+	}
+  else {
+    $grid_squares = array(t('AK'),t('HP'),t('HT'),t('HU'),t('HW'),t('HX'),t('HY'),t('HZ'),t('NA'),t('NB'),t('NC'),t('ND'),t('NF'),t('NG'),t('NH'),t('NJ'),t('NK'),t('NL'),t('NM'),t('NN'),t('NO'),t('NR'),t('NS'),t('NT'),t('NU'),t('NW'),t('NX'),t('NY'),t('NZ'),t('OV'),t('SC'),t('SD'),t('SE'),t('SH'),t('SJ'),t('SM'),t('SN'),t('SO'),t('SP'),t('SR'),t('SS'),t('ST'),t('SU'),t('SV'),t('SW'),t('SX'),t('SY'),t('SZ'),t('TA'),t('TF'),t('TG'),t('TL'),t('TM'),t('TQ'),t('TR'),t('TV'));
+  	$member = false;
+    foreach ($grid_squares as $item) {
+      if ($item == $node->grid_square) {
+        $member = true;
+      };
+    };
+    if (!$member) {
+  	  form_set_error('grid_square', t('A valid Ordinance Survey grid square letter code must be specified (e.g. SP).'));
+  	};
+  };
+  
+	// check eastings as a number
+	if (!is_numeric ($node->eastings)) {
+	  form_set_error('eastings', t('Easting must be a number.'));
+	}
+  elseif (($node->eastings < 0) || ($node->eastings > 99999)) {
+	  form_set_error('eastings', t('Easting must be no more than five digits long.'));
+  };
+  
+	// check northings as a number
+	if (!is_numeric($node->northings)) {
+	  form_set_error('northings', t('Northing must be a number.'));
+	}
+  elseif (($node->northings < 0) || ($node->northings > 99999)) {
+	  form_set_error('northings', t('Northing must be no more than five digits long.'));
+  };
+  
+}
+
+/**
+ * Implementation of pi_data_validate().
+*
+*function pi_data_validate($node) {
+*
+*}
+ */
+
+/**
+ * Implementation of pi_data_insert().
+ */
+function pi_data_insert($node) {
+
+  $query = "INSERT INTO {pi_data_values} SET ";
+  $query .= "nid = " . $node->nid;
+  $query .= ", vid = " . $node->vid;
+  $query .= ", inquiry_id = " . $node->inquiry_id;
+  for ($count = 1; $count <= 24; $count++) {
+    $value = $node->{'value_' . $count};
+    $value = str_replace("'", "\'", $value);
+    $value = str_replace('"', '\"', $value);
+    $query .= ", value_" . $count . " = '" . $value . "'";
+  };
+  db_query($query);
+  
+  $query = "INSERT INTO {pi_data_totals} SET ";
+  $query .= "nid = " . $node->nid;
+  $query .= ", vid = " . $node->vid;
+  $query .= ", inquiry_id = " . $node->inquiry_id;
+  for ($count = 1; $count <= 24; $count++) {
+    if ($node->{'value_' . $count . '_data_type'} == 0) {
+      $query .= ", total_" . $count . " = '" . array_sum(explode(",", str_replace(" ", "", $node->{'value_' . $count}))) . "'";
+    }
+    else {
+      $query .= ", total_" . $count . " = ''";
+    };
+  };
+  db_query($query);
+  
+  $query = "INSERT INTO {pi_data_averages} SET ";
+  $query .= "nid = " . $node->nid;
+  $query .= ", vid = " . $node->vid;
+  $query .= ", inquiry_id = " . $node->inquiry_id;
+  for ($count = 1; $count <= 24; $count++) {
+    if ($node->{'value_' . $count . '_data_type'} == 0) {
+      $values = explode(",", str_replace(" ", "", $node->{'value_' . $count}));
+      $query .= ", average_" . $count . " = '" . array_sum($values) / count($values) . "'";
+    }
+    else {
+      $query .= ", average_" . $count . " = ''";
+    };
+  };
+  db_query($query);
+  
+  $query = "INSERT INTO {pi_data_locations} SET ";
+  $query .= "nid = " . $node->nid;
+  $query .= ", vid = " . $node->vid;
+  $query .= ", grid_square = '" . $node->grid_square . "'";
+  $query .= ", eastings = '" . $node->eastings . "'";
+  $query .= ", northings = '" . $node->northings . "'";
+  db_query($query);
+
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function pi_data_update($node) {
+  if ($node->revision) {
+    pi_available_data_insert($node);
+  }
+  else {  
+    $query = "UPDATE {pi_data_values} SET ";
+    $query .= " value_1 = '$node->value_1'";
+    for ($count = 2; $count <= 24; $count++) {
+      $value = $node->{'value_' . $count};
+      $value = str_replace("'", "\'", $value);
+      $value = str_replace('"', '\"', $value);
+      $query .= ", value_" . $count . " = '" . $value . "'";
+    };
+    $query .= " WHERE vid = $node->vid";
+    db_query($query);  
+  
+    $query = "UPDATE {pi_data_totals} SET ";
+    if ($node->{'value_1_data_type'} == 0) {
+      $query .= " total_1 = '" . array_sum(explode(",", str_replace(" ", "", $node->value_1))) . "'";
+    }
+    else {
+      $query .= " total_1 = ''";
+    };
+    for ($count = 2; $count <= 24; $count++) {
+      if ($node->{'value_' . $count . '_data_type'} == 0) {
+        $query .= ", total_" . $count . " = '" . array_sum(explode(",", str_replace(" " , "", $node->{'value_' . $count}))) . "'";
+      }
+      else {
+        $query .= ", total_" . $count . " = ''";
+      };
+    };
+    $query .= " WHERE vid = $node->vid";
+    db_query($query);
+    
+    $query = "UPDATE {pi_data_averages} SET ";
+    if ($node->{'value_1_data_type'} == 0) {
+      $values = explode(",", str_replace(" ", "", $node->value_1));
+      $query .= " average_1 = '" . array_sum($values) / count($values) . "'";
+    }
+    else {
+      $query .= " average_1 = ''";
+    };
+    for ($count = 2; $count <= 24; $count++) {
+      if ($node->{'value_' . $count . '_data_type'} == 0) {
+        $values = explode(",", str_replace(" ", "", $node->{'value_' . $count}));
+        $query .= ", average_" . $count . " = '" . array_sum($values) / count($values) . "'";
+      }
+      else {
+        $query .= ", average_" . $count . " = ''";
+      };
+    };
+    $query .= " WHERE vid = $node->vid";
+    db_query($query);
+    
+    $query = "UPDATE {pi_data_locations} SET ";
+    $query .= "grid_square = '" . $node->grid_square . "'";
+    $query .= ", eastings = '" . $node->eastings . "'";
+    $query .= ", northings = '" . $node->northings . "'";
+    $query .= " WHERE vid = $node->vid";
+    db_query($query);
+  }
+}
+
+/**
+ * Implementation of pi_data_delete().
+ */
+function pi_data_delete(&$node) {
+  db_query('DELETE FROM {pi_data_values} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {pi_data_totals} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {pi_data_averages} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {pi_data_locations} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of pi_data_load().
+ */
+function pi_data_load($node) {
+  $query = "SELECT v.*, ";
+  $query .= "t.total_1, t.total_2, t.total_3, t.total_4, t.total_5, t.total_6, t.total_7, t.total_8, ";
+  $query .= "t.total_9, t.total_10, t.total_11, t.total_12, t.total_13, t.total_14, t.total_15, t.total_16, ";
+  $query .= "t.total_17, t.total_18, t.total_19, t.total_20, t.total_21, t.total_22, t.total_23, t.total_24, ";
+  $query .= "a.average_1, a.average_2, a.average_3, a.average_4, a.average_5, a.average_6, a.average_7, a.average_8, ";
+  $query .= "a.average_9, a.average_10, a.average_11, a.average_12, a.average_13, a.average_14, a.average_15, a.average_16, ";
+  $query .= "a.average_17, a.average_18, a.average_19, a.average_20, a.average_21, a.average_22, a.average_23, a.average_24, ";
+  $query .= "l.grid_square, l.eastings, l.northings ";
+  $query .= "FROM pi_data_values AS v ";
+  $query .= "LEFT JOIN pi_data_totals AS t ON v.nid = t.nid AND v.vid = t.vid ";
+  $query .= "LEFT JOIN pi_data_averages AS a ON v.nid = a.nid AND v.vid = a.vid ";
+  $query .= "LEFT JOIN pi_data_locations AS l ON v.nid = l.nid AND v.vid = l.vid ";
+  $query .= "WHERE v.vid = " . $node->vid;
+  return db_fetch_object(db_query($query));
+}
+
+/**
+ * Implementation of pi_data_view().
+ */
+function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
+  if (!$teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+
+    $node->content['pi_data'] = array(
+      '#value' => theme('pi_data', $node),
+      '#weight' => 2
+      );
+  }
+
+  if ($teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+
+  return $node;
+}
+
+function pi_data_theme() {
+  return array(
+    'pi_data' => array(
+      'arguments' => array('node'),
+    ),
+  );
+}
+
+function theme_pi_data($node) {
+  $output = '';
+  $output .= '<div class="pi_data">First measure: ' . check_plain($node->value_1) . '</div><br />';
+  $output .= '<div class="pi_data">Second measure: ' . check_plain($node->value_2) . '</div><br />';
+  $output .= '<div class="pi_data">Third measure: ' . check_plain($node->value_3) . '</div><br />';
+  $output .= '<div class="pi_data">Fourth measure: ' . check_plain($node->value_4) . '</div><br />';
+  $output .= '<div class="pi_data">Fifth measure: ' . check_plain($node->value_5) . '</div><br />';
+  $output .= '<div class="pi_data">Sixth measure: ' . check_plain($node->value_6) . '</div><br />';
+  $output .= '<div class="pi_data">Seventh measure: ' . check_plain($node->value_7) . '</div><br />';
+  $output .= '<div class="pi_data">Eighth measure: ' . check_plain($node->value_8) . '</div><br />';
+  $output .= '<div class="pi_data">Ninth measure: ' . check_plain($node->value_9) . '</div><br />';
+  $output .= '<div class="pi_data">Tenth measure: ' . check_plain($node->value_10) . '</div><br />';
+  $output .= '<div class="pi_data">Eleventh measure: ' . check_plain($node->value_11) . '</div><br />';
+  $output .= '<div class="pi_data">Twelfth measure: ' . check_plain($node->value_12) . '</div><br />';
+  $output .= '<div class="pi_data">Thirteenth measure: ' . check_plain($node->value_13) . '</div><br />';
+  $output .= '<div class="pi_data">Fourteenth measure: ' . check_plain($node->value_14) . '</div><br />';
+  $output .= '<div class="pi_data">Fifteenth measure: ' . check_plain($node->value_15) . '</div><br />';
+  $output .= '<div class="pi_data">Sixteenth measure: ' . check_plain($node->value_16) . '</div><br />';
+  $output .= '<div class="pi_data">Seventeenth measure: ' . check_plain($node->value_17) . '</div><br />';
+  $output .= '<div class="pi_data">Eighteenth measure: ' . check_plain($node->value_18) . '</div><br />';
+  $output .= '<div class="pi_data">Ninteenth measure: ' . check_plain($node->value_19) . '</div><br />';
+  $output .= '<div class="pi_data">Twentieth measure: ' . check_plain($node->value_20) . '</div><br />';
+  $output .= '<div class="pi_data">Twenty first measure: ' . check_plain($node->value_21) . '</div><br />';
+  $output .= '<div class="pi_data">Twenty second measure: ' . check_plain($node->value_22) . '</div><br />';
+  $output .= '<div class="pi_data">Twenty third measure: ' . check_plain($node->value_23) . '</div><br />';
+  $output .= '<div class="pi_data">Twenty fourth measure: ' . check_plain($node->value_24) . '</div><br />';
+  $output .= '<div class="pi_data">Grid square: ' . check_plain($node->grid_square) . ', easting: ' . check_plain($node->eastings) . ', northing: ' . check_plain($node->northings) . '</div><br />';
+  return $output;
+}
+

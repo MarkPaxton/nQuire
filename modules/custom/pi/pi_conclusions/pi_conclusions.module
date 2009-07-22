@@ -1,0 +1,191 @@
+<?php
+// $Id$ ou_mbg
+
+/**
+ * @file
+ * Provides a "conclusions" node type.
+ */
+
+/**
+ * Implementation of pi_conclusions_node_info().
+ */
+function pi_conclusions_node_info() {
+  // We return an array since a module can define multiple node types.
+  // We're only defining one node type, type 'pi_conclusions'.
+  return array(
+    'pi_conclusions' => array(
+      'name' => t('Conclusions'), // Required.
+      'module' => 'pi_conclusions',  // Required.
+      'description' => t('An inquiry conclusion.'), // Required.
+      'has_title' => TRUE,
+      'title_label' => t('Conclusions'),
+      'has_body' => TRUE,
+      'body_label' => t('Conclusion'),
+      'locked' => '1',
+    )
+  );
+}
+
+/**
+ * Implementation of pi_conclusions_perm().
+ */
+function pi_conclusions_perm() {
+  return array('create pi_conclusions', 'edit own pi_conclusions');
+}
+
+/**
+ * Implementation of pi_conclusions_access().
+ */
+function pi_conclusions_access($op, $node) {
+  global $user;
+
+  if ($op == 'create') {
+    return (user_access('create pi_conclusions'));
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+    return (user_access('edit own pi_conclusions'));
+  }
+}
+
+/**
+ * Implementation of pi_conclusions_form().
+ */
+function pi_conclusions_form(&$node) {
+
+  drupal_set_title(t('Conclusions'));
+  
+  global $user;
+  // Get metadata for this node type
+  // (we use it for labeling title and body fields).
+  // We defined this in pi_conclusions_node_info().
+  $type = node_get_types('type', $node);
+
+  $inquiry_id = arg(3)|1;
+
+  $form['title'] = array(
+    '#type' => 'hidden',
+    '#title' => check_plain($type->title_label),
+    '#required' => FALSE,
+    '#default_value' => check_plain($type->title_label),
+    '#weight' => -5
+  );
+  $form['body_filter']['body'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Conclusions'),
+    '#required' => FALSE,
+    '#default_value' => $node->body,
+    '#resizable' => FALSE,
+    '#rows' => 5,
+    '#cols' => 40,
+    '#weight' => 5
+  );
+  $form['inquiry_id'] = array(
+    '#type' => 'hidden',
+    '#title' => 'inquiry_id',
+    '#required' => FALSE,
+    '#default_value' => $node->inquiry_id|$inquiry_id,
+    '#weight' => -10
+  );
+  
+  $prefix = "";
+  $suffix = "";
+  
+  $hypothesis = db_fetch_object(db_query("SELECT nid FROM node WHERE node.type = 'pi_hypothesis' AND status = '1' AND node.uid = '%d' ORDER BY vid DESC", $user->uid));
+
+  if ($hypothesis) {
+
+    $hypothesis_node = node_load($hypothesis->nid);
+    
+  	$prefix .= "<h3>Hypothesis</h3>";
+  	$prefix .= "<p>";
+    $prefix .= $hypothesis_node->hypothesis;
+    $prefix .= "</p>";
+            
+    $suffix .= "<br /><hr />";
+    $suffix .= "<h3>Key Questions</h3>";
+        
+    for ($i = 1; $i <=6; $i++) {
+  
+      if ($hypothesis_node->{'key_question_' . $i}) {
+      
+        $suffix .= "<h4>Key Question " . $i . "</h4>";
+      	$suffix .= "<p>";
+        $suffix .= $hypothesis_node->{'key_question_' . $i};
+        $suffix .= "</p>";
+               
+      };
+    };
+  };
+    
+  $form['#prefix'] = $prefix;
+  $form['#suffix'] = $suffix;
+  
+  unset($form['delete']);
+
+  return $form;
+}
+
+/**
+ * Implementation of pi_conclusions_validate().
+ */
+function pi_conclusions_validate($node) {
+  
+}
+
+/**
+ * Implementation of pi_conclusions_insert().
+ */
+function pi_conclusions_insert($node) {
+  db_query("INSERT INTO {pi_conclusions} (nid, vid, inquiry_id) VALUES (%d, %d, '%d')",
+    $node->nid, $node->vid, $node->inquiry_id|1);
+    $node->promote = 0;
+}
+
+/**
+ * Implementation of pi_conclusions_update().
+ */
+function pi_conclusions_update($node) {
+  if ($node->revision) {
+    pi_available_conclusions_insert($node);
+  }
+  else {
+    db_query("UPDATE {pi_conclusions} SET inquiry_id = '%d' WHERE vid = %d",
+      $node->inquiry_id|1, $node->vid);
+  }
+}
+
+/**
+ * Implementation of pi_conclusions_delete().
+ */
+function pi_conclusions_delete(&$node) {
+  db_query('DELETE FROM {pi_conclusions} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of pi_conclusions_load().
+ */
+function pi_conclusions_load($node) {
+  return db_fetch_object(db_query('SELECT inquiry_id FROM {pi_conclusions} WHERE vid = %d',
+    $node->vid));
+}
+
+/**
+ * Implementation of pi_conclusions_view().
+ */
+function pi_conclusions_view($node, $teaser = FALSE, $page = FALSE) {
+  if (!$teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+
+  if ($teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+
+  return $node;
+}
+
+
+
