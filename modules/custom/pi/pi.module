@@ -62,7 +62,7 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 	$query1 .= " AND pi_activity_node.activity_id = " . $activity_id;
 	$query1 .= " AND node.nid = pi_activity_node.nid";
 	$query1 .= " AND node.uid = " . $uid;
-	
+	$query1 .= " ORDER BY pan_id DESC";
 	$result = db_fetch_object(db_query($query1));
 	
 	if ($result->nid) {
@@ -346,7 +346,7 @@ function get_inquiry_details_of_node_path ($path) {
   $path_start = substr($path, 0, $split_pos);
   $path_end = substr($path, $split_pos);
   
-  $arguments = explode('/', $path_start);
+  $arguments = explode('/', $path_end);
   
   $result->inquiry_id = $arguments[3];
   $result->stage_id = $arguments[4];
@@ -447,19 +447,10 @@ function get_visible_status_of_activity ($inquiry_id, $activity_id, $uid) {
  * Returns visible_status from pi_activity_status (can be start, in_progress, view or unavailable).
  */ 
   
-  $query = "SELECT pi_activity_status.visible_status ";
-  $query .= "FROM pi_activity_status ";
-  $query .= "LEFT JOIN pi_activity_actor ";
-  $query .= "ON pi_activity_actor.inquiry_id = pi_activity_status.inquiry_id ";
-  $query .= "AND pi_activity_actor.activity_id = pi_activity_status.activity_id ";
-  $query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-  $query .= "WHERE pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
-  $query .= "AND pi_activity_status.activity_id = '" . $activity_id . "' ";
-  $query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
+  $activity_status = load_activity_status ($inquiry_id, $activity_id, $uid);
   
-  $result = db_result(db_query($query));
-
-	return $result ;
+  $result = $activity_status->visible_status;
+  return $result ;
 
 }
 
@@ -492,6 +483,10 @@ function set_visible_status_of_activity ($inquiry_id, $activity_id, $uid, $statu
  * This will set dependent on the audience in pi_activity.
  */
  
+ $activity_status = load_activity_status ($inquiry_id, $activity_id, $uid);
+ $activity_status->visible_status = $status;
+ save_activity_status($activity_status);
+ /*
   $query = "SELECT pi_activity_status.pas_id ";
   $query .= "FROM pi_activity_status ";
   $query .= "LEFT JOIN pi_activity_actor ";
@@ -508,7 +503,7 @@ function set_visible_status_of_activity ($inquiry_id, $activity_id, $uid, $statu
   $query .= "SET visible_status = '" . $status . "' ";
   $query .= "WHERE pas_id = '" . $pas_id . "'";
   
-  db_query($query);
+  db_query($query);*/
   
 }
 
@@ -550,7 +545,11 @@ function get_node_function_of_activity ($inquiry_id, $activity_id, $uid) {
 /**
  * Returns node_function from pi_activity_status (can be add, edit or view).
  */
-
+ 
+  $activity_status = load_activity_status ($inquiry_id, $activity_id, $uid);
+  $result = $activity_status->node_function;
+  return $result ;
+/*
   $query = "SELECT pi_activity_status.node_function ";
   $query .= "FROM pi_activity_status ";
   $query .= "LEFT JOIN pi_activity_actor ";
@@ -563,7 +562,7 @@ function get_node_function_of_activity ($inquiry_id, $activity_id, $uid) {
   
   $result = db_fetch_object(db_query($query));
 
-  return $result->node_function;
+  return $result->node_function;*/
 
 }
 
@@ -595,6 +594,11 @@ function set_node_function_of_activity ($inquiry_id, $activity_id, $uid, $functi
  * This will be set dependent on the audience in pi_activity.
  */
  
+ $activity_status = load_activity_status ($inquiry_id, $activity_id, $uid);
+ $activity_status->node_function = $function;
+ save_activity_status($activity_status);
+ 
+ /*
   $query = "SELECT pi_activity_status.pas_id ";
   $query .= "FROM pi_activity_status ";
   $query .= "LEFT JOIN pi_activity_actor ";
@@ -611,7 +615,7 @@ function set_node_function_of_activity ($inquiry_id, $activity_id, $uid, $functi
   $query .= "SET node_function = '" . $function . "' ";
   $query .= "WHERE pas_id = '" . $pas_id . "'";
   
-  db_query($query);
+  db_query($query);*/
   
 }
 
@@ -819,7 +823,7 @@ function load_activity_status ($inquiry_id, $activity_id = NULL, $uid = NULL) {
  * Returns array from pi_activity_status table objects.
  */
 
-  $query = "SELECT * FROM pi_activity_status ";
+  $query = "SELECT pi_activity_status.pas_id FROM pi_activity_status ";
 	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_status.gid ";
   $query .= "WHERE inquiry_id = '" . $inquiry_id . "' "; 
   if ($activity_id) {
@@ -828,12 +832,18 @@ function load_activity_status ($inquiry_id, $activity_id = NULL, $uid = NULL) {
   if ($uid) {
     $query .= "AND (pi_activity_status.uid = '" . $uid . "' OR og_uid.uid = " . $uid . ") ";
   };
-  $query .= "ORDER BY pi_activity_status.activity_id ASC"; 
+  $query .= "ORDER BY pi_activity_status.pas_id DESC"; 
   
   $items = db_fetch_object(db_query($query));
-
-	return $items;
-	
+  
+  if ($items->pas_id) {
+	$newquery = "SELECT * FROM pi_activity_status WHERE pas_id = " . $items->pas_id . ";";
+	$newitems = db_fetch_object(db_query($newquery));
+	return $newitems;
+ }
+ else {
+	return 0;
+	}
 }
 
 function save_activity_status ($activity_status) {
@@ -847,7 +857,6 @@ function save_activity_status ($activity_status) {
  * $activity_status_array ->node_function
  * $activity_status_array ->visible_status
  */
-
 	$set = "inquiry_id = '" . $activity_status->inquiry_id . "' ";
 	$set .= ", activity_id = '" . $activity_status->activity_id . "' ";
 	if ($activity_status->uid) {
@@ -964,13 +973,13 @@ function get_group_of_type ($uid, $group_type, $inquiry_id, $stage_id = NULL, $p
   $query .= "LEFT JOIN pi_inquiry_grouping ON pi_inquiry_grouping.grouping_id = pi_grouping_group.grouping_id ";
   $query .= "WHERE pi_group_type.type = '" . $group_type . "' ";
   $query .= "AND og_uid.uid =  '" . $uid . "' ";
-  $query .= "AND pi_inquiry_grouping.inquiry_id =  '" . $inquiry_id . "' ";
-  $query .= "AND pi_inquiry_grouping.stage_id =  '" . $stage_id . "' ";
-  $query .= "AND pi_inquiry_grouping.phase_id =  '" . $phase_id . "' ";
-  $query .= "AND pi_inquiry_grouping.activity_id =  '" . $activity_id . "' ";
+  $query .= "AND (pi_inquiry_grouping.inquiry_id =  '" . $inquiry_id . "' OR pi_inquiry_grouping.inquiry_id IS NULL) ";
+  $query .= "AND (pi_inquiry_grouping.stage_id =  '" . $stage_id . "' OR pi_inquiry_grouping.stage_id IS NULL) ";
+  $query .= "AND (pi_inquiry_grouping.phase_id =  '" . $phase_id . "' OR pi_inquiry_grouping.phase_id IS NULL) ";
+  $query .= "AND (pi_inquiry_grouping.activity_id =  '" . $activity_id . "' OR pi_inquiry_grouping.activity_id IS NULL) ";
 	
 	$result = db_result(db_query($query));
-	return $result->gid;
+	return $result;
 
 }
 
