@@ -28,21 +28,39 @@ function pi_install_inquiry_menu() {
       'access arguments' => array('access student import content'),
 	);
 
-	$items['install/begnning'] = array(
+	$items['install/installmodules'] = array(
 	//'path' => 'piauthoring',
-      'title' => t('Before Beginning Inquiry'),
-  	  'page callback' => 'pi_install_inquiry_beginning',
+      'title' => t('1. Install Modules'),
+  	  'page callback' => 'pi_install_inquiry_modules',
   	  'type' => MENU_NORMAL_ITEM,
 	  'weight' => 1,
       'access arguments' => array('access install inquiry content'),
 	);
 
-	$items['install/afterstart'] = array(
+	$items['install/copyinquiry'] = array(
 	//'path' => 'piauthoring',
-      'title' => t('After Start of Inquiry'),
-  	  'page callback' => 'pi_install_inquiry_after',
+      'title' => t('2. Copy Inquiry'),
+  	  'page callback' => 'pi_install_inquiry_copy',
   	  'type' => MENU_NORMAL_ITEM,
 	  'weight' => 2,
+      'access arguments' => array('access install inquiry content'),
+	);
+
+	$items['install/updateog'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('3. Create OG Groups'),
+  	  'page callback' => 'pi_install_inquiry_createog',
+  	  'type' => MENU_NORMAL_ITEM,
+	  'weight' => 3,
+      'access arguments' => array('access install inquiry content'),
+	);
+
+	$items['install/sync'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('4. Sync Inquiry'),
+  	  'page callback' => 'pi_install_inquiry_sync',
+  	  'type' => MENU_NORMAL_ITEM,
+	  'weight' => 4,
       'access arguments' => array('access install inquiry content'),
 	);
 
@@ -53,57 +71,127 @@ function pi_install_inquiry_view(){
 	//global variable
 	global $db_url;
 
-	$content = "<p><strong>Installing an Inquiry</strong>This allow you to install an";
-	$content .= "inquiry set up on one machine to another.  You have two options</p>";
-	$content .= "<p><strong>1.</strong> to install before the beginning of the inquiry</p>";
-	$content .= "<p><strong>2.</strong> to install after the inquiry has begun</p>";
-	$content .= "<p>These are two different proceedures but you only need to worry about";
-	$content .= "selecting the right link below</p>";
+	$content = "<p>This allow you to install an inquiry set up on one machine to another.</p>";
 
 	//information about the db servers
 	$content .= "<p><strong>Database Info:</strong></p>";
 	$content .= "<p><strong>This Machine</strong> - " . $db_url['default'] . "</p>";
 	$content .= "<p><strong>Server</strong> - " . $db_url['server'] . "</p>";
-
-	//module information that needs cheking by the user
-	$content .= "<p><strong>IMPORTANT!! BEFORE YOU START MAKE SURE THE LIST OF MODULES BELOW";
-	$content .= "IS THE SAME ON BOTH MACHINES!</p>";
-
-	//what modules are installed and active?
-	$query = "SELECT * FROM system WHERE type = 'module' AND status = 1";
-	$results = db_query($query);
-	//put results in a table
-	$content .= "<table>";
-	$content .= "<tr bgcolor='#eeeeee'><td><strong>Module Name</strong></td><td></td><td></td><td></td><td></td></tr>";
-	$count = 1;
-	while($module = db_fetch_object($results)){
-		if($count == 1){
-			$content .= "<tr>";
-		}
-		$content .= "<td>" . $module->name . "</td>";
-		if($count == 5){
-			$content .= "</tr>";
-			$count = 0;
-		}
-		$count = $count + 1;
-	}
-
-	$content .= "</table>";
 	return $content;
 }
 
 //------------------------------------------------------------------------------------------------------------------
-//--------------------------------------Before Start Inquiry Install------------------------------------------------
+//--------------------------------------1. Install Modules----------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------
+
+function pi_install_inquiry_modules(){
+	//module information that needs cheking by the user
+	$content = "<p>First we need to install the right modules.  Below is a list of modules that are not ";
+	$content .= "installed on the local machine but are on the server.  Check to make sure they are what ";
+	$content .= "you expect and uncheck any that you <strong>know</strong> you do not need.  Generally ";
+	$content .= "the modules listed below should all be installed on your local machine.</p>";
+	$content .= drupal_get_form('pi_install_inquiry_modules_form', $node);
+	return $content;
+}
+
+function pi_install_inquiry_modules_form($form_state){
+	global $db_url;
+	//what modules are installed and active on the server and not on the local machine?
+	$query = "SELECT * FROM system WHERE type = 'module' AND status = 1";
+
+	//modules on server?
+	db_set_active('server');
+	$server = db_query($query);
+	//put the names of the modules from the server results in an array
+	$server_modules = get_modules_as_array($server);
+
+	//modules on local machine?
+	db_set_active('default');
+	$local = db_query($query);
+	//put the names of the modules from the server results in an array
+	$local_modules = get_modules_as_array($local);
+
+	//compare
+	$difference = array_diff($server_modules,$local_modules);
+
+	$form['install'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Install Missing Modules'),
+		'#tree' => TRUE,
+	);
+
+	$form['install']['modules'] = array(
+		'#type' => 'checkboxes',
+		'#title' => t('Modules Installed on Server BUT NOT ON Local Machine'),
+		'#default_value' => $difference,
+		'#options' => $difference,
+	);
+
+	$form['install']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Install'),
+	);
+
+	return $form;
+}
+
+function pi_install_inquiry_modules_form_submit($form, &$form_state){
+	//array of modules to enable and install
+	//$modules = array_filter($form_state['install']['modules']);
+	$modules = array();
+	$report = "";
+	$array = $form_state['values']['install']['modules'];
+	$form_modules = array_filter($array);
+	foreach($array as $fm){
+		$modules[] = $fm;
+		$report .= $fm . "<br>";
+	}
+	install_modules($modules);
+	node_access_needs_rebuild();
+	drupal_set_message(t($report));
+}
+
+function install_modules($modules){
+	include_once './includes/install.inc';
+	/*code from http://www.nicklewis.org/node/959 */
+	$ret = array();
+	// You must rebuild the module cache for the system table to see the modules
+	module_rebuild_cache();
+	// enable modules first
+	//testing modules
+	//$modules = array('og', 'pi');
+	module_enable($modules);
+	// now run their install files
+	drupal_install_modules($modules);
+	// other magic functions that are only called when admin/build/modules form is submitted
+	menu_rebuild();
+	node_types_rebuild();
+	drupal_clear_css_cache();
+	// just a report for the install page -- otherwise this update will show up as "FAILED"
+	$ret[] = array('success' => true, 'query' => "enabled some module, and some other module");
+	return $ret;
+}
+
+function get_modules_as_array($object){
+	$array = array();
+	while($modules = db_fetch_object($object)){
+		$array[$modules->name] = $modules->name;
+	}
+	return $array;
+}
+
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------2. Copy Inquiry-------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------
 
 /*
  * In the Before Start Inquiry Install all we will be doing is taking the information in the pi_ tables that relate
  * to the architecture e.g. pi_stage, pi_activity, pi_stage_phase_activity from the server database and then save
  * them to the local database.  Easy!
- * Note Users and OG Groups need to copied over as well!
+ * Note Users and their roles and permissions are copied over as well!
  */
 
-function pi_install_inquiry_beginning(){
+function pi_install_inquiry_copy(){
 	//global variable
 	global $db_url;
 
@@ -116,12 +204,12 @@ function pi_install_inquiry_beginning(){
 	$content .= "<p><strong>Server</strong> - " . $db_url['server'] . "</p>";
 	//make sure you are not tring to sync the same machine with itself!
 	if($db_url['default'] != $db_url['server']){
-		$content .= drupal_get_form('pi_install_inquiry_beginning_form', $node);
+		$content .= drupal_get_form('pi_install_inquiry_copy_form', $node);
 	}
 	return $content;
 }
 
-function pi_install_inquiry_beginning_form($form_state){
+function pi_install_inquiry_copy_form($form_state){
 
 	$form['go'] = array(
 		'#type' => 'fieldset',
@@ -137,31 +225,8 @@ function pi_install_inquiry_beginning_form($form_state){
 	return $form;
 }
 
-function pi_install_inquiry_beginning_form_submit($form, &$form_state){
-	$messages = '';
-	//array of tables to install
-	$tables = array(0=>'pi_inquiry', 1=>'pi_inquiry_actor', 2=>'pi_inquiry_stage',
-	3=> 'pi_inquiry_phase', 4=>'pi_stage', 5=>'pi_stage_actor',
-	6=>'pi_phase', 7=>'pi_phase_actor', 8=>'pi_stage_phase',
-	9=>'pi_activity', 10=>'pi_activity_actor', 11=>'pi_stage_phase_activity',
-	12=>'pi_activity_status', 13=>'pi_grouping', 14=>'pi_grouping_group',
-	15=>'pi_inquiry_grouping', 16=>'pi_group_hierarchy', 17=>'pi_group_type',
-	18=>'role', 19=> 'permission', 20=>'users', 21=>'users_roles', 22=>'node_type');
-	//install the inquiry as below (pi_ tables)
-	$count = 0;
-	while($count < count($tables)){
-		$table = $tables[$count];
-		$messages .= copy_table($table);
-		$count = $count + 1;
-	}
-	/*
-	 * install groups (OG) - more complex than installing tables
-	 * you need to load and save nodes and update tables
-	 */
-	$messages .= copy_groups();
-	//just to make sure all node access is ok rebuild permissions
-	node_access_needs_rebuild();
-	//done
+function pi_install_inquiry_copy_form_submit($form, &$form_state){
+	$messages = copy_pi_tables();
 	drupal_set_message(t($messages));
 }
 
@@ -171,6 +236,30 @@ function pi_install_inquiry_beginning_form_submit($form, &$form_state){
  * copy tables from server to local machine
  * this is done by specifying the query to be exectued and the exists test functions
  */
+
+//NOTE ON copy_pi_tables()- WHEN WE PULL DOWN TABLES WE WILL END UP PULLING DOWN A LOT OF INFO NOT REVEVANT TO A USER
+//NEED TO MAYBE FILTER BASED ON USER ID. MAYBE NOT SUCH A PROBLEM FOR _author TABLES BUT MIGHT BE FOR pi_activity_status
+
+function copy_pi_tables(){
+	$messages = '';
+	//array of tables to install
+	$tables = array(0=>'pi_inquiry', 1=>'pi_inquiry_actor', 2=>'pi_inquiry_stage',
+	3=> 'pi_inquiry_phase', 4=>'pi_stage', 5=>'pi_stage_actor',
+	6=>'pi_phase', 7=>'pi_phase_actor', 8=>'pi_stage_phase',
+	9=>'pi_activity', 10=>'pi_activity_actor', 11=>'pi_stage_phase_activity',
+	12=>'pi_activity_status', 13=>'pi_grouping', 14=>'pi_grouping_group',
+	15=>'pi_inquiry_grouping', 16=>'pi_group_hierarchy', 17=>'pi_group_type',
+	18=>'role', 19=> 'permission', 20=>'users', 21=>'users_roles');
+	//install the inquiry as below (pi_ tables)
+	$count = 0;
+	while($count < count($tables)){
+		$table = $tables[$count];
+		$messages .= copy_table($table);
+		$count = $count + 1;
+	}
+	return $messages;
+}
+
 function copy_table($table){
 	$message = "Installing " . $table . "....<br>";
 	//get pi_ table from the server
@@ -273,9 +362,6 @@ function does_value_exist($table, $object){
 		return does_it_exist_multiple_ids($table, array(0=>'uid',1=>'rid'),
 		array(0=>$object->uid,1=>$object->rid));
 	}
-	else if($table == 'node_type'){
-		return does_it_exist($table, 'type', $object->type);
-	}
 }
 
 function does_it_exist($table, $id_name, $id_value){
@@ -363,9 +449,6 @@ function insert_into_db($table, $object){
 	}
 	else if($table == 'users_roles'){
 		return execute_users_roles_query($object);
-	}
-	else if($table == 'node_type'){
-		return execute_node_type_query($object);
 	}
 }
 
@@ -603,152 +686,128 @@ function execute_users_roles_query($object){
 	return "....inserted user role uid = " . $object->uid ." rid = " . $object->rid;
 }
 
-function execute_node_type_query($object){
-	$insert = "INSERT INTO node_type SET";
-	$insert .= " type = '" . $object->type . "'";
-	$insert .= ", name = '" . $object->name . "'";
-	$insert .= ", module = '" . $object->module . "'";
-	$insert .= ", description = '" . $object->description . "'";
-	$insert .= ", help = '" . $object->help . "'";
-	$insert .= ", has_title = '" . $object->has_title . "'";
-	$insert .= ", title_label = '" . $object->title_label . "'";
-	$insert .= ", has_body = '" . $object->has_body . "'";
-	$insert .= ", body_label = '" . $object->body_label . "'";
-	$insert .= ", min_word_count = '" . $object->min_word_count . "'";
-	$insert .= ", custom = '" . $object->custom . "'";
-	$insert .= ", modified = '" . $object->modified . "'";
-	$insert .= ", locked = '" . $object->locked . "'";
-	$insert .= ", orig_type = '" . $object->orig_type . "'";
-	db_query($insert);
-	return "....inserted node types " . $object->type;
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------3. Update OG Groups---------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------------
+
+function pi_install_inquiry_createog(){
+	$content = "<p>Now you will need to create our Organic Groups.  Below shows you the OG groups that are present on";
+	$content .= " the server.  Use these as a guide.  You do not need to use the same names but it will help as After";
+	$content .= "you have created the groups you will need to specify which of these new groups corresponds to the";
+	$content .= "group present on the server.</p>";
+	$content .= "<p>NB: This is needed as it is not possible as yet to properly copy over OG groups from the server to the";
+	$content .= " local machine with out it breaking the drupal installation.  This will be looked at later and hopefully";
+	$content .= " will be made part of step 2.</p>";
+	//show og groups on server
+	$content .= "<p><strong>OG Groups on Server</strong></p>";
+	$content .= get_og_on_server();
+	//local machine groups with a form to select the groups which are the same on the local and server
+	//to alter the pi_x_author tables i.e. updating the gid fields
+	$content .= "<p><strong>OG Groups You Have Created On This Machine</strong></p>";
+	$content .= get_og_on_local();
+	$content .= "<p><strong>use the form below to select which group on the server your group corresponds with</strong></p>";
+	$content .= drupal_get_form('update_author_tables_with_new_og_group_info_form', $node);
+	return $content;
 }
 
-//OG groups stuff
-//Remember to change the gid's in the pi_ tables to reflect the new nid's
-function copy_groups(){
-	$message = "Installing OG Groups....<br>";
-	//get the og group to get the nid from the server
+function get_og_on_server(){
 	db_set_active('server');
+	$content .= get_og_info();
+	db_set_active('default');
+	return $content;
+}
+
+function get_og_on_local(){
+	db_set_active('default');
+	$content .= get_og_info();
+	return $content;
+}
+
+function get_og_info(){
+	//query
 	$query = "SELECT * FROM og";
 	$result = db_query($query);
+	//layout results in a table
+	$content = "<table>";
+	$content .= "<tr bgcolor='#eeeeee'><td><strong>Organic Groups</strong></td><td></td></tr>";
+	$count = 1;
 	while($og = db_fetch_object($result)){
-		$message .= "....Group " . $og->og_description . "<br>";
-		//use the nid to get the node object
-		$node = node_load($og->nid);
-		$old_nid = $og->nid;
-		//unset the nid and vid of this node object
-		unset($node -> nid);
-		unset($node -> vid);
-		//save the node object to the local database
-		db_set_active('default');
-		node_save($node);
-		//get the new nid
-		$new_nid = db_result(db_query("SELECT max(nid) from node"));
-		$message .= "........saved node " . $old_nid . " as " . $new_nid. "<br>";
+		$content .= "<tr>";
+		$content .= "<td>" . $og->og_description . "</td>";
+		//get node_type and print that as extra info
+		$temp_node = node_load($og->nid);
+		$content .= "<td>" . $temp_node->type . "</td>";
+		$content .= "</tr>";
+	}
 
-		//save the og tables with the new nid
-		//og table
-		db_set_active('server');
-		$query2 = "SELECT * FROM og WHERE nid = '" . $old_nid . "'";
-		$result2 = db_query($query2);
-		while($object2 = db_fetch_object($result2)){
-			db_set_active('default');
-			//$message .= execute_og_query($new_nid, $object2);
-			execute_og_query($new_nid, $object2);
-			db_set_active('server');
-		}
-		$message .= "........og table done<br>";
+	$content .= "</table>";
+	return $content;
+}
 
-		//og_ancestry table
-		db_set_active('server');
-		$query3 = "SELECT * FROM og_ancestry WHERE nid = '" . $old_nid . "'";
-		$result3 = db_query($query3);
-		while($object3 = db_fetch_object($result3)){
-			db_set_active('default');
-			//$message .= execute_og_query($new_nid, $object3);
-			execute_og_query($new_nid, $object3);
-			db_set_active('server');
-		}
-		$message .= "........og_ancestry table done<br>";
+function update_author_tables_with_new_og_group_info_form($form_state){
+	$form['update'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Select the Corresponding LOCAL OG Group For Each of These SERVER OG Groups'),
+		'#tree' => TRUE,
+	);
 
-		//og_uid table
-		db_set_active('server');
-		$query4 = "SELECT * FROM og_uid WHERE nid = '" . $old_nid . "'";
-		$result4 = db_query($query4);
-		while($object4 = db_fetch_object($result4)){
-			db_set_active('default');
-			//$messgae .= execute_og_uid_query($new_nid, $object4);
-			execute_og_uid_query($new_nid, $object4);
-			db_set_active('server');
-		}
-		$message .= "........og_uid table done<br>";
-		
-		//update all pi_ tables where gid = old_nid to the new_nid
-		db_set_active('default');
-		$message .= update_pi_tables_with_gid_values($old_nid, $new_nid);
-		db_set_active('server');
-		
-		//done
-		$message .= "....done<br>";
+	$query = "SELECT * FROM og";
+	//create an array of the local og groups as options for the drop down boxes
+	$local_results = db_query($query);
+	$local_og = array();
+	while($object = db_fetch_object($local_results)){
+		$local_og[$object->nid] = $object->nid . " : " . $object->og_description;
+	}
+	//for each of the server OG groups add a drop down box with local OG groups to select
+	db_set_active('server');
+	$server_results = db_query($query);
+	while($server_og = db_fetch_object($server_results)){
+		$form['update'][$server_og->nid]['with'] = array(
+			'#type' => 'select',
+			'#title' => t("Server OG Group - " . $server_og->nid . " : " . $server_og->og_description),
+			'#options' => $local_og,
+		);
 	}
 	db_set_active('default');
-	return $message;
+
+	$form['update']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Update'),
+	);
+
+	return $form;
 }
 
-//helper functions for copy_og()
-function execute_og_query($new_nid, $object){
-	$insert = "INSERT INTO og SET";
-	$insert .= " nid = '" . $new_nid . "'";
-	$insert .= ", og_selective = '" . $object->og_selective . "'";
-	$insert .= ", og_description = '" . $object->og_description . "'";
-	$insert .= ", og_theme = '" . $object->og_theme . "'";
-	$insert .= ", og_register = '" . $object->og_register . "'";
-	$insert .= ", og_directory = '" . $object->og_directory . "'";
-	$insert .= ", og_language = '" . $object->og_language . "'";
-	$insert .= ", og_private = '" . $object->og_private . "'";
-	db_query($insert);
-	$message = "........inserted OG " . $object->og_description . "<br>";
-	return $message;
-}
-
-function execute_og_ancestry_query($new_nid, $object){
-	$insert = "INSERT INTO og_ancestry SET";
-	$insert .= " nid = '" . $new_nid . "'";
-	$insert .= ", group_nid = '" . $object->group_nid . "'";
-	$insert .= ", is_public = '" . $object->is_public . "'";
-	db_query($insert);
-	$message = "........inserted OG Ancestry (" . $new_nid . ")<br>";
-	return $message;
-}
-
-function execute_og_uid_query($new_nid, $object){
-	$insert = "INSERT INTO og_uid SET";
-	$insert .= " nid = '" . $new_nid . "'";
-	$insert .= ", og_role = '" . $object->og_role . "'";
-	$insert .= ", is_active = '" . $object->is_active . "'";
-	$insert .= ", is_admin = '" . $object->is_admin . "'";
-	$insert .= ", uid = '" . $object->uid . "'";
-	$insert .= ", created = '" . $object->created . "'";
-	$insert .= ", changed = '" . $object->changed . "'";
-	db_query($insert);
-	$message .= "........inserted OG UID " . $object->uid . "<br>";
+function update_author_tables_with_new_og_group_info_form_submit($form, &$form_state){
+	$query = "SELECT * FROM og";
+	db_set_active('server');
+	$result = db_query($query);
+	while($object = db_fetch_object($result)){
+		db_set_active('default');
+		$value = $form_state['values']['update'][$object->nid]['with'];
+		update_pi_tables_with_gid_values($object->nid,$value);
+		db_set_active('server');
+	}
+	db_set_active('default');
+	$text = "Updated OG Groups on Local Machine...";
+	drupal_set_message(t($text));
 }
 
 function update_pi_tables_with_gid_values($old_nid, $new_nid){
 	$message = "Updating pi_ tables to reflect the new OG nodes....<br>";
 	$to_update = array(0=>'pi_inquiry_actor', 1=>'pi_stage_actor', 2=>'pi_phase_actor',
-						3=>'pi_activity_actor', 4=>'pi_group_type', 5=>'pi_activity_status',
-						6=>'pi_grouping_group', 7=>'pi_group_hierarchy');
+	3=>'pi_activity_actor', 4=>'pi_group_type', 5=>'pi_activity_status',
+	6=>'pi_grouping_group', 7=>'pi_group_hierarchy');
 	$count = 0;
 	while($count < count($to_update)){
 		$table = $to_update[$count];
 		$messages .= update_pi_table($table,$old_nid,$new_nid);
 		$count = $count + 1;
 	}
-	
+
 	//update the parent_gid of pi_group_hierarchy
-	$message .= update_pi_grouping_hierarchy_parent_gid($old_nid, $new_nid);
-	
+	$message .= update_pi_group_hierarchy_parent_gid($old_nid, $new_nid);
+
 	//done
 	return $message;
 }
@@ -762,20 +821,302 @@ function update_pi_table($table, $old_nid, $new_nid){
 	return $message;
 }
 
-function update_pi_grouping_hierarchy_parent_gid($old_nid, $new_nid){
-	$update = "UPDATE pi_grouping_hierarchy SET";
+function update_pi_group_hierarchy_parent_gid($old_nid, $new_nid){
+	$update = "UPDATE pi_group_hierarchy SET";
 	$update .= " parent_gid = '" . $new_nid . "'";
 	$update .= " WHERE parent_gid = '" . $old_nid . "'";
 	db_query($update);
-	$message = "........updated pi_grouping_hierarchy parent_gid, replacing gid (";
+	$message = "........updated pi_group_hierarchy parent_gid, replacing gid (";
 	$message .= $old_nid . ") with new_nid (" . $new_nid . ")";
 	return $message;
 }
 
+/**
+ * OLD COPY GROUPS CODE - FOR REFERENCE LATER
+ * ....
+ //OG groups stuff
+ //Remember to change the gid's in the pi_ tables to reflect the new nid's
+ function copy_groups(){
+	 $message = "Installing OG Groups....<br>";
+	 //get the og group to get the nid from the server
+	 db_set_active('server');
+	 $query = "SELECT * FROM og";
+	 $result = db_query($query);
+	 while($og = db_fetch_object($result)){
+		 $message .= "....Group " . $og->og_description . "<br>";
+		 //use the nid to get the node object
+		 $node = node_load($og->nid);
+		 $old_nid = $og->nid;
+		 //unset the nid and vid of this node object
+		 unset($node -> nid);
+		 unset($node -> vid);
+		 //save the node object to the local database
+		 db_set_active('default');
+		 node_save($node);
+		 //get the new nid
+		 $new_nid = db_result(db_query("SELECT max(nid) from node"));
+		 $message .= "........saved node " . $old_nid . " as " . $new_nid. "<br>";
+		
+		 //og table
+		 db_set_active('server');
+		 $query2 = "SELECT * FROM og WHERE nid = '" . $old_nid . "'";
+		 $result2 = db_query($query2);
+		 while($object2 = db_fetch_object($result2)){
+			 db_set_active('default');
+			 //$message .= execute_og_query($new_nid, $object2);
+			 execute_og_query($new_nid, $object2);
+			 db_set_active('server');
+		}
+		 $message .= "........og table done<br>";
+		
+		 //og_ancestry table
+		 db_set_active('server');
+		 $query3 = "SELECT * FROM og_ancestry WHERE nid = '" . $old_nid . "'";
+		 $result3 = db_query($query3);
+		 while($object3 = db_fetch_object($result3)){
+		 db_set_active('default');
+		 //$message .= execute_og_query($new_nid, $object3);
+		 execute_og_query($new_nid, $object3);
+		 db_set_active('server');
+		 }
+		 $message .= "........og_ancestry table done<br>";
+		
+		 //og_uid table
+		 db_set_active('server');
+		 $query4 = "SELECT * FROM og_uid WHERE nid = '" . $old_nid . "'";
+		 $result4 = db_query($query4);
+		 while($object4 = db_fetch_object($result4)){
+			 db_set_active('default');
+			 //$messgae .= execute_og_uid_query($new_nid, $object4);
+			 execute_og_uid_query($new_nid, $object4);
+			 db_set_active('server');
+		 }
+		 $message .= "........og_uid table done<br>";
+		
+		 //update all pi_ tables where gid = old_nid to the new_nid
+		 db_set_active('default');
+		 //save the og tables with the new nid
+		 $message .= update_pi_tables_with_gid_values($old_nid, $new_nid);
+		 db_set_active('server');
+		
+		 //done
+		 $message .= "....done<br>";
+	 }
+	 db_set_active('default');
+	 return $message;
+ }
+
+ //helper functions for copy_og()
+	 function execute_og_query($new_nid, $object){
+	 $insert = "INSERT INTO og SET";
+	 $insert .= " nid = '" . $new_nid . "'";
+	 $insert .= ", og_selective = '" . $object->og_selective . "'";
+	 $insert .= ", og_description = '" . $object->og_description . "'";
+	 $insert .= ", og_theme = '" . $object->og_theme . "'";
+	 $insert .= ", og_register = '" . $object->og_register . "'";
+	 $insert .= ", og_directory = '" . $object->og_directory . "'";
+	 $insert .= ", og_language = '" . $object->og_language . "'";
+	 $insert .= ", og_private = '" . $object->og_private . "'";
+	 db_query($insert);
+	 $message = "........inserted OG " . $object->og_description . "<br>";
+	 return $message;
+ }
+
+ function execute_og_ancestry_query($new_nid, $object){
+	 $insert = "INSERT INTO og_ancestry SET";
+	 $insert .= " nid = '" . $new_nid . "'";
+	 $insert .= ", group_nid = '" . $object->group_nid . "'";
+	 $insert .= ", is_public = '" . $object->is_public . "'";
+	 db_query($insert);
+	 $message = "........inserted OG Ancestry (" . $new_nid . ")<br>";
+	 return $message;
+ }
+
+ function execute_og_uid_query($new_nid, $object){
+	 $insert = "INSERT INTO og_uid SET";
+	 $insert .= " nid = '" . $new_nid . "'";
+	 $insert .= ", og_role = '" . $object->og_role . "'";
+	 $insert .= ", is_active = '" . $object->is_active . "'";
+	 $insert .= ", is_admin = '" . $object->is_admin . "'";
+	 $insert .= ", uid = '" . $object->uid . "'";
+	 $insert .= ", created = '" . $object->created . "'";
+	 $insert .= ", changed = '" . $object->changed . "'";
+	 db_query($insert);
+	 $message .= "........inserted OG UID " . $object->uid . "<br>";
+ }
+ */
+
 //------------------------------------------------------------------------------------------------------------------
-//--------------------------------------After Start Inquiry Install-------------------------------------------------
+//--------------------------------------4. Sync Install-------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------
 
-function pi_install_inquiry_after(){
-	return "After";
+function pi_install_inquiry_sync(){
+	//the install is a sync from the server onto the local
+	return "Sync";
+}
+
+function pi_install_inquiry_sync_form($form_state){
+
+	$form['go'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Click To Sync'),
+		'#tree' => TRUE,
+	);
+
+	$form['go']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Sync'),
+	);
+
+	return $form;
+}
+
+function pi_install_inquiry_sync_form_submit($form, &$form_state){
+	$messages = copy_pi_tables();
+	drupal_set_message(t($messages));
+}
+
+function sync_from_server_to_local($uid){
+	$text = "Syncing from server to local machine...<br>";
+	//make sure the basic pi_tables and user info is up to date and anything new is added to pi_ and users
+	//update the pi_activity and pi_activity_status tables to make sure that
+	//nothing has been changes e.g. audience of activity or the visible_status
+	copy_pi_tables();
+	//update_pi_tables();
+	$text .= "....Updated pi_ and user tables on Local Machine...<br>";
+	
+	/**sync the activities (i.e. nodes) on the server with the local machine
+	 * 
+	 * for each pi_activity_node -> load node
+	 * 	1. check to see if the node loaded from the server is 'older' than the equivelant on the local machine
+	 *  
+	 *  2. if it is newer then sync the node
+	 * 
+	 * 	if the uid of node == $uid -> save
+	 *  else find the pi_activity record and what is the audience of the activity
+	 *    if individual -> dont save
+	 *    if class or multiclass -> save
+	 *    if group
+	 *    does $uid belong to the same group as node->uid?
+	 *      if yes -> save
+	 *      else -> dont save
+	 * 
+	 ***NB not sure but I dont think this works with groupings!! This might not be a problem though?***
+	**/
+	$query = "SELECT * FROM pi_activity_node";
+	db_set_active('server');
+	$result = db_query($query);
+	while($object = db_fetch_object($result)){
+		//age
+		
+		//sync node
+		$node = node_load($object->nid);
+		//is this user the same as the owner of the node?
+		if($node->uid == $uid){
+			//save node
+			db_set_active('default');
+			$new_nid = save_node($node);
+			//update local machine pi_activity_node table
+			$text .= update_pi_activity_node_table($object, $new_nid);
+		}
+		else{
+			//if not then look at the sudience of the activity
+			db_set_active('server');
+			$audience = get_activity_audience($object->activity_id);
+			//if it is a class or multiclass then save the node
+			if($audience == 'class' || $audience == 'multiclass'){
+				//save node
+				db_set_active('default');
+				$new_nid = save_node($node);
+				//update local machine pi_activity_node table
+				$text .= update_pi_activity_node_table($object, $new_nid);
+			}
+			else if($audience == 'group'){
+				//is the user a member of the group for that activity?
+				$group = get_group_of_activity_from_server($activity_id);
+				foreach($group as $g){
+					db_set_active('server');
+					if(check_member_of_group ($g, $uid)){
+						//the user is a member of the group for the activity
+						db_set_active('default');
+						$new_nid = save_node($node);
+						//update local machine pi_activity_node table
+						$text .= update_pi_activity_node_table($object, $new_nid);
+					}
+				}
+			}
+			else{
+				$text .= "...Cant update " . $object->activity_id . ", " . $object->name . " unknown audience?";
+			}
+		}
+		//set active bd connection back to server
+		db_set_active('server');
+	}
+	db_set_active('default');
+	$text .= "....Done! updated pi_activity_node on Local Machine...<br>";
+	
+	//update the pi_current_stage table
+	//!!!NB - same error as pi_activity could occur here as if another user logs in there will be no
+	//record of what state the are on.
+	$text .= update_pi_current_stage_from_server($uid);
+	//done
+	return $text;
+}
+
+function sync_from_local_to_server(){
+	
+}
+
+function save_node($node){
+	//unset the nid and vid of this node object
+	unset($node -> nid);
+	unset($node -> vid);
+	//save the node object
+	node_save($node);
+	//return the new nid
+	return db_result(db_query("SELECT max(nid) from node"));
+}
+
+function get_activity_audience($activity_id){
+	$query = "SELECT * FROM pi_activity WHERE activity_id = '" . $activity_id . "'";
+	$result = db_fetch_object(db_query($query));
+	return $result->audience;
+}
+
+function get_group_of_activity_from_server($activity_id){
+	//get inquiry_id on local machine -> assumption is that the toolkit is running one and only one inquiry!!
+	db_set_active('default');
+	$query = "SELECT * FROM pi_inquiry";
+	$inquiry = db_fetch_object(db_query($query));
+	db_set_active('server');
+	$query2 = "SELECT * FROM pi_activity_status WHERE";
+	$query2 .= " activity_id = '" . $activity_id . "'";
+	$query2 .= " AND inquiry_id = '" . $inquiry->inquiry_id . "'";
+	$result2 = db_query($query2);
+	$array = array();
+	while($object = db_fetch_object($result2)){
+		$array[] = $object->gid;
+	}
+	db_set_active('default');
+	return $array;
+}
+
+function update_pi_activity_node_table($object, $new_nid){
+	$query = "UPDATE pi_activity_node SET nid = '" . $new_nid . " WHERE pan_id = '" . $object->pan_id . "'";
+	db_query($query);
+	return "...Updated pi_activity_node table with new nid: " . $new_nid;
+}
+
+function update_pi_current_stage_from_server($uid){
+	//get inquiry_id on local machine -> assumption is that the toolkit is running one and only one inquiry!!
+	db_set_active('default');
+	$query = "SELECT * FROM pi_inquiry";
+	$inquiry = db_fetch_object(db_query($query));
+	db_set_active('server');
+	$current_stage = get_current_stage_of_inquiry_and_user($inquiry->inquiry_id,$uid);
+	db_set_active('default');
+	$update = "UPDATE pi_current_stage SET stage_id = '". $current_stage->stage_id;
+	$update .= " WHERE pcs_id = '" . $current_stage->pcs_id . "'";
+	db_query($update);
+	return "....Updated pi_current_stage table on Local Machine...<br>";
 }
