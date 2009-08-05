@@ -1,0 +1,467 @@
+<?php
+// $Id: quiz.install,v 1.22.2.13 2009/05/28 21:04:06 sivaji Exp $
+
+/**
+ * @file
+ * Quiz install schema for installing the quiz module
+ *
+ */
+
+/**
+ * Implementation of hook_update_N().
+ * Adding a new field to save timer status for a timed quiz.
+ */
+function quiz_update_6306() {
+  $result = array();
+  db_add_field($result, 'quiz_node_results', 'time_left', array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0));
+  return $result;
+}
+
+
+/**
+ * Implementation of hook_update_N().
+ *  Adding new field to integrate quiz node and userpoints modules
+ */
+function quiz_update_6305() {
+  $result = array();
+  db_add_field($result, 'quiz_node_properties', 'has_userpoints', array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0));
+  return $result;
+}
+
+/**
+ * Implementation of hook_update_N().
+ *
+ */
+function quiz_update_6304() {
+  $result = array();
+  db_add_field($result, 'quiz_node_relationship', 'weight', array('type' => 'int', 'not null' => TRUE, 'default' => 0));
+
+  return $result;
+}
+
+/**
+ * Implementation of hook_update_N().
+ * Add new field for invalidating entire quizzes. Use it on those mean cheaters.
+ */
+function quiz_update_6303() {
+  $result = array();
+
+  // Add a field that allows an admin to mark a quiz as invalid.
+  db_add_field($result, 'quiz_node_results', 'is_invalid', array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0));
+
+  return $result;
+}
+
+/**
+ * Implementation of hook_update_N().
+ * Add and rearrange indexes across several of the tables.
+ */
+function quiz_update_6302() {
+  $result = array();
+  db_add_index($result, 'quiz_node_result_options', 'quiz_id', array('vid, nid'));
+  db_add_index($result, 'quiz_node_properties', 'quiz_id', array('vid, nid'));
+  db_add_index($result, 'quiz_node_results', 'user_results', array('uid', 'vid', 'nid'));
+
+  return $result;
+}
+
+/**
+ * Implementation of hook_update_N().
+ * Add is_skipped column to quiz answer field. This allows questions to be skipped.
+ */
+function quiz_update_6301() {
+  $result = array();
+
+  // Do this:
+  //'is_skipped' => array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+  db_add_field($result, 'quiz_node_results_answers', 'is_skipped', array('type' => 'int', 'size' => 'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0));
+  return $result;
+}
+
+/**
+ * Implementation of hook_update_N().
+ * Add aid to quiz_node_properties table.
+ */
+function quiz_update_6300() {
+  $result = array();
+  db_add_field($result, 'quiz_node_properties', 'aid', array('type' => 'varchar', 'length' => 255, 'not null' => TRUE));
+  return $result;
+}
+
+/**
+ * Implementation of hook_install()
+ */
+function quiz_install() {
+  // Create Tables
+  drupal_install_schema('quiz');
+  // Default the "Show Author and Date" for quiz nodes to OFF.
+  $temp_array = variable_get('theme_settings', array());
+  $temp_array['toggle_node_info_quiz'] = 0;
+  variable_set('theme_settings', $temp_array);
+}
+
+/**
+* Implementation of hook_schema().
+*/
+function quiz_schema() {
+  $schema = array();
+  /**
+   * Connect all the quiz specific properties to the correct version of a quiz.
+   */
+  // Create the quiz node properties table
+  $schema['quiz_node_properties'] = array(
+    'fields' => array(
+      'property_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+    ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'aid' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'number_of_random_questions' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'pass_rate' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'summary_pass' => array(
+        'type' => 'text',
+      ),
+      'summary_default' => array(
+        'type' => 'text',
+      ),
+      'shuffle' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'backwards_navigation' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'feedback_time' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'quiz_open' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'quiz_close' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'takes' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'time_limit' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'quiz_always' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'tid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'has_userpoints' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+    ),
+    'primary key' => array('property_id'),
+    // 'unique keys' => array('vid'),
+    'indexes' => array('quiz_id' => array('vid', 'nid')),
+  );
+
+  /*
+   * Both a quiz and a quiz question are nodes with versions.  A quiz is a parent node of a quiz question,
+   * making the quiz question the child.
+   *
+   * The quiz_node_relationship table stores this relationship in a way that allows a quiz question to be
+   * the child of multiple quizzes without losing version history.
+   *
+   * Future functionality will allow a quiz question to be a parent of another quiz question with the same
+   * data model.  This will make adaptive quiz functionality possible without redesign.
+   */
+  // Create the quiz node relationship table
+  $schema['quiz_node_relationship'] = array(
+    'fields' => array(
+      'parent_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+    ),
+      'parent_vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'child_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'child_vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'question_status' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'weight' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0
+      ),
+    ),
+    'primary key' => array('parent_nid', 'parent_vid', 'child_nid', 'child_vid'),
+  );
+
+  /*
+   * This connects all the quiz question specific properties to the correct version of a quiz question.
+   */
+  // Create the quiz node question properties table
+  // XXX: This should be considered deprecated, as it is highly specific to multichoice.
+  $schema['quiz_node_question_properties'] = array(
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'number_of_answers' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      //'multianswer' => array('type' => 'int', 'size' =>'tiny', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+    ),
+  );
+
+  /**
+   * Quiz specific options concerning  availability and access to scores.
+   */
+  // Create the quiz node results table
+  $schema['quiz_node_results'] = array(
+    'fields' => array(
+      'result_id' => array(
+        'type' => 'serial',
+        'size' => 'normal',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+    ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'time_start' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+      'time_end' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+      'released' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+      'score' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'is_invalid' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+    ),
+    'primary key' => array('result_id'),
+    'indexes' => array(
+      'user_results' => array('uid', 'vid', 'nid'),
+    ),
+  );
+
+  /**
+   * Information about a particular question in a result
+   */
+  $schema['quiz_node_results_answers'] = array(
+    'fields' => array(
+      'result_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+    ),
+      'question_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'question_vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'is_correct' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'is_skipped' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'points_awarded' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'answer_timestamp' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('result_id', 'question_nid', 'question_vid')
+  );
+
+  /**
+   * Allows custom feedback based on the results of a user completing a quiz.
+   */
+  // Create the quiz node result options table
+  $schema['quiz_node_result_options'] = array(
+    'fields' => array(
+      'option_id' => array(
+        'type' => 'serial',
+        'size' => 'normal',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+    ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'option_name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'option_summary' => array(
+        'type' => 'text',
+      ),
+      'option_start' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+      'option_end' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('option_id'),
+    'indexes' => array(
+      'quiz_id' => array('vid, nid'),
+    )
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall()
+ */
+function quiz_uninstall() {
+  drupal_uninstall_schema('quiz');
+  variable_del('quiz_name');
+  variable_del('quiz_default_close');
+  variable_del('quiz_use_passfail');
+  variable_del('quiz_default_pass_rate');
+}

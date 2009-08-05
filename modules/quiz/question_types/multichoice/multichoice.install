@@ -1,0 +1,143 @@
+<?php
+// $Id: multichoice.install,v 1.1.2.2 2009/05/21 19:02:13 sivaji Exp $
+
+/**
+ * @file
+ * Multichoice Install (a quiz question type)
+ */
+
+
+/**
+ * Implementation of hook_update_N().
+ * Change the question field to a text field to allow long questions.
+ */
+function multichoice_update_6300() {
+  $ret = array();
+  $spec = array('type' => 'text');
+  db_change_field($ret, 'quiz_multichoice_answers', 'answer', 'answer', $spec);
+  return $ret;
+}
+
+
+/**
+ * Implementation of hook_install()
+ */
+function multichoice_install() {
+  drupal_install_schema('multichoice');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function multichoice_schema() {
+  /**
+   * Stores correct answers for multichoice quiz.
+   */
+  // Create the quiz node user answers multichoice table.
+  $schema['quiz_multichoice_user_answers'] = array(
+    'fields' => array(
+      'question_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'question_vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'result_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'answer_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array(
+      'result_id', 'question_nid', 'question_vid', 'answer_id',
+    ),
+  );
+
+  /**
+   * Stores user answers for multichoice quiz.
+   */
+  // Create the quiz node answers multichoice table.
+  $schema['quiz_multichoice_answers'] = array(
+    'fields' => array(
+      'answer_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      //'answer' => array( 'type' => 'varchar', 'length' => 255, 'not null' => TRUE),
+      'answer' => array(
+        'type' => 'text'
+      ),
+      'feedback' => array(
+        'type' => 'text',
+      ),
+      'result_option' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+     'is_correct' => array(
+        'type' => 'int',
+        'size' => 'tiny',
+        'unsigned' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array(
+      'answer_id',
+    ),
+  );
+
+  // Default the "Show Author and Date" for this question type to OFF.
+  $temp_array = variable_get('theme_settings', '' /*$default*/);
+  $temp_array['toggle_node_info_multichoice'] = 0;
+  variable_set('theme_settings', $temp_array);
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_uninstall()
+ */
+function multichoice_uninstall() {
+  drupal_uninstall_schema('multichoice');
+
+  // Delete from nodes and node_revisions.
+  /*
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      db_query('DELETE FROM {node}, {node_revisions}, {quiz_node_question_properties} USING {node} LEFT JOIN {node_revisions} USING (nid) LEFT JOIN {quiz_node_question_properties} USING (nid) WHERE type IN ("multichoice")');
+      break;
+    case 'pgsql':
+      db_query("DELETE FROM {quiz_node_question_properties} WHERE nid IN (SELECT nid FROM {node} WHERE type IN ('multichoice'))");
+      db_query("DELETE FROM {node_revisions} WHERE nid IN (SELECT nid FROM {node} WHERE type IN ('multichoice'))");
+      db_query("DELETE FROM {node} WHERE type IN ('multichoice')");
+      break;
+  }
+  */
+  // Truncate the cache so users don't run into any unexpected errors.
+  cache_clear_all('variables', 'cache');
+
+  // Inform the user that uninstall was sucessful.
+  drupal_set_message(t("The Multichoice module has been uninstalled. Multichoice nodes may still exist, but they will not function properly."));
+}

@@ -1,0 +1,105 @@
+<?php
+// $Id: long_answer.install,v 1.1.2.1 2009/05/08 19:52:27 mbutcher Exp $
+
+/**
+ * Long answer questions.
+ * @file
+ */
+ 
+/**
+ * Implementation of hook_install().
+ */
+function long_answer_install() {
+  drupal_install_schema('long_answer');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function long_answer_uninstall() {
+  
+  // Delete tables
+  drupal_uninstall_schema('long_answer');
+  
+  // Delete data from other tables
+  
+  // Clear the cache.
+  cache_clear_all('variables', 'cache');
+  drupal_set_message(t('The Long Answer module has been uninstalled and related data has been deleted.'));
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function long_answer_schema() {
+  // Properties for a question nodes go in here:
+  $schema['quiz_long_answer_node_properties'] = array(
+    'fields' => array(
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+    ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'maximum_score' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+    ),
+    'primary key' => array('nid', 'vid'),
+  );
+  
+  // User answers go in here.
+  $schema['quiz_long_answer_user_answers'] = array(
+    'fields' => array(
+      'answer_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+    ),
+      'question_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'question_vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'result_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'score' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'is_evaluated' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'default' => 0,
+        'not null' => TRUE,
+      ),
+      'answer' => array(
+        'type' => 'text'
+      ),
+    ),
+    'primary key' => array('answer_id'),
+    'unique keys' => array(
+      'ids' => array('result_id', 'question_nid', 'question_vid'),
+    ),
+  );
+  
+  return $schema;
+}

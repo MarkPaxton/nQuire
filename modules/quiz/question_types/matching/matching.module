@@ -1,0 +1,115 @@
+<?php
+// $Id: matching.module,v 1.1.2.5 2009/05/25 15:11:26 sivaji Exp $
+
+/**
+ * @file
+ * Matching question type for quiz module
+ *
+ * Allows the creation of matching questions, which associate one term
+ * with another
+ */
+
+
+/**
+ * Implementation of hook_node().
+ */
+/*
+function matching_node_info() {
+  return array('matching' => array('name' => t('matching'), 'base' => 'matching'));
+}*/
+
+/**
+ * Implementation of hook_help().
+ */
+function matching_help($path, $args) {
+  switch ($path) {
+    case 'admin/modules#description':
+      return t('Matching question type for quiz module.');
+    case 'node/add#matching':
+    case 'admin/help#matching':
+      return t('A question type for the quiz module: allows you to create matching type questions, which connect terms with one another.');
+    default:
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function matching_menu() {
+  $items['admin/quiz/matching'] = array(
+    'title' => t('Matching configuration'),
+    'description' => t('Configure Matching questions for users.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('matching_admin_settings_form'),
+    'access arguments' => array(QUIZ_PERM_ADMIN_CONFIG),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_quiz_question_info().
+ */
+function matching_quiz_question_info() {
+  return array(
+    'matching' => array(
+      'name' => 'Matching',
+      'description' => 'Matching question type for quiz module. A question type for the quiz module: allows you to create matching type questions, which connect terms with one another.',
+      'question provider' => 'MatchingQuestion',
+      'response provider' => 'MatchingResponse',
+      'module' => 'quiz_question', // All wrapper functions are in that module.
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_autoload_info().
+ */
+function matching_autoload_info() {
+  return array(
+    'MatchingQuestion' => array('file' => 'matching.classes.inc'),
+    'MatchingResponse' => array('file' => 'matching.classes.inc'),
+  );
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function matching_theme() {
+  return array(
+    'matching_question' => array(
+      //'arguments' => array('question' => NULL, 'show_points' => NULL, 'show_feedback' => NULL),
+      'file' => 'matching.theme.inc',
+    ),
+    /*'long_answer_feedback' => array(
+      'arguments' => array('quiz' => NULL, 'report' => NULL),
+      'file' => 'long_answer.theme.inc',
+    ),
+    'long_answer_view_unscored' => array(
+      'arguments' => array('unscored' => array()),
+      'file' => 'long_answer.admin.inc',
+    ),*/
+  );
+}
+/*
+// Temporary holding place for list_questions hook
+function matching_list_questions() {
+  return array();
+}
+*/
+
+/**
+ * Admin settings form.
+ */
+
+function matching_admin_settings_form() {
+  $form['quiz_matching_form_size'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default Number of Answers'),
+    '#default_value' => variable_get('quiz_matching_form_size', 5),
+    '#description' => t('The default number of answers to display when creating a question. CHOOSING A LESSER VALUE WILL BREAK ALREADY CREATED QUESTIONS.'),
+    '#required' => TRUE,
+  );
+  return system_settings_form($form);
+}

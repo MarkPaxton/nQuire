@@ -1,0 +1,104 @@
+<?php
+// $Id: quiz_question.install,v 1.1.2.2 2009/05/21 19:02:13 sivaji Exp $
+
+/**
+ * The installer file for quiz_question.
+ * @file
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function quiz_question_install() {
+  drupal_install_schema('quiz_question');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function quiz_question_uninstall() {
+  drupal_uninstall_schema('quiz_question');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function quiz_question_schema() {
+
+  //////////////////////
+  // TRUE/FALSE tables.
+  //////////////////////
+
+  // Extensions to nodes for T/F
+  $schema['quiz_truefalse_node'] = array(
+    'fields' => array(
+      // Nid/vid of the question
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      // The actual answer the user gave. True or false.
+      'correct_answer' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'default' => 0,
+      ),
+      'feedback' => array(
+        'type' => 'text',
+      ),
+    ),
+    'primary key' => array(
+      'vid', 'nid'
+    ),
+  );
+  // Place to store user answers for T/F questions
+  $schema['quiz_truefalse_user_answers'] = array(
+    'fields' => array(
+      // Nid/vid of the question
+      'question_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'question_vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      // User's result set
+      'result_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      // The actual answer the user gave. True or false.
+      'answer' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'default' => 0,
+      ),
+      'score' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array(
+      'result_id', 'question_nid', 'question_vid',
+    ),
+  );
+
+  return $schema;
+}
+
+
+

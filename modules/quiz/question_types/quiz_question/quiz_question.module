@@ -1,0 +1,496 @@
+<?php
+// $Id: quiz_question.module,v 1.1.2.7 2009/05/27 19:45:36 sivaji Exp $
+
+/**
+ * Quiz Question module.
+ * This module provides the basic facilities for adding quiz question types to a quiz.
+ * While you can create standard Quiz question types simply by implementing the appropriate
+ * hooks, this module provides a framework that makes adding new types much easier.
+ * @file
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+function quiz_question_help($path, $args) {
+  if ($path == 'admin/help#quiz_quesion') {
+    return t('Support for Quiz question types.');
+  }
+}
+
+/**
+ * Implementation of hook_autoload_info().
+ */
+function quiz_question_autoload_info() {
+  return array(
+    // Base interfaces and classes:
+    'QuizQuestion' => array('file' => 'quiz_question.core.inc'),
+    'QuizQuestionResponse' => array('file' => 'quiz_question.core.inc'),
+    'AbstractQuizQuestionResponse' => array('file' => 'quiz_question.core.inc'),
+
+    // True/False question type:
+    'TrueFalseQuestion' => array('file' => 'quiz_question.truefalse.inc'),
+    'TrueFalseResponse' => array('file' => 'quiz_question.truefalse.inc'),
+  );
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function quiz_question_menu() {
+
+  $types = _quiz_question_get_implementations();
+  foreach ($types as $type => $definition) {
+    $items['admin/quiz/' . str_replace('_', '-', $type)] = array(
+      'title' => t('@name administration', array('@name' => $definition['name'])),
+      'description' => t('Configure the @name question type.', array('@name' => $definition['name'])),
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('quiz_question_type_settings_form', $type),
+      'access arguments' => array('configure quiz question types'),
+      'type' => MENU_NORMAL_ITEM,
+    );
+
+  }
+  return $items;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function quiz_question_perm() {
+  return array(
+    // Manage questions:
+    'create quiz question', 'edit own quiz question', 'edit any quiz question', 'delete own quiz question', 'delete any quiz question',
+    'score quiz question', 'configure quiz question types',
+  );
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function quiz_question_theme() {
+  return array(
+    'quiz_question_report' => array(
+      'arguments' => array('show_points' => NULL, 'show_feedback' => NULL),
+      'file' => 'quiz_question.theme.inc',
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_node_info().
+ */
+function quiz_question_node_info() {
+  $types = _quiz_question_get_implementations();
+  $info = array();
+  $defaults = array(
+    'module' => 'quiz_question',
+    //'help' => t('Add the question text and set a score for this question.'),
+    'has_body' => TRUE,
+    'has_title' => TRUE,
+    'body_label' => t('Question'),
+  );
+  foreach ($types as $type => $definition) {
+    $node_info = array(
+      'help' => t('Create a new @name.', array('@name' => $definition['name'])),
+      'name' => $definition['name'],
+      'description' => $definition['description']
+    );
+    $info[$type] = $node_info + $defaults;
+  }
+  return $info;
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function quiz_question_access($op, $node, $account) {
+
+  // Allow admin to do whatever.
+  if (user_access('administer quiz', $account)) {
+    return TRUE;
+  }
+
+  switch ($op) {
+    case 'view':
+      return user_access('view quiz question outside of a quiz');
+    case 'create':
+      return user_access('create quiz question', $account);
+    case 'update':
+      if (user_access('edit any quiz question', $account) || user_access('edit own quiz question', $account) && ($account->uid == $node->uid)) {
+        return TRUE;
+      }
+    case 'delete':
+      if (user_access('delete any quiz question', $account) || user_access('delete own quiz question', $account) && ($account->uid == $node->uid)) {
+        return TRUE;
+      }
+  }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function quiz_question_form(&$node, $form_state) {
+  $form = array();
+
+  // First we do the basic title and text fields.
+  // XXX: Should there be a way for question types to modify these (other than form alter hooks)?
+
+  // Allow user to set title?
+  if (user_access('allow user titles')) {
+    $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Title'),
+      '#default_value' => $node->title,
+      '#required' => FALSE,
+      '#description' => t('Add a title that will help distinguish this question from other questions. This will not be seen during the quiz.'),
+    );
+  }
+  else {
+    $form['title'] = array(
+      '#type' => 'value',
+      '#value' => $node->title,
+    );
+  }
+
+  $form['body'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Question'),
+    '#description' => t('Enter the full text of the question that will be shown to the user. Include any special instructions on how to answer.'),
+    '#default_value' => $node->body,
+    '#required' => TRUE,
+  );
+
+  // Quiz ID used here to tie creation of a question to a specific quiz.
+  $quiz_id = arg(3);
+  if (!empty($quiz_id)) {
+    $quiz = node_load((int)$quiz_id);
+    $form['quiz_id'] = array(
+      '#type' => 'value',
+      '#value' => $quiz_id,
+    );
+    $form['quiz_vid'] = array(
+      '#type' => 'value',
+      '#value' => $quiz->vid,
+    );
+  }
+  $question = _quiz_question_get_instance($node);
+  $form = array_merge($form, $question->getCreationForm($form_state));
+
+  // If coming from quiz view, go back there on submit.
+  if (!empty($quiz_id)) {
+    $form['#redirect'] = 'node/'. $quiz_id .'/questions';
+  }
+  return $form;
+}
+
+/**
+ * Implementation of hook_validate().
+ */
+function quiz_question_validate($node, &$form) {
+  // Check to make sure that there is a question.
+  if (empty($node->body)) {
+    form_set_error('body', t('Question text is empty.'));
+  }
+
+  _quiz_question_get_instance($node)->validate($node, $form);
+}
+
+/**
+ * Get the form to show to the user.
+ */
+function quiz_question_question_form($context, $node) {
+  $form = _quiz_question_get_instance($node)->getQuestionForm($node, $context);
+  $quiz = menu_get_object(); // Get the quiz object.
+
+  if (!empty($quiz->backwards_navigation) && !empty($node->question_number)) {
+    $form['back'] = array(
+      '#type' => 'submit',
+      '#value' => t('Back'),
+    );
+  }
+
+  // Add navigation at the bottom:
+  // Submit button
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Next'),
+  );
+  /*
+  if (empty($node->no_skip_button)) {
+    $form['op']  = array(
+      '#type' => 'submit',
+      '#value' => t('Skip'),
+    );
+
+  }
+  */
+
+  return $form;
+}
+
+
+/**
+ * Implementation of Quiz's hook_evaluate_question().
+ *
+ * @return
+ *  Object with nid, vid, rid, score, is_correct flags set.
+ */
+function quiz_question_evaluate_question($question, $rid, $answer = NULL) {
+  //print_r($_POST['tries']);exit;
+  if (empty($answer)) {
+    $answer = $_POST['tries'];
+    //$answer = is_array($_POST['tries']) ? $_POST['tries'] : array($_POST['tries']);
+  }
+  unset($_POST['tries']);
+
+  $response = _quiz_question_response_get_instance($rid, $question, $answer);
+  $response->score();
+
+  // If a rid is set, we are taking a quiz.
+  if ($rid && !empty($answer)) {
+    // We don't know whether or not the user has gone back a question. However,
+    // we do know that deleting a question for this result set should be safe in
+    // the case where the user has not gone back (since there will be no entries
+    // to delete). So we always run the delete.
+    $response->delete();
+
+    $response->save();
+  }
+
+  // Convert the response to a bare object.
+  return $response->toBareObject();
+}
+
+/**
+ * Implementation of quiz hook_skip_question().
+ */
+function quiz_question_skip_question($question, $rid) {
+  unset($_POST['tries']); // Unset any answer that might have been set.
+
+  // Delete any old answers for this question (for backwards nav).
+  _quiz_question_response_get_instance($rid, $question)->delete();
+
+  // This is the standard response:
+  $response = new stdClass();
+  $response->nid = $question->nid;
+  $response->vid = $question->vid;
+  $response->rid = $rid;
+  $response->is_skipped = TRUE;
+
+  return $response;
+}
+
+/**
+ * Implementation of hook_list_questions().
+ */
+function quiz_question_list_questions($count = 0, $offset = 0) {
+  $sql = "SELECT n.nid, n.vid, r.body, r.format
+    FROM {node} AS n
+    INNER JOIN {node_revisions} AS r USING(vid)
+    WHERE n.type IN (%s) ORDER BY n.type, n.changed";
+  $types = array();
+  foreach (array_keys(_quiz_question_get_implementations()) as $key) {
+    $types[] = "'" . $key . "'";
+  }
+  $type = implode(',', $types);
+
+  if ($count == 0) {
+    // Return all results
+    $result = db_query($sql, $type);
+  }
+  else {
+    // return only $count results
+    $result = db_query_range($sql, $type, $offset, $count);
+  }
+
+  $questions = array();
+  while ($question = db_fetch_object($result)) {
+    $question->question = check_markup($question->body, $question->format);
+    $questions[] = $question;
+  }
+  return $questions;
+}
+
+/**
+ * Implementation of hook_render_question().
+ *
+ * @param $node
+ *  The question node.
+ */
+function quiz_question_render_question($node) {
+  return drupal_get_form('quiz_question_question_form', $node);
+}
+
+/**
+ * Imlementation of hook_get_report().
+ *
+ * @return
+ *  Node containing all of the items from the question plus the user's answer.
+ */
+function quiz_question_get_report($nid, $vid, $rid) {
+  $node = node_load($nid, $vid);
+  $result = _quiz_question_response_get_instance($rid, $node)->getReport();
+
+  $node->answers[$result['answer_id']] = $result;
+
+  // If this has been evaluated, we mark it as correct.
+  // FIXME: This needs to be improved substantially.
+  //if ($result && $result['is_evaluated'] && $result['score'] > 0) {
+  //  $node->correct = TRUE;
+  //}
+  $node->correct = $result['is_correct'];
+  return $node;
+}
+
+/**
+ * Implementation of hook_quiz_question_score().
+ */
+function quiz_question_quiz_question_score($quiz, $question_nid, $question_vid, $rid) {
+  $node = node_load($question_nid, $question_vid);
+  $response = _quiz_question_response_get_instance($rid, $node);
+  $question = _quiz_question_get_instance($node);
+  $response->score();
+
+  $score = new stdClass();
+  $score->possible = $question->getMaximumScore();
+  $score->attained = $response->getScore();
+  $score->is_evaluated = $response->isEvaluated();
+  return $score;
+}
+
+/**
+ * Get the admin settings form for a question type.
+ */
+function quiz_question_type_settings_form($context, $type) {
+  return _quiz_question_get_instance($type)->getAdminForm();
+}
+
+// NODE API
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function quiz_question_nodeapi(&$node, $op) {
+  if ($op == 'delete revision') {
+    _quiz_question_get_instance($node)->delete();
+  }
+}
+
+/**
+ * Implementation of hook_insert()
+ */
+function quiz_question_insert($node) {
+  _quiz_question_get_instance($node)->save(TRUE);
+  // If the form says this should be attached to a quiz, attach it.
+  if (isset($node->quiz_id) && $node->quiz_id > 0) {
+    $sql = 'INSERT INTO {quiz_node_relationship} (parent_nid, parent_vid, child_nid, child_vid, question_status)
+        VALUES (%d, %d, %d, %d, %d)';
+    db_query($sql, $node->quiz_id, $node->quiz_vid, $node->nid, $node->vid, QUESTION_ALWAYS);
+  }
+}
+
+/**
+ * Implementation of hook_view()
+ */
+function quiz_question_view($node, $teaser = FALSE, $page = FALSE) {
+  $node->content['body']['#value'] = drupal_get_form('quiz_question_question_form', $node);
+  return $node;
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function quiz_question_update($node) {
+  _quiz_question_get_instance($node)->save();
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+function quiz_question_delete(&$node) {
+  _quiz_question_get_instance($node)->delete();
+}
+
+/**
+ * Implementation of hook_load().
+ */
+function quiz_question_load($node) {
+  return _quiz_question_get_instance($node)->load();
+}
+
+// END NODE API
+
+/**
+ * Get an instance of a quiz question.
+ * Get information about the class and use it to construct a new
+ * object of the appropriate type.
+ */
+function _quiz_question_get_instance($node) {
+  if (is_object($node)) {
+    $name = $node->type;
+  }
+  elseif (is_array($node)) {
+    $name = $node['type'];
+  }
+  else {
+    $name = $node;
+  }
+  $info = _quiz_question_get_implementations();
+  $constructor = $info[$name]['question provider'];
+  return new $constructor($node);
+}
+
+function _quiz_question_response_get_instance($rid, $question, $answer= NULL) {
+  $info = _quiz_question_get_implementations();
+  $constructor = $info[$question->type]['response provider'];
+  return new $constructor($rid, $question, $answer);
+}
+
+/**
+ * Get the information about various implementations of quiz questions.
+ *
+ * @param $reset
+ *  If this is true, the cache will be reset.
+ * @return
+ *  An array of information about quiz question implementations.
+ * @see quiz_question_quiz_question_info() for an example of a quiz question info hook.
+ */
+function _quiz_question_get_implementations($name = NULL, $reset = FALSE) {
+  static $info = array();
+
+  if (empty($info) || $reset) {
+    $qtypes = module_invoke_all('quiz_question_info');
+    foreach ($qtypes as $type => $definition) {
+      // We only want the ones with classes.
+      if (!empty($definition['question provider'])) {
+        $info[$type] = $definition;
+      }
+    }
+  }
+  return $info;
+}
+
+/**
+ * Implementation of hook_quiz_question_info().
+ */
+function quiz_question_quiz_question_info() {
+  return array(
+    'true_false' => array(
+      'name' => 'True/false question',
+      'description' => 'Quiz questions that allow a user to select true or false (yes/no).',
+      'question provider' => 'TrueFalseQuestion',
+      'response provider' => 'TrueFalseResponse',
+      'module' => 'quiz_question',
+    ),
+    /*
+    'long_answer' => array(
+      'name' => 'Long answer question',
+      'description' => 'Quiz questions that allow a user to enter multiple paragraphs of text.',
+      'question provider' => 'LongAnswerQuestion',
+      'response provider' => 'LongAnswerResponse',
+      'module' => 'quiz_question',
+    ),
+    */
+  );
+}
