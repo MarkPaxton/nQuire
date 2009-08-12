@@ -1,0 +1,607 @@
+<?php
+// $Id$
+
+/********pick photo page*****/
+
+function create_pick_photo_page($user) {
+
+  $uid = $user->uid;
+  $gallery_counter = 0;
+  $selected_counter = 0;
+  
+  $photo_node = db_result(db_query("SELECT nid FROM pi_activity_node WHERE activity_id = 4"));
+  $destination = t("destination=node/" . $photo_node);
+
+  $output = "";
+  $output1 = "";
+  
+  // convert $uid to $gallery_id - via table query
+  $group = find_student_group_gid($user);
+  $group_photographs = db_fetch_object(db_query('SELECT tid FROM {pi_group_photographs} WHERE gid = %d', $group));
+  $gallery_id = $group_photographs->tid;
+  
+  $gallery_images= db_query('SELECT term_node.nid FROM  {term_node} LEFT  JOIN {pi_selected_photographs} ON term_node.nid = pi_selected_photographs.image_id LEFT  JOIN {node} ON pi_selected_photographs.nid = node.nid
+    WHERE term_node.tid = %d AND (node.uid != %d OR pi_selected_photographs.nid IS NULL) ORDER BY term_node.nid ASC', $gallery_id, $uid);
+  
+  $output1 .="<h3>My selected photos</h3>";
+  
+  $selected_images= db_query("SELECT pi_selected_photographs.image_id AS image_id, node.nid AS nid, pi_selected_photographs.title AS title, pi_selected_photographs.caption AS caption, pi_selected_photographs.location_id AS location_id FROM {pi_selected_photographs} LEFT JOIN {node} ON node.nid = pi_selected_photographs.nid AND node.vid = pi_selected_photographs.vid WHERE node.uid = %d AND node.type = 'pi_selected_photographs' ORDER BY pi_selected_photographs.nid ASC", $uid);
+  //$selected_images= db_query("SELECT pi_selected_photographs.image_id AS image_id, node.nid AS nid FROM {pi_selected_photographs} LEFT JOIN {node} ON node.nid = pi_selected_photographs.nid AND node.vid = pi_selected_photographs.vid WHERE node.uid = %d AND node.type = 'pi_selected_photographs' ORDER BY pi_selected_photographs.nid ASC", $uid);
+  
+  $selected_photograph_nids = array();
+  
+  while ($item = db_fetch_object($selected_images)) {
+    $selected_photograph_nids[] = $item->image_id;
+    $selected_counter = $selected_counter + 1;
+    $image = node_load($item->image_id);
+    $output1 .= "<div class='selected_photo'>";
+    //$output1 .= substr($image->images[IMAGE_ORIGINAL],strrpos($image->images[IMAGE_ORIGINAL],'/') + 1);
+    $output1 .= t("<h3>" . $item->title . "</h3>");
+    //$output1 .= "<p>";
+    $output1 .= l('<img src="' . url('image/view/' . $image->nid. '/thumbnail') . '" />', 'node/' . $item->nid . '/edit', array(), NULL, NULL, FALSE, TRUE);
+    //$output1 .= "</p>";
+    $output1 .= t("<p><strong>Caption&#58;</strong> " . $item->caption . "</p>");
+    if (is_numeric($item->location_id)) {
+      $loc_title = db_result(db_query("SELECT title FROM node WHERE nid = %d", $item->location_id));
+      $output1 .= t("<p><strong>Location&#58;</strong> " . $loc_title . "</p>");
+    }
+    $output1 .= l('Edit selected image', 'node/' . $item->nid . '/edit', array(), $destination, NULL, FALSE, TRUE);
+    $output1 .= "</div>";
+  };
+  
+  if ($selected_counter == 0) {
+    $output1 .= "No photographs have been selected.";
+  };
+  
+  $all_available_photographs = db_query("SELECT nid FROM term_node 
+    WHERE tid = %d ORDER BY nid ASC", $gallery_id);
+  $all_available_photos = array();
+  while ($item = db_fetch_object($all_available_photographs)) {
+    $all_available_photos[] = $item->nid;
+  }
+  $output .="<h3>Available group photos</h3>";
+  
+  //$output .= implode(",", $selected_photograph_nids);
+  //$output .= "s";
+  //$output .= implode(",", $all_available_photos);
+  //$output .= "t";
+  $available_photos = array_diff($all_available_photos, $selected_photograph_nids);
+  //$output .= implode(",", $available_photos);
+  
+  
+  //while ($item = db_fetch_object($gallery_images)) {
+  foreach ($available_photos as $item) {
+    $gallery_counter = $gallery_counter + 1;
+    $image = node_load($item);
+    $output .= "<div style = 'display: block; float: left; min-height: 120px; padding: 0 10px 10px 0;' >";
+    //$output .= substr($image->images[IMAGE_ORIGINAL],strrpos($image->images[IMAGE_ORIGINAL],'/') + 1);
+    //$output .= "<p>";
+    $output .= l('<img src="' . url('image/view/' . $item . '/thumbnail') . '" />', 'node/add/pi_selected_photographs/' . $item, array(), $destination, NULL, FALSE, TRUE);
+    //$output .= "</p>";
+    $output .= "<div class='clear_both'>";
+    $output .= l('Select image', 'node/add/pi_selected_photographs/' . $item, array(), $destination, NULL, FALSE, TRUE);
+    $output .= "</div>";
+    $output .= "</div>";
+  };
+  
+  if ($gallery_counter == 0) {
+    $output .= "No photographs are currently available.";
+  };
+  $output .= "<div style='clear: both;'><hr /></div>";
+  
+  echo $output .  $output1;
+}
+
+
+
+/**
+ * @file
+ * Functions for use with workflow ng
+ */
+ 
+ function student_group_list_for_class_member($user) {
+	$class_id = find_class_group_gid($user);
+	$db_groups = db_query("SELECT student_group FROM pi_group_class WHERE class=%d", $class_id);
+	$groups = array();
+	while ($group = db_fetch_object($db_groups)) {
+		$groups[] = $group->student_group;
+	}
+	return($groups);
+ }
+ 
+ 
+ function set_roles_for_start_stage1 ($user) {
+	$middle = db_result(db_query("SELECT nid FROM og_uid WHERE nid = 184 AND uid = %d", $user->uid));
+	$top = db_result(db_query("SELECT nid FROM og_uid WHERE nid = 183 AND uid = %d", $user->uid));
+	if ($top) {
+		add_role_for_all_co_class_group_members($user, array('pi_hypothesis_creator', 'pi_selected_locations_creator', 'pi_selected_measures_creator','pi_report_guidelines_viewer','pi_read_introduction_viewer'));
+	}
+	if ($middle) {
+		add_role_for_all_co_class_group_members($user, array('pi_hypothesis_creator','pi_report_guidelines_viewer','pi_read_introduction_viewer'));
+		add_role_for_user_list (array($user->uid), 'pi_selected_locations2_creator');
+		add_role_for_user_list (array($user->uid), 'pi_selected_measures2_creator');
+	}
+ }
+ 
+  function set_roles_for_start_stage2 ($user) {
+ 	$middle = db_result(db_query("SELECT nid FROM og_uid WHERE nid = 184 AND uid = %d", $user->uid));
+	$top = db_result(db_query("SELECT nid FROM og_uid WHERE nid = 183 AND uid = %d", $user->uid));
+	if ($top) {
+		remove_role_for_all_co_class_group_members($user, array('pi_selected_locations_editor', 'pi_selected_measures_editor'));
+		add_role_for_all_co_class_group_members($user, array('pi_data_creator','pi_data_editor','pi_selected_locations_viewer','pi_selected_measures_viewer','pi_summary_viewer'));
+	}
+	if ($middle) {
+		remove_role_for_user_list(array($user->uid), 'pi_selected_locations2_editor');
+		remove_role_for_user_list(array($user->uid), 'pi_selected_measures2_editor');
+		add_role_for_all_co_class_group_members($user, array('pi_data_creator','pi_data_editor','pi_summary_viewer'));
+	}
+}
+ 
+  function set_roles_for_start_stage3 ($user) {
+   	$middle = db_result(db_query("SELECT nid FROM og_uid WHERE nid = 184 AND uid = %d", $user->uid));
+	$top = db_result(db_query("SELECT nid FROM og_uid WHERE nid = 183 AND uid = %d", $user->uid));
+	if ($top) {
+		add_role_for_all_co_class_group_members($user, array('pi_own_data_viewer','pi_pick_photos_viewer'));
+	}
+	else {
+		if ($middle) {
+			add_role_for_all_co_class_group_members($user, array('pi_class_data_viewer','pi_own_data_viewer','pi_pick_photos_viewer'));
+		}
+	}
+ }
+ 
+ function get_audience_for_node_type ($node_type) {
+	$audience_db = db_fetch_object(db_query("SELECT audience FROM pi_activity_audience WHERE  node_type = \"%s\"", $node_type));
+	$audience = $audience_db->audience;
+	return($audience);
+}
+	
+  function add_role_for_all_co_class_group_members ($user, $role_names) {
+	$group = find_class_group_gid($user);
+	$members = find_uid_members_of_group($group);
+	foreach ($role_names as $role_name) {
+		add_role_for_user_list($members, $role_name);
+	}
+ }
+ 
+  function remove_role_for_all_co_class_group_members ($user, $role_names) {
+  	$group = find_class_group_gid($user);
+	$members = find_uid_members_of_group($group);
+	foreach ($role_names as $role_name) {
+		remove_role_for_user_list($members, $role_name);
+	}
+ }
+ 
+ function add_role_for_all_co_student_group_members ($user, $role_names) {
+	$group = find_student_group_gid($user);
+	$members = find_uid_members_of_group($group);
+	foreach ($role_names as $role_name) {
+		if ($member != 1) {
+			add_role_for_user_list($members, $role_name);
+		}
+	}
+}
+
+ function remove_role_for_all_co_student_group_members ($user, $role_names) {
+	$group = find_student_group_gid($user);
+	$members = find_uid_members_of_group($group);
+	foreach ($role_names as $role_name) {
+		if ($member != 1) {
+			remove_role_for_user_list($members, $role_name);
+		}
+	}
+}
+
+ function find_uid_members_of_group($group) {
+	$db_res = db_query("SELECT uid FROM og_uid WHERE nid=%d", $group);
+	$member_arrray = array();
+	while ($member = db_fetch_object($db_res)) {
+		$member_arrray[] = $member->uid;
+	}
+	return($member_arrray);
+ }
+
+function add_role_for_user_list ($user_list, $role_name) {
+	$role_id = db_result(db_query("SELECT rid FROM role WHERE name = \"%s\"", $role_name));
+	if ($role_id) {
+		foreach ($user_list as $single_user) {
+			$test = db_result(db_query("SELECT uid, rid FROM users_roles WHERE uid=%d AND rid=%d", $single_user, $role_id));
+			if (! $test) {
+				db_query("INSERT INTO users_roles (uid, rid) values(%d, %d)", $single_user, $role_id);
+			}
+		}
+	}
+}
+
+function remove_role_for_user_list ($user_list, $role_name) {
+	$role_id = db_result(db_query("SELECT rid FROM role WHERE name = \"%s\"", $role_name));
+	if ($role_id) {
+		foreach ($user_list as $single_user) {
+			db_query("DELETE FROM users_roles WHERE uid = %d AND rid = %d", $single_user, $role_id);
+		}
+	}
+}
+
+function find_student_group_gid($user) {
+	$student_group = db_result(db_query("SELECT node.nid from og_uid, node WHERE og_uid.uid=%d AND og_uid.nid = node.nid AND node.type = \"og_student_group\"", $user->uid));
+	return($student_group);
+}
+
+function find_class_group_gid($user) {
+	$student_class = db_result(db_query("SELECT node.nid from og_uid, node WHERE og_uid.uid=%d AND og_uid.nid = node.nid AND node.type = \"og_class\"", $user->uid));
+	return($student_class);
+}
+	
+/****test for publishing of student group posts********/
+
+function find_student_group_node($user, $node_type) {
+	$student_group = db_result(db_query("SELECT node.nid from og_uid, node WHERE og_uid.uid=%d AND og_uid.nid = node.nid AND node.type = \"og_student_group\"", $user->uid));
+	$group_node = db_result(db_query("SELECT node.title FROM node, node_access WHERE node_access.gid = %d AND node_access.nid = node.nid AND node.type=\"%s\"", $student_group, $node_type));
+	return($group_node);
+}
+
+/************test for publishing of teacher news nodes******************/
+
+function find_class_node($user, $node_type) {
+	$student_class = db_result(db_query("SELECT node.nid from og_uid, node WHERE og_uid.uid=%d AND og_uid.nid = node.nid AND node.type = \"og_class\"", $user->uid));
+	$class_node = db_result(db_query("SELECT node.title FROM node, node_access WHERE node_access.gid = %d AND node_access.nid = node.nid AND node.type=\"%s\"", $student_class, $node_type));
+	return($class_node);
+}
+
+/******Update pi_activity_node triggered by node creation**********/
+function insert_pi_activity_node_from_node($node) {
+	$db_activity = db_fetch_object(db_query("SELECT activity_id FROM pi_activity_roles WHERE node_type = \"%s\"", $node->type));
+	db_query("INSERT INTO pi_activity_node (activity_id, nid) values(\"%s\", %d)", $db_activity->activity_id, $node->nid);
+}
+
+/******Update pi_activity_node triggered by node creation (data node only)**********/
+function insert_pi_activity_data_node_from_node_and_user($node, $user) {
+	$uid = $user->uid;
+	$top_set_nid = 183;
+	$middle_set_nid = 184;
+	
+	$middle_test = db_result(db_query("SELECT uid FROM og_uid WHERE uid = %d AND nid = %d", $uid, $middle_set_nid));
+	$top_test = db_result(db_query("SELECT uid FROM og_uid WHERE uid = %d AND nid = %d", $uid, $top_set_nid));
+	
+	if ($middle_test) {
+		$audience_id = find_class_group_gid($user);
+	}
+	if ($top_test) {
+		$audience_id = find_student_group_gid($user);
+	}
+	
+	if ($audience_id) {
+		$db_activity = db_fetch_object(db_query("SELECT pi_activity.activity_id FROM pi_activity, pi_activity_actor WHERE pi_activity.name=\"%s\" AND pi_activity.activity_id = pi_activity_actor.activity_id AND pi_activity_actor.gid = %d", $node->title, $audience_id));
+	}
+	else {
+		$db_activity = db_fetch_object(db_query("SELECT pi_activity.activity_id FROM pi_activity, pi_activity_actor WHERE pi_activity.name=\"%s\" AND pi_activity.activity_id = pi_activity_actor.activity_id AND pi_activity_actor.uid = %d", t($node->title), $uid));
+	}
+	
+	db_query("INSERT INTO pi_activity_node (activity_id, nid) values(\"%s\", %d)", $db_activity->activity_id, $node->nid);
+}
+
+/**********Update "Collect my data" activities based on changes to  measure and location selection***********************/
+
+/*Update pi_activity_roles.parameters when measures created
+ * and locations already exists*/
+function pi_ng_measures_created_locations_exist($user, $node_type, $authorid) {
+	$uid = $user->uid;
+        $data_collection_node_type = "pi_data";
+	$data_collection_phase_number = 3;
+	
+	$gid_array = find_gid_array_for_uid ($uid);
+	
+	$audience = get_audience_for_node_type($node_type);
+	switch ($audience) {
+	case  "student_group":
+		$audience_id = find_student_group_gid($user);
+		$locations_node_type = "pi_selected_locations";
+		$measures_node_type = "pi_selected_measures";
+		break;
+	case "class":
+		$audience_id = find_class_group_gid($user);
+		$locations_node_type = "pi_selected_locations2";
+		$measures_node_type = "pi_selected_measures2";
+		break;
+	}
+	
+	//ids and titles of the selected locations
+	$selected_locations = db_result(db_query("SELECT pi_selected_locations.selected_locations FROM node, pi_selected_locations WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_locations.nid ORDER BY pi_selected_locations.vid DESC", $locations_node_type, $uid));
+	
+	//if (! $selected_locations) 
+	if (! $selected_locations) {
+		$gid_result = find_selected_locations_node_for_gid_array($gid_array);
+		$selected_locations = $gid_result[locs];
+	}
+	
+	$selected_locations_array = explode(",", $selected_locations);
+	$location_titleids = array();
+	foreach ($selected_locations_array as $activity_location) {
+		$location_titleids[] = array(id => $activity_location, title => db_result(db_query("SELECT title FROM node WHERE nid = %d", $activity_location)));
+	}
+	
+	//find selected measures
+	$selected_measures = db_result(db_query("SELECT pi_selected_measures.selected_measures FROM node, pi_selected_measures WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_measures.nid ORDER BY pi_selected_measures.vid DESC", $measures_node_type, $authorid));
+	$selected_measures_array = explode(",", $selected_measures);
+	$measures_parameter = t('/' . implode("/", $selected_measures_array));
+	
+	//find inquiry id
+	$inquiry_db = db_fetch_object(db_query("SELECT pi_inquiry_actor.inquiry_id, og_uid.nid FROM pi_inquiry_actor, og_uid WHERE og_uid.uid = %d AND og_uid.nid = pi_inquiry_actor.gid", $uid));
+	
+	//find activity_id for each location
+//	$tester = array();
+	foreach  ($location_titleids as $location_titleid) {
+		$act_id = db_fetch_object(db_query("SELECT pi_activity.activity_id FROM pi_activity, pi_activity_actor, og_uid WHERE pi_activity.name = \"%s\" AND pi_activity.activity_id = pi_activity_actor.activity_id AND pi_activity_actor.gid = og_uid.nid AND og_uid.uid = %d", t($location_titleid[title]), $uid));
+		//$act_id = db_fetch_object(db_query("SELECT activity_id FROM pi_activity WHERE name = \"%s\"", t($location_titleid[title])));
+		$param =  t('/' . $inquiry_db -> inquiry_id . '/' . $location_titleid[id] . $measures_parameter);
+//		$tester[] = t($param . 'y' . $act_id->activity_id);
+		db_query("UPDATE pi_activity_roles SET parameters = \"%s\" WHERE activity_id = %d", $param, $act_id->activity_id);
+	}
+}
+
+/*locations updated and measures already exist*/
+//pi_ng_locations_updated_measures_exist($user, $audience_level)
+//find_audience($user, $audience_level)
+
+function pi_ng_locations_updated_measures_exist($user, $node_type, $authorid) {
+	$uid = $user->uid;
+        $data_collection_node_type = "pi_data";
+	$data_collection_phase_number = 3;
+
+	global $my_test_variable;
+	$gid_array = find_gid_array_for_uid ($uid);
+	
+	$audience = get_audience_for_node_type ($node_type);
+	switch ($audience) {
+	case  "student_group":
+		$audience_id = find_student_group_gid($user);
+		$locations_node_type = "pi_selected_locations";
+	$measures_node_type = "pi_selected_measures";
+		break;
+	case "class":
+		$audience_id = find_class_group_gid($user);
+		$locations_node_type = "pi_selected_locations2";
+		$measures_node_type = "pi_selected_measures2";
+		break;
+	}
+	
+	if ($audience) {
+		$aid_list = db_query("SELECT pi_activity_actor.activity_id FROM pi_activity_actor, pi_phase_activity WHERE pi_activity_actor.gid = %d AND pi_activity_actor.activity_id = pi_phase_activity.activity_id AND 
+	pi_phase_activity.phase_id = %d", $audience_id, $data_collection_phase_number);
+		db_query("DELETE FROM pi_activity_actor WHERE gid = %d", $audience_id); 
+	}
+	else {
+		$aid_list = db_query("SELECT pi_activity_actor.activity_id FROM pi_activity_actor, pi_phase_activity WHERE pi_activity_actor.uid = %d AND pi_activity_actor.activity_id = pi_phase_activity.activity_id AND 
+	pi_phase_activity.phase_id = %d", $uid, $data_collection_phase_number);
+		db_query("DELETE FROM pi_activity_actor WHERE uid = %d", $uid); 
+	}
+
+	while ($aid = db_fetch_object($aid_list)) {
+		db_query("DELETE FROM pi_activity WHERE activity_id = %d", $aid->activity_id);
+		db_query("DELETE FROM pi_activity_roles WHERE activity_id = %d", $aid->activity_id);
+		db_query("DELETE FROM pi_phase_activity WHERE activity_id = %d", $aid->activity_id);
+	}
+	
+	$selected_locations = db_result(db_query("SELECT pi_selected_locations.selected_locations FROM node, pi_selected_locations WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_locations.nid ORDER BY pi_selected_locations.vid DESC", $locations_node_type, $authorid));
+	
+	$selected_locations_array = explode(",", $selected_locations);
+	$location_titleids = array();
+	foreach ($selected_locations_array as $activity_location) {
+		$location_titleids[] = array(id => $activity_location, title => db_result(db_query("SELECT title FROM node WHERE nid = %d", $activity_location)));
+	}
+	
+	$selected_measures = db_result(db_query("SELECT pi_selected_measures.selected_measures FROM node, pi_selected_measures WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_measures.nid ORDER BY pi_selected_measures.vid DESC", $measures_node_type, $uid));
+	
+	//if (! $selected_measures) 
+	if (! $selected_measures) {
+		$gid_result = find_selected_measures_node_for_gid_array($gid_array);
+		$selected_measures = $gid_result[measures];
+	}
+	
+	$selected_measures_array = explode(",", $selected_measures);
+	$measures_parameter  = t("/" . implode("/", $selected_measures_array));
+		
+	$inquiry_db = db_fetch_object(db_query("SELECT pi_inquiry_actor.inquiry_id, og_uid.nid FROM pi_inquiry_actor, og_uid WHERE og_uid.uid = %d AND og_uid.nid = pi_inquiry_actor.gid", $uid));
+	$inquiry_db = db_fetch_object(db_query("SELECT pi_inquiry_actor.inquiry_id, og_uid.nid FROM pi_inquiry_actor, og_uid WHERE og_uid.uid = %d AND og_uid.nid = pi_inquiry_actor.gid", $uid));
+	
+	$count = 1;
+	foreach  ($location_titleids as $location_titleid) {
+		db_query("insert into pi_activity (name) values(\"%s\")", t($location_titleid[title]));
+		$max_activity_id = db_result(db_query("SELECT max(activity_id) from pi_activity;"));
+		
+		//$$if gid then use gid else use uid
+		if($audience_id) {
+			db_query("insert into pi_activity_actor (activity_id, gid) values(%d, %d)", $max_activity_id, $audience_id);
+		}
+		else {
+			db_query("insert into pi_activity_actor (activity_id, uid) values(%d, %d)", $max_activity_id, $uid);
+		}
+		
+		db_query("insert into pi_activity_roles (activity_id, node_type_creator_role, node_type_editor_role, node_type_viewer_role, node_type, parameters) values(%d, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")", $max_activity_id, t($data_collection_node_type . '_creator'), t($data_collection_node_type . '_editor'), t($data_collection_node_type . '_viewer'), t($data_collection_node_type), t("/" . $inquiry_db -> inquiry_id . "/" . $location_titleid[id] . $measures_parameter));
+		db_query("insert into pi_phase_activity (phase_id, activity_id, position) values(%d, %d, %d)", $data_collection_phase_number, $max_activity_id, $count);
+		$count++;
+	}
+}
+
+/*locations created and measures already exist*/
+function pi_ng_locations_created_measures_exist($user, $node_type) {
+	$uid = $user->uid;
+        $data_collection_node_type = "pi_data";
+	$data_collection_phase_number = 3;
+
+//	get gid_array for uid
+	$gid_array = find_gid_array_for_uid ($uid);
+	
+	$audience = get_audience_for_node_type ($node_type);
+	switch ($audience) {
+	case  "student_group":
+		$audience_id = find_student_group_gid($user);
+		$locations_node_type = "pi_selected_locations";
+		$measures_node_type = "pi_selected_measures";
+		break;
+	case "class":
+		$audience_id = find_class_group_gid($user);
+		$locations_node_type = "pi_selected_locations2";
+		$measures_node_type = "pi_selected_measures2";
+		break;
+	}
+	
+	//select location node for node type and uid
+	//$$try uid then student group id
+	$db_locations = db_fetch_object(db_query("SELECT pi_selected_locations.selected_locations, node.nid FROM node, pi_selected_locations WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_locations.nid ORDER BY pi_selected_locations.vid DESC", $locations_node_type, $uid));
+	$selected_locations = $db_locations->selected_locations;
+	$selected_locations_nid = $db_locations->nid;
+	$group_result = db_result(db_query("SELECT gid FROM node_access WHERE nid=%d", $selected_locations_nid));
+	$max_node_access = db_result(db_query("SELECT max(nid) from node_access;"));
+	
+	//expand into locations
+	$selected_locations_array = explode(",", $selected_locations);
+	$location_titleids = array();
+	foreach ($selected_locations_array as $activity_location) {
+		$location_titleids[] = array(id => $activity_location, title => db_result(db_query("SELECT title FROM node WHERE nid = %d", $activity_location)));
+	}
+	
+	//select measure node for node type and uid
+	//$$try uid then student group id
+	$selected_measures = db_result(db_query("SELECT pi_selected_measures.selected_measures FROM node, pi_selected_measures WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_measures.nid ORDER BY pi_selected_measures.vid DESC", $measures_node_type, $uid));
+	
+	//if (! $selected_measures) 
+	if (! $selected_measures) {
+		$gid_result = find_selected_measures_node_for_gid_array($gid_array);
+		$selected_measures = $gid_result[measures];
+	}
+	
+	//create parameters
+	$selected_measures_array = explode(",", $selected_measures);
+	$measures_parameter = t('/' . implode("/", $selected_measures_array));
+	
+	//$$try uid then student group id (currently only looks at group assigned inquiry)
+	$inquiry_db = db_fetch_object(db_query("SELECT pi_inquiry_actor.inquiry_id, og_uid.nid FROM pi_inquiry_actor, og_uid WHERE og_uid.uid = %d AND og_uid.nid = pi_inquiry_actor.gid", $uid));
+	
+	//$mytest.$mytest[locs].$mytest[group]
+	
+	$count = 1;
+	foreach  ($location_titleids as $location_titleid) {
+		db_query("insert into pi_activity (name) values(\"%s\")", t($location_titleid[title]));
+		$max_activity_id = db_result(db_query("SELECT max(activity_id) from pi_activity;"));
+		
+		//$$if gid then use gid else use uid
+		if($audience_id) {
+			db_query("insert into pi_activity_actor (activity_id, gid) values(%d, %d)", $max_activity_id, $audience_id);
+		}
+		else {
+			db_query("insert into pi_activity_actor (activity_id, uid) values(%d, %d)", $max_activity_id, $uid);
+		}
+		
+		db_query("insert into pi_activity_roles (activity_id, node_type_creator_role, node_type_editor_role, node_type_viewer_role, node_type, parameters) values(%d, \"%s\", \"%s\", \"%s\", \"%s\", \"%s\")", $max_activity_id, t($data_collection_node_type . '_creator'), t($data_collection_node_type . '_editor'), t($data_collection_node_type . '_viewer'), t($data_collection_node_type), t('/' . $inquiry_db -> inquiry_id . '/' . $location_titleid[id] . $measures_parameter));
+		db_query("insert into pi_phase_activity (phase_id, activity_id, position) values(%d, %d, %d)", $data_collection_phase_number, $max_activity_id, $count);
+		$count++;
+	}
+}
+
+/*locations created and measures do not exist*/
+function pi_ng_locations_created_measures_not_exist($user, $node_type) {
+
+	$uid = $user->uid;
+        $data_collection_node_type = "pi_data";
+	$data_collection_phase_number = 3;
+	
+	$audience = get_audience_for_node_type ($node_type);
+	switch ($audience) {
+	case  "student_group":
+		$audience_id = find_student_group_gid($user);
+		$locations_node_type = "pi_selected_locations";
+		break;
+	case "class":
+		$audience_id = find_class_group_gid($user);
+		$locations_node_type = "pi_selected_locations2";
+		break;
+	}
+	
+	$selected_locations = db_result(db_query("SELECT pi_selected_locations.selected_locations FROM node, pi_selected_locations WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_locations.nid ORDER BY pi_selected_locations.vid DESC", $locations_node_type, $uid));
+	$selected_locations_array = explode(",", $selected_locations);
+	$location_titles = array();
+	while ($activity_location = each($selected_locations_array)) {
+		$location_titles[] = db_result(db_query("SELECT title FROM node WHERE nid = %d", $activity_location));
+	}
+	
+	$count = 1;
+
+//foreach ($audiences as $audience) {
+	foreach  ($location_titles as $location_title) {
+		db_query("insert into pi_activity (name) values(\"%s\")", t($location_title));
+		$max_activity_id = db_result(db_query("SELECT max(activity_id) from pi_activity;"));
+		
+		if($audience_id) {
+			db_query("insert into pi_activity_actor (activity_id, gid) values(%d, %d)", $max_activity_id, $audience_id);
+		}
+		else {
+			db_query("insert into pi_activity_actor (activity_id, uid) values(%d, %d)", $max_activity_id, $uid);
+		}
+		
+		db_query("insert into pi_activity_roles (activity_id, node_type_creator_role, node_type_editor_role, node_type_viewer_role, node_type) values(%d, \"%s\", \"%s\", \"%s\", \"%s\")", $max_activity_id, t($data_collection_node_type . '_creator'), t($data_collection_node_type . '_editor'), t($data_collection_node_type . '_viewer'), t($data_collection_node_type));
+		db_query("insert into pi_phase_activity (phase_id, activity_id, position) values(%d, %d, %d)", $data_collection_phase_number, $max_activity_id, $count);
+		$count++;
+	}
+	
+}
+
+/*locations updated and measures do not exist*/
+function pi_ng_locations_updated_measures_not_exist($user, $node_type, $authoruid) {
+	$uid = $user->uid;
+        $data_collection_node_type = "pi_data";
+	$data_collection_phase_number = 3;
+	
+	$audience = get_audience_for_node_type ($node_type);
+	switch ($audience) {
+	case  "student_group":
+		$audience_id = find_student_group_gid($user);
+		$locations_node_type = "pi_selected_locations";
+		break;
+	case "class":
+		$audience_id = find_class_group_gid($user);
+		$locations_node_type = "pi_selected_locations2";
+		break;
+	}
+	
+	if ($audience) {
+		$aid_list = db_query("SELECT pi_activity_actor.activity_id FROM pi_activity_actor, pi_phase_activity WHERE pi_activity_actor.gid = %d AND pi_activity_actor.activity_id = pi_phase_activity.activity_id AND 
+	pi_phase_activity.phase_id = %d", $audience_id, $data_collection_phase_number);
+		db_query("DELETE FROM pi_activity_actor WHERE gid = %d", $audience_id);
+	}
+	else {
+		$aid_list = db_query("SELECT pi_activity_actor.activity_id FROM pi_activity_actor, pi_phase_activity WHERE pi_activity_actor.uid = %d AND pi_activity_actor.activity_id = pi_phase_activity.activity_id AND 
+	pi_phase_activity.phase_id = %d", $uid, $data_collection_phase_number);
+		db_query("DELETE FROM pi_activity_actor WHERE uid = %d", $uid); 
+	}
+	
+	while ($aid = db_fetch_object($aid_list)) {
+		db_query("DELETE FROM pi_activity WHERE activity_id = %d", $aid->activity_id);
+		db_query("DELETE FROM pi_activity_roles WHERE activity_id = %d", $aid->activity_id);
+		db_query("DELETE FROM pi_phase_activity WHERE activity_id = %d", $aid->activity_id);
+	}	
+	
+	$selected_locations = db_result(db_query("SELECT pi_selected_locations.selected_locations FROM node, pi_selected_locations WHERE node.type=\"%s\" AND node.uid=%d AND node.nid = pi_selected_locations.nid ORDER BY pi_selected_locations.vid DESC", $locations_node_type, $authoruid));
+	$selected_locations_array = explode(",", $selected_locations);
+	$location_titles = array();
+	while ($activity_location = each($selected_locations_array)) {
+		$location_titles[] = db_result(db_query("SELECT title FROM node WHERE nid = %d", $activity_location));
+	}
+	
+	$count = 1;
+	foreach  ($location_titles as $location_title) {
+		db_query("insert into pi_activity (name) values(\"%s\")", t($location_title));
+		$max_activity_id = db_result(db_query("SELECT max(activity_id) from pi_activity;"));
+		
+		if($audience_id) {
+			db_query("insert into pi_activity_actor (activity_id, gid) values(%d, %d)", $max_activity_id, $audience_id);
+		}
+		else {
+			db_query("insert into pi_activity_actor (activity_id, uid) values(%d, %d)", $max_activity_id, $uid);
+		}
+		
+		db_query("insert into pi_activity_roles (activity_id, node_type_creator_role, node_type_editor_role, node_type_viewer_role, node_type) values(%d, \"%s\", \"%s\", \"%s\", \"%s\")", $max_activity_id, t($data_collection_node_type . '_creator'), t($data_collection_node_type . '_editor'), t($data_collection_node_type . '_viewer'), t($data_collection_node_type));
+		db_query("insert into pi_phase_activity (phase_id, activity_id, position) values(%d, %d, %d)", $data_collection_phase_number, $max_activity_id, $count);
+		$count++;
+	}
+}
