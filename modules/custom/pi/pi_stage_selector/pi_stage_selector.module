@@ -28,67 +28,129 @@ function pi_stage_selector_node_info() {
 }
 
 /**
+
  * Implementation of pi_hypothesis_perm().
+
  */
+
+
 
 function pi_stage_selector_perm() {
+
   return array('create pi_stage_selector content', 'edit pi_stage_selector');
+
 }
 
+
+
 /**
+
  * Implementation of pi_hypothesis_access().
+
  */
+
 function pi_stage_selector_access($op, $node) {
+
   global $user;
+
   //$inquiry = get_inquiry_details_from_current_path()
+
  //$node_function = get_node_function_of_activity ($inquiry->inquiry_id, $inquiry->activity_id, $user->uid)
+
   if ($op == 'create') {
+
     return TRUE;//return (user_access('create pi_stage_selector'));
+
   }
+
+
 
   if ($op == 'update' || $op == 'delete') {
+
     return TRUE;//return (user_access('edit own pi_stage_selector') && ($user->uid == $node->uid));
+
   }
+
 }
 
+
+
 /**
+
  * Implementation of pi_stage_selector_form().
+
  */
+
+
 
 function pi_stage_selector_form(&$node) {
 
+
+
   // Get metadata for this node type
+
   // (we use it for labeling title and body fields).
+
   // We defined this in pi_hypothesis_node_info().
+
   $type = node_get_types('type', $node);
+
   
+
   global $user;
+
   $inquiry = get_inquiry_details_from_current_path();
+
   
+
   $form['title'] = array(
+
     '#type' => 'hidden',
+
     '#title' => check_plain($type->title_label),
+
     '#required' => FALSE,
+
     '#default_value' => check_plain($type->title_label),
+
     '#weight' => -5
+
   );
+
   
+
   $form['stage_options'] = array(
+
 	'#type' => 'value',
+
 	'#value' => array(1, 2, 3, 4)
+
   );
+
   
+
   $current_stage = get_current_stage_of_inquiry_and_user ($inquiry->inquiry_id, $user->uid);
+
   $current_stage_id = $current_stage->stage_id;
+
   
+
   $stage_array = $form['stage_options']['#value'];
+
   while ($stage_name = current($stage_array)) {
+
    if ($stage_name == $current_stage_id) {
+
        $real_current_stage =  key($stage_array);
+
 		}
+
 		next($stage_array);
+
 	}
+
   
+
   $form['selected_stage'] = array(
 	'#title' => t('Selected stage'),
 	'#type' => 'select',
@@ -97,38 +159,110 @@ function pi_stage_selector_form(&$node) {
 	'#options' => $form['stage_options']['#value']
   );
   
+    $form['transition_type'] = array(
+	'#title' => t('Required change'),
+	'#type' => 'select',
+	'#description' => t('Select how you want to alter access to activities'),
+	'#options' => array("Restrict access to activities of this stage", "Add access to activities of this stage")
+  );
+
+
+
    $form['pcs_id'] = array(
+
 	'#type' => 'hidden',
+
 	'#value' => t($current_stage->pcs_id)
+
 	);
+
   
-  $prefix = "<p>Stage selector prefix.</p>";
+
+  $prefix = "<p>This allows you to change the current stage and determine how this change effects access to activities.</p>";
+
  
+
   $form['#prefix'] = $prefix;
+
   
+
   return $form;
 
+
+
 }
 
+
 /**
+
  * Implementation of pi_stage_selector_insert().
+
  */
+
+
 
  
-function pi_stage_selector_insert($node) {
-  $stages = array(1, 2, 3, 4);
-  $selected_stage = $stages[$node->selected_stage];
-  db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
-}
 
-/**
- * Implementation of pi_stage_selector_update().
- */
+function pi_stage_selector_insert($node) {
+	pi_update_stage($node);
+}
 
 function pi_stage_selector_update($node) {
-  $stages = array(1, 2, 3, 4);
-  $selected_stage = $stages[$node->selected_stage];
-  db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
+	pi_update_stage($node);
 }
 
 
+
+/**
+
+ * Implementation of pi_stage_selector_update().
+
+ */
+
+
+
+function pi_update_stage($node) {
+
+  $details = get_inquiry_details_from_current_path();
+  
+  $stages = array(1, 2, 3, 4);
+
+  $selected_stage = $stages[$node->selected_stage];
+
+  db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
+
+  
+  pi_change_activty_status_for_stage($details->inquiry_id, $selected_stage, $node->transition_type);
+}
+
+//this function shows how activity status can be updated by a stage change
+//for all activities in the stage it changes view to edit and unavailable to add
+//for all activities outside the stage it changes edit to view and add to unavailable
+
+function pi_change_activty_status_for_stage($inquiry_id, $stage_id, $transition_type) {
+	make_change_to_status($inquiry_id, $stage_id, "add", "start", "unavailable", 1);
+	make_change_to_status($inquiry_id, $stage_id, "edit", "edit", "view", 1);
+	if ($transition_type == 0) {
+		make_change_to_status($inquiry_id, $stage_id, "view", "view", "edit", 0);
+		make_change_to_status($inquiry_id, $stage_id, "unavailable", "unavailable", "start", 0);
+	}
+}
+
+function make_change_to_status($inquiry_id, $stage_id, $new_function, $new_visible_status, $test_visible_status, $valence) {
+
+	$query = "UPDATE pi_activity_status ";
+	$query .= "LEFT JOIN pi_stage_phase_activity ON ";
+	$query .= "pi_activity_status.activity_id = pi_stage_phase_activity.activity_id ";
+	$query .= "LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id ";
+	$query .= "LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id ";
+	$query .= "SET pi_activity_status.node_function = \"" . $new_function . "\", pi_activity_status.visible_status = \"" . $new_visible_status . "\" ";
+	$query .= "WHERE pi_inquiry_stage.inquiry_id = " . $inquiry_id . " ";
+	if ($valence) {
+		$query .= "AND pi_stage_phase.stage_id = " .  $stage_id . " ";
+	}
+	else {
+		$query .= "AND NOT (pi_stage_phase.stage_id = " .  $stage_id . ") ";
+	}
+	$query .= "AND pi_activity_status.visible_status = \"" . $test_visible_status . "\" ";
+	db_query($query);
+}
