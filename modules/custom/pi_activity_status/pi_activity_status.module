@@ -1,0 +1,122 @@
+<?php
+
+function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
+	switch ($op) {
+  
+    case 'list':
+		$blocks[0]['info'] = t('Activity Status');
+		return $blocks;
+    
+    case 'view':
+    	/**
+    	 * the block shows the status of the current activity shown in the toolkit
+    	 * this will be part of the teacher toolkit set up and will show the visible_status
+    	 * of the activity i.e. start, in_progress, view or unavailable.
+    	 * The teacher can then use this info to judge if the students or group needs help.
+    	**/
+    	$path_info = get_inquiry_details_from_current_path();
+    	if($path_info->activity_id){
+	    	//pi function below returns an array. should be one?
+	    	//the pi_activity_actor table show to who this activity will be visible
+	    	$activity_actor_array = load_activity_actor($path_info->inquiry_id, $path_info->activity_id);
+	    	$array_size = count($activity_actor_array);
+	    	$content = '<table>';
+	    	$count = 0;
+	    	while($count <= $array_size-1){
+	    		//gid or uid?
+	    		$activity_gid = $activity_actor_array[$count]['gid'];
+	    		$activity_uid = $activity_actor_array[$count]['uid'];
+	    		//who is the audience?
+	    		$audience_query = "SELECT * FROM pi_activity WHERE activity_id = '" . $activity_actor_array[0]['activity_id'] . "'";
+	    		$audience_object = db_fetch_object(db_query($audience_query));
+	    		//if the activity is for a group
+	    		if($activity_gid != 0 | $activity_gid != NULL){
+		    		if($audience_object->audience == 'individual'){
+		    			//show activity status listed group and by user
+		    			$content .= '<tr>';
+		    			$content .= '<td><strong>' . get_group_name($activity_gid) . '</strong></td><td></td>';
+		    			$content .= '</tr>';
+		    			//get members of group
+		    			$group_members_query = "SELECT * FROM og_uid ";
+	  					$group_members_query .= "WHERE nid = '" . $activity_gid . "'";
+		    			$result = db_query($group_members_query);
+		    			while($object = db_fetch_object($result)){
+		    				$content .= '<tr>';
+		    				$content .= '<td>' . get_user_name($object->uid) . '</td>';
+		    				$content .= '<td>'; 
+		    				$content .= get_status_of_user_in_group($path_info->inquiry_id, $path_info->activity_id, 
+		    								$object->uid, $activity_gid);
+		    				$content .= '</td>';
+		    				$content .= '</tr>';
+		    			}
+		    		}
+		    		else{
+		    			//show activity status listed by group only
+		    			$content .= '<tr>';
+		    			$content .= '<td>' . get_group_name($activity_gid) . '</td>';
+		    			$content .= '<td>' . get_status_of_group($path_info->inquiry_id, $path_info->activity_id, $activity_gid) . '</td>';
+		    			$content .= '</tr>';
+		    		}
+	    		}
+	    		else if($activity_uid != 0 | $activity_uid != NULL){
+	    			//show activity for user only
+	    			$content .= '<tr>';
+		    			$content .= '<td>' . get_user_name($activity_uid) . '</td>';
+		    			$content .= '<td>' . get_status_of_user($path_info->inquiry_id, $path_info->activity_id, $object->uid) . '</td>';
+		    			$content .= '</tr>';
+	    		}
+	    		$count = $count + 1;
+	    	}
+	    	$content .= '</table>';
+    	}
+    	
+    	$block['subject'] = "Activity Status";
+    	$block['content'] = $content;
+		return $block;
+	};
+}
+
+function get_user_name($uid){
+	$query = "SELECT * FROM users WHERE uid = '" . $uid . "'";
+	$object = db_fetch_object(db_query($query));
+	return $object->name;
+}
+
+function get_group_name($gid){
+	$query = "SELECT * FROM og WHERE nid = '" . $gid . "'";
+	$object = db_fetch_object(db_query($query));
+	return $object->og_description;
+}
+
+function get_status_of_group($inquiry_id, $activity_id, $gid){
+	$status_query = "SELECT * FROM pi_activity_status WHERE";
+	$status_query .= " inquiry_id = '" . $inquiry_id . "'";
+	$status_query .= " AND activity_id = '" . $activity_id . "'";
+	$status_query .= " AND gid = '" . $gid . "'";
+	$object = db_fetch_object(db_query($status_query));
+	return $object->visible_status;
+}
+
+function get_status_of_user_in_group($inquiry_id, $activity_id, $uid, $gid){
+	$status_query = "SELECT * FROM pi_activity_status WHERE";
+	$status_query .= " inquiry_id = '" . $inquiry_id . "'";
+	$status_query .= " AND activity_id = '" . $activity_id . "'";
+	$status_query .= " AND uid = '" . $uid . "'";
+	$status_query .= " AND gid = '" . $gid . "'";
+	$object = db_fetch_object(db_query($status_query));
+	if($object){
+		return $object->visible_status;
+	}
+	else{
+		return get_status_of_group($inquiry_id, $activity_id, $gid);
+	}
+}
+
+function get_status_of_user($inquiry_id, $activity_id, $uid){
+	$status_query = "SELECT * FROM pi_activity_status WHERE";
+	$status_query .= " inquiry_id = '" . $inquiry_id . "'";
+	$status_query .= " AND activity_id = '" . $activity_id . "'";
+	$status_query .= " AND uid = '" . $uid . "'";
+	$object = db_fetch_object(db_query($status_query));
+	return $object->visible_status;
+}
