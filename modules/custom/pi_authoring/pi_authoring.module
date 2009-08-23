@@ -50,6 +50,14 @@ function pi_authoring_menu() {
   	  'type' => MENU_NORMAL_ITEM,
       'access arguments' => array('access pi_authoring content'),
 	);
+	
+	$items['piauthoring/newinquiry/1'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Remove'),
+  	 'page callback' => 'pi_authoring_new_inquiry_remove',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
 
 	$items['piauthoring/newinquiry/inquiry'] = array(
 	//'path' => 'piauthoring/newinquiry/inquiry',
@@ -80,6 +88,14 @@ function pi_authoring_menu() {
      'title' => t('2. First Organisation'),
   	 'page callback' => 'pi_authoring_new_inquiry_first_organisation',
 	 'type' => MENU_NORMAL_ITEM,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/firstorganisation/1'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Remove'),
+  	 'page callback' => 'pi_authoring_new_inquiry_first_organisation_remove',
+	 'type' => MENU_CALLBACK,
      'access arguments' => array('access pi_authoring content'),
 	);
 
@@ -195,6 +211,70 @@ function pi_authoring_menu() {
      'access arguments' => array('access pi_authoring content'),
 	);
 	
+	$items['piauthoring/activities/7'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Move Stage UP'),
+  	 'page callback' => 'move_stage_up_one_position',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/8'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Move Stage Down'),
+  	 'page callback' => 'move_stage_down_one_position',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/9'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Move Phase UP'),
+  	 'page callback' => 'move_phase_up_one_position',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/10'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Move Phase Down'),
+  	 'page callback' => 'move_phase_down_one_position',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/11'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Move Activity UP'),
+  	 'page callback' => 'move_activity_up_one_position',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/12'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Move Activity UP'),
+  	 'page callback' => 'move_activity_down_one_position',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/13'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Delete Activity'),
+  	 'page callback' => 'delete_activity_link',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/14'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Un-include Activity'),
+  	 'page callback' => 'uninclude_activity_link',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
 	$items['piauthoring/workflow'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
      'title' => t('6. Author Workflow Rules'),
@@ -254,10 +334,12 @@ function draw_table($inquiry, $view_type){
 	$stages_query = "SELECT * FROM pi_stage ";
 	$stages_query .= "LEFT JOIN pi_inquiry_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
 	$stages_query .= "WHERE pi_inquiry_stage.inquiry_id = '" . $inquiry->inquiry_id . "'";
+	$stages_query .= "ORDER BY pi_inquiry_stage.position";
 	//get all phase for this inquiry
 	$phases_query = "SELECT * FROM pi_phase ";
 	$phases_query .= "LEFT JOIN pi_inquiry_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
 	$phases_query .= "WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry->inquiry_id . "'";
+	$phases_query .= "ORDER BY pi_inquiry_phase.position";
 	
 	/*
 	 * to build up the table we need to know the phases and activities and to which stage they belong to.
@@ -283,6 +365,7 @@ function draw_table($inquiry, $view_type){
 	 			//2. does this phase in this stage have activites?
 	 			$activities = array();
 	 			$query2 = "SELECT * FROM pi_stage_phase_activity WHERE psp_id = '" . $result->psp_id . "'";
+	 			$query2 .= " ORDER BY position";
 	 			$result2 = db_query($query2);
 	 			while($object = db_fetch_object($result2)){
 	 				$activities[] = $object->activity_id;
@@ -313,7 +396,9 @@ function get_view($inquiry, $array, $stages_query, $phases_query, $view_type){
 	$stages_headings = db_query($stages_query);
 	while($stage = db_fetch_object($stages_headings)){
 		$content .= '<td>';
-		$content .= $stage->name;
+		$stage_down_link = "piauthoring/activities/8/" . $stage->stage_id . "/" . $inquiry->inquiry_id . "/" .  $_GET['q'];
+		$stage_up_link = "piauthoring/activities/7/" . $stage->stage_id . "/" . $inquiry->inquiry_id . "/" .  $_GET['q'];
+		$content .= $stage->name . "  " . l("(+", $stage_up_link) . "  " . l("-)",$stage_down_link);
 		$content .= '</td>';
 	}
 	$content .= '</tr>';
@@ -323,7 +408,9 @@ function get_view($inquiry, $array, $stages_query, $phases_query, $view_type){
 	while($phase = db_fetch_object($phases)){
 		//phase name
 		$content .= '<tr>';
-		$content .= '<td bgcolor="#eeeeee">' . $phase->name . '</td>';
+		$phase_down_link = "piauthoring/activities/10/" . $phase->phase_id . "/" . $inquiry->inquiry_id . "/" . $_GET['q'];
+		$phase_up_link = "piauthoring/activities/9/" . $phase->phase_id . "/" . $inquiry->inquiry_id . "/" .  $_GET['q'];
+		$content .= '<td bgcolor="#eeeeee">' . $phase->name . "    " . l("(+",$phase_down_link) . "  " . l("-)",$phase_up_link) . '</td>';
 		//if the phase is included in a stage then colour the cell green
 		$stages_repeat_1 = db_query($stages_query);
 		while($stage = db_fetch_object($stages_repeat_1)){
@@ -357,14 +444,25 @@ function get_view($inquiry, $array, $stages_query, $phases_query, $view_type){
 					}
 					else{
 						$content .= '<tr>';
-						$content .= '<td> -> ' . get_name_of_activity($activity) . '</td>';
+						$activity_up_link = "piauthoring/activities/11/" . $activity . "/";
+						$activity_up_link .= $s->stage_id . "/" . $phase->phase_id . "/";
+						$activity_up_link .= $inquiry->inquiry_id . "/" . $_GET['q'];
+						$activity_down_link = "piauthoring/activities/12/" . $activity . "/";
+						$activity_down_link .= $s->stage_id . "/" . $phase->phase_id . "/";
+						$activity_down_link .= $inquiry->inquiry_id . "/" . $_GET['q'];
+						$content .= '<td> -> ' . get_name_of_activity($activity) . '    ' . l("(+",$activity_up_link) . '  ' . l("-)",$activity_down_link) . '</td>';
 						$stages_repeat_3 = db_query($stages_query);
 						while($st = db_fetch_object($stages_repeat_3)){
 							if($st->stage_id == $s->stage_id){
 								$content .= '<td bgcolor="#00ff00">'; //green cell
-								$link = get_activity_link($view_type, $activity);
+								$link = get_activity_link($view_type, $activity, $inquiry->inquiry_id);
 								if($link != ''){
 									$content .= l('edit', $link);
+								}
+								else if($view_type == 'add'){
+									//HERE
+									$delete_link = "piauthoring/activities/13/" . $activity;
+									$content .= l("delete", $delete_link);
 								}
 								$content .= '</td>'; 
 							}
@@ -390,7 +488,15 @@ function get_view($inquiry, $array, $stages_query, $phases_query, $view_type){
 									//stage is included in phase and has activities
 									if(in_array($activity, $temp_array)){
 										//activity is in this stage as well
-										$content .= '<td bgcolor="#00ff00"></td>'; //green cell
+										$content .= '<td bgcolor="#00ff00">';
+										if($view_type == 'add'){
+											//HERE
+											$uninclude_link = "piauthoring/activities/14/" . $st->stage_id;
+											$uninclude_link .= "/" . $phase->phase_id . "/" . $activity;
+											$uninclude_link .= "/" . $inquiry->inquiry_id;
+											$content .= l("un-include", $uninclude_link);
+										}
+										$content .= '</td>'; //green cell
 									}
 									else{
 										//activity not in this stage
@@ -446,12 +552,268 @@ function get_stage_phase_link($view_type, $inquiry, $stage, $phase){
 	return $link;
 }
 
-function get_activity_link($view_type, $activity_id){
+function get_activity_link($view_type, $activity_id, $inquiry_id){
 	$link = '';
 	if($view_type != 'view' & $view_type != 'add'){
-		$link .= 'piauthoring/activities/5/' . $activity_id;
+		$link .= 'piauthoring/activities/5/' . $activity_id . "/" . $inquiry_id;
 	}
 	return $link;
+}
+
+function move_stage_up_one_position(){
+	//piauthoring/activities/7
+	//the last element in the path is the stage_id
+	$stage_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the stage and find its position
+	$query = "SELECT * FROM pi_inquiry_stage WHERE";
+	$query .= " stage_id = '" . $stage_id . "'";
+	$query .= " AND inquiry_id = '" . $inquiry_id . "'";
+	$object = db_fetch_object(db_query($query));
+	$start_pos = $object->position;
+	//get the next stage based on its position
+	$query2 = "SELECT * FROM pi_inquiry_stage WHERE";
+	$query2 .= " inquiry_id = '" . $inquiry_id . "'";
+	$query2 .= " AND position > '" . $start_pos . "'";
+	$query2 .= " ORDER BY position ASC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE pi_inquiry_stage SET position = '" . $end_pos . "'";
+		$query3 .= "WHERE pis_id = '" . $object->pis_id . "'";
+		db_query($query3);
+		$query4 = "UPDATE pi_inquiry_stage SET position = '" . $start_pos . "'";
+		$query4 .= "WHERE pis_id = '" . $object2->pis_id . "'";
+		db_query($query4);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);	
+}
+
+function move_stage_down_one_position(){
+	//piauthoring/activities/8
+	//the last element in the path is the stage_id
+	$stage_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the stage and find its position
+	$query = "SELECT * FROM pi_inquiry_stage WHERE";
+	$query .= " stage_id = '" . $stage_id . "'";
+	$query .= " AND inquiry_id = '" . $inquiry_id . "'";
+	$object = db_fetch_object(db_query($query));
+	$start_pos = $object->position;
+	//get the previous stage based on its position
+	$query2 = "SELECT * FROM pi_inquiry_stage WHERE";
+	$query2 .= " inquiry_id = '" . $inquiry_id . "'";
+	$query2 .= " AND position < '" . $start_pos . "'";
+	$query2 .= " ORDER BY position DESC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE pi_inquiry_stage SET position = '" . $end_pos . "'";
+		$query3 .= "WHERE pis_id = '" . $object->pis_id . "'";
+		db_query($query3);
+		$query4 = "UPDATE pi_inquiry_stage SET position = '" . $start_pos . "'";
+		$query4 .= "WHERE pis_id = '" . $object2->pis_id . "'";
+		db_query($query4);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);
+}
+
+function move_phase_up_one_position(){
+	//piauthoring/activities/9
+	//the last element in the path is the phase_id
+	$phase_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the phase and find its position
+	$query = "SELECT * FROM pi_inquiry_phase WHERE";
+	$query .= " phase_id = '" . $phase_id . "'";
+	$query .= " AND inquiry_id = '" . $inquiry_id . "'";
+	$object = db_fetch_object(db_query($query));
+	$start_pos = $object->position;
+	//get the next phase based on its position
+	$query2 = "SELECT * FROM pi_inquiry_phase WHERE";
+	$query2 .= " inquiry_id = '" . $inquiry_id . "'";
+	$query2 .= " AND position > '" . $start_pos . "'";
+	$query2 .= " ORDER BY position ASC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE pi_inquiry_phase SET position = '" . $end_pos . "'";
+		$query3 .= "WHERE pip_id = '" . $object->pip_id . "'";
+		db_query($query3);
+		$query4 = "UPDATE pi_inquiry_phase SET position = '" . $start_pos . "'";
+		$query4 .= "WHERE pip_id = '" . $object2->pip_id . "'";
+		db_query($query4);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);	
+}
+
+function move_phase_down_one_position(){
+	//piauthoring/activities/10
+	//the last element in the path is the phase_id
+	$phase_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the phase and find its position
+	$query = "SELECT * FROM pi_inquiry_phase WHERE";
+	$query .= " phase_id = '" . $phase_id . "'";
+	$query .= " AND inquiry_id = '" . $inquiry_id . "'";
+	$object = db_fetch_object(db_query($query));
+	$start_pos = $object->position;
+	//get the next phase based on its position
+	$query2 = "SELECT * FROM pi_inquiry_phase WHERE";
+	$query2 .= " inquiry_id = '" . $inquiry_id . "'";
+	$query2 .= " AND position < '" . $start_pos . "'";
+	$query2 .= " ORDER BY position DESC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE pi_inquiry_phase SET position = '" . $end_pos . "'";
+		$query3 .= "WHERE pip_id = '" . $object->pip_id . "'";
+		db_query($query3);
+		$query4 = "UPDATE pi_inquiry_phase SET position = '" . $start_pos . "'";
+		$query4 .= "WHERE pip_id = '" . $object2->pip_id . "'";
+		db_query($query4);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);
+}
+
+function move_activity_up_one_position(){
+	//piauthoring/activities/11
+	//the last element in the path is the stage_id
+	$activity_id = arg(3);
+	$stage_id = arg(4);
+	$phase_id = arg(5);
+	$inquiry_id = arg(6);
+	//get the pi_stage_phase
+	$query = "SELECT * FROM pi_stage_phase WHERE";
+	$query .= " stage_id = '" . $stage_id . "'";
+	$query .= " AND phase_id = '" . $phase_id . "'";
+	$object = db_fetch_object(db_query($query));
+	if($object){
+		//echo $object->psp_id . "; ";
+		//get the activity and find its position
+		$query2 = "SELECT * FROM pi_stage_phase_activity WHERE";
+		$query2 .= " psp_id = '" . $object->psp_id . "'";
+		$query2 .= " AND activity_id = '" . $activity_id . "'";
+		$object2 = db_fetch_object(db_query($query2));
+		$start_pos = $object2->position;
+		//get the next stage based on its position
+		$query3 = "SELECT * FROM pi_stage_phase_activity WHERE";
+		$query3 .= " psp_id = '" . $object->psp_id . "'";
+		$query3 .= " AND position < '" . $start_pos . "'";
+		$query3 .= " ORDER BY position DESC";
+		//should be the first in the items returned if not then it is the last stage so can't be moved up one
+		$object3 = db_fetch_object(db_query($query3));
+		$end_pos = $object3->position;
+		//swap these position values
+		if($object3){
+			//echo "... " . $object2->pspa_id . ", " . $end_pos . "; " . $object3->pspa_id . ", " . $start_pos;
+			//update the tables with the new position values
+			$query4 = "UPDATE pi_stage_phase_activity SET position = '" . $end_pos . "'";
+			$query4 .= " WHERE pspa_id = '" . $object2->pspa_id . "'";
+			db_query($query4);
+			$query5 = "UPDATE pi_stage_phase_activity SET position = '" . $start_pos . "'";
+			$query5 .= " WHERE pspa_id = '" . $object3->pspa_id . "'";
+			db_query($query5);
+		}
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(7) . "/" . arg(8) . "/" . arg(9) . "/" .  arg(10);
+	drupal_goto($return_path);
+}
+
+function move_activity_down_one_position(){
+	//piauthoring/activities/12
+	//the last element in the path is the stage_id
+	$activity_id = arg(3);
+	$stage_id = arg(4);
+	$phase_id = arg(5);
+	$inquiry_id = arg(6);
+	//get the pi_stage_phase
+	$query = "SELECT * FROM pi_stage_phase WHERE";
+	$query .= " stage_id = '" . $stage_id . "'";
+	$query .= " AND phase_id = '" . $phase_id . "'";
+	$object = db_fetch_object(db_query($query));
+	if($object){
+		//echo $object->psp_id . "; ";
+		//get the activity and find its position
+		$query2 = "SELECT * FROM pi_stage_phase_activity WHERE";
+		$query2 .= " psp_id = '" . $object->psp_id . "'";
+		$query2 .= " AND activity_id = '" . $activity_id . "'";
+		$object2 = db_fetch_object(db_query($query2));
+		$start_pos = $object2->position;
+		//get the next stage based on its position
+		$query3 = "SELECT * FROM pi_stage_phase_activity WHERE";
+		$query3 .= " psp_id = '" . $object->psp_id . "'";
+		$query3 .= " AND position > '" . $start_pos . "'";
+		$query3 .= " ORDER BY position ASC";
+		//should be the first in the items returned if not then it is the last stage so can't be moved up one
+		$object3 = db_fetch_object(db_query($query3));
+		$end_pos = $object3->position;
+		//swap these position values
+		if($object3){
+			//echo "... " . $object2->pspa_id . ", " . $end_pos . "; " . $object3->pspa_id . ", " . $start_pos;
+			//update the tables with the new position values
+			$query4 = "UPDATE pi_stage_phase_activity SET position = '" . $end_pos . "'";
+			$query4 .= " WHERE pspa_id = '" . $object2->pspa_id . "'";
+			db_query($query4);
+			$query5 = "UPDATE pi_stage_phase_activity SET position = '" . $start_pos . "'";
+			$query5 .= " WHERE pspa_id = '" . $object3->pspa_id . "'";
+			db_query($query5);
+		}
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(7) . "/" . arg(8) . "/" . arg(9) . "/" .  arg(10);
+	drupal_goto($return_path);
+}
+
+function delete_activity_link(){
+	$activity_id = arg(3);
+	$inquiry_id = arg(4);
+	//deletes the activity from the inquiry
+	//uses a pi function and this removes the activity from all tables
+	delete_activity($activity_id);
+	drupal_goto("piauthoring/activities/1/" . $inquiry_id);
+}
+
+function uninclude_activity_link(){
+	//unincludes the activity from the stage and phase
+	$stage_id = arg(3);
+	$phase_id = arg(4);
+	$activity_id = arg(5);
+	$inquiry_id = arg(6);
+	//echo $stage_id . ", " . $phase_id . ", " . $activity_id . ", " . $inquiry_id;
+	$query = "SELECT * FROM pi_stage_phase WHERE";
+	$query .= " stage_id = '" . $stage_id . "'";
+	$query .= " AND phase_id = '" . $phase_id . "'";
+	$object = db_fetch_object(db_query($query));
+	if($object){
+		//echo 'here';
+		$query2 = "DELETE FROM pi_stage_phase_activity WHERE";
+		$query2 .= " psp_id = '" . $object->psp_id . "'";
+		$query2 .= " AND activity_id = '" . $activity_id . "'";
+		db_query($query2);
+	}
+	drupal_goto("piauthoring/activities/1/" . $inquiry_id);
 }
 
 //-------------------------------------------------------------------------------------------------------------------
@@ -476,7 +838,84 @@ function pi_authoring_new_inquiry(){
 	$content .= "influence the grouping of phases and activities in the stage.  For example, data collection";
 	$content .= " activities in the Data Collection phase should take into account whether it is taking place ";
 	$content .= "in the classroom, home or on a field trip.</p>";
+	
+	//warning about the remove links
+	$content .= "<p><strong>The remove links below remove entries from pi_stage and pi_phase along with the";
+	$content .= " corresponding entries in _actor, _stage_phase and _stage_phase_activity</strong></p>";
+	
+	//table of stages and phases
+	$stages = db_query("SELECT * FROM pi_stage");
+	$phases = db_query("SELECT * FROM pi_phase");
+	//table of stages
+	$content .= "<table>";
+	$content .= "<tr><td><strong>Stages</strong></td><td></td></tr>";
+	while($object = db_fetch_object($stages)){
+		$content .= "<tr>";
+		$content .= "<td width=100>" . $object->name . "</td>";
+		$link = "piauthoring/newinquiry/1/stage/" . $object->stage_id;
+		$content .= "<td>" . l("remove", $link) . "</td>";
+		$content .= "</tr>";
+	}
+	$content .= "</table>";
+	//table of phases
+	$content .= "<table>";
+	$content .= "<tr><td><strong>Phases</strong></td><td></td></tr>";
+	while($object = db_fetch_object($phases)){
+		$content .= "<tr>";
+		$content .= "<td width=100>" . $object->name . "</td>";
+		$link = "piauthoring/newinquiry/1/phase/" . $object->phase_id;
+		$content .= "<td>" . l("remove", $link) . "</td>";
+		$content .= "</tr>";
+	}
+	$content .= "</table>";
+	
 	return t($content);
+}
+
+function pi_authoring_new_inquiry_remove(){
+	$what = arg(3); //stage or phase - if you want to remove an inquiry then you should do something different
+	$id = arg(4);
+	
+	if($what == 'stage'){
+		//if stage then remove from pi_stage, pi_stage_actor, pi_stage_phase and pi_stage_phase_activity
+		$query = "DELETE FROM pi_stage WHERE";
+		$query .= " stage_id = '" . $id . "'";
+		db_query($query);
+		$query1 = "DELETE FROM pi_stage_actor WHERE";
+		$query1 .= " stage_id = '" . $id . "'";
+		db_query($query1);
+		//pi_stage_phase -> get psp_id
+		$query2 = "SELECT * FROM pi_stage_phase WHERE stage_id = '" . $id . "'";
+		$results = db_query($query2);
+		while($object = db_fetch_object($results)){
+			$psp_id = $object->psp_id;
+			$query3 = "DELETE FROM pi_stage_phase WHERE psp_id = '" . $psp_id . "'";
+			db_query($query3);
+			$query4 = "DELETE FROM pi_stage_phase_activity WHERE psp_id = '" . $psp_id . "'";
+			db_query($query4);
+		}
+	}
+	else if($what == 'phase'){
+		//if phase then remove from pi_phase, pi_phase_actor, pi_stage_phase and pi_stage_phase_activity
+		$query = "DELETE FROM pi_phase WHERE";
+		$query .= " phase_id = '" . $id . "'";
+		db_query($query);
+		$query1 = "DELETE FROM pi_phase_actor WHERE";
+		$query1 .= " phase_id = '" . $id . "'";
+		db_query($query1);
+		//pi_stage_phase -> get psp_id
+		$query2 = "SELECT * FROM pi_stage_phase WHERE phase_id = '" . $id . "'";
+		$results = db_query($query2);
+		while($object = db_fetch_object($results)){
+			$psp_id = $object->psp_id;
+			$query3 = "DELETE FROM pi_stage_phase WHERE psp_id = '" . $psp_id . "'";
+			db_query($query3);
+			$query4 = "DELETE FROM pi_stage_phase_activity WHERE psp_id = '" . $psp_id . "'";
+			db_query($query4);
+		}
+	}
+	drupal_set_message(t("Done"));
+	drupal_goto("piauthoring/newinquiry");
 }
 
 /**
@@ -700,7 +1139,8 @@ function pi_authoring_new_inquiry_first_organisation(){
 	$inquiries = db_query($query);
 	while($inquiry = db_fetch_object($inquiries)){
 		//name of inquiry
-		$content .= "<strong>" . $inquiry->name . "</strong><br><br>";
+		$content .= "<strong>" . $inquiry->name . "</strong><br>";
+		$content .= "<strong>!!remove will delete entry for pi_stage_phase as well as from pi_stage_phase_activity!!</strong><br><br>";
 		$query2 = "SELECT * FROM pi_inquiry_stage ";
 		$query2 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
 		$query2 .= "WHERE inquiry_id = '" . $inquiry->inquiry_id . "'";
@@ -715,12 +1155,23 @@ function pi_authoring_new_inquiry_first_organisation(){
 			$content .= "<table>";
 			while($stagephase = db_fetch_object($stagephases)){
 				$content .= "<tr><td width=100>" . $stagephase->name . "</td>";
-				$content .= "<td width=100>" . "remove" . "</td></tr>";
+				$remove_link = 'piauthoring/firstorganisation/1/' . $stagephase->psp_id;
+				$content .= "<td width=100>" . l("remove",$remove_link) . "</td></tr>";
 			}
 			$content .= "</table>";
 		}
 	}
 	return $content;
+}
+
+function pi_authoring_new_inquiry_first_organisation_remove(){
+	$query = "DELETE FROM pi_stage_phase WHERE psp_id = '" . arg(3) . "'";
+	db_query($query);
+	//check to see if this stage phase has entries in pi_stage_phase_activity which need removing
+	$query2 - "DELETE FROM pi_stage_phase_activity WHERE psp_id = '" . arg(3) . "'";
+	db_query($query2);
+	drupal_set_message(t("Done"));
+	drupal_goto("piauthoring/firstorganisation");
 }
 
 function pi_authoring_new_inquiry_first_organisation_stagesphases(){
@@ -1519,6 +1970,26 @@ function pi_authoring_new_activities_real_edit_form($form_state){
 		'#default_value' => $result2->visible_status,
 	);
 	
+	//nid options
+	$query3 = "SELECT * FROM node";
+	$result3 = db_query($query3);
+	$node_options = array();
+	//first is none -> is 0 as no nid is 0 they always start at 1
+	$node_options[] = array(0=>'none');
+	while($object3 = db_fetch_object($result3)){
+		$node_options[$object3->nid] = $object3->title . "(" . $object3->type . ")";
+	}
+	
+	$query4 = "SELECT * FROM pi_activity_node WHERE activity_id = '" . $activity_id . "'";
+	$object4 = db_fetch_object(db_query($query4));
+	
+	$form['edit']['piactivitystatus']['existing_nid'] = array(
+		'#type' => 'select',
+		'#title' => t('Does The Activity Refer To An Existing Node? I.e. if you have selected view in view_type then to which node do you want to view?'),
+		'#options' => $node_options,
+		'#default_value' => $object4->nid,
+	);
+	
 	$form['add']['submit'] = array(
 		'#type' => 'submit',
 		'#value' => t('Update'),
@@ -1529,6 +2000,7 @@ function pi_authoring_new_activities_real_edit_form($form_state){
 
 function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
 	$activity_id = arg(3);
+	$inquiry_id = arg(4);
 	
 	//update pi_activity table
 	$query = "UPDATE pi_activity ";
@@ -1548,12 +2020,40 @@ function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
 	$query2 .= ", node_function = '" . $form_state['values']['edit']['piactivitystatus']['node_function'] . "'";
 	$query2 .= ", visible_status = '" . $form_state['values']['edit']['piactivitystatus']['visible_status'] . "'";
 	$query2 .= " WHERE activity_id = '" . $activity_id . "'";
+	$query2 .= " AND inquiry_id = '" . $inquiry_id ."'";
 	db_query($query2);
 	
 	//update pi_activity_actor table - gid should be the same as in pi_activity_status (??)
 	$query3 = "UPDATE pi_activity_actor SET gid = '" . $form_state['values']['edit']['piactivitystatus']['gid'] . "'";
 	$query3 .= " WHERE activity_id ='" . $activity_id ."'";
 	db_query($query3);
+	
+	//are we adding a nid reference?
+	$existing_nid = $form_state['values']['edit']['piactivitystatus']['existing_nid'];
+	if($existing_nid != 'none'){
+		//insert or update?
+		$query4 = "SELECT * FROM pi_activity_node WHERE";
+		$query4 .= " activity_id = '" . $activity_id . "'";
+		$query4 .= " AND inquiry_id = '" . $inquiry_id ."'";
+		$object4 = db_fetch_object(db_query($query4));
+		if($object4){
+			//update
+			//echo 'update';
+			$query5 = "UPDATE pi_activity_node SET";
+			$query5 .= " nid = '" . $existing_nid . "'";
+			$query5 .= " WHERE pan_id = '" . $object4->pan_id . "'";
+			db_query($query5);
+ 		}
+		else{
+			//insert
+			//echo 'insert';
+			$query6 = "INSERT INTO pi_activity_node SET";
+			$query6 .= " inquiry_id = '" . $inquiry_id . "'";
+			$query6 .= ", activity_id = '" . $activity_id . "'";
+			$query6 .= ", nid = '" . $existing_nid . "'";
+			db_query($query6);
+		}
+	}
 	
 	//done
 	$text = "Updated activity";
