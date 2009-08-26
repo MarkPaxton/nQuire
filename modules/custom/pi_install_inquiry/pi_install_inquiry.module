@@ -64,6 +64,15 @@ function pi_install_inquiry_menu() {
       'access arguments' => array('access install inquiry content'),
 	);
 
+	$items['install/synctoserver'] = array(
+	//'path' => 'piauthoring',
+      'title' => t("5. Test Sync'ing Inquiry From Local Machine To Server"),
+  	  'page callback' => 'pi_install_inquiry_sync_to_server',
+  	  'type' => MENU_NORMAL_ITEM,
+	  'weight' => 5,
+      'access arguments' => array('access install inquiry content'),
+	);
+
 	return $items;
 }
 
@@ -263,10 +272,10 @@ function copy_pi_tables(){
 function update_pi_tables(){
 	$messages = '';
 	//array of tables to install
-	$tables = array(0=>'pi_inquiry', 1=>'pi_inquiry_stage', 2=> 'pi_inquiry_phase', 
-	3=>'pi_stage', 4=>'pi_phase', 5=>'pi_stage_phase', 6=>'pi_activity', 
+	$tables = array(0=>'pi_inquiry', 1=>'pi_inquiry_stage', 2=> 'pi_inquiry_phase',
+	3=>'pi_stage', 4=>'pi_phase', 5=>'pi_stage_phase', 6=>'pi_activity',
 	7=>'pi_stage_phase_activity', 8=>'pi_activity_status', 9=>'pi_grouping',
-	10=>'pi_inquiry_grouping', 11=>'pi_group_type', 
+	10=>'pi_inquiry_grouping', 11=>'pi_group_type',
 	12=>'role', 13=> 'permission', 14=>'users', 15=>'users_roles', 16=>'pi_current_stage');
 	//install the inquiry as below (pi_ tables)
 	$count = 0;
@@ -332,6 +341,34 @@ function update_table($table){
 		db_set_active('server');
 	}
 	//at the end set the db back to being this machine
+	db_set_active('default');
+
+	//return message
+	$message .= "....done<br>";
+	return $message;
+}
+
+function update_table_server($table){
+	$message = "Updating " . $table . "....<br>";
+	//get pi_ table from the server
+	db_set_active('default');
+	$query = "SELECT * FROM " . $table;
+	$result = db_query($query);
+	while($object = db_fetch_object($result)){
+		//set db to the server
+		db_set_active('server');
+		//does values already exist?
+		$exists = does_value_exist($table, $object);
+		if($exists){
+			//uncomment below to get more detail when the tables are installed
+			$message .= update_db($table, $object);
+			$message .= "<br>";
+			//insert_into_db($table, $object);
+		}
+		//set db back to local
+		db_set_active('default');
+	}
+	//at the end set the db back to being this machine just to make sure
 	db_set_active('default');
 
 	//return message
@@ -1228,7 +1265,7 @@ function pi_install_inquiry_sync_form($form_state){
 		'#title' => t('Click To Sync'),
 		'#tree' => TRUE,
 	);
-	
+
 	$query = "SELECT * FROM users";
 	$results = db_query($query);
 	$options = array();
@@ -1255,6 +1292,60 @@ function pi_install_inquiry_sync_form_submit($form, &$form_state){
 	drupal_set_message(t($messages));
 }
 
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------5. Testing Sync'ing Install From Local Macing to Server---------------------
+//------------------------------------------------------------------------------------------------------------------
+
+function pi_install_inquiry_sync_to_server(){
+	//the install is a sync from the server onto the local
+	$content = "<p>Test Sync'ing From Local Machine To Server:  This  allows you to test the sync'ing from the local";
+	$content .= " machine to the server for a particular user. Select the user this machine belongs to and press go.</p>";
+	$content .= drupal_get_form('pi_install_inquiry_sync_to_server_form', $node);
+	return $content;
+}
+
+function pi_install_inquiry_sync_to_server_form($form_state){
+
+	$form['go'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Click To Sync'),
+		'#tree' => TRUE,
+	);
+
+	$query = "SELECT * FROM users";
+	$results = db_query($query);
+	$options = array();
+	while ($object = db_fetch_object($results)) {
+		$options[$object->uid] = $object->uid . " : " . $object->name;
+	}
+
+	$form['go']['uid'] = array(
+		'#type' => 'select',
+		'#title' => t('User To Sync For'),
+		'#options' => $options,
+	);
+
+	$form['go']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Test Sync'),
+	);
+
+	return $form;
+}
+
+function pi_install_inquiry_sync_to_server_form_submit($form, &$form_state){
+	$messages = sync_from_local_to_server($form['values']['go']['uid']);
+	drupal_set_message(t($messages));
+}
+
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------END 5. Testing Sync'ing Install From Local Macing to Server-----------------
+//------------------------------------------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------SYNC CODE: FUNCTIONS THAT DO THE SYNC'ING-----------------------------------
+//------------------------------------------------------------------------------------------------------------------
+
 function sync_from_server_to_local($uid){
 	$text = "Syncing from server to local machine...<br>";
 	//make sure the basic pi_tables and user info is up to date and anything new is added to pi_ and users
@@ -1263,14 +1354,14 @@ function sync_from_server_to_local($uid){
 	copy_pi_tables();
 	update_pi_tables();
 	$text .= "<br>....Updated pi_ and user tables on Local Machine...<br>";
-	
+
 	/**sync the activities (i.e. nodes) on the server with the local machine
-	 * 
+	 *
 	 * for each pi_activity_node -> load node
 	 * 	1. check to see if the node loaded from the server is 'older' than the equivelant on the local machine
-	 *  
+	 *
 	 *  2. if it is newer then sync the node
-	 * 
+	 *
 	 * 	if the uid of node == $uid -> save
 	 *  else find the pi_activity record and what is the audience of the activity
 	 *    if individual -> dont save
@@ -1279,9 +1370,9 @@ function sync_from_server_to_local($uid){
 	 *    does $uid belong to the same group as node->uid?
 	 *      if yes -> save
 	 *      else -> dont save
-	 * 
+	 *
 	 ***NB not sure but I dont think this works with groupings!! This might not be a problem though?***
-	**/
+	 **/
 	$query = "SELECT * FROM pi_activity_node";
 	db_set_active('server');
 	$query_result = db_query($query);
@@ -1331,18 +1422,67 @@ function sync_from_server_to_local($uid){
 	}
 	db_set_active('default');
 	$text .= "....Done! updated pi_activity_node on Local Machine...<br>";
-	
+
 	//update the pi_current_stage table
 	//!!!NB - same error as pi_activity could occur here as if another user logs in there will be no
 	//record of what state the are on.
 	$text .= update_pi_current_stage_from_server($uid);
+	//flush cache
+	drupal_flush_all_caches();
 	//done
 	return $text;
 }
 
-function sync_from_local_to_server(){
-	
+function sync_from_local_to_server($uid){
+	$text = "Syncing from local machine to server...<br>";
+	//update the pi_activity tables on the server from the local machine that are relevant to this user
+	//inc. pi_current_stage, pi_activity_status and pi_activity_node.
+	//array of tables to update
+	$text .= "Updating pi_activity_status and pi_current_stage tables...<br>";
+	$tables = array(0=>'pi_activity_status',1=>'pi_current_stage');
+	$count = 0;
+	while($count < count($tables)){
+		$table = $tables[$count];
+		$text .= update_table_server($table);
+		$count = $count + 1;
+	}
+	//for each node in the pi_activity_node table save it to the server from the local machine
+	//if the node is in the pi_install_inquiry table then update it on the server else add it as new
+	$query = "SELECT * FROM pi_activity_node";
+	db_set_active('default');
+	$query_result = db_query($query);
+	while($object = db_fetch_object($query_result)){
+		$local_nid = $object->nid;
+		$node = node_load($object->nid);
+		if($node->type != 'quiz'){
+			$server_nid = get_server_nid_from_local_nid($local_nid);
+			if($server_nid == 0){
+				//node is new
+				db_set_active('server');
+				unset($node -> nid);
+				unset($node -> vid);
+				//save the node object
+				node_save($node);
+				$text .= "...Node Saved... (" . $local_nid . ")<br>";
+			}
+			else{
+				//node is to be updated
+				db_set_active('server');
+				$node->nid = $server_nid;
+				$node->vid = get_next_nid_on_server(); //unset($node -> vid);
+				//save the node object
+				node_save($node);
+				$text .= "...Node Updated... (L=" . $local_nid . ",S=" . $server_nid . ")<br>";
+			}
+		}
+		db_set_active('default');
+	}
+	//maybe we need node dependenceies??
+
+	return $text;
 }
+
+//helper functions for the sync methods
 
 function save_node_from_server_if_newer_than_local_copy($node, $object){
 	$text = "";
@@ -1355,7 +1495,7 @@ function save_node_from_server_if_newer_than_local_copy($node, $object){
 		unset($node -> vid);
 		//save the node object
 		node_save($node);
-		$text .= "...Node Saved...<br>";
+		$text .= "...Node Saved..." . $node->title . "<br>";
 		//get new nid
 		$new_nid = db_result(db_query("SELECT max(nid) from node"));
 		//update local machine pi_activity_node table
@@ -1364,18 +1504,18 @@ function save_node_from_server_if_newer_than_local_copy($node, $object){
 	else{
 		//not new to local machine - so update it
 		$node->nid = $local_nid_of_node;
-		unset($node -> vid);
+		$node->vid = get_next_nid_on_local(); // unset($node -> vid); //
 		//save the node object
 		node_save($node);
-		$text .= "...Node Updated...<br>";
+		$text .= "...Node Updated..." . $node->title . "<br>";
 	}
-	
+
 	//are there any other node types that are used by the saved node type e.g. Quiz uses long_answer, multichoise etc.
 	//if there is then we need to save or update these as well - lets hope this works!
 	$type = $node->type;
 	$nodes_with_dependencies = array('quiz'=>array(1=>'long_answer', 2=>'multichoice',
-													3=>'short_answer', 4=>'true_false')
-									);
+	3=>'short_answer', 4=>'true_false')
+	);
 	$count = count($nodes_with_dependencies[$type]);
 	while($count != 0){
 		//get the nodes from the server
@@ -1391,9 +1531,9 @@ function save_node_from_server_if_newer_than_local_copy($node, $object){
 			if($exists != 0){
 				//if yes then update the node
 				$server_node->nid = $exists;
-				unset($node -> vid);
-				node_save($node);
-				$text .= "...Node Dependency Updated...<br>";
+				$server_node->vid = get_next_nid_on_local(); // unset($server_node -> vid); // 
+				node_save($server_node);
+				$text .= "...Node Dependency Updated..." . $server_node->title . "<br>";
 			}
 			else{
 				//else add it as a new node and add the new and old nids to pi_install_inquiry
@@ -1403,7 +1543,7 @@ function save_node_from_server_if_newer_than_local_copy($node, $object){
 				unset($server_node -> vid);
 				//save the node object
 				node_save($server_node);
-				$text .= "...Node Dependency Saved...<br>";
+				$text .= "...Node Dependency Saved..." . $server_node->title . "<br>";
 				//get new nid
 				$new_nid = db_result(db_query("SELECT max(nid) from node"));
 				//update local machine pi_activity_node table
@@ -1413,14 +1553,14 @@ function save_node_from_server_if_newer_than_local_copy($node, $object){
 				db_query($record);
 			}
 			db_set_active('server');
-		} 
+		}
 		$count = $count - 1;
 	}
 	//special requirements
 	if($type == 'quiz'){
 		$text .= include_special_quiz_requirements();
 	}
-	
+
 	db_set_active('default');
 	return $text;
 }
@@ -1436,8 +1576,22 @@ function get_local_nid_from_server_nid($server_nid){
 	}
 }
 
+function get_next_nid_on_local(){
+	db_set_active('default');
+	$query = "SELECT MAX(node.vid) FROM node";
+	$result = db_result(db_query($query));
+	$query2 = "SELECT MAX(node.nid) FROM node";
+	$result2 = db_result(db_query($query2));
+	if($result >= $result2){
+		return ($result+1);
+	}
+	else{
+		return ($result2+1);
+	}
+}
+
 function get_server_nid_from_local_nid($local_nid){
-	$query = "SELECT * FROM pi_insall_inquiry WHERE local_nid = '" . $local_nid . "'";
+	$query = "SELECT * FROM pi_install_inquiry WHERE local_nid = '" . $local_nid . "'";
 	$object = db_fetch_object(db_query($query));
 	if($object){
 		return $object->server_nid;
@@ -1445,6 +1599,23 @@ function get_server_nid_from_local_nid($local_nid){
 	else{
 		return 0;
 	}
+}
+
+function get_next_nid_on_server(){
+	db_set_active('server');
+	$query = "SELECT MAX(node.vid) FROM node";
+	$result = db_result(db_query($query));
+	$query2 = "SELECT MAX(node.nid) FROM node";
+	$result2 = db_result(db_query($query2));
+	$to_return = 0;
+	if($result >= $result2){
+		$to_return = ($result+1);
+	}
+	else{
+		$to_return = ($result2+1);
+	}
+	db_set_active('default');
+	return $to_return;
 }
 
 function get_activity_audience($activity_id){
@@ -1493,7 +1664,7 @@ function update_pi_activity_node_table($object, $old_nid, $new_nid){
 	}
 	db_query($query);
 	db_query($query2);
-	return "...Updated pi_activity_node table with new nid: " . $new_nid;
+	return "...Updated pi_activity_node table with new nid: " . $new_nid . "<br>";
 }
 
 function update_pi_current_stage_from_server($uid){
@@ -1512,7 +1683,25 @@ function update_pi_current_stage_from_server($uid){
 }
 
 function include_special_quiz_requirements(){
+	$text = "...Including Special Quiz Relationships<br>";
+	//inc quiz_node_relationship table
+	$text .= include_quiz_node_relationship();
+	//inc quiz_long_answer_user_answers table
+	$text .= include_quiz_long_answer_user_answers();
+	//inc quiz_multichoise_user_answers table
+	$text .= include_quiz_multichoise_user_answers();
+	//inc quiz_truefalse_user_answers table
+	$text .= include_quiz_truefalse_user_answers();
+	//ic quiz_node_results table
+	$text .= include_quiz_node_results();
+	//inc quiz_node_results_answers table
+	$text .= include_quiz_node_results_answers();
+	return $text;
+}
+
+function include_quiz_node_relationship(){
 	//for each record in the quiz_node_relationship table on the server
+	$text = "quiz_node_relationship<br>";
 	$query = "SELECT * FROM quiz_node_relationship";
 	db_set_active('server');
 	$result = db_query($query);
@@ -1546,6 +1735,7 @@ function include_special_quiz_requirements(){
 				$update_query .= " AND child_nid = '" . $local_child_node->nid . "'";
 				$update_query .= " AND child_vid = '" . $local_child_node->vid . "'";
 				db_query($update_query);
+				$text .= "Updated quiz_node_relationship<br>";
 			}
 			else{
 				//add new entry
@@ -1557,9 +1747,250 @@ function include_special_quiz_requirements(){
 				$insert_query .= ", question_status = '" . $object->question_status . "'";
 				$insert_query .= ", weight = '" . $object->weight . "'";
 				db_query($insert_query);
+				$text .= "Inserted quiz_node_relationship<br>";
 			}
 		}
 		db_set_active('server');
 	}
-	return "...Included Special Quiz Relationships";
+	db_set_active('default');
+	return $text;
 }
+
+function include_quiz_long_answer_user_answers(){
+	$text = "quiz_long_answer_user_answers<br>";
+	db_set_active('default');
+	//do we have a long_answer node type?
+	$type = 'long_answer';
+	$query = "SELECT * FROM node_type WHERE type = '" . $type ."'";
+	$object = db_fetch_object(db_query($query));
+	if($object){
+		$text .= "Exists long_answer type...<br>";
+		//get all the quiz_long_answer_user_answers
+		$query2 = "SELECT * FROM quiz_long_answer_user_answers";
+		db_set_active('server');
+		$results2 = db_query($query2);
+		while($object2 = db_fetch_object($results2)){
+			//do we update or insert? is there an answer on the local machine?
+			db_set_active('default');
+			$test_query = "SELECT * FROM quiz_long_answer_user_answers WHERE answer_id = '" . $object2->answer_id . "'";
+			$test_object = db_fetch_object(db_query($test_query));
+			if($test_object){
+				//update
+				$update = "UPDATE quiz_long_answer_user_answers SET";
+				$update .= " score = '" . $object2->score . "'";
+				$update .= ", is_evaluated = '" . $object2->is_evaluated . "'";
+				$update .= ", answer = '" . $object2->answer . "'";
+				$update .= " WHERE result_id = '" . $object2->result_id . "'";
+				db_query($update);
+				$text .= "Updated quiz_long_answer_user_answer<br>";
+			}
+			else{
+				//insert
+				$local_nid = get_local_nid_from_server_nid($object2->question_nid);
+				$insert = "INSERT INTO quiz_long_answer_user_answers SET";
+				$insert .= " answer_id = '" . $object2->answer_id . "'";
+				$insert .= ", question_nid = '" . $local_nid . "'";
+				$insert .= ", question_vid = '" . get_next_nid_on_local . "'";
+				$insert .= ", result_id = '" . $object2->result_id . "'";
+				$insert .= ", score = '" . $object2->score . "'";
+				$insert .= ", is_evaluated = '" . $object2->is_evaluated . "'";
+				$insert .= ", answer = '" . $object2->answer . "'";
+				db_query($insert);
+				$text .= "Inserted quiz_long_answer_user_answer<br>";
+			}
+			db_set_active('server');
+		}
+	}
+	else{
+		$text .= "No long_answer type...<br>";
+	}
+	db_set_active('default');
+	return $text;
+}
+
+function include_quiz_multichoise_user_answers(){
+	$text = "include_quiz_multichoise_user_answers<br>";
+	db_set_active('default');
+	//do we have a multichoice node type?
+	$type = 'multichoice';
+	$query = "SELECT * FROM node_type WHERE type = '" . $type ."'";
+	$object = db_fetch_object(db_query($query));
+	if($object){
+		$text .= "Exists multichoice type...<br>";
+		//get all the quiz_long_answer_user_answers
+		$query2 = "SELECT * FROM quiz_multichoice_user_answers";
+		db_set_active('server');
+		$results2 = db_query($query2);
+		while($object2 = db_fetch_object($results2)){
+			//do we update or insert? is there an answer on the local machine?
+			db_set_active('default');
+			$test_query = "SELECT * FROM quiz_multichoice_user_answers WHERE";
+			$test_query .= " answer_id = '" . $object2->answer_id . "'";
+			$test_query .= " AND result_id = '" . $object2->result_id . "'";
+			$test_object = db_fetch_object(db_query($test_query));
+			if($test_object){
+				//update
+				$update = "UPDATE quiz_multichoice_user_answers SET";
+				$update .= " answer = '" . $object2->answer . "'";
+				$update .= " WHERE result_id = '" . $object2->result_id . "'";
+				db_query($update);
+				$text .= "Updated quiz_multichoise_user_answers<br>";
+			}
+			else{
+				//insert
+				$local_nid = get_local_nid_from_server_nid($object2->question_nid);
+				$insert = "INSERT INTO quiz_multichoice_user_answers SET";
+				$insert .= " question_nid = '" . $local_nid . "'";
+				$insert .= ", question_vid = '" . get_next_nid_on_local() . "'"; 
+				$insert .= ", result_id = '" . $object2->result_id . "'";
+				$insert .= ", answer_id = '" . $object2->answer_id . "'";
+				db_query($insert);
+				$text .= "Inserted quiz_multichoise_user_answers<br>";
+			}
+			db_set_active('server');
+		}
+	}
+	else{
+		$text .= "No multichoice type...<br>";
+	}
+	db_set_active('default');
+	return $text;
+}
+
+function include_quiz_truefalse_user_answers(){
+	$text = "include_quiz_truefalse_user_answers<br>";
+	db_set_active('default');
+	//do we have a multichoice node type?
+	$type = 'true_false';
+	$query = "SELECT * FROM node_type WHERE type = '" . $type ."'";
+	$object = db_fetch_object(db_query($query));
+	if($object){
+		$text .= "Exists truefalse type...<br>";
+		//get all the quiz_long_answer_user_answers
+		$query2 = "SELECT * FROM quiz_truefalse_user_answers";
+		db_set_active('server');
+		$results2 = db_query($query2);
+		while($object2 = db_fetch_object($results2)){
+			//do we update or insert? is there an answer on the local machine?
+			db_set_active('default');
+			$test_query = "SELECT * FROM quiz_truefalse_user_answers WHERE result_id = '" . $object2->result_id . "'";
+			$test_object = db_fetch_object(db_query($test_query));
+			if($test_object){
+				//update
+				$update = "UPDATE quiz_truefalse_user_answers SET";
+				$update .= " answer = '" . $object2->answer . "'";
+				$update .= ", score = '" . $object2->score . "'";
+				$update .= " WHERE result_id = '" . $object2->result_id . "'";
+				db_query($update);
+				$text .= "Updated quiz_truefalse_user_answers<br>";
+			}
+			else{
+				//insert
+				$local_nid = get_local_nid_from_server_nid($object2->question_nid);
+				$insert = "INSERT INTO quiz_truefalse_user_answers SET";
+				$insert .= " question_nid = '" . $local_nid . "'";
+				$insert .= ", question_vid = '" . get_next_nid_on_local() . "'";
+				$insert .= ", result_id = '" . $object2->result_id . "'";
+				$insert .= ", answer = '" . $object2->answer . "'";
+				$insert .= ", score = '" . $object2->score . "'";
+				db_query($insert);
+				$text .= "Inserted quiz_truefalse_user_answers<br>";
+			}
+			db_set_active('server');
+		}
+	}
+	else{
+		$text .= "No truefalse type...<br>";
+	}
+	db_set_active('default');
+	return $text;
+}
+
+function include_quiz_node_results(){
+	$text .= "include_quiz_node_results...<br>";
+	//get all the quiz_node_results
+	$query = "SELECT * FROM quiz_node_results";
+	db_set_active('server');
+	$results = db_query($query);
+	while($object = db_fetch_object($results)){
+		//do we update or insert? is there an answer on the local machine?
+		db_set_active('default');
+		$test_query = "SELECT * FROM quiz_node_results WHERE result_id = '" . $object->result_id . "'";
+		$test_object = db_fetch_object(db_query($test_query));
+		if($test_object){
+			//update
+			$update = "UPDATE quiz_node_results SET";
+			$update .= " time_start = '" . $object->time_start . "'";
+			$update .= ", time_end = '" . $object->time_end . "'";
+			$update .= ", released = '" . $object->released . "'";
+			$update .= ", score = '" . $object->score . "'";
+			$update .= ", is_invalid = '" . $object->is_invalid . "'";
+			$update .= " WHERE result_id = '" . $object->result_id . "'";
+			db_query($update);
+			$text .= "Updated quiz_node_results<br>";
+		}
+		else{
+			//insert
+			$local_nid = get_local_nid_from_server_nid($object->nid);
+			$insert = "INSERT INTO quiz_node_results SET";
+			$insert .= " result_id = '" . $object->result_id . "'";
+			$insert .= ", nid = '" . $local_nid . "'";
+			$insert .= ", vid = '" . get_next_nid_on_local() . "'";
+			$insert .= ", uid = '" . $object->uid . "'";
+			$insert .= ", time_start = '" . $object->time_start . "'";
+			$insert .= ", time_end = '" . $object->time_end . "'";
+			$insert .= ", released = '" . $object->released . "'";
+			$insert .= ", score = '" . $object->score . "'";
+			$insert .= ", is_invalid = '" . $object->is_invalid . "'";
+			db_query($insert);
+			$text .= "Inserted quiz_node_results<br>";
+		}
+		db_set_active('server');
+	}
+	return $text;
+}
+
+function include_quiz_node_results_answers(){
+	$text .= "quiz_node_results_answers...<br>";
+	//get all the quiz_node_results
+	$query = "SELECT * FROM quiz_node_results_answers";
+	db_set_active('server');
+	$results = db_query($query);
+	while($object = db_fetch_object($results)){
+		//do we update or insert? is there an answer on the local machine?
+		db_set_active('default');
+		$test_query = "SELECT * FROM quiz_node_results_answers WHERE result_id = '" . $object->result_id . "'";
+		$test_object = db_fetch_object(db_query($test_query));
+		if($test_object){
+			//update
+			$update = "UPDATE quiz_node_results_answers SET";
+			$update .= " is_correct = '" . $object->is_correct . "'";
+			$update .= ", is_skipped = '" . $object->is_skipped . "'";
+			$update .= ", points_awarded = '" . $object->points_awarded . "'";
+			$update .= ", answer_timestamp = '" . $object->answer_timestamp . "'";
+			$update .= " WHERE result_id = '" . $object->result_id . "'";
+			db_query($update);
+			$text .= "Updated quiz_node_results_answers<br>";
+		}
+		else{
+			//insert
+			$local_nid = get_local_nid_from_server_nid($object->question_nid);
+			$insert = "INSERT INTO quiz_node_results_answers SET";
+			$insert .= " result_id = '" . $object->result_id . "'";
+			$insert .= ", question_nid = '" . $local_nid . "'";
+			$insert .= ", question_vid = '" . get_next_nid_on_local() . "'";
+			$insert .= ", is_correct = '" . $object->is_correct . "'";
+			$insert .= ", is_skipped = '" . $object->is_skipped . "'";
+			$insert .= ", points_awarded = '" . $object->points_awarded . "'";
+			$insert .= ", answer_timestamp = '" . $object->answer_timestamp . "'";
+			db_query($insert);
+			$text .= "Inserted quiz_node_results_answers<br>";
+		}
+		db_set_active('server');
+	}
+	return $text;
+}
+
+//------------------------------------------------------------------------------------------------------------------
+//--------------------------------------SYNC CODE: FUNCTIONS THAT DO THE SYNC'ING-----------------------------------
+//------------------------------------------------------------------------------------------------------------------
