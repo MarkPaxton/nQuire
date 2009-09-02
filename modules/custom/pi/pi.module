@@ -52,6 +52,7 @@ function pi_menu() {
   return $items;
 }
 
+
 /**
  * get_nid_for_inquiry_activity_and_user
 **/
@@ -1133,10 +1134,10 @@ function get_members_of_group ($gid) {
 
   $query = "SELECT uid FROM og_uid ";
   $query .= "WHERE nid = '" . $gid . "'";
+  
+  $result = db_query($query);
+  return $result;
 	
-	$result = db_result(db_query($query));
-	return $result;
-
 }
 
 function check_member_of_group ($gid, $uid) {
@@ -1170,7 +1171,7 @@ function get_groups_from_grouping ($grouping_id) {
 	$query = "SELECT pi_grouping_group.gid FROM pi_grouping_group ";
 	$query .= "WHERE pi_grouping_group.grouping_id = '" . $grouping_id ."'";
 	
-	$result = db_result(db_query($query));
+	$result = db_query($query);
 	return $result;
 
 }
@@ -1197,13 +1198,13 @@ function get_grouping ($inquiry_id, $stage_id = NULL, $phase_id = NULL, $activit
 	$query = "SELECT pi_inquiry_grouping.grouping_id FROM pi_inquiry_grouping ";
 	$query .= "WHERE pi_inquiry_grouping.inquiry_id = '" . $inquiry_id . "' ";
 	if($stage_id != NULL){
-		$query .= "AND pi_inquiry_grouping.stage_id ='" . $stage_id . "' ";
+		$query .= "AND (pi_inquiry_grouping.stage_id ='" . $stage_id . "' OR pi_inquiry_grouping.stage_id IS NULL) ";
 	}
 	if($phase_id != NULL){
-		$query .= "AND pi_inquiry_grouping.phase_id ='" . $phase_id . "' ";
+		$query .= "AND (pi_inquiry_grouping.phase_id ='" . $phase_id . "' OR pi_inquiry_grouping.phase_id IS NULL) ";
 	}
 	if($activity_id != NULL){
-		$query .= "AND pi_inquiry_grouping.activity_id ='" . $activity_id . "' ";
+		$query .= "AND (pi_inquiry_grouping.activity_id ='" . $activity_id . "'  OR pi_inquiry_grouping.activity_id IS NULL) ";
 	}
 	
 	$result = db_result(db_query($query));

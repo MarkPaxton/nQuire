@@ -1,5 +1,145 @@
 <?php
 
+
+function get_activity_participants($node_details) {
+		
+		    $content .= t("Selected activity: " . $node_details->activity_id);
+    		
+    		/*get audience type for the activity*/
+			//load activity
+			$loaded_activity = load_activity($node_details->activity_id);
+			//get the audience
+			$audience = $loaded_activity->audience;
+			$content .= t(" audience:" . $audience);
+			
+			$loaded_activity_actor = load_activity_actor($node_details->inquiry_id, $node_details->activity_id);
+			$gid_actor = $loaded_activity_actor[0]["gid"];
+			$uid_actor = $loaded_activity_actor[0]["uid"];
+			$content .= t(" gid:" . $gid_actor . " uid:" . $uid_actor);
+			/*get autual audiences for this i/s/p/a*/
+			//get the grouping for this i/s/p/a
+		
+			$grouping = get_grouping ($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+
+			$groups = get_groups_from_grouping ($grouping);
+			
+			$content .= t(" grouping:" . $grouping);
+			
+			//pull out the actual audiences
+			
+			$content .= " groups:";
+			$groups_array = array();
+			while ($gid = db_fetch_object($groups)) {
+				$groups_array[] = $gid->gid;
+				$content .= t($gid->gid);
+			}
+			
+			$activity_participants = array();
+			$content .= " type:";
+			//the actor is a uid
+			//use the uid
+			if ($uid_actor) {
+				$content .= "uid";
+				$activity_participants[] = $uid_actor;
+			}
+			
+			//the actor is a gid for an individual activity
+			//get the individual members of the gid
+			elseif ($gid_actor && $audience == "individual") {
+				$content .= "gid/individual";
+				$members = get_members_of_group($gid_actor);
+				while ($member = db_fetch_object($members)) {
+					$activity_participants[] = $member->uid;
+				}
+				
+			}
+			
+			//the actor is a gid for a group activity
+			//use the gid if it is a group
+			//get the group members (from grouping) if the gid is a class/multiclass
+			elseif ($gid_actor && $audience == "group") {
+				$content .= "gid/group";
+				$query = t("SELECT type FROM pi_group_type WHERE gid = " . $gid_actor);
+				$actor_type = db_result(db_query($query));
+				$content .= " type:" . $actor_type;
+				if ($actor_type == "group" && in_array($gid_actor, $groups_array)) {
+					$activity_participants[] = $gid_actor;
+				}
+				elseif ($actor_type == "class") {
+					//find groups in gid class from array
+					//find which members of groups array are groups in this class
+					
+					$group_query = "SELECT pi_group_hierarchy.gid FROM pi_group_hierarchy, pi_group_type WHERE pi_group_hierarchy.parent_gid = " . $gid_actor . " AND pi_group_hierarchy.gid = pi_group_type.gid AND pi_group_type.type = \"group\"";
+					$group_query_result = db_query($group_query);
+					$groups_of_actor_class = array();
+					$content .= " groups of class:";
+					while ($single_group = db_fetch_object($group_query_result)) {
+						$groups_of_actor_class[] = $single_group->gid;
+						$content .= $single_group->gid;
+					}
+					$activity_participants = array_intersect($groups_of_actor_class, $groups_array);
+											
+				}
+				elseif ($actor_type == "multiclass") {
+					//find groups within the multiclass
+					//find which are in the current grouping
+					$group_query = "SELECT child.gid, parent.parent_gid FROM pi_group_hierarchy parent, pi_group_hierarchy child, pi_group_type WHERE parent.parent_gid = " . $gid_actor . " AND parent.gid = child.parent_gid AND parent.parent_gid IS NOT NULL AND pi_group_type.gid = child.gid AND pi_group_type.type = \"group\"";
+					$group_query_result = db_query($group_query);
+					$groups_of_actor_class = array();
+					$content .= " groups of muticlass:";
+					while ($single_group = db_fetch_object($group_query_result)) {
+						$groups_of_actor_class[] = $single_group->gid;
+						$content .= $single_group->gid;
+					}
+					$activity_participants = array_intersect($groups_of_actor_class, $groups_array);
+				}
+			}
+			
+			//the actor is a gid for a class activity
+			//use the gid if it is a class
+			//get the class members (from grouping) if it is a multiclass
+			elseif ($gid_actor && $audience == "class") {
+				$content .= "gid/class";
+				$query = t("SELECT type FROM pi_group_type WHERE gid = " . $gid_actor);
+				$actor_type = db_result(db_query($query));
+				$content .= " type:" . $actor_type;
+				if ($actor_type == "class" && in_array($gid_actor, $groups_array)) {
+					$activity_participants[] = $gid_actor;
+				}
+				elseif ($actor_type == "multiclass") {
+				//find the classes of the multiclass
+				$group_query = "SELECT pi_group_hierarchy.gid FROM pi_group_hierarchy, pi_group_type WHERE pi_group_hierarchy.parent_gid = " . $gid_actor . " AND pi_group_hierarchy.gid = pi_group_type.gid AND pi_group_type.type = \"class\"";
+					$group_query_result = db_query($group_query);
+					$groups_of_actor_class = array();
+					$content .= " classes of multiclass:";
+					while ($single_group = db_fetch_object($group_query_result)) {
+						$groups_of_actor_class[] = $single_group->gid;
+						$content .= $single_group->gid;
+					}
+					$activity_participants = array_intersect($groups_of_actor_class, $groups_array);
+				}
+			}
+			
+			//the actor is a gid for a multiclass activity
+			//the gid should be a multiclass
+			elseif ($gid_actor && $audience == "muticlass") {
+				$content .= "gid/multiclass";
+				$content .= "gid/multiclass";
+				$query = t("SELECT type FROM pi_group_type WHERE gid = " . $gid_actor);
+				$actor_type = db_result(db_query($query));
+				$content .= " type:" . $actor_type;
+				if ($actor_type == "multiclass" && in_array($gid_actor, $groups_array)) {
+					$activity_participants[] = $gid_actor;
+				}
+			}
+
+			
+		$result = array(activity_participants => $activity_participants, gid_actor => $gid_actor, uid_actor => $uid_actor, audience => $audience, name => $loaded_activity->name);
+		
+		return $result;
+}
+
+
 function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
 	switch ($op) {
   
@@ -14,66 +154,105 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
     	 * of the activity i.e. start, in_progress, view or unavailable.
     	 * The teacher can then use this info to judge if the students or group needs help.
     	**/
-    	$path_info = get_inquiry_details_from_current_path();
-    	if($path_info->activity_id){
-	    	//pi function below returns an array. should be one?
-	    	//the pi_activity_actor table show to who this activity will be visible
-	    	$activity_actor_array = load_activity_actor($path_info->inquiry_id, $path_info->activity_id);
-	    	$array_size = count($activity_actor_array);
-	    	$content = '<table>';
-	    	$count = 0;
-	    	while($count <= $array_size-1){
-	    		//gid or uid?
-	    		$activity_gid = $activity_actor_array[$count]['gid'];
-	    		$activity_uid = $activity_actor_array[$count]['uid'];
-	    		//who is the audience?
-	    		$audience_query = "SELECT * FROM pi_activity WHERE activity_id = '" . $activity_actor_array[0]['activity_id'] . "'";
-	    		$audience_object = db_fetch_object(db_query($audience_query));
-	    		//if the activity is for a group
-	    		if($activity_gid != 0 | $activity_gid != NULL){
-		    		if($audience_object->audience == 'individual'){
-		    			//show activity status listed group and by user
-		    			$content .= '<tr>';
-		    			$content .= '<td><strong>' . get_group_name($activity_gid) . '</strong></td><td></td>';
-		    			$content .= '</tr>';
-		    			//get members of group
-		    			$group_members_query = "SELECT * FROM og_uid ";
-	  					$group_members_query .= "WHERE nid = '" . $activity_gid . "'";
-		    			$result = db_query($group_members_query);
-		    			while($object = db_fetch_object($result)){
-		    				$content .= '<tr>';
-		    				$content .= '<td>' . get_user_name($object->uid) . '</td>';
-		    				$content .= '<td>'; 
-		    				$content .= get_status_of_user_in_group($path_info->inquiry_id, $path_info->activity_id, 
-		    								$object->uid, $activity_gid);
-		    				$content .= '</td>';
-		    				$content .= '</tr>';
-		    			}
-		    		}
-		    		else{
-		    			//show activity status listed by group only
-		    			$content .= '<tr>';
-		    			$content .= '<td>' . get_group_name($activity_gid) . '</td>';
-		    			$content .= '<td>' . get_status_of_group($path_info->inquiry_id, $path_info->activity_id, $activity_gid) . '</td>';
-		    			$content .= '</tr>';
-		    		}
-	    		}
-	    		else if($activity_uid != 0 | $activity_uid != NULL){
-	    			//show activity for user only
-	    			$content .= '<tr>';
-		    			$content .= '<td>' . get_user_name($activity_uid) . '</td>';
-		    			$content .= '<td>' . get_status_of_user($path_info->inquiry_id, $path_info->activity_id, $object->uid) . '</td>';
-		    			$content .= '</tr>';
-	    		}
-	    		$count = $count + 1;
-	    	}
-	    	$content .= '</table>';
+    	global $user;
+		
+		$node_details = get_inquiry_details_from_current_path();
+		
+		$content = "";
+		$content .= l(t("Dashboard"), build_teacher_tool_link("dashboard", $node_details->inquiry_id, NULL), array());
+    	$content .= "&nbsp;&nbsp;";
+    	$content .= l(t("Events"), build_teacher_tool_link("events", $node_details->inquiry_id, NULL), array());
+    	$content .= "&nbsp;&nbsp;";
+    	$content .= l(t("Set stage"), stage_selector_link($node_details->inquiry_id, $user->uid), array(query=>build_teacher_tool_link("destination=home", $node_details->inquiry_id, NULL)));
+    	$content .= "<br/><br/>";
+    	
+    	
+
+    	if (is_numeric($node_details->activity_id)) {
+
+        	$ap_result = get_activity_participants($node_details);
+    		$audience = $ap_result["audience"];
+    		$activity_participants = $ap_result["activity_participants"];
+    		$activity_name = $ap_result["name"];
+			
+			/*get the status for each actual audience*/
+			//use activity status
+			
+			$content .= "<b>" . $activity_name . "</b>";
+			
+			$content .= generate_status_table($activity_participants, $node_details, $audience);
+			
     	}
     	
-    	$block['subject'] = "Activity Status";
+    	$block['subject'] = "Teacher tools";
     	$block['content'] = $content;
+    	
 		return $block;
 	};
+}
+
+function generate_status_table($activity_participants, $node_details, $audience) {
+			
+		$image_path = "images/";
+		$status_image = array();
+		$status_image["start"] = "creatable.png";
+		$status_image["edit"] = "editable.png";
+		$status_image["view"] = "viewable.png";
+		$status_image["unavailable"] = "unavailable.png";
+		
+		$content .= "<table><tr><td>" . $audience . "</td><td>status</td></tr>";
+			if ($audience == "individual") {
+				foreach ($activity_participants as $activity_participant) {
+					if ($activity_participant != 1) {
+						$content .= "<tr><td>" . get_user_name($activity_participant) . "</td><td>" . "<img src=\"" . $image_path. $status_image[get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $activity_participant)] . "\"/>" . "</td></tr>";
+					}
+				}
+			}
+			
+			else {
+				foreach ($activity_participants as $activity_participant) {
+					$members_of_group = get_members_of_group($activity_participant);
+					$group_member = db_fetch_object($members_of_group);
+					
+					//I need this because uid 1 is admin and a member of every group
+					if ($group_member->uid == 1) {
+						$group_member = $group_member = db_fetch_object($members_of_group);
+					}
+					$content .= "<tr><td>" . get_group_name($activity_participant) . "</td><td>" .  "<img src=\"" . $image_path. $status_image[get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $group_member->uid)] . "\"/>" . "</td></tr>";
+				}
+			}
+		$content .= "</table>";
+			
+		return $content;
+}
+
+function stage_selector_link ($inquiry_id, $uid) {
+	$current_stage = get_current_stage_of_inquiry_and_user ($inquiry_id, $uid);
+	$current_stage_id = $current_stage->stage_id;
+	
+	$query = "SELECT nid FROM node WHERE type=\"pi_stage_selector\"";
+	$result = db_fetch_object(db_query($query));
+	if ($result->nid) {
+		$link = t("node/" . $result->nid . "/edit/" . $inquiry_id . "/" . $current_stage_id);
+	}
+	else {
+		$link = t("node/add/pi-stage-selector/" . $inquiry_id . "/" . $current_stage_id);
+	}
+	return $link;
+}
+
+function build_teacher_tool_link($item, $inquiry_id, $stage_id) {
+	if (!$inquiry_id) {
+		$query = "SELECT inquiry_id FROM pi_current_stage";
+		$result = db_fetch_object(db_query($query));
+		$inquiry_id = $result->inquiry_id;
+	}
+	if($stage_id) {
+		return t($item . "///" . $inquiry_id . "/" . $stage_id . "//");
+	}
+	else {
+		return t($item . "///" . $inquiry_id . "///");
+	}
 }
 
 function get_user_name($uid){
@@ -93,6 +272,7 @@ function get_status_of_group($inquiry_id, $activity_id, $gid){
 	$status_query .= " inquiry_id = '" . $inquiry_id . "'";
 	$status_query .= " AND activity_id = '" . $activity_id . "'";
 	$status_query .= " AND gid = '" . $gid . "'";
+	$status_query .= "ORDER BY pi_activity_status.pas_id DESC"; 
 	$object = db_fetch_object(db_query($status_query));
 	return $object->visible_status;
 }

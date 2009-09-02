@@ -1,0 +1,118 @@
+<?php
+// $Id: teacher_tools.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
+
+/**
+ * @file
+ * Implements teacher tools.
+ */
+ 
+
+function pi_teacher_tools_menu() {
+
+  $items = array();
+
+  // Do not cache this menu item during the development of this module.
+    
+  $items['dashboard'] = array(
+    'title' => t('Phase'),
+    'page callback' => 'pi_dashboard',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+  );
+  
+    $items['events'] = array(
+    'title' => t('Phase'),
+    'page callback' => 'pi_events',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK
+    );
+  
+  return $items;
+}
+
+function pi_dashboard () {
+	drupal_set_title('');
+	
+	$content = "<h1>Dashboard</h1>";
+	
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	
+	$stages = get_stages_of_inquiry_and_user($details->inquiry_id, $user->uid);
+	
+	$current_stage = get_current_stage_of_inquiry_and_user ($details->inquiry_id, $user->uid);
+	$current_stage_id = $current_stage->stage_id;
+	
+	if ($details->stage_id) {
+		$selected_stage = $details->stage_id;
+	}
+	else {
+		$selected_stage = $current_stage_id;
+	}
+	
+	$content .= "<div>";
+	while ($result = db_fetch_object($stages)) {
+	
+		$stage = load_stage($result->stage_id);
+		$content .= "<div style=\"float: left; width: 8em\">";
+		if ($result->stage_id == $selected_stage) {
+			$content .= "<b>" . $stage->name . "</b>";
+		}
+		else {
+			
+			$content .= l(t($stage->name), build_teacher_tool_link("dashboard", $details->inquiry_id, $result->stage_id), array());
+			//$content .= $stage->name . " ";
+		}
+		$content .= "</div>";
+	}
+	$content .= "</div>";
+	
+	$activities = get_activities_of_stage_phase_and_user ($details->inquiry_id, $selected_stage, NULL, $user->uid);
+	
+	$content .= "<br/><table class=\"home-table\"><tr>";
+	
+	foreach ($activities as $activity) { 
+
+      $loaded_activity = load_activity($activity->activity_id);
+      $loaded_activity_actor = load_activity_actor($details->inquiry_id, $activity->activity_id);
+      
+      $content .= "<td><b>" . $loaded_activity->name . "</b></td>";
+    
+    }
+	
+	$content .= "</tr><tr>";
+	
+	foreach ($activities as $activity) { 
+		
+		//get_activity_participants($node_details)
+		$content .= "<td valign=\"top\">";
+		$ob = new stdClass();
+		$ob->inquiry_id = $details->inquiry_id;
+		$ob->activity_id = $activity->activity_id;
+		$ob->stage_id = $selected_stage;
+		
+		$ap_result = get_activity_participants($ob);
+    	$audience = $ap_result["audience"];
+    	$activity_participants = $ap_result["activity_participants"];
+			
+		/*get the status for each actual audience*/
+		//use activity status
+			
+		$content .= generate_status_table($activity_participants, $ob, $audience);
+		
+		get_activity_participants($ob);
+		$contnet .= "</td>";
+	}
+	
+	$content .= "</tr></table>";
+	return $content;
+	
+}
+
+function pi_events () {
+	drupal_set_title('');
+	
+	return "<h1>Events</h1>";
+}
+
+
