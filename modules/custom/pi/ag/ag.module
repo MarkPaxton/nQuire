@@ -22,7 +22,7 @@ function build_link($first, $second, $third, $inquiry_id = 0, $stage_id = 0, $ph
 
 function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) {
 	if (!$inquiry_id) {
-		$query = "SELECT inquiry_id FROM pi_current_stage";
+		$query = "SELECT inquiry_id FROM pi_current_stage ORDER BY inquiry_id DESC";
 		$result = db_fetch_object(db_query($query));
 		$inquiry_id = $result->inquiry_id;
 	}
@@ -98,13 +98,15 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 		$node_details = get_inquiry_details_from_current_path();
 
 		$phases = get_phases_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
+
+		$current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);	
 		
-		$current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);		
 		$current_stage_id = $current_stage->stage_id;
-		
+
 		$current_stage_phases = get_phases_of_stage ($node_details->inquiry_id, $current_stage_id);
 		
 		$phases_of_current_stage = array();
+
 		while ($phase_of_current_stage = db_fetch_object($current_stage_phases)) {
 			$phases_of_current_stage[] =  $phase_of_current_stage->phase_id;
 		}
@@ -145,7 +147,10 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 		
 		$block['subject'] = l(t("Inquiry Guide&nbsp;" . "<img src=\"" . $image_path . "home.png\"/>"), t($home_link), array(html=>true));
 		
+		$previous_answers = array("title" => "my title", "author" => "my author");
+		
 		$block_content = t(theme('item_list', $phase_menu_items));
+		
 		
 		$block['content'] = "<div class='activity-guide'>" . $block_content . "</div>";
 	
