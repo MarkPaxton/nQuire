@@ -17,7 +17,7 @@ function pi_selected_measures_node_info() {
       'name' => t('Selected measures'), // Required.
       'module' => 'pi_selected_measures',  // Required.
       'description' => t('Select one or more measures for carrying out your inquiry'), // Required.
-      'has_title' => FALSE,
+      'has_title' => TRUE,
       'title_label' => t('Pick measurements'),
       'has_body' => TRUE,
       'body_label' => t('Measures'),
@@ -48,7 +48,7 @@ function pi_selected_measures_node_info() {
  * Implementation of hook_perm().
  */
 function pi_selected_measures_perm() {
-  return array('create pi_selected_measures', 'edit own pi_selected_measures');
+  return array();
 }
 
 /**
@@ -56,13 +56,14 @@ function pi_selected_measures_perm() {
  */
 function pi_selected_measures_access($op, $node) {
   global $user;
+  $details = get_inquiry_details_from_current_path();
 
   if ($op == 'create') {
-    return (user_access('create pi_selected_measures'));
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
   }
 
   if ($op == 'update' || $op == 'delete') {
-    return (user_access('edit own pi_selected_measures'));
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
   }
 }
 
@@ -78,8 +79,6 @@ function pi_selected_measures_form(&$node) {
   global $user;
   $uid = $user->uid;
   
-  $audience_gid = find_student_group_gid($user);
-  
   $results = db_query("SELECT nid,title FROM node WHERE type = 'pi_available_measures' AND status = '1'");
   $options = array();
   
@@ -91,14 +90,8 @@ function pi_selected_measures_form(&$node) {
     '#type' => 'hidden',
     '#title' => check_plain($type->title_label),
     '#required' => FALSE,
-    '#default_value' => check_plain($type->title_label),
+    '#default_value' => 'Pick measurements',
     '#weight' => -5
-  );
-  $form['audience_gid'] = array(
-    '#type' => 'hidden',
-    '#title' => 'audience_gid',
-    '#required' => FALSE,
-    '#default_value' => $audience_gid
   );
   $form['body_filter']['body'] = array(
     '#type' => 'hidden',
@@ -113,16 +106,39 @@ function pi_selected_measures_form(&$node) {
     '#title' => t('Available measurements'),
     '#required' => TRUE,
     '#multiple' => TRUE,
-    '#default_value' => explode(",", $node->selected_measures),
+    '#default_value' => find_default_measures($node->nid),//explode(",", $node->selected_measures),
     '#options' => $options,
     '#weight' => 5
   );
+  
+  
   
   $prefix = "<p>Pick which measurements you need. Click on the tabs on the right to find out more about these measurements.</p>";
   
   $form['#prefix'] = $prefix;
 
   return $form;
+}
+
+function find_default_measures($nid) {
+	$measure_array = array();
+	$prev_query = "SELECT measure_nid FROM pi_selected_measures WHERE nid = '" . $nid . "' ORDER BY weight ASC";
+	$db_result = db_query($prev_query);
+  	while ($prev_result = db_fetch_object($db_result)) {
+  		$prev_result = $prev_result->measure_nid;
+  		$measure_array[] = $prev_result;
+  	}
+  	return $measure_array;
+}
+
+function find_default_measure_rows($nid) {
+	$measure_array = array();
+	$prev_query = "SELECT * FROM pi_selected_measures WHERE nid = '" . $nid . "' ORDER BY weight ASC";
+	$db_result = db_query($prev_query);
+  	while ($prev_result = db_fetch_object($db_result)) {
+  		$measure_array[] = $prev_result;
+  	}
+  	return $measure_array;
 }
 
 /**
@@ -143,10 +159,16 @@ function pi_selected_measures_insert($node) {
   $new_selected_measures = array();
   foreach ($node->selected_measures as $measure) {
   	if ($measure != 0) {
-  		$new_selected_measures[] = $measure;
+  		$measure_node = node_load($measure);
+  		if ($measure_node->title == "Name of the person being interviewed") {
+  			$weight = 0;
+  		}
+  		else {
+  			$weight = 1;
+  		}
+  		db_query("INSERT INTO pi_selected_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
   	};
   };
-  db_query("INSERT INTO {pi_selected_measures} (nid, vid, inquiry_id, selected_measures) VALUES (%d, %d, '%d', '%s')", $node->nid, $node->vid, $node->inquiry_id|1, implode(",", $new_selected_measures));
 }
 
 /**
@@ -167,7 +189,7 @@ function pi_selected_measures_update($node) {
  */
 function pi_selected_measures_delete(&$node) {
   // Delete the related information we were saving for this node.
-  db_query('DELETE FROM {pi_selected_measures} WHERE nid = %d', $node->nid);
+  /*db_query('DELETE FROM {pi_selected_measures} WHERE nid = %d', $node->nid);*/
 }
 
 
@@ -175,9 +197,10 @@ function pi_selected_measures_delete(&$node) {
  * Implementation of hook_load().
  */
 function pi_selected_measures_load($node) {
-  // drupal_add_js('misc/collapse.js');
-  return db_fetch_object(db_query('SELECT inquiry_id, selected_measures FROM {pi_selected_measures} WHERE vid = %d',
-    $node->vid));
+  $result = new stdClass;
+  $result->selected_measures = find_default_measures($node->nid);
+  $result->measure_rows = find_default_measure_rows($node->nid);
+  return $result;
 }
 
 /**
@@ -202,22 +225,15 @@ function pi_selected_measures_view($node, $teaser = FALSE, $page = FALSE) {
   return $node;
 }
 
-function pi_selected_measures_theme() {
-  return array(
-    'pi_selected_measures' => array(
-      'arguments' => array('node'),
-    ),
-  );
-}
-
 
 function theme_pi_selected_measures($node) {
-  
   drupal_set_title(t('Pick measurements'));
   
-  $output = "";
+  $output = "hello";
   
-  foreach (explode(",", $node->selected_measures) as $measure_id) {
+  $selected_measures = find_default_measures($node->nid);
+  
+  foreach ($selected_measures as $measure_id) {
     $measure_node = node_load($measure_id);
     $output .= '<div class="teaser_list">';
     $output .= '<h3>' . l($measure_node->title, 'node/' . $measure_node->nid) . '</h3>';
@@ -236,6 +252,7 @@ function theme_pi_selected_measures($node) {
       $output .= t('<strong>Units: </strong>' . $measure_node->units);
     };
     $output .= '</div>';
-  };
+  }
+  
   return $output;
 }

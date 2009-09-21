@@ -23,6 +23,7 @@ function pi_authoring_activity_node_info() {
  * Implementation of hook_perm().
  */
 function pi_authoring_activity_perm() {
+
 	return array('create pi_authoring_activity', 'edit own pi_authoring_activity');
 }
 
@@ -31,14 +32,17 @@ function pi_authoring_activity_perm() {
  */
 function pi_authoring_activity_access($op, $node) {
   global $user;
+
   $details = get_inquiry_details_from_current_path();
 
   if ($op == 'create') {
+
 	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
     //return (user_access('create pi_authoring_activity'));
   }
 
   if ($op == 'update' || $op == 'delete') {
+
 	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
     //return (user_access('edit own pi_authoring_activity') && ($user->uid == $node->uid));
   }
@@ -51,6 +55,7 @@ function pi_authoring_activity_access($op, $node) {
 function pi_authoring_activity_form($node, $form_state) {
   $type = node_get_types('type', $node);
   $image_path = "images/";
+
   
   $form['title'] = array(
     '#type' => 'textfield',
@@ -63,16 +68,27 @@ function pi_authoring_activity_form($node, $form_state) {
   //this is testing showing the audience type in the node 
   $node_details = get_inquiry_details_from_current_path();
   $activity = load_activity($node_details->activity_id);
+
   switch ($activity->audience) {
+
 	case "individual":
+
 		$prefix .= t("<img src=\"" . $image_path. "individual_logo.png\" style=\"width: 3em; height: 3em; margin-right:0.2em;\"/>") . "<span style='vertical-align: 90%;'>" . "This is an individual activity" . "</span>";
+
 		break;
+
 	case "group":
+
 		$prefix .= t("<img src=\"" . $image_path. "group_logo.png\" style=\"width: 3em; height: 3em; margin-right:0.2em;\"/>") . "<span style='vertical-align: 90%;'>" . "This is a group activity" . "</span>";
+
 		break;
+
 	case "class":
+
 		$prefix .= t("<img src=\"" . $image_path. "class_logo.png\" style=\"width: 3em; height: 3em; margin-right:0.2em;\"/>") . "<span style='vertical-align: 90%;'>" . "This is a class activity" . "</span>";
+
 		break;		
+
 	}
   
   $prefix .= "<p>Activity: " . arg(7) . ".</p>";

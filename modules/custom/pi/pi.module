@@ -841,6 +841,7 @@ function save_activity ($activity_array) {
 		$query .= $set;
 	}
 	db_query($query);
+
 }
 
 function delete_activity ($activity_id) {
@@ -921,7 +922,7 @@ function insert_activity_actor ($activity_actor_array) {
  * $activity_actor_array ->gid
  */
  
-	$query = "INSET INTO pi_activity_actor SET ";
+	$query = "INSERT INTO pi_activity_actor SET ";
 	$query .= "inquiry_id = '" . $activity_actor_array["inquiry_id"] . "' ";
 	$query .= ", activity_id = '" . $activity_actor_array["activity_id"] . "' ";
 	$query .= ", uid = '" . $activity_actor_array["uid"] . "' ";
@@ -1243,6 +1244,50 @@ function add_grouping ($name, $description, $inquiry_id, $stage_id = NULL, $phas
 
 }
 
+function get_current_group_of_user ($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
+	//get the current grouping - class and group can change within/across inquiries
+	$grouping = get_grouping($inquiry_id, $stage_id, $phase_id, $activity_id);
+	$group_type = "group";
+	
+	if ($grouping) {
+		$query = "SELECT pi_grouping_group.gid FROM pi_grouping_group, pi_group_type, og_uid ";
+		$query .= "WHERE pi_grouping_group.grouping_id = " . $grouping . " ";
+		$query .= "AND pi_grouping_group.gid = pi_group_type.gid ";
+		$query .= "AND pi_group_type.type = \"" . $group_type . "\" ";
+		$query .= "AND pi_grouping_group.gid = og_uid.nid ";
+		$query .= "AND og_uid.uid = " . $uid . " ";
+	
+		//makes assumption that user is member of only 1 group at a time
+		$result = db_result(db_query($query));
+		return $result;
+	}
+	else {
+		return NULL;
+	}
+}
+
+function get_current_class_of_user ($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
+	//get the current grouping - class and group can change within/across inquiries
+	$grouping = get_grouping($inquiry_id, $stage_id, $phase_id, $activity_id);
+	$group_type = "class";
+	
+	if ($grouping) {
+		$query = "SELECT pi_grouping_group.gid FROM pi_grouping_group, pi_group_type, og_uid ";
+		$query .= "WHERE pi_grouping_group.grouping_id = " . $grouping . " ";
+		$query .= "AND pi_grouping_group.gid = pi_group_type.gid ";
+		$query .= "AND pi_group_type.type = \"" . $group_type . "\" ";
+		$query .= "AND pi_grouping_group.gid = og_uid.nid ";
+		$query .= "AND og_uid.uid = " . $uid . " ";
+	
+		//makes assumption that user is member of only 1 class at a time
+		$result = db_result(db_query($query));
+		return $result;
+	}
+	else {
+		return NULL;
+	}
+}
+
 function add_group_to_grouping ($grouping_id, $gid) {
 
 /**
@@ -1410,7 +1455,10 @@ function get_stages_of_inquiry_and_user ($inquiry_id, $uid) {
 
 }
 
-
+function insert_stage_phase_activity($psp_id, $activity_id, $position) {
+	$query = "INSERT INTO pi_stage_phase_activity (psp_id, activity_id, position) VALUES (" . $psp_id . ", '" . $activity_id . "', '" . $position . "') ";
+	db_query($query);
+}
 
 function get_activities_of_stage_phase_and_user ($inquiry_id, $stage_id, $phase_id, $uid) {
 
@@ -1582,6 +1630,27 @@ function get_current_stage_of_inquiry_and_user ($inquiry_id, $uid) {
   
   return $result;
   
+}
+
+function get_psp_id_for_stage_and_phase($stage_id, $phase_id) {
+	if ($stage_id && $phase_id) {
+		$query = "SELECT psp_id FROM pi_stage_phase ";
+ 		$query .= "WHERE (stage_id is NULL OR stage_id = '" . $stage_id . "') ";
+	 	$query .= "AND (phase_id is NULL OR phase_id = '" . $phase_id . "') ";
+ 	}
+ 	elseif ($stage_id) {
+		$query = "SELECT psp_id FROM pi_stage_phase ";
+ 		$query .= "WHERE (stage_id is NULL OR stage_id = '" . $stage_id . "') ";
+ 	}
+ 	 	elseif ($phase_id) {
+		$query = "SELECT psp_id FROM pi_stage_phase ";
+ 		$query .= "WHERE (phase_id is NULL OR phase_id = '" . $phase_id . "') ";
+ 	}
+ 	else {
+ 		return 0;
+ 	}
+ 	$psp_id = db_result(db_query($query));	
+ 	return $psp_id;
 }
 
 function get_phases_of_stage ($inquiry_id, $stage_id) {

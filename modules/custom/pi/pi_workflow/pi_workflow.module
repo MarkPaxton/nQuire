@@ -6,62 +6,181 @@
  * Implements Activity Guide workflow.
  */
  
-function workflow_for_created_node($node, $user, $node_function, $visible_status) {
-	$uid = $user->uid;
-
-	$details = get_inquiry_details_from_current_path();
-
+function add_data_parameter_when_selected_measures_created($node, $user) {
+	$node_details = get_inquiry_details_from_current_path();
 	
+	//find group for user
+	$group = get_current_group_of_user ($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id, $user->uid);
+	
+	if (!$group) {
+		return NULL;
+	}
+	
+	//find new interview activity for that group
+	$activity_query = "SELECT pi_activity.activity_id FROM pi_activity, pi_activity_actor WHERE pi_activity.node_type = \"pi_data\" AND pi_activity.activity_id = pi_activity_actor.activity_id AND pi_activity_actor.gid = " . $group . " ";
+	$interview_activity = db_result(db_query($activity_query));
+	
+	if (!$interview_activity) {
+		return NULL;
+	}
+	
+	//add nid as parameter
+	$loaded_activity = load_activity($interview_activity);
+	
+	$activity_array = array();
+	$activity_array["name"] = $loaded_activity->name;
+	$activity_array["activity_id"] = $interview_activity;
+	$activity_array["description"] = $loaded_activity->description;
+	$activity_array["activity_type"] = $loaded_activity->activity_type;
+	$activity_array["node_type"] = $loaded_activity->node_type;
+	$activity_array["parameters"] = t("251/" . $node->nid);
+	$activity_array["destination"] = $loaded_activity->destination;
+	$activity_array["audience"] = $loaded_activity->audience;
+	save_activity($activity_array);
+	
+	//find results activity for that group
+	
+	$query = "SELECT pi_activity.activity_id FROM pi_activity WHERE pi_activity.parameters = \"" . $group . "\" ";
+	$result_activity = db_result(db_query($query));
+	
+	//set view persmissions for class
+	if ($result_activity) {
+		$query = "UPDATE pi_activity_actor SET pi_activity_actor.gid = 236 WHERE pi_activity_actor.inquiry_id = " . $node_details->inquiry_id . " AND pi_activity_actor.activity_id = " . $result_activity . " ";
+		db_query($query);
+	}
+	
+}
+
+
+function workflow_for_updated_node_adder_activity($node, $user) {
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+	$loaded_activity = load_activity($details->activity_id);
+
+	//use the value from lowest weighted measure as activity title
+	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures ";
+	$query .= "WHERE pi_collected_data.nid = " . $node->nid . " ";
+	$query .= "AND pi_collected_data.psm_id = pi_selected_measures.psm_id ";
+	$query .= "ORDER BY pi_selected_measures.weight ASC ";
+	$activity_name = db_result(db_query($query));
+	if (strlen($activity_name) < 2) {
+		$activity_name = "Interview";
+	}
+	$activity_array = array();
+	$activity_array["name"] = $activity_name;
+	$activity_array["activity_id"] = $loaded_activity->activity_id;
+	$activity_array["description"] = $loaded_activity->description;
+	$activity_array["activity_type"] = $loaded_activity->activity_type;
+	$activity_array["node_type"] = $loaded_activity->node_type;
+	$activity_array["parameters"] = $loaded_activity->parameters;
+	$activity_array["destination"] = $loaded_activity->destination;
+	$activity_array["audience"] = $loaded_activity->audience;
+	
+	save_activity($activity_array);
+}
+
+function workflow_for_created_node_adder_activity($node, $user, $node_function, $visible_status) {
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+	$loaded_activity = load_activity($details->activity_id);
+	
+	//use the value from lowest weighted measure as activity title
+	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures ";
+	$query .= "WHERE pi_collected_data.nid = " . $node->nid . " ";
+	$query .= "AND pi_collected_data.psm_id = pi_selected_measures.psm_id ";
+	$query .= "ORDER BY pi_selected_measures.weight ASC ";
+	$activity_name = db_result(db_query($query));
+	if (strlen($activity_name) < 2) {
+		$activity_name = "Interview";
+	}
+	$activity_array = array();
+	$activity_array["name"] = $activity_name;
+	$activity_array["description"] = $loaded_activity->description;
+	$activity_array["activity_type"] = $loaded_activity->activity_type;
+	$activity_array["node_type"] = $loaded_activity->node_type;
+	$activity_array["parameters"] = $loaded_activity->parameters;
+	$activity_array["destination"] = $loaded_activity->destination;
+	$activity_array["audience"] = $loaded_activity->audience;
+	
+	//create the new activity
+	save_activity($activity_array);
+	$query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
+	$new_activity_id = db_result(db_query($query2));
+	
+	//****new details object
+	$new_details = new stdClass;
+	$new_details->inquiry_id = $details->inquiry_id;
+	$new_details->stage_id = $details->stage_id;
+	$new_details->phase_id = $details->phase_id;
+	$new_details->activity_id = $new_activity_id;
+	
+	//set status for the new activity
+	$activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
+	$new_activity_status = new stdClass;
+	$new_activity_status->inquiry_id = $activity_status->inquiry_id;
+	$new_activity_status->activity_id = $new_activity_id;
+	$new_activity_status->uid = $activity_status->uid;
+	$new_activity_status->gid = $activity_status->gid;
+	$new_activity_status->node_function = $activity_status->node_function;
+	$new_activity_status->visible_status = $activity_status->visible_status;
+	save_activity_status($new_activity_status);
+	
+	//set actor for the new activity
+	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
+	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
+	$new_activity_actor["activity_id"] = $new_activity_id;
+	$new_activity_actor["uid"] = $activity_actor[0]["uid"];
+	$new_activity_actor["gid"] = $activity_actor[0]["gid"];
+	insert_activity_actor($new_activity_actor);
+	
+	//set the stage phase activity
+	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+	
+	$query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
+	$current_pos = db_result(db_query($query));
+	$new_pos = $current_pos + 1;
+	insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
+	
+	//set pi activity node
+	add_new_pi_activity_node($node, $user, $node_function, $visible_status, $new_details);
+}
+
+
+function workflow_for_created_node($node, $user, $node_function, $visible_status) {
+	$details = get_inquiry_details_from_current_path();
+	add_new_pi_activity_node($node, $user, $node_function, $visible_status, $details);
+}
+	
+function add_new_pi_activity_node($node, $user, $node_function, $visible_status, $details) {
+	$uid = $user->uid;
 	//set the PI activity node
 	set_pi_activity_node_for_activity($details->inquiry_id, $details->activity_id, $node->nid);
 	$activity = load_activity($details->activity_id);
 
-	
-
-	
 	$activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
 
 	
-
 	//if the status was not set specifically for this user and it is an individual activity
-
 	if ($activity->audience == "individual") {
-
 		if ($activity_status->uid != $uid) {
-
 			$activity_status->uid = $uid;
-
 			unset($activity_status->gid);
-
 			unset($activity_status->pas_id);
-
 		}
-
 	}
 
 	//set the correct group
 	else {
-
 		$users_group = get_group_of_type($uid, $activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
-
 		$context['group'] = $users_group;
-
 		og_add_group_action($node, $context);
 
-		
-
 		if ($users_group != $activity_status->gid) {
-
 			$activity_status->gid = $users_group;
-
 			unset($activity_status->pas_id);
-
 			unset($activity_status->uid);
-
 		}
 	}
-
-	$activity_status->node_function = $node_function;
 
 	$activity_status->node_function = $node_function;
 	$activity_status->visible_status = $visible_status;
@@ -75,4 +194,107 @@ function set_pi_activity_node_for_activity($inquiry, $activity, $nid) {
 	$query .= ", activity_id = '" . $activity . "'";
 	$query .= ", nid = '" . $nid . "'";
 	db_query($query);
+}
+
+/*results from q/a inquiry placed here for now*/
+
+function display_qa_results($gid) {
+	
+	//get pi_selected_measures node
+	$query = "SELECT node.nid FROM node, node_access WHERE node.type = \"pi_selected_measures\" AND node.nid = node_access.nid AND node_access.gid = " . $gid . " ";
+	$snid = db_result(db_query($query));
+	
+	$output = "<div style = \"width: 20em; height: 1em; margin: 0; padding: 0;\"><div style = \"float: left; width: 1em; background-color:#ff0000; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div><div style = \"float: left;  height: 1em; width: 8em; border: 0; margin: 0; padding: 0\">Agree</div><div style = \"float: left; width: 1em; background-color:#0000ff; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div><div style = \"float: left;  height: 1em; width: 8em; border: 0; margin: 0; padding: 0\">Disagree</div></div>";
+		
+	//get question set for gid
+	$measures_array = find_default_measures($snid);
+	if ($measures_array) {
+		foreach ($measures_array as $measure) {
+			$loaded_measure = node_load($measure);
+			if ($loaded_measure->title != "Name of the person being interviewed") {
+				$output .= "<h2>" . $loaded_measure->title . "</h2>";
+				$query = "SELECT psm_id FROM pi_selected_measures WHERE measure_nid = " . $loaded_measure->nid . " AND nid = " . $snid . " ";
+				$psm_id = db_result(db_query($query));
+				
+				//get the scores
+				$query = "SELECT value, COUNT( * ) AS total FROM pi_collected_data WHERE psm_id = " . $psm_id . " GROUP BY value ORDER BY value ASC ";
+				$result = db_query($query);
+				$res_array = array();
+				while ($option_total = db_fetch_object($result)) {
+					if ($option_total->value == 0 || $option_total->value == 1) {
+						$res_array[$option_total->value] = $option_total->total;
+					}
+				}
+				$output .= "<div>" . possession_slider($res_array[0], $res_array[1]) . "</div>";
+			}
+		}
+	}
+	
+	return $output;
+}
+
+function possession_slider ($yes, $no) {
+	$total = $yes + $no;
+	if ($total == 0) {
+		$yes_width = 50;
+		$no_width = 50;
+	}
+	else {
+		
+		$yes_width = round($yes / $total * 100);
+		$no_width = round($no / $total * 100);
+	}
+
+	$output = "<div style = \"float: left; width: 20em; height: 1em; margin: 0; padding: 0;\">
+	<div style = \"float: left; width: " . $yes_width . "%; background-color:#ff0000; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div>
+	<div style = \"float: left; width: " . $no_width . "%; background-color:#0000ff; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div></div>
+	</div>";
+	if (!$yes) {$yes = "0";}
+	if (!$no) {$no = "0";}
+	$output .= "<div style=\"clear:both\"/><div style = \"float: left; width: 20em; height: 1em; margin: 0; padding: 0;\"><span style=\"float:left\">" . $yes . "</span><span style=\"float:right\">" . $no . "</span></div><div style=\"clear:both\"/>";
+	//$output = "yes = " . $yes . " no = " . $no;
+	return $output;
+}
+	
+
+
+function display_qa_results_old($gid) {
+	$output = "<p>Display results</p>"; 
+	$output .= "<p>Group: " . $gid . "</p>";
+	
+	//get pi_selected_measures node
+	$query = "SELECT node.nid FROM node, node_access WHERE node.type = \"pi_selected_measures\" AND node.nid = node_access.nid AND node_access.gid = " . $gid . " ";
+	$snid = db_result(db_query($query));
+	$output .= "selection nid: " . $snid;
+	
+	//get question set for gid
+	$output .= "<p>measures:<p>";
+	$measures_array = find_default_measures($snid);
+	if ($measures_array) {
+		foreach ($measures_array as $measure) {
+			$loaded_measure = node_load($measure);
+			if ($loaded_measure->title != "Name of the person being interviewed") {
+				$output .= "<p>tite: " . $loaded_measure->title . "</p>";
+				$output .= "<p>nid: " . $loaded_measure->nid . "</p>";
+				$output .= "<p>options: " . $loaded_measure->options . "</p>";
+				$query = "SELECT psm_id FROM pi_selected_measures WHERE measure_nid = " . $loaded_measure->nid . " AND nid = " . $snid . " ";
+				$psm_id = db_result(db_query($query));
+				$output .= "<p>psm_id: " . $psm_id . "</p>";
+				
+				//get the scores
+				$query = "SELECT value, COUNT( * ) AS total FROM pi_collected_data WHERE psm_id = " . $psm_id . " GROUP BY value ORDER BY value ASC ";
+				$result = db_query($query);
+				$res_array = array();
+				while ($option_total = db_fetch_object($result)) {
+					if ($option_total->value == 0 || $option_total->value == 1) {
+						$output .= "<p>" . $option_total->value . "=" . $option_total->total;
+						$res_array[$option_total->value] = $option_total->total;
+					}
+				}
+				$output .= "<div>" . possession_slider($res_array[0], $res_array[1]) . "</div>";
+			}
+		}
+	}
+	
+	return $output;
 }

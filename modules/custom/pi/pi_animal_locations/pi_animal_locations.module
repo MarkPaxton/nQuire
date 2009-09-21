@@ -70,8 +70,12 @@ function pi_animal_locations_form(&$node) {
     '#weight' => -5
   );
   	
-  	$dependent = array(1 => 'Above the surface', 2 => 'On the surface', 3 => 'In mid water', 4 => 'On the pond bottom', 5 => 'In the pond margin');
-    $independent = array('Dragonfly', 'Pond snail', 'Leech', 'Rat-tailed maggot');
+  	$question_query = get_title_array_for_nodes_of_type($question_arg);
+  	$answer_query = get_title_array_for_nodes_of_type($answer_arg);
+
+  	$independent = array(1 => 'Above the surface', 2 => 'On the surface', 3 => 'In mid water', 4 => 'On the pond bottom', 5 => 'In the pond margin');
+    $dependent = array('Dragonfly', 'Pond snail', 'Leech', 'Rat-tailed maggot');
+    
     
    $form['choices'] = array(
     '#type' => 'fieldset',
@@ -99,6 +103,16 @@ function pi_animal_locations_form(&$node) {
 
 }
 
+function get_title_array_for_nodes_of_type($arg) {
+	$query = "SELECT title FROM node WHERE TYPE = '" . $arg . "'";
+	$db_result = db_query($query);
+	$res_array = array();
+	$count = 1;
+	while ($item = db_fetch_object($db_result)) {
+		$res_arrray[$count++] = $item;
+	}
+	return $res_array;
+}
 /**
  * Implementation of hook_insert().
  */

@@ -32,21 +32,23 @@ function pi_data_node_info() {
  * Implementation of pi_data_perm().
  */
 function pi_data_perm() {
-  return array('create pi_data', 'edit own pi_data');
 }
 
 /**
  * Implementation of pi_data_access().
  */
 function pi_data_access($op, $node) {
-  global $user;
-
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	
   if ($op == 'create') {
-    return (user_access('create pi_data'));
+  	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    //return (user_access('create pi_data'));
   }
 
   if ($op == 'update' || $op == 'delete') {
-    return (user_access('edit own pi_data'));
+  	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    //return (user_access('edit own pi_data'));
   }
 }
 
@@ -59,123 +61,51 @@ function pi_data_form(&$node) {
   // (we use it for labeling title and body fields).
   // We defined this in pi_data_node_info().
   $type = node_get_types('type', $node);
-
-  $inquiry_id = arg(3);
-  $location_id = arg(4);
   
-  $measures_id = array(arg(5), arg(6), arg(7), arg(8), arg(9), arg(10), arg(11), arg(12), arg(13), arg(14), arg(15), arg(16), arg(17), arg(18), arg(19), arg(20), arg(21), arg(22), arg(23), arg(24), arg(25), arg(26), arg(27), arg(28), arg(29));
+  $node_details = get_inquiry_details_from_current_path();
   
-  if (!($inquiry_id)) {
-    $inquiry_id = 1;
+  $prefix_id = arg(7);
+  $measures_param = arg(8);
+  
+  if (!($prefix_id)) {
+    $prefix_id = 99;
   };
   
-  if (!($location_id)) {
-    $location_id = 99;
-  };
+  $prefix_node = node_load($prefix_id);
   
-  $location = node_load($location_id);
-  
-  drupal_set_title(t($location->title));
+  drupal_set_title(t($prefix_node->title));
   
   $weight_start = -10;
   
-  $form['#theme'] = 'form_layout';
-  
-  $form['title'] = array(
-    '#type' => 'hidden',
-    '#title' => t($location->title . " ". $type->title_label),
-    '#required' => FALSE,
-    '#default_value' => t($location->title),
-    '#weight' => $weight_start
-  );
-  $form['body_filter']['body'] = array(
-    '#type' => 'hidden',
-    '#title' => check_plain($type->body_label),
-    '#required' => FALSE,
-    '#default_value' => t($location->body),
-    '#weight' => $weight_start
-  );
-  $form['inquiry_id'] = array(
-    '#type' => 'hidden',
-    '#title' => 'inquiry_id',
-    '#required' => FALSE,
-    '#default_value' => $node->inquiry_id|$inquiry_id,
-    '#weight' => $weight_start
-  );
-  
-  $form['place'] = array(
-    '#title' => t('GPS location'),
-    '#type' => 'fieldset',
-    '#theme' => 'gps_location_layout',
-    '#weight' => $weight_start
-  );
-  if ($node->grid_square) {
-    $grid_square = $node->grid_square;
+  $measures_array = array();
+  if ($measures_param) {
+  	$measures_node = node_load($measures_param);
+  	$measures_array = $measures_node->measure_rows;
   }
-  else {
-    $grid_square = t('SP');
-  };
-  $form['place']['grid_square'] = array(
-    '#title' => t('Grid'),
-    '#type' => 'textfield',
-    '#size' => 2,
-    '#required' => TRUE,
-    '#default_value' => $grid_square,
-    '#weight' => $weight_start
-  );  
-  $form['place']['eastings'] = array(
-    '#title' => t('Easting'),
-    '#type' => 'textfield',
-    '#size' => 5,
-    '#required' => TRUE,
-    '#default_value' => $node->eastings,
-    '#weight' => $weight_start
-  );  
-  $form['place']['northings'] = array(
-    '#title' => t('Northing'),
-    '#type' => 'textfield',
-    '#size' => 5,
-    '#required' => TRUE,
-    '#default_value' => $node->northings,
-    '#weight' => $weight_start
-  );  
   
-  $weight_start++;
-  $count = 1;
+  $prefix = "";
   
-  $form['data'] = array(
-    '#title' => t('Measurements'),
-    '#type' => 'fieldset',
-    '#theme' => 'data_values_layout',
-    '#weight' => $weight_start
-  );
-  $weight_start++;
-  $form['menus'] = array(
-    '#title' => t('Surveys'),
-    '#type' => 'fieldset',
-    '#theme' => 'menu_values_layout',
-    '#weight' => $weight_start
-  );
-  $weight_start++;
-  $form['text'] = array(
-    '#title' => t('Observations'),
-    '#type' => 'fieldset',
-    '#theme' => 'text_values_layout',
-    '#weight' => $weight_start
-  );
-  $weight_start++;
-
-  foreach ($measures_id as $measure_id) {
+  $form_key_array = array();
   
-    if ($measure_id) {
+    $form['title'] = array(
+    '#type' => 'hidden',
+    '#title' => t($prefix_node->title . " " . $type->title_label),
+    '#required' => FALSE,
+    '#default_value' => 'New interview',
+  );
+  
+  if($measures_array) {
+  foreach ($measures_array as $measure_row) {
+  	
+  	$form_key = t("k" . $measure_row->psm_id);
+  	$form_key_array[] = $form_key;
+  	
+  	$query = "SELECT value FROM pi_collected_data WHERE psm_id = " . $measure_row->psm_id . " ";
+  	$default_value = db_result(db_query($query));
+  	
+    if ($measure_row) {
      
-  	  $measure = node_load($measure_id);
-      
-    	$form['value_' . $count . '_type'] = array(
-      	'#type' => 'hidden',
-      	'#title' => t('value_' . $count . 'type'),
-      	'#default_value' => t($measure->data_type)
-    	);
+  	  $measure = node_load($measure_row->measure_nid);
   
       // data_type == 0 ~ Type a number
       if ($measure->data_type == 0) {
@@ -189,33 +119,33 @@ function pi_data_form(&$node) {
           $units = "";
         };
       
-      	$form['data']['value_' . $count] = array(
+      	$form['data'][$form_key] = array(
         	'#type' => 'textfield',
         	'#title' => t($measure->title . $units),
         	'#required' => TRUE,
-        	'#default_value' => t($node->{'value_' . $count}),
-          '#size' => 5,
-        	'#weight' => $weight_start + $count
+        	'#default_value' => t($node->$form_key),
+          	'#size' => 5,
+        	'#weight' => $measure_row->weight
       	);
       }
       
       // data_type == 1 ~ Type text
       elseif ($measure->data_type == 1) {
-      	$form['text']['value_' . $count] = array(
+      	$form['text'][$form_key] = array(
         	'#type' => 'textarea',
         	'#title' => t($measure->title),
         	'#required' => TRUE,
-        	'#default_value' => ($node->{'value_' . $count}),
-          '#resizable' => FALSE,
-          '#cols' => 70,
-          '#rows' => 3,
-        	'#weight' => $weight_start + $count
+        	'#default_value' => ($node->$form_key),
+          	'#resizable' => FALSE,
+          	'#cols' => 50,
+          	'#rows' => 3,
+        	'#weight' => $measure_row->weight
       	);
       }
       
       // data_type == 2 ~ Select menu option
       elseif ($measure->data_type == 2) {
-      
+      	
         if ($measure->options) {
           $options = array();
           foreach (explode("\n",$measure->options) as $opt) {
@@ -233,28 +163,68 @@ function pi_data_form(&$node) {
           $units = "";
         };
         
-      	$form['menus']['value_' . $count] = array(
-        	'#type' => 'select',
+        
+      	$form['menus'][$form_key] = array(
+        	'#type' => 'radios',
         	'#title' => t($measure->title . $units),
         	'#required' => FALSE,
-        	'#default_value' => t($node->{'value_' . $count}),
-          '#options' => $options,
-        	'#weight' => $weight_start + $count
+        	'#default_value' => t($node->$form_key),
+          	'#options' => $options,
+        	'#weight' => $measure_row->weight
+      	);
+      }
+      
+       // data_type == 3 ~ Checkboxes menu option
+      elseif ($measure->data_type == 3) {
+      	
+        if ($measure->options) {
+          $options = array();
+          foreach (explode("\n",$measure->options) as $opt) {
+            $options[] = substr($opt,0,16);
+          };
+        };
+      
+        if (isset($measure->units_short) AND ($measure->units_short !='')) {
+          $units = " (" . $measure->units_short . ")";
+        }
+        elseif (isset($measure->units) AND ($measure->units !='')) {
+          $units = " (" . $measure->units . ")";
+        }
+        else {
+          $units = "";
+        };
+        
+        
+      	$form['menus'][$form_key] = array(
+        	'#type' => 'checkboxes',
+        	'#title' => t($measure->title . $units),
+        	'#required' => FALSE,
+        	'#default_value' => $node->$form_key,//get_measure_array($measure_row->psm_id),
+          	'#options' => $options,
+        	'#weight' => $measure_row->weight
       	);
       };
+     
     };
     $count = $count + 1;
-  };
+
+  }
+  }
+   	//the keys used in the form
+	$form['form_keys'] = array(
+      	'#type' => 'value',
+      	'#value' => $form_key_array
+    );
     
-  $prefix = "";
+  //$prefix = "";
   
-  // $prefix .= "<p>Now go to '" . $location->title . "' and collect your measurements. How does your data relate to your hypothesis? Make sure you take enough notes to help you interpret the data later.</p>";
+  $prefix .= "<p>" . $prefix_node->body . "</p>";
   $prefix .= "<div class='clear_both'>";
-  if (isset($location->map_image_id) AND ($location->map_image_id != 0)) {
-    $prefix .= '<img style="float: left; margin: 0 10px 10px 0;" src="' . url("image/view/" . $location->map_image_id . "/thumbnail") . '" />';
+  if (isset($prefix_node->map_image_id) AND ($prefix_node->map_image_id != 0)) {
+    $prefix .= '<img style="float: left; margin: 0 10px 10px 0;" src="' . url("image/view/" . $prefix_node->map_image_id . "/thumbnail") . '" />';
   };
-  if (isset($location->image_id) AND ($location->image_id != 0)) {
-    $prefix .= '<img style="float: left; margin: 0 10px 10px 0;" src="' . url("image/view/" . $location->image_id . "/thumbnail") . '" />';
+  if (isset($prefix_node->image_id) AND ($prefix_node->image_id != 0)) {
+    $prefix .= '<img style="float: left; margin: 0 10px 10px 0;" src="' . url("image/view/" . $prefix_node->image_id . "/thumbnail") . '" />';
   };
   $prefix .= "</div>";
   
@@ -262,6 +232,15 @@ function pi_data_form(&$node) {
 
   return $form;
 }
+
+function get_measure_array($psm_id) {
+	$query = "SELECT value FROM pi_collected_data WHERE psm_id = " . $psm_id . " ";
+	$db_result = db_fetch_object(db_query($query));
+	$db_result = $db_result->value;
+	$array = explode(",", $db_result);
+	return $array;
+}
+
 
 function theme_gps_location_layout($form) {
   $content = '<div class = "pi-gps-location">';
@@ -366,7 +345,7 @@ function pi_data_form_alter ($form_id, &$form) {
  * Implementation of hook_validate().
  */
 function pi_data_validate($node) {
- 
+ /*
  	// check grid square
   if (!isset($node->grid_square)) {
 	  form_set_error('grid_square', t('An Ordinance Survey grid square letter code must be specified (e.g. SP).'));
@@ -398,7 +377,7 @@ function pi_data_validate($node) {
 	}
   elseif (($node->northings < 0) || ($node->northings > 99999)) {
 	  form_set_error('northings', t('Northing must be no more than five digits long.'));
-  };
+  };*/
   
 }
 
@@ -414,8 +393,19 @@ function pi_data_validate($node) {
  * Implementation of pi_data_insert().
  */
 function pi_data_insert($node) {
-
-  $query = "INSERT INTO {pi_data_values} SET ";
+	foreach($node->form_keys as $node_key) {
+		$node_key_string = (string) $node_key;
+		$psm_id = str_replace("k", "", $node_key_string);
+		$value = $node->$node_key;
+		if (is_array($value)) {
+			$value = implode(",", $value);
+		}
+		$query = "INSERT INTO pi_collected_data (nid, psm_id, value) ";
+		$query .= "VALUES ('" . $node->nid . "', '" . $psm_id . "', '" . $value . "') ";
+		db_query($query);
+	}
+	
+	/*  $query = "INSERT INTO {pi_data_values} SET ";
   $query .= "nid = " . $node->nid;
   $query .= ", vid = " . $node->vid;
   $query .= ", inquiry_id = " . $node->inquiry_id;
@@ -462,7 +452,7 @@ function pi_data_insert($node) {
   $query .= ", grid_square = '" . $node->grid_square . "'";
   $query .= ", eastings = '" . $node->eastings . "'";
   $query .= ", northings = '" . $node->northings . "'";
-  db_query($query);
+  db_query($query);*/
 
 }
 
@@ -470,7 +460,12 @@ function pi_data_insert($node) {
  * Implementation of hook_update().
  */
 function pi_data_update($node) {
-  if ($node->revision) {
+	$query = "DELETE FROM pi_collected_data WHERE nid = " . $node->nid . " ";
+	db_query($query);
+	pi_data_insert($node);
+
+
+/*  if ($node->revision) {
     pi_available_data_insert($node);
   }
   else {  
@@ -529,8 +524,9 @@ function pi_data_update($node) {
     $query .= ", northings = '" . $node->northings . "'";
     $query .= " WHERE vid = $node->vid";
     db_query($query);
-  }
+  }*/
 }
+
 
 /**
  * Implementation of pi_data_delete().
@@ -542,10 +538,45 @@ function pi_data_delete(&$node) {
   db_query('DELETE FROM {pi_data_locations} WHERE nid = %d', $node->nid);
 }
 
+function is_checkboxes_measure($id) {
+	$query = "SELECT measure_nid FROM pi_selected_measures WHERE psm_id = " . $id . " ";
+	$measure_nid = db_fetch_object(db_query($query));
+	$measure_nid = $measure_nid->measure_nid;
+	$measure = node_load($measure_nid);
+	if ($measure->data_type) {
+		return $measure->data_type == 3;
+	}
+	else {
+		return FALSE;
+	}
+}
+
 /**
  * Implementation of pi_data_load().
  */
 function pi_data_load($node) {
+	$result = new stdClass;
+	$query = "SELECT * FROM pi_collected_data WHERE nid = " . $node->nid . " ";
+	$db_result = db_query($query);
+	
+	while($row = db_fetch_object($db_result)) {
+		$psm_id = t("k" . $row->psm_id);
+		$value = $row->value;
+		if (is_checkboxes_measure($row->psm_id)) {
+			$value = explode(",", $value);
+			//$value = get_measure_array($row->psm_id);
+		}
+		//$array_value = $row->array_value;
+		//if ($array_value) {
+		//	$value = explode(",", $array_value);
+		//}
+		$result->$psm_id = $value;
+	}
+	return $result;
+  
+  
+  
+ /* 
   $query = "SELECT v.*, ";
   $query .= "t.total_1, t.total_2, t.total_3, t.total_4, t.total_5, t.total_6, t.total_7, t.total_8, ";
   $query .= "t.total_9, t.total_10, t.total_11, t.total_12, t.total_13, t.total_14, t.total_15, t.total_16, ";
@@ -559,7 +590,7 @@ function pi_data_load($node) {
   $query .= "LEFT JOIN pi_data_averages AS a ON v.nid = a.nid AND v.vid = a.vid ";
   $query .= "LEFT JOIN pi_data_locations AS l ON v.nid = l.nid AND v.vid = l.vid ";
   $query .= "WHERE v.vid = " . $node->vid;
-  return db_fetch_object(db_query($query));
+  return db_fetch_object(db_query($query));*/
 }
 
 /**
