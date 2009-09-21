@@ -123,7 +123,7 @@ function pi_stage_selector_form(&$node) {
 
 	'#type' => 'value',
 
-	'#value' => array(1, 2, 3)
+	'#value' => array(1, 2)
 
   );
 
@@ -139,7 +139,7 @@ function pi_stage_selector_form(&$node) {
 
   while ($stage_name = current($stage_array)) {
 
-   if ($stage_name == ($current_stage_id - 4)) {
+   if ($stage_name == ($current_stage_id - 7)) {
 
        $real_current_stage =  key($stage_array);
 
@@ -225,14 +225,31 @@ function pi_update_stage($node) {
 
   $details = get_inquiry_details_from_current_path();
   
-  $stages = array(5, 6, 7);
+  $stages = array(8, 9);
 
   $selected_stage = $stages[$node->selected_stage];
 
   db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
 
-  
-  pi_change_activty_status_for_stage($details->inquiry_id, $selected_stage, $node->transition_type);
+  if ($selected_stage == 8) {
+  	$query = "UPDATE pi_activity_status
+  	SET pi_activity_status.node_function = \"edit\", pi_activity_status.visible_status =  \"edit\"
+  	WHERE 
+  	pi_activity_status.node_function = \"view\" AND 
+  	pi_activity_status.visible_status = \"view\" AND 
+  	pi_activity_status.activity_id = 17 ";
+  	db_query($query);
+  }
+  elseif ($selected_stage == 9) {
+  	$query = "UPDATE pi_activity_status
+  	SET pi_activity_status.node_function = \"view\", pi_activity_status.visible_status =  \"view\"
+  	WHERE 
+  	pi_activity_status.node_function = \"edit\" AND 
+  	pi_activity_status.visible_status = \"edit\" AND 
+  	pi_activity_status.activity_id = 17";
+  	db_query($query);
+  }
+  //pi_change_activty_status_for_stage($details->inquiry_id, $selected_stage, $node->transition_type);
 }
 
 //this function shows how activity status can be updated by a stage change
