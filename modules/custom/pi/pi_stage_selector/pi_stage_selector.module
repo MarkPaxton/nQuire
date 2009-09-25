@@ -100,7 +100,17 @@ function pi_stage_selector_form(&$node) {
   global $user;
 
   $inquiry = get_inquiry_details_from_current_path();
-
+  
+  $query = "SELECT stage_id FROM pi_inquiry_stage WHERE inquiry_id = " . $inquiry->inquiry_id . " ORDER BY position ASC";
+  $stage_results = db_query($query);
+  $stages = array();
+  $stages_count = 1;
+  $stage_display_numbers = array();
+  
+  while ($stage_result = db_fetch_object($stage_results)) {
+  	$stages[$stage_result->stage_id] = $stages_count;
+  	$stages_count++;
+  }
   
 
   $form['title'] = array(
@@ -123,7 +133,7 @@ function pi_stage_selector_form(&$node) {
 
 	'#type' => 'value',
 
-	'#value' => array(1, 2)
+	'#value' => $stages
 
   );
 
@@ -134,28 +144,11 @@ function pi_stage_selector_form(&$node) {
   $current_stage_id = $current_stage->stage_id;
 
 
-
-  $stage_array = $form['stage_options']['#value'];
-
-  while ($stage_name = current($stage_array)) {
-
-   if ($stage_name == ($current_stage_id - 7)) {
-
-       $real_current_stage =  key($stage_array);
-
-		}
-
-		next($stage_array);
-
-	}
-
-  
-
   $form['selected_stage'] = array(
 	'#title' => t('Selected stage'),
 	'#type' => 'select',
 	'#description' => t('Select the inquiry stage'),
-	'#default_value' =>  array($real_current_stage),
+	'#default_value' =>  array($current_stage_id),
 	'#options' => $form['stage_options']['#value']
   );
   
@@ -178,7 +171,7 @@ function pi_stage_selector_form(&$node) {
 
   
 
-  $prefix = "<p>This allows you to change the current stage and determine how this change effects access to activities.</p>";
+  $prefix .= "<p>This allows you to change the current stage and determine how this change effects access to activities.</p>";
 
  
 
@@ -218,39 +211,75 @@ function pi_stage_selector_update($node) {
  * Implementation of pi_stage_selector_update().
 
  */
-
-
-
 function pi_update_stage($node) {
 
   $details = get_inquiry_details_from_current_path();
   
-  $stages = array(8, 9);
+/*  //get stages of current inquiry in order
+  
+  $query = "SELECT stage_id FROM pi_inquiry_stage WHERE inquiry_id = " . $details->inquiry_id . " ORDER BY position ASC";
+  $stage_results = db_query($query);
+  $stages = array();
+  
+  while ($stage_result = db_fetch_object($stage_results)) {
+  	$stages[] = $stage_result->stage_id;
+  }*/
 
-  $selected_stage = $stages[$node->selected_stage];
+  $selected_stage = $node->selected_stage;//$stages[$node->selected_stage];
 
   db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
-
-  if ($selected_stage == 8) {
-  	$query = "UPDATE pi_activity_status
-  	SET pi_activity_status.node_function = \"edit\", pi_activity_status.visible_status =  \"edit\"
-  	WHERE 
-  	pi_activity_status.node_function = \"view\" AND 
-  	pi_activity_status.visible_status = \"view\" AND 
-  	pi_activity_status.activity_id = 17 ";
+  
+  //activities outside the selected status
+  $query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND NOT (pi_stage_phase.stage_id = " . $selected_stage . ") ";
+  
+  $status_list = db_query($query);
+  while($status_item = db_fetch_object($status_list)) {
+  	$loaded_activity = load_activity($status_item->activity_id);
+  	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_leave_focus");
+  	if ($new_status->node_function && $new_status->visible_status) {
+  		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
+  		db_query($query);
+  	}
+  }
+  
+  //activities in the selected status
+  $query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND pi_stage_phase.stage_id = " . $selected_stage . " ";
+  
+  $status_list = db_query($query);
+  while($status_item = db_fetch_object($status_list)) {
+  	$loaded_activity = load_activity($status_item->activity_id);
+  	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_enter_focus");
+  	if ($new_status->node_function && $new_status->visible_status) {
+  		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
+  	}
   	db_query($query);
   }
-  elseif ($selected_stage == 9) {
-  	$query = "UPDATE pi_activity_status
-  	SET pi_activity_status.node_function = \"view\", pi_activity_status.visible_status =  \"view\"
-  	WHERE 
-  	pi_activity_status.node_function = \"edit\" AND 
-  	pi_activity_status.visible_status = \"edit\" AND 
-  	pi_activity_status.activity_id = 17";
-  	db_query($query);
-  }
-  //pi_change_activty_status_for_stage($details->inquiry_id, $selected_stage, $node->transition_type);
+  
 }
+
+
+function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
+	
+	$query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND (prior_nf = \"" . $node_function . "\" OR prior_nf IS NULL) AND (prior_vs = \"" . $visible_status . "\" OR prior_vs IS NULL) ";
+	
+	$result = db_fetch_object(db_query($query));
+	
+	if (!$result->node_function) {
+	
+		$query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
+	
+		$result = db_fetch_object(db_query($query));
+		
+		if (!$result->node_function) {
+	
+			$query = "SELECT node_function, visible_status FROM " . $table . " WHERE activity_id IS NULL AND activity_type IS NULL AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
+		
+			$result = db_fetch_object(db_query($query));
+		}
+	}
+	return $result;
+}
+ 
 
 //this function shows how activity status can be updated by a stage change
 //for all activities in the stage it changes view to edit and unavailable to add
@@ -264,6 +293,8 @@ function pi_change_activty_status_for_stage($inquiry_id, $stage_id, $transition_
 		make_change_to_status($inquiry_id, $stage_id, "unavailable", "unavailable", "start", 0);
 	}
 }
+
+
 
 function make_change_to_status($inquiry_id, $stage_id, $new_function, $new_visible_status, $test_visible_status, $valence) {
 
