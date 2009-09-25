@@ -75,6 +75,10 @@ function pi_data_form(&$node) {
   
   drupal_set_title(t($prefix_node->title));
   
+//   if (!($measures_param)) {
+//     $measures_param = 308;
+//   };
+  
   $weight_start = -10;
   
   $measures_array = array();
@@ -624,32 +628,44 @@ function pi_data_theme() {
 }
 
 function theme_pi_data($node) {
+
   $output = '';
-  $output .= '<div class="pi_data">First measure: ' . check_plain($node->value_1) . '</div><br />';
-  $output .= '<div class="pi_data">Second measure: ' . check_plain($node->value_2) . '</div><br />';
-  $output .= '<div class="pi_data">Third measure: ' . check_plain($node->value_3) . '</div><br />';
-  $output .= '<div class="pi_data">Fourth measure: ' . check_plain($node->value_4) . '</div><br />';
-  $output .= '<div class="pi_data">Fifth measure: ' . check_plain($node->value_5) . '</div><br />';
-  $output .= '<div class="pi_data">Sixth measure: ' . check_plain($node->value_6) . '</div><br />';
-  $output .= '<div class="pi_data">Seventh measure: ' . check_plain($node->value_7) . '</div><br />';
-  $output .= '<div class="pi_data">Eighth measure: ' . check_plain($node->value_8) . '</div><br />';
-  $output .= '<div class="pi_data">Ninth measure: ' . check_plain($node->value_9) . '</div><br />';
-  $output .= '<div class="pi_data">Tenth measure: ' . check_plain($node->value_10) . '</div><br />';
-  $output .= '<div class="pi_data">Eleventh measure: ' . check_plain($node->value_11) . '</div><br />';
-  $output .= '<div class="pi_data">Twelfth measure: ' . check_plain($node->value_12) . '</div><br />';
-  $output .= '<div class="pi_data">Thirteenth measure: ' . check_plain($node->value_13) . '</div><br />';
-  $output .= '<div class="pi_data">Fourteenth measure: ' . check_plain($node->value_14) . '</div><br />';
-  $output .= '<div class="pi_data">Fifteenth measure: ' . check_plain($node->value_15) . '</div><br />';
-  $output .= '<div class="pi_data">Sixteenth measure: ' . check_plain($node->value_16) . '</div><br />';
-  $output .= '<div class="pi_data">Seventeenth measure: ' . check_plain($node->value_17) . '</div><br />';
-  $output .= '<div class="pi_data">Eighteenth measure: ' . check_plain($node->value_18) . '</div><br />';
-  $output .= '<div class="pi_data">Ninteenth measure: ' . check_plain($node->value_19) . '</div><br />';
-  $output .= '<div class="pi_data">Twentieth measure: ' . check_plain($node->value_20) . '</div><br />';
-  $output .= '<div class="pi_data">Twenty first measure: ' . check_plain($node->value_21) . '</div><br />';
-  $output .= '<div class="pi_data">Twenty second measure: ' . check_plain($node->value_22) . '</div><br />';
-  $output .= '<div class="pi_data">Twenty third measure: ' . check_plain($node->value_23) . '</div><br />';
-  $output .= '<div class="pi_data">Twenty fourth measure: ' . check_plain($node->value_24) . '</div><br />';
-  $output .= '<div class="pi_data">Grid square: ' . check_plain($node->grid_square) . ', easting: ' . check_plain($node->eastings) . ', northing: ' . check_plain($node->northings) . '</div><br />';
+    
+  if (!($prefix_id)) {
+    $prefix_id = 99;
+  };
+  
+  $prefix_node = node_load($prefix_id);
+  
+  drupal_set_title(t($prefix_node->title));
+  
+	$query = "SELECT node.title AS title, pi_collected_data.value AS value ";
+	$query .= "FROM pi_collected_data ";
+	$query .= "LEFT JOIN pi_selected_measures ON pi_collected_data.psm_id = pi_selected_measures.psm_id ";
+	$query .= "LEFT JOIN node ON pi_selected_measures.measure_nid = node.nid ";
+	$query .= "WHERE pi_collected_data.nid = " . $node->nid . " ";
+	$query .= "ORDER BY pi_selected_measures.weight ASC";
+	$db_result = db_query($query);
+	
+	while($row = db_fetch_object($db_result)) {
+
+		$value = $row->value;
+    $title = $row->title;
+    
+    if ($value == '0') {
+      $output .= t('<p>' . $title . ': <b>Agree</b></p>');
+    }
+    elseif ($value == '1') {
+      $output .= t('<p>' . $title . ': <b>Disagree</b></p>');
+    }
+    else {
+      $output .= t('<p>' . $title . ': <b>' . $value . '</b></p>');
+    };
+    
+  };
+  
+  $output .= '';
+	
   return $output;
 }
 
