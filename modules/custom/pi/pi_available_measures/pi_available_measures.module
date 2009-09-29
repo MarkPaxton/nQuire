@@ -59,13 +59,17 @@ function pi_available_measures_perm() {
 
 function pi_available_measures_access($op, $node) {
   global $user;
+  
+  $details = get_inquiry_details_from_current_path();
 
   if ($op == 'create') {
-    return (user_access('create pi_available_measures'));
+    //return (user_access('create pi_available_measures'));
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
   }
 
   if ($op == 'update' || $op == 'delete') {
-    return (user_access('edit own pi_available_measures') && ($user->uid == $node->uid));
+    //return (user_access('edit own pi_available_measures') && ($user->uid == $node->uid));
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
   }
 }
 
@@ -73,8 +77,13 @@ function pi_available_measures_access($op, $node) {
  * Implementation of pi_available_measures_form().
  */
 function pi_available_measures_form(&$node) {
-  
+  if ($details->activity_id != 34) {
   drupal_set_title(t('Enter measurement'));
+  }
+  else {
+  drupal_set_title(t('Enter interview question'));
+  }
+  $details = get_inquiry_details_from_current_path();
   
   // Get metadata for this node type
   // (we use it for labeling title and body fields).
@@ -90,7 +99,12 @@ function pi_available_measures_form(&$node) {
   };
   
   $form['#attributes']['enctype'] = 'multipart/form-data';
-
+  
+  $form['measurement'] = array(
+  	'#type' => 'hidden',
+  	'#value' => 'body text value',
+  );
+  if ($details->activity_id != 34) {
   $form['measurement'] = array(
     '#type' => 'fieldset',
     '#title' => t('Measurement information'),
@@ -99,6 +113,18 @@ function pi_available_measures_form(&$node) {
     '#collapsed' => FALSE,
     '#weight' => -10
   );
+  }
+  else {
+  $form['measurement'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('New question'),
+    '#description' => t('Enter the new Agree/Disagee question you would like to add.'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#weight' => -10
+  );  
+  }
+  //}
   $form['measurement']['title'] = array(
     '#type' => 'textfield',
     '#title' => check_plain($type->title_label),
@@ -106,6 +132,7 @@ function pi_available_measures_form(&$node) {
     '#default_value' => $node->title,
     '#weight' => -5
   );
+  if ($details->activity_id != 34) {
   $form['measurement']['body_filter']['body'] = array(
     '#type' => 'textarea',
     '#title' => check_plain($type->body_label),
@@ -115,6 +142,14 @@ function pi_available_measures_form(&$node) {
     '#rows' => 5,
     '#weight' => -3
   );
+  }
+  else {
+     $form['measurement']['body'] = array(
+   	'#type' => 'body text',
+   	'#value' => 2
+   );
+   }
+  if ($details->activity_id != 34) {
   $form['measurement']['symbol'] = array(
     '#type' => 'textfield',
     '#title' => t('Symbol / short-name'),
@@ -136,6 +171,8 @@ function pi_available_measures_form(&$node) {
     '#default_value' => $node->units_short,
     '#weight' => 5
   );
+  }
+  if ($details->activity_id != 34) {
   $form['measurement']['data_type'] = array(
     '#type' => 'select',
     '#title' => t('Select data type'),
@@ -156,6 +193,18 @@ function pi_available_measures_form(&$node) {
     '#rows' => 5,
     '#weight' => 9
   );
+  }
+  else {
+   $form['measurement']['data_type'] = array(
+   	'#type' => 'hidden',
+   	'#value' => 2
+   );
+   $form['measurement']['options'] = array(
+   	'#type' => 'hidden',
+   	'#value' => "Agree\nDisagree"
+   );
+   }
+  if ($details->activity_id != 34) {
   $form['equipment'] = array(
     '#type' => 'fieldset',
     '#title' => t('Equipment information'),
@@ -187,6 +236,7 @@ function pi_available_measures_form(&$node) {
     '#description' => t('Select an image to illustrate the measurement or measurement device ' . $current_text . '.'),
     '#weight' => 7
   );
+  }
     
   return $form;
 }
