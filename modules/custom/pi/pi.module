@@ -89,15 +89,9 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
  
 function pi_home_view () {
 
-
-
   drupal_set_title('');
 
-  
-
   $output = "";
-
-  
 
   $image_path = "images/";
 
@@ -107,26 +101,26 @@ function pi_home_view () {
 
   $view_by = arg(7);
 
-  
-
   $stages = get_stages_of_inquiry_and_user($inquiry->inquiry_id, $user->uid);
 
-  
+  //$output .= "<div style='display: block; margin: 0; vertical-align: top;'>";
 
-  $output .= "<div style='display: block; margin: 0; vertical-align: top;'>";
-
-  $output .= "<div style='display: block; clear: both; height: 0.5em;'> </div>";
-
-  
+  //$output .= "<div style='display: block; clear: both; height: 0.5em;'> </div>";
 
   $current_stage = get_current_stage_of_inquiry_and_user ($inquiry->inquiry_id, $user->uid);
 
   $current_stage_id = $current_stage->stage_id;
+  
+    
+  $loaded_current_stage = load_stage($current_stage_id);
+  $loaded_current_inquiry = load_inquiry($inquiry->inquiry_id);
+  
+  drupal_set_title(t($loaded_current_inquiry->name . ": " . $loaded_current_stage->name));
 
   //print "csid:" .  t($current_stage_id);
 
   
-
+/*
   $count = 0;
 
   while ($result = db_fetch_object($stages)) {
@@ -187,7 +181,7 @@ border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
 
     
 
-  };
+  };*/
 
 
 
@@ -289,7 +283,7 @@ border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
 
       $output .= "<tr>";
 
-	   $output .= "<td>" .  build_activity_link($inquiry->inquiry_id, $inquiry->stage_id, $activity->phase_id, $activity->activity_id, $user->uid) . "</td>";
+	   $output .= "<td>" .  build_activity_link_old($inquiry->inquiry_id, $inquiry->stage_id, $activity->phase_id, $activity->activity_id, $user->uid) . "</td>";
 
 	  //$output .= "<td>" . $loaded_activity->name . "</td>";
 
@@ -381,7 +375,6 @@ function compare_status($a, $b) {
 }
 
 function pi_phase_view () {
-
   
   if (arg(0) == 'phase' && is_numeric(arg(1))) {
 	  $phase_id = arg(1);
@@ -412,7 +405,7 @@ function pi_phase_view () {
 	
 	$output .= "<dl>";
 	
-	$output .= "<dt>" . build_activity_link($inquiry->inquiry_id, $inquiry->stage_id, $inquiry->phase_id, $activity->activity_id, $user->uid) . "</dt>";
+	$output .= "<dt>" . build_activity_link_old($inquiry->inquiry_id, $inquiry->stage_id, $inquiry->phase_id, $activity->activity_id, $user->uid) . "</dt>";
 	
 	$output .= "<dd>" .  "<span style='vertical-align: 10%;'>" . $loaded_activity->description . "</span>" . "</dd>";
 	$output .= "</dl>";
@@ -1069,8 +1062,21 @@ function delete_activity_type_for_user ($activity_type, $user) {
 // ----------------------------------------------------------------------------------
 
 /**
- * Functions in this block are for loading stages and phases
+ * Functions in this block are for loading inquiries, stages and phases
  */
+ 
+ function load_inquiry ($inquiry_id) {
+
+/**
+ * Returns the inquiry object from pi_stage table.
+ */
+ 
+	$query = "SELECT * FROM pi_inquiry WHERE inquiry_id = '" . $inquiry_id . "'";
+
+	$items = db_fetch_object(db_query($query));
+
+	return $items;
+}
  
 function load_stage ($stage_id) {
 
@@ -1428,7 +1434,7 @@ function get_phases_of_inquiry_and_user ($inquiry_id, $uid) {
 	$query .= "AND (pi_phase_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "') ";
 	$query .= "ORDER BY pi_inquiry_phase.position";
  
-	$result =  db_query($query);
+	$result = db_query($query);
 	return $result;
 
 }
@@ -1439,7 +1445,7 @@ function get_stages_of_inquiry_and_user ($inquiry_id, $uid) {
  * Returns an array containing the stage_ids of the inquiry for that user. 
  * The stages are ordered by position.
  */
-	$query = "SELECT DISTINCT pi_inquiry_stage.stage_id ";
+	$query = "SELECT DISTINCT pi_inquiry_stage.stage_id AS stage_id ";
 	$query .= "FROM pi_inquiry_stage ";
 	$query .= "LEFT JOIN pi_stage_actor ON pi_stage_actor.stage_id = pi_inquiry_stage.stage_id ";
 	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_stage_actor.gid ";
@@ -1450,7 +1456,6 @@ function get_stages_of_inquiry_and_user ($inquiry_id, $uid) {
 	$query .= "ORDER BY pi_inquiry_stage.position";
 
 	$result = db_query($query);
-
 	return $result;
 
 }
@@ -1602,6 +1607,44 @@ function get_unique_activities($activities){
 	}
 	return $unique;
 }
+
+function get_inquiries_of_user ($uid) {
+
+/**
+ * Returns array of inquiry_id values and inquiry names for user or user's groups
+ */
+ 
+	$query = "SELECT DISTINCT(pi_inquiry_actor.inquiry_id) AS inquiry_id, pi_inquiry.name AS name ";
+	$query .= "FROM pi_inquiry_actor ";
+  $query .= "LEFT JOIN og_uid ON og_uid.nid = pi_inquiry_actor.gid ";
+  $query .= "LEFT JOIN pi_inquiry ON pi_inquiry.inquiry_id = pi_inquiry_actor.inquiry_id ";
+	$query .= "WHERE pi_inquiry_actor.uid = " . $uid;
+  $query .= " OR og_uid.uid =  " . $uid;
+
+  $result = db_query($query);
+  return $result;
+}
+
+
+function get_stages_of_inquiry ($inquiry_id) {
+
+/**
+ * Returns array of stage_id, and name values for given inquiry_id
+ */
+ 
+	$query = "SELECT pi_inquiry_stage.stage_id AS stage_id, pi_stage.name AS name, pi_inquiry_stage.position AS position ";
+	$query .= "FROM pi_inquiry_stage ";
+  $query .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
+	$query .= "WHERE pi_inquiry_stage.inquiry_id = " . $inquiry_id;
+  $query .= " ORDER BY position ASC";
+
+  $result = db_query($query);
+  return $result;
+}
+
+
+
+
 
 function get_current_stage_of_inquiry_and_user ($inquiry_id, $uid) {
 

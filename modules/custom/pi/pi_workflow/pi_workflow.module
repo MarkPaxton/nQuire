@@ -84,14 +84,23 @@ function workflow_for_created_node_adder_activity($node, $user, $node_function, 
 	$details = get_inquiry_details_from_current_path();
 	$loaded_activity = load_activity($details->activity_id);
 	
+	//get the values of the key measures for the data node
+	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures, pi_key_measures WHERE pi_collected_data.nid = '" . $node->nid . "' AND pi_collected_data.psm_id = pi_selected_measures.psm_id AND pi_selected_measures.measure_nid = pi_key_measures.measure_nid AND pi_key_measures.inquiry_id = '" . $details->inquiry_id . "' AND pi_key_measures.activity_id = '" .$details->activity_id . "' ";
+	$results = db_query($query);
+	$title_array= array();
+	while($result = db_fetch_object($results)) {
+		$title_array[] = $result->value;
+	}
+	$activity_name = implode("-",$title_array);
+	
 	//use the value from lowest weighted measure as activity title
-	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures ";
+	/*$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures ";
 	$query .= "WHERE pi_collected_data.nid = " . $node->nid . " ";
 	$query .= "AND pi_collected_data.psm_id = pi_selected_measures.psm_id ";
 	$query .= "ORDER BY pi_selected_measures.weight ASC ";
-	$activity_name = db_result(db_query($query));
+	$activity_name = db_result(db_query($query));*/
 	if (strlen($activity_name) < 2) {
-		$activity_name = "Interview";
+		$activity_name = "Data";
 	}
 	$activity_array = array();
 	$activity_array["name"] = $activity_name;
@@ -194,107 +203,4 @@ function set_pi_activity_node_for_activity($inquiry, $activity, $nid) {
 	$query .= ", activity_id = '" . $activity . "'";
 	$query .= ", nid = '" . $nid . "'";
 	db_query($query);
-}
-
-/*results from q/a inquiry placed here for now*/
-
-function display_qa_results($gid) {
-	
-	//get pi_selected_measures node
-	$query = "SELECT node.nid FROM node, node_access WHERE node.type = \"pi_selected_measures\" AND node.nid = node_access.nid AND node_access.gid = " . $gid . " ";
-	$snid = db_result(db_query($query));
-	
-	$output = "<div style = \"width: 20em; height: 1em; margin: 0; padding: 0;\"><div style = \"float: left; width: 1em; background-color:#ff0000; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div><div style = \"float: left;  height: 1em; width: 8em; border: 0; margin: 0; padding: 0\">Agree</div><div style = \"float: left; width: 1em; background-color:#0000ff; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div><div style = \"float: left;  height: 1em; width: 8em; border: 0; margin: 0; padding: 0\">Disagree</div></div>";
-		
-	//get question set for gid
-	$measures_array = find_default_measures($snid);
-	if ($measures_array) {
-		foreach ($measures_array as $measure) {
-			$loaded_measure = node_load($measure);
-			if ($loaded_measure->title != "Name of the person being interviewed") {
-				$output .= "<h2>" . $loaded_measure->title . "</h2>";
-				$query = "SELECT psm_id FROM pi_selected_measures WHERE measure_nid = " . $loaded_measure->nid . " AND nid = " . $snid . " ";
-				$psm_id = db_result(db_query($query));
-				
-				//get the scores
-				$query = "SELECT value, COUNT( * ) AS total FROM pi_collected_data WHERE psm_id = " . $psm_id . " GROUP BY value ORDER BY value ASC ";
-				$result = db_query($query);
-				$res_array = array();
-				while ($option_total = db_fetch_object($result)) {
-					if ($option_total->value == 0 || $option_total->value == 1) {
-						$res_array[$option_total->value] = $option_total->total;
-					}
-				}
-				$output .= "<div>" . possession_slider($res_array[0], $res_array[1]) . "</div>";
-			}
-		}
-	}
-	
-	return $output;
-}
-
-function possession_slider ($yes, $no) {
-	$total = $yes + $no;
-	if ($total == 0) {
-		$yes_width = 50;
-		$no_width = 50;
-	}
-	else {
-		
-		$yes_width = round($yes / $total * 100);
-		$no_width = round($no / $total * 100);
-	}
-
-	$output = "<div style = \"float: left; width: 20em; height: 1em; margin: 0; padding: 0;\">
-	<div style = \"float: left; width: " . $yes_width . "%; background-color:#ff0000; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div>
-	<div style = \"float: left; width: " . $no_width . "%; background-color:#0000ff; height: 1em; border: 0; margin: 0; padding: 0\">&nbsp;</div></div>
-	</div>";
-	if (!$yes) {$yes = "0";}
-	if (!$no) {$no = "0";}
-	$output .= "<div style=\"clear:both\"/><div style = \"float: left; width: 20em; height: 1em; margin: 0; padding: 0;\"><span style=\"float:left\">" . $yes . "</span><span style=\"float:right\">" . $no . "</span></div><div style=\"clear:both\"/>";
-	//$output = "yes = " . $yes . " no = " . $no;
-	return $output;
-}
-	
-
-
-function display_qa_results_old($gid) {
-	$output = "<p>Display results</p>"; 
-	$output .= "<p>Group: " . $gid . "</p>";
-	
-	//get pi_selected_measures node
-	$query = "SELECT node.nid FROM node, node_access WHERE node.type = \"pi_selected_measures\" AND node.nid = node_access.nid AND node_access.gid = " . $gid . " ";
-	$snid = db_result(db_query($query));
-	$output .= "selection nid: " . $snid;
-	
-	//get question set for gid
-	$output .= "<p>measures:<p>";
-	$measures_array = find_default_measures($snid);
-	if ($measures_array) {
-		foreach ($measures_array as $measure) {
-			$loaded_measure = node_load($measure);
-			if ($loaded_measure->title != "Name of the person being interviewed") {
-				$output .= "<p>tite: " . $loaded_measure->title . "</p>";
-				$output .= "<p>nid: " . $loaded_measure->nid . "</p>";
-				$output .= "<p>options: " . $loaded_measure->options . "</p>";
-				$query = "SELECT psm_id FROM pi_selected_measures WHERE measure_nid = " . $loaded_measure->nid . " AND nid = " . $snid . " ";
-				$psm_id = db_result(db_query($query));
-				$output .= "<p>psm_id: " . $psm_id . "</p>";
-				
-				//get the scores
-				$query = "SELECT value, COUNT( * ) AS total FROM pi_collected_data WHERE psm_id = " . $psm_id . " GROUP BY value ORDER BY value ASC ";
-				$result = db_query($query);
-				$res_array = array();
-				while ($option_total = db_fetch_object($result)) {
-					if ($option_total->value == 0 || $option_total->value == 1) {
-						$output .= "<p>" . $option_total->value . "=" . $option_total->total;
-						$res_array[$option_total->value] = $option_total->total;
-					}
-				}
-				$output .= "<div>" . possession_slider($res_array[0], $res_array[1]) . "</div>";
-			}
-		}
-	}
-	
-	return $output;
 }

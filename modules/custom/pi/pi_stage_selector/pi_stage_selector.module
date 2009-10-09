@@ -230,6 +230,7 @@ function pi_update_stage($node) {
   db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
   
   //activities outside the selected status
+  if ($node->transition_type == 0) {
   $query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND NOT (pi_stage_phase.stage_id = " . $selected_stage . ") ";
   
   $status_list = db_query($query);
@@ -241,7 +242,7 @@ function pi_update_stage($node) {
   		db_query($query);
   	}
   }
-  
+  }
   //activities in the selected status
   $query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND pi_stage_phase.stage_id = " . $selected_stage . " ";
   
