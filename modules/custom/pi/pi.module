@@ -374,44 +374,117 @@ function compare_status($a, $b) {
 	}
 }
 
+
 function pi_phase_view () {
-  
+ 
   if (arg(0) == 'phase' && is_numeric(arg(1))) {
-	  $phase_id = arg(1);
+          $phase_id = arg(1);
   }
   else {
     $phase_id = 1;
   };
-  
-  $phase = load_phase($phase_id);
-  
-  drupal_set_title($phase->name);
-  
-  $output = "";
-   
-  $output .= "<div style='display: block; clear: both;'>";
-  // $output .= "<h2>" . $phase->name . "</h2>";
-  $output .= "<p>" . $phase->description . "</p>";
-  $output .= "</div>";
-
+ 
   global $user;
   $inquiry = get_inquiry_details_from_current_path();
-  
+  $stage = get_current_stage_of_inquiry_and_user ($inquiry->inquiry_id, $user->uid);
+  $phase = load_phase($phase_id);
   $activities = get_activities_of_stage_phase_and_user ($inquiry->inquiry_id, NULL, $phase_id, $user->uid);
-  
-  foreach ($activities as $activity) { 
-    $loaded_activity = load_activity($activity->activity_id); 
-    $loaded_activity_status = load_activity_status ($inquiry->inquiry_id, $activity->activity_id, $user->uid);
-	
-	$output .= "<dl>";
-	
-	$output .= "<dt>" . build_activity_link_old($inquiry->inquiry_id, $inquiry->stage_id, $inquiry->phase_id, $activity->activity_id, $user->uid) . "</dt>";
-	
-	$output .= "<dd>" .  "<span style='vertical-align: 10%;'>" . $loaded_activity->description . "</span>" . "</dd>";
-	$output .= "</dl>";
-		
+ 
+  drupal_set_title($phase->name);
+ 
+  $output = "";
+ 
+  $output .= "<div style='display: block; clear: both;'>";
+  $output .= t("<p>" . $phase->description . "</p>");
+  $output .= "</div>";
+ 
+  if ($activities) {
+ 
+    $headings = array('Activities', array('data'=>'Available options', 'colspan'=>3));
+    $table = array();
+ 
+    $active_activity_flag = 0;
+ 
+    foreach ($activities as $activity) {
+ 
+      $loaded_activity = load_activity($activity->activity_id);
+         $params = $loaded_activity->parameters;
+ 
+         $visible_status = get_visible_status_of_activity ($inquiry->inquiry_id, $activity->activity_id, $user->uid);
+           $node_function = get_node_function_of_activity ($inquiry->inquiry_id, $activity->activity_id, $user->uid);
+ 
+         switch ($loaded_activity->destination) {
+        case "self":
+                 $destination = "";
+            break;
+        case "phase":
+                 $destination = t("destination=" . build_link("phase", $phase->phase_id, "view", $inquiry->inquiry_id, $stage->stage_id, $phase->phase_id, $activity->activity_id));
+            break;
+        default:
+                 $destination = t("destination=" . build_home_link($inquiry->inquiry_id, $stage->stage_id, $phase->phase_id, $activity->activity_id));
+            break;
+         }
+        
+         $teacher_gid = check_teacher_activity_for_inquiry_activity_user ($inquiry->inquiry_id, $activity->activity_id, $user->uid);
+        
+      $activity_name_text = $loaded_activity->name . teacher_only_flag($teacher_gid);
+ 
+                 $view_link = t('');
+                 $edit_link = t('');
+                 $add_link = t('');
+ 
+         if (($visible_status != "unavailable") AND ($node_function == "add")) {
+                 $link = build_link("node", $node_function, str_replace("_", "-", $loaded_activity->node_type), $inquiry->inquiry_id, $stage->stage_id, $phase->phase_id, $activity->activity_id);
+                 if ($params) {
+                         $link = $link . "/" . $params;
+                 }      
+           $add_link = l('add', $link,  array(html => true, query => $destination));
+        $active_activity_flag = 1;
+         }
+         else {
+                 $nid = get_nid_for_inquiry_activity_and_user($inquiry->inquiry_id, $activity->activity_id, $user->uid);
+        if ($visible_status == "view") {
+                 $link = build_link("node", $nid, "view", $inquiry->inquiry_id, $stage->stage_id, $phase->phase_id, $activity->activity_id);
+                 if ($params) {
+                         $link = $link . "/" . $params;
+                 }
+          $view_link = l('view', $link,  array(html => true, query => $destination));
+          $active_activity_flag = 1;
+        };
+        if ($visible_status == "edit") {
+                 $link = build_link("node", $nid, "edit", $inquiry->inquiry_id, $stage->stage_id, $phase->phase_id, $activity->activity_id);
+                 if ($params) {
+                         $link = $link . "/" . $params;
+                 }
+          $edit_link = l('view', $link,  array(html => true, query => $destination));
+          $link = build_link("node", $nid, "view", $inquiry->inquiry_id, $stage->stage_id, $phase->phase_id, $activity->activity_id);
+                 if ($params) {
+                         $link = $link . "/" . $params;
+                 }
+          $view_link = l('view', $link,  array(html => true, query => $destination));
+          $active_activity_flag = 1;
+        };
+         };
+ 
+      // $loaded_activity_status = load_activity_status ($inquiry->inquiry_id, $activity->activity_id, $user->uid);
+          
+      $table[] = array($activity_name_text, $view_link , $edit_link, $add_link);
+                        
+    };
+ 
+    $output .= theme('table', $headings, $table);
+ 
+    if ($active_activity_flag == 0) {
+      $output .= "<div class='status'><div class='messages'><ul><li>None of the above activities can be accessed at this stage.</li></ul></div></div>";
+    };
+ 
+  }
+  else {
+ 
+    $output .= "<div class='status'><div class='messages'><ul><li>No activities are available in this phase at this stage.</li></ul></div></div>";
+ 
   };
-  
+ 
   return $output;
  
 }
