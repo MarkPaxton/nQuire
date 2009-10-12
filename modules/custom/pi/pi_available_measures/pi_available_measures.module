@@ -173,14 +173,14 @@ function pi_available_measures_form(&$node) {
   );
   }
   if ($details->activity_id != 34) {
-    $form['measurement']['form_type'] = array(
+    $form['measurement']['field_type'] = array(
     '#type' => 'select',
     '#title' => t('Select form type'),
     '#required' => TRUE,
     '#multiple' => FALSE,
-    '#default_value' => $node->data_type,
+    '#default_value' => $node->field_type,
     '#options' => array('textfield' => 'Single text line','textarea' => 'Multi-line text area','select' => 'Single select pull-down menu', 'radios' => 'Single select radio buttons', 'checkboxes' => 'Multi-select checkboxes'),
-    '#description' => t('Select the type of form field you require.This will be used in the data collection interface.'),
+    '#description' => t('Select the type of form field you require.This will be used in the data collection interface.'.$node->field_type."&"),
     '#weight' => 7
   );
   $form['measurement']['data_type'] = array(
@@ -190,7 +190,7 @@ function pi_available_measures_form(&$node) {
     '#multiple' => FALSE,
     '#default_value' => $node->data_type,
     '#options' => array('numeric' => 'Numeric','text' => 'Text','menu' => 'Menu'),
-    '#description' => t('Select the type of data that should be entered. This will be used to validate the submitted form.'),
+    '#description' => t('Select the type of data that should be entered. This will be used to validate the submitted form.'.$node->data_type."&"),
     '#weight' => 7
   );
   $form['measurement']['body_filter']['options'] = array(
@@ -290,12 +290,12 @@ function pi_available_measures_insert($node) {
     $image_node = image_create_node_from($tdpic->filepath); 
     $pic_nid = $image_node->nid;
     db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, options, content_options, measurement_device_name, measurement_device_description, image_id) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s','%s', %d)",
-      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->form_type, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description, $pic_nid);
+      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description, $pic_nid);
   }
 
   else {
     db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, options, content_options, measurement_device_name, measurement_device_description) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')",
-      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->form_type, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description);
+      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description);
   };
 }
 
@@ -313,11 +313,11 @@ function pi_available_measures_update($node) {
       $image_node = image_create_node_from($tdpic->filepath); 
       $pic_nid = $image_node->nid;
       db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', options = '%s', content_options = '%s', measurement_device_name = '%s', measurement_device_description = '%s', image_id = '%d' 
-        WHERE vid = %d", $node->symbol, $node->units, $node->units_short, $node->form_type, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description, $pic_nid, $node->vid);
+        WHERE vid = %d", $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description, $pic_nid, $node->vid);
     }
     else {
-      db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%d', options = '%s', content_options = '%s', measurement_device_name = '%s', measurement_device_description = '%s' WHERE vid = %d",
-        $node->symbol, $node->units, $node->units_short, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description, $node->vid);
+      db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', options = '%s', content_options = '%s', measurement_device_name = '%s', measurement_device_description = '%s' WHERE vid = %d",
+        $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->options, $node->content_options, $node->measurement_device_name, $node->measurement_device_description, $node->vid);
     };
   }
 }

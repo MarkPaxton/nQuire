@@ -6,7 +6,11 @@
  * Implements Activity Guide workflow.
  */
 
-
+function find_selected_measures_nid_for_uid ($uid) {
+	$query = "SELECT pi_selected_measures.nid FROM pi_selected_measures, node_access, og_uid WHERE pi_selected_measures.nid = node_access.nid AND node_access.gid = og_uid.nid AND og_uid.uid = '" . $uid . "' ";
+	$result = db_result(db_query($query));
+	return $result;
+}
 
 function add_data_parameter_when_selected_measures_created($node, $user) {
 	$node_details = get_inquiry_details_from_current_path();
@@ -144,13 +148,17 @@ function add_activity_when_add_measure_created($node, $user, $node_function, $vi
 	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
 	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
 	$new_activity_actor["activity_id"] = $new_activity_id;
-	$new_activity_actor["uid"] = $activity_actor[0]["uid"];
-	$new_activity_actor["gid"] = $activity_actor[0]["gid"];
+	if ($loaded_activity->audience == "individual") {
+		$new_activity_actor["uid"] = $activity_actor[0]["uid"];
+	}
+	else {
+		$users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
+		$new_activity_actor["gid"] = $users_group;
+	}
 	insert_activity_actor($new_activity_actor);
 	
 	//set the stage phase activity
 	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
-	
 	$query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
 	$current_pos = db_result(db_query($query));
 	$new_pos = $current_pos + 1;
@@ -160,14 +168,13 @@ function add_activity_when_add_measure_created($node, $user, $node_function, $vi
 	add_new_pi_activity_node($node, $user, $node_function, $visible_status, $new_details);
 	
 	//set og if necessary for new node
-	/*
 	$details = get_inquiry_details_from_current_path();
 	$activity = load_activity($details->activity_id);
-	if ($activity->audience != "individual") {
-		$users_group = get_group_of_type($user->uid, $activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
+	if ($loaded_activity->audience != "individual") {
+		$users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
         $context['group'] = $users_group;
     	og_add_group_action($node, $context);
-	}*/
+	}
 }
 
 

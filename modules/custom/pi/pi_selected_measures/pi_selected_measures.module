@@ -66,7 +66,8 @@ function pi_selected_measures_form(&$node) {
   
   $prefix = "<p>" . t($current_activity->description) . "</p>";
   
-  $required_results = db_query("SELECT nid, title FROM node LEFT JOIN pi_key_measures ON pi_key_measures.measure_nid = node.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND pi_key_measures.inquiry_id = '" . $details->inquiry_id . "' AND pi_key_measures.activity_id = '" . $details->activity_id . "' ");
+  //change to only get public and og nids
+  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_key_measures ON pi_key_measures.measure_nid = node.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND pi_key_measures.inquiry_id = '" . $details->inquiry_id . "' AND pi_key_measures.activity_id = '" . $details->activity_id . "'  AND (node_access.realm =  'all' OR og_uid.uid =  '" . $uid . "')");
   
   $compulsory = array();
   $compulsory_default = array();
@@ -75,7 +76,8 @@ function pi_selected_measures_form(&$node) {
     $compulsory_default[] = $required_result['nid'];
   }
   
-  $results = db_query("SELECT nid, title FROM node LEFT JOIN pi_key_measures ON pi_key_measures.measure_nid = node.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND (pi_key_measures.inquiry_id IS NULL OR pi_key_measures.inquiry_id != '" . $details->inquiry_id . "') AND (pi_key_measures.activity_id IS NULL OR pi_key_measures.activity_id != '" . $details->activity_id . "') ");
+  //change to only get public and og nids
+  $results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_key_measures ON pi_key_measures.measure_nid = node.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND (pi_key_measures.inquiry_id IS NULL OR pi_key_measures.inquiry_id != '" . $details->inquiry_id . "') AND (pi_key_measures.activity_id IS NULL OR pi_key_measures.activity_id != '" . $details->activity_id . "')  AND (node_access.realm =  'all' OR og_uid.uid =  '" . $uid . " ')");
 
   $options = array();
   
@@ -275,7 +277,7 @@ function theme_pi_selected_measures($node) {
   drupal_set_title(t($current_activity->name));
   $output = "<p>" . $current_activity->description . "</p>";
   
-  $query = "SELECT node.title FROM node, pi_selected_measures WHERE pi_selected_measures.nid = '" . $node->nid . "' AND pi_selected_measures.measure_nid = node.nid";
+  $query = "SELECT node.title FROM node, pi_selected_measures WHERE pi_selected_measures.nid = '" . $node->nid . "' AND pi_selected_measures.measure_nid = node.nid ORDER BY pi_selected_measures.weight";
   $result = db_query($query);
   $output .= "<ul>";
   while($measure = db_fetch_object($result)) {
