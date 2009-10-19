@@ -3,7 +3,7 @@
 
 /**
  * @file
- * Module for creating "hypothesis and key questions" node type
+ * Module for creating "[pi_hypothesis" node type
  */
 
 
@@ -12,19 +12,19 @@
  */
 
 function pi_hypothesis_node_info() {
-  return array(
-	'pi_hypothesis' => array(
-      	 'name' => t('Urban Heat Islands Hypothesis and key questions'), // Required.
-	 'module' => 'pi_hypothesis',  // Required.
-	 'description' => t('What is your hypothesis?'), // Required.
-	 'has_title' => TRUE,
-	 'title_label' => t('Oakgrove Urban Heat Islands project'),
-	 'has_body' => TRUE,
-	 'body_label' => t('Hypothesis'),
-	 'min_word_count' => 2,
-	 'locked' => TRUE
-	)
-   );
+
+    return array(
+    'pi_hypothesis' => array(
+    'name' => t('Inquiry hypothesis'), // Required.
+    'module' => 'pi_hypothesis',  // Required.
+    'description' => t('What is your hypothesis?'), // Required.
+    'has_title' => TRUE,
+    'title_label' => t('Inquiry hypothesis'),
+    'has_body' => TRUE,
+    'body_label' => t('Hypothesis'),
+    'locked' => TRUE)
+    );
+
 }
 
 
@@ -33,22 +33,25 @@ function pi_hypothesis_node_info() {
  */
 
 function pi_hypothesis_perm() {
-  return array('create pi_hypothesis content', 'edit pi_hypothesis');
+    return array('create pi_hypothesis content', 'edit pi_hypothesis');
 }
 
 /**
  * Implementation of hook_access().
  */
 function pi_hypothesis_access($op, $node) {
-  global $user;
+    global $user;
+    $details = get_inquiry_details_from_current_path();
 
-  if ($op == 'create') {
-    return (user_access('create pi_hypothesis'));
-  }
+    if ($op == 'create') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    //return (user_access('create pi_hypothesis'));
+    }
 
-  if ($op == 'update' || $op == 'delete') {
-    return (user_access('edit own pi_hypothesis') && ($user->uid == $node->uid));
-  }
+    if ($op == 'update' || $op == 'delete') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    //return (user_access('edit own pi_hypothesis'));
+    }
 }
 
 /**
@@ -57,111 +60,37 @@ function pi_hypothesis_access($op, $node) {
 
 function pi_hypothesis_form(&$node) {
 
-  // Get metadata for this node type
-  // (we use it for labeling title and body fields).
-  // We defined this in pi_hypothesis_node_info().
-  $type = node_get_types('type', $node);
+// Get metadata for this node type
+// (we use it for labeling title and body fields).
+// We defined this in pi_hypothesis_node_info().
+    $type = node_get_types('type', $node);
 
-  $form['title'] = array(
-    '#type' => 'hidden',
-    '#title' => check_plain($type->title_label),
-    '#required' => FALSE,
-    '#default_value' => check_plain($type->title_label),
-    '#weight' => -5
-  );
+    $form['title'] = array(
+        '#type' => 'hidden',
+        '#title' => check_plain($type->title_label),
+        '#required' => FALSE,
+        '#default_value' => check_plain($type->title_label),
+        '#weight' => -5
+    );
 
-  $form['textarea_fieldset'] = array(
-    '#type' => 'fieldset'
-  );
-  
-  $form['textarea_fieldset']['hypothesis'] = array(
-    '#type' => 'textarea',
-    '#title' => t('My hypothesis is '),
-    '#required' => TRUE,
-    '#default_value' => $node->hypothesis,
-    '#resizable' => FALSE,
-    '#rows' => 2,
-    '#cols' => 40,
-    '#weight' => 2
-  );
-  
-  $form['textarea_fieldset']['key_question_1'] = array(
-    '#type' => 'textarea',
-    '#title' => t('My first key question is '),
-    '#required' => TRUE,
-    '#default_value' => $node->key_question_1,
-    '#resizable' => FALSE,
-    '#rows' => 1,
-    '#cols' => 40,
-    '#weight' => 3
-  );
-  
-  $form['textarea_fieldset']['key_question_2'] = array(
-    '#type' => 'textarea',
-    '#title' => t('My second key question is '),
-    '#required' => FALSE,
-    '#default_value' => $node->key_question_2,
-    '#resizable' => FALSE,
-    '#rows' => 1,
-    '#cols' => 40,
-    '#weight' => 4
-  );
-  
-  $form['textarea_fieldset']['key_question_3'] = array(
-    '#type' => 'textarea',
-    '#title' => t('My third key question is '),
-    '#required' => FALSE,
-    '#default_value' => $node->key_question_3,
-    '#resizable' => FALSE,
-    '#rows' => 1,
-    '#cols' => 40,
-    '#weight' => 5
-  );
+    $form['hypothesis'] = array(
+        '#type' => 'textarea',
+        '#title' => t('My hypothesis is'),
+        '#required' => TRUE,
+        '#default_value' => $node->hypothesis,
+        '#description' => t('Type your hypothesis into the above box and click on the Save button when you are finished'),
+        '#resizable' => FALSE,
+        '#rows' => 2,
+        '#cols' => 40,
+        '#weight' => -2
+    );
 
-  $form['textarea_fieldset']['key_question_4'] = array(
-    '#type' => 'textarea',
-    '#title' => t('My fourth key question is '),
-    '#required' => FALSE,
-    '#default_value' => $node->key_question_4,
-    '#resizable' => FALSE,
-    '#rows' => 1,
-    '#cols' => 40,
-    '#weight' => 6
-  );
-  
-  $form['textarea_fieldset']['key_question_5'] = array(
-    '#type' => 'textarea',
-    '#title' => t('My fifth key question is '),
-    '#required' => FALSE,
-    '#default_value' => $node->key_question_5,
-    '#resizable' => FALSE,
-    '#rows' => 1,
-    '#cols' => 40,
-    '#weight' => 7
-  );
+    $prefix = "";
+    $prefix .= "<p>A hypothesis is a prediction that you can test.</p>";
 
-  $form['textarea_fieldset']['key_question_6'] = array(
-    '#type' => 'textarea',
-    '#title' => t('My sixth key question is '),
-    '#required' => FALSE,
-    '#default_value' => $node->key_question_6,
-    '#resizable' => FALSE,
-    '#rows' => 1,
-    '#cols' => 40,
-    '#weight' => 8
-  );
-  
-  $prefix .= "<p>A hypothesis is a prediction that you can test (e.g. There is a greater urban heat island effect in Northampton than in MK because the temperature readings are higher where the buildings give off greater infra red irradiance readings).</p>";
-  $prefix .= "<p>Your group should think about: (list of key questions to prompt thinking here)</p>";
-  $prefix .= "<ul>";
-  $prefix .= "<li>(For example item 1) What would a good general hypothesis be?</li>";
-  $prefix .= "</ul>";
-  $prefix .= "<p>Once you have written down your hypothesis, you should think of some key questions based on this hypothesis.</p>";
-  $prefix .= "<p>For example, you might want to measure temperature and infrared irradiance levels in Northampton and Milton Keynes and see how air temperature is affected by the irfrared irradiance at each location.</p>";
- 
-  $form['#prefix'] = $prefix;
-  
-  return $form;
+    $form['#prefix'] = $prefix;
+
+    return $form;
 
 }
 
@@ -169,10 +98,10 @@ function pi_hypothesis_form(&$node) {
  * Implementation of hook_insert().
  */
 
- 
+
 function pi_hypothesis_insert($node) {
-  db_query("INSERT INTO {pi_hypothesis} (nid, vid, hypothesis, key_question_1, key_question_2, key_question_3, key_question_4, key_question_5, key_question_6) VALUES (%d, %d,'%s', '%s', '%s', '%s', '%s', '%s', '%s')",
-    $node->nid, $node->vid, $node->hypothesis, $node->key_question_1, $node->key_question_2, $node->key_question_3, $node->key_question_4, $node->key_question_5, $node->key_question_6);
+    db_query("INSERT INTO {pi_hypothesis} (nid, vid, hypothesis) VALUES ('%d', '%d', '%s')",
+        $node->nid, $node->vid, $node->hypothesis);
 }
 
 /**
@@ -180,13 +109,13 @@ function pi_hypothesis_insert($node) {
  */
 
 function pi_hypothesis_update($node) {
-  if ($node->revision) {
-    pi_hypothesis_insert($node);
-  }
-  
-  else {
-    db_query("UPDATE {pi_hypothesis} SET hypothesis = '%s', key_question_1 = '%s', key_question_2 = '%s', key_question_3 = '%s', key_question_4 = '%s', key_question_5 = '%s', key_question_6 = '%s' WHERE vid = %d", $node->hypothesis, $node->key_question_1, $node->key_question_2, $node->key_question_3, $node->key_question_4, $node->key_question_5, $node->key_question_6, $node->vid);
-  }
+    if ($node->revision) {
+        pi_hypothesis_insert($node);
+    }
+
+    else {
+        db_query("UPDATE {pi_hypothesis} SET hypothesis = '%s' WHERE vid = %d", $node->hypothesis, $node->vid);
+    }
 }
 
 /**
@@ -194,8 +123,8 @@ function pi_hypothesis_update($node) {
  */
 
 function pi_hypothesis_delete(&$node) {
-  // Delete the related information we were saving for this node.
-  db_query('DELETE FROM {pi_hypothesis} WHERE nid = %d', $node->nid);
+// Delete the related information we were saving for this node.
+    db_query('DELETE FROM {pi_hypothesis} WHERE nid = %d', $node->nid);
 }
 
 /**
@@ -203,7 +132,7 @@ function pi_hypothesis_delete(&$node) {
  */
 
 function pi_hypothesis_load($node) {
-  return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis} WHERE vid = %d',
+    return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis} WHERE vid = %d',
     $node->vid));
 }
 
@@ -211,43 +140,38 @@ function pi_hypothesis_load($node) {
  * Implementation of hook_view().
  */
 function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
-  if (!$teaser) {
+    if (!$teaser) {
     // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
+        $node = node_prepare($node, $teaser);
 
-    $node->content['pi_hypothesis'] = array(
-    '#value' => theme('pi_hypothesis', $node),
-    '#weight' => 2
-    );
-      
-  }
+        $node->content['pi_hypothesis'] = array(
+            '#value' => theme('pi_hypothesis', $node),
+            '#weight' => 2
+        );
 
-  if ($teaser) {
+    }
+
+    if ($teaser) {
     // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
-  }
+        $node = node_prepare($node, $teaser);
+    }
 
-  return $node;
+    return $node;
 }
 
 function pi_hypothesis_theme() {
-  return array(
+    return array(
     'pi_hypothesis' => array(
-      'arguments' => array('node'),
+    'arguments' => array('node'),
     ),
-  );
+    );
 }
 
 
 function theme_pi_hypothesis($node) {
-  $output = 'xxxxx <div class="pi_hypothesis">Your hypothesis is: ' . check_plain($node->hypothesis). '</div><br />';
-  $output .= '<div class="pi_hypothesis">Your first key question is: ' . check_plain($node->key_question_1). '</div><br />';
-  $output .= '<div class="pi_hypothesis">Your second key question is: ' . check_plain($node->key_question_2). '</div><br />';
-  $output .= '<div class="pi_hypothesis">Your third key question is: ' . check_plain($node->key_question_3). '</div><br />';
-  $output .= '<div class="pi_hypothesis">Your fourth key question is: ' . check_plain($node->key_question_4). '</div><br />';
-  $output .= '<div class="pi_hypothesis">Your fifth key question is: ' . check_plain($node->key_question_5). '</div><br />';
-  $output .= '<div class="pi_hypothesis">Your sixth key question is: ' . check_plain($node->key_question_6). '</div>';
-  
-  return $output;
+
+    $output = '<p><strong>Your hypothesis is:</strong> ' . check_plain($node->hypothesis). '</p>';
+
+    return $output;
 }
 

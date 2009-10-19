@@ -1,0 +1,191 @@
+<?php
+// $Id$: pi_measures_order.module ou_mbg Exp $
+
+/**
+ * @file
+ * Specifies weighting for selected measures.
+ */
+
+/**
+ * Implementation of hook_node_info().
+*/ 
+function pi_measures_order_node_info() {
+  // We return an array since a module can define multiple node types.
+  // We're only defining one node type, type 'pi_selected_measures'.
+  return array(
+    'pi_measures_order' => array(
+      'name' => t('Order measures'), // Required.
+      'module' => 'pi_measures_order',  // Required.
+      'description' => t('Order selected measures used in your inquiry'), // Required.
+      'has_title' => TRUE,
+      'title_label' => t('Order measures'),
+      'has_body' => TRUE,
+      'body_label' => t('Measures'),
+      'locked' => TRUE
+    )
+  );
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function pi_measures_order_perm() {
+  return array();
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_measures_order_access($op, $node) {
+  global $user;
+  $details = get_inquiry_details_from_current_path();
+
+  if ($op == 'create') {
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+  }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function pi_measures_order_form(&$node) {
+	
+  $details = get_inquiry_details_from_current_path();
+  $current_activity = load_activity($details->activity_id);
+  
+  drupal_set_title(t($current_activity->name));
+
+  $type = node_get_types('type', $node);
+
+  global $user;
+  $uid = $user->uid;
+  
+  $measures_param = find_selected_measures_nid_for_uid ($user->uid);
+  $form_key_array = array();
+  
+  $prefix = "<p>" . t($current_activity->description) . "</p>";
+  $prefix .= "<p>" . t($measures_param) . "</p>";
+  $weight_count = -5;
+  $psm_node = node_load($measures_param);
+  foreach ($psm_node->selected_measures as $measure) {
+    $form_key = t("k" . $measure);
+  	$form_key_array[] = $form_key;
+  	$measure_node = node_load($measure);
+  	$query = "SELECT weight FROM pi_selected_measures WHERE nid = '" . $measures_param . "' AND measure_nid = '" . $measure . "' ";
+  	$weight = db_result(db_query($query));
+  	$form[$form_key] = array(
+    	'#type' => 'textfield',
+    	'#size' => 3,
+    	'#title' => check_plain($measure_node->title),
+    	'#required' => FALSE,
+   	 	'#default_value' => t($weight),
+   		'#weight' => $weight_count
+  	);
+  	$weight_count =  $weight_count + 0.1;
+  }
+  
+  $form['title'] = array(
+    '#type' => 'hidden',
+    '#value' => 'Order measures',
+  );
+  
+  $form['psm_nid'] = array(
+    '#type' => 'hidden',
+    '#value' => t($measures_param)
+  );
+  
+  $form['form_keys'] = array(
+  	'#type' => 'value',
+  	'#value' => $form_key_array
+  );
+
+  $form['#prefix'] = $prefix;
+	  
+  return $form;
+}
+
+
+/**
+ * Implementation of hook_validate().
+ */
+function pi_measures_order_validate($node) {
+  // Enforce a minimum word length of 3.
+  if (isset($node->selected_measures) && count($node->selected_measures) < 1) {
+    $type = node_get_types('type', $node);
+    form_set_error('selected_measures', t('Your @type is too short. You need at least one measure.', array('@type' => $type->name)));
+  }
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+function pi_measures_order_insert($node) {
+	foreach($node->form_keys as $node_key) {
+		$node_key_string = (string) $node_key;
+		$measure_nid = str_replace("k", "", $node_key_string);
+		$weight = $node->$node_key_string;
+		$query = "UPDATE pi_selected_measures SET weight = '" . $weight . "' WHERE measure_nid = '" . $measure_nid . "' AND nid = '" . $node->psm_nid . "' ";
+		db_query($query);
+	}
+}
+
+
+/**
+ * Implementation of hook_update().
+ */
+function pi_measures_order_update($node) {
+	pi_measures_order_insert($node);
+}
+
+
+/**
+ * Implementation of hook_view().
+ */
+ function pi_measures_order_view($node, $teaser = FALSE, $page = FALSE) {
+  if (!$teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+
+    $node->content['pi_measures_order'] = array(
+      '#value' => theme('pi_measures_order', $node),
+      '#weight' => 2
+      );
+  }
+
+  if ($teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+
+  return $node;
+}
+
+function pi_measures_order_theme() {
+  return array(
+    'pi_measures_order' => array(
+      'arguments' => array('node'),
+    ),
+  );
+}
+
+function theme_pi_measures_order($node) {
+
+ 	$details = get_inquiry_details_from_current_path();
+  $current_activity = load_activity($details->activity_id);
+  drupal_set_title(t($current_activity->name));
+  $output = "<p>" . $current_activity->description . "</p>";
+  
+  $query = "SELECT node.title FROM node, pi_selected_measures WHERE pi_selected_measures.nid = '" . $node->nid . "' AND pi_selected_measures.measure_nid = node.nid ORDER BY pi_selected_measures.weight";
+  $result = db_query($query);
+  $output .= "<ul>";
+  while($measure = db_fetch_object($result)) {
+  	$output .= "<li>" . $measure->title . "</li>";
+  }
+	$output .= "</ul>";
+	return $output;
+}
+

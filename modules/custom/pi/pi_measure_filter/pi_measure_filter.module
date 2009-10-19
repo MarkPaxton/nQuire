@@ -1,0 +1,360 @@
+<?php
+// $Id: pi_measure_filter.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "available measures filter" node type
+ */
+
+
+/**
+ * Implementation of hook_node_info().
+ */
+
+function pi_measure_filter_node_info() {
+  return array(
+	'pi_measure_filter' => array(
+     'name' => t('Inquiry measure filter'), // Required.
+	 'module' => 'pi_measure_filter',  // Required.
+	 'description' => t('Which available measures fields should be shown for the inquiry?'), 
+	 // Required.
+	 'has_title' => FALSE,
+	 'title_label' => t('Title'),
+	 'has_body' => FALSE,
+	 'body_label' => t('Measure fields'),
+	 'locked' => TRUE
+	)
+   );
+}
+
+
+/**
+ * Implementation of hook_perm().
+ */
+
+function pi_measure_filter_perm() {
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_measure_filter_access($op, $node) {
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	
+  if ($op == 'create') {
+  	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+  }
+
+  if ($op == 'update' || $op == 'delete') {
+  	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+  }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+
+function pi_measure_filter_form(&$node) {
+
+  $node_details = get_inquiry_details_from_current_path();
+  $current_activity = load_activity($node_details->activity_id);
+  
+  drupal_set_title(t($current_activity->name));
+
+  // Get metadata for this node type
+  // (we use it for labeling title and body fields).
+  // We defined this in pi_key_questions_node_info().
+  $type = node_get_types('type', $node);
+
+  $form['title'] = array(
+    '#type' => 'hidden',
+    '#title' => check_plain($type->title_label),
+    '#required' => FALSE,
+    '#default_value' => check_plain($type->title_label),
+    '#weight' => -5
+  );
+  
+  $form['inquiry_id'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Inquiry id'),
+    '#required' => FALSE,
+    '#default_value' => $node->inquiry_id,
+    '#resizable' => FALSE,
+    '#size' => 4,
+    '#weight' => 0
+  );
+  $form['symbol_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Symbol shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 0.1
+  );
+  $form['symbol_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Symbol default value'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol_test,
+    '#resizable' => FALSE,
+    '#size' => 2,
+    '#weight' => 0.2
+  );
+  $form['units_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Units shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 0.3
+  );
+  $form['units_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Units default value'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol_test,
+    '#resizable' => FALSE,
+    '#size' => 2,
+    '#weight' => 0.4
+  );  
+  $form['units_short_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Units short shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 0.5
+  );
+  $form['units_short_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Units short default value'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol_test,
+    '#resizable' => FALSE,
+    '#size' => 2,
+    '#weight' => 0.6
+  );    
+   $form['field_type_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Field type shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->symbol_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 0.7
+  );
+  $form['field_type_value'] = array(
+    '#type' => 'select',
+    '#title' => t('Field type default value'),
+    '#required' => FALSE,
+    '#default_value' => $node->field_type,
+    '#options' => array('textfield' => 'Single text line','textarea' => 'Multi-line text area','select' => 'Single select pull-down menu', 'radios' => 'Single select radio buttons', 'checkboxes' => 'Multi-select checkboxes'),
+    '#weight' => 0.8
+  );  
+   $form['data_type_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Data type shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->data_type_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 0.9
+  );
+  $form['data_type_value'] = array(
+    '#type' => 'select',
+    '#title' => t('Data type default value'),
+    '#required' => FALSE,
+    '#default_value' => $node->data_type_value,
+    '#options' => array('numeric' => 'Numeric','text' => 'Text','menu' => 'Menu'),
+    '#description' => t('Select the type of data that should be entered. This will be used to validate the submitted form.'),
+    '#weight' => 1
+  );       
+   $form['textfield_size_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Textfield size shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->textfield_size_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.1
+  );
+  $form['textfield_size_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Textfield size default value'),
+    '#required' => FALSE,
+    '#size' => 3,
+    '#default_value' => $node->textfield_size_value,
+	'#weight' => 1.2
+  );  
+   $form['textarea_cols_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Textarea cols shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->textarea_cols_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.3
+  );
+  $form['textarea_cols_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Textarea cols default value'),
+    '#required' => FALSE,
+    '#size' => 3,
+    '#default_value' => $node->textarea_cols_value,
+	'#weight' => 1.4
+  ); 
+   $form['textarea_rows_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Textarea rows shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->textarea_rows_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.5
+  );
+  $form['textarea_rows_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Textarea rows default value'),
+    '#required' => FALSE,
+    '#size' => 3,
+    '#default_value' => $node->textarea_rows_value,
+	'#weight' => 1.6
+  ); 
+   $form['measurement_device_name_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Measurment device name shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->measurement_device_name_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.7
+  );
+  $form['measurement_device_name_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Measurment device name default value'),
+    '#required' => FALSE,
+    '#size' => 3,
+    '#default_value' => $node->measurement_device_name_value,
+	'#weight' => 1.8
+  );
+   $form['measurement_device_description_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Measurement device description shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->measurement_device_description_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.9
+  );
+  $form['measurement_device_description_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Measurement device description value'),
+    '#required' => FALSE,
+    '#size' => 3,
+    '#default_value' => $node->measurement_device_description_value,
+	'#weight' => 2
+  );
+   $form['image_id_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Image id shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->measurement_device_description_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.9
+  );
+  $form['image_id_value'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Image id value'),
+    '#required' => FALSE,
+    '#size' => 3,
+    '#default_value' => $node->measurement_device_description_value,
+	'#weight' => 2
+  );  
+  
+
+  $prefix = "<p>A key question helps you break down your hypothesis into parts, so that you can devise a way for test your hypothesis.</p>";
+  $prefix .= "<p>Providing a short title for your key question will help enable you to refer to each of your key questions.</p>";
+ 
+  $form['#prefix'] = $prefix;
+  
+  return $form;
+
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+
+ 
+function pi_measure_filter_insert($node) {
+  db_query("INSERT INTO {pi_key_questions} (nid, vid, inquiry_id, short_title, key_question, weight) VALUES (%d, %d,'%d', '%s', '%s', '%d')",
+    $node->nid, $node->vid, $node->inquiry_id, $node->short_title, $node->key_question, $node->weight);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+
+function pi_measure_filter_update($node) {
+  if ($node->revision) {
+    pi_key_question_insert($node);
+  }
+  
+  else {
+    db_query("UPDATE {pi_key_questions} SET inquiry_id = '%d', short_title = '%s', key_question = '%s', weight = '%d' WHERE vid = '%d'", $node->inquiry_id, $node->short_title, $node->key_question, $node->weight, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+
+function pi_measure_filter_delete(&$node) {
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_key_questions} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of hook_load().
+ */
+
+function pi_measure_filter_load($node) {
+  return db_fetch_object(db_query('SELECT * FROM {pi_key_questions} WHERE vid = %d',
+    $node->vid));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_measure_filter_view($node, $teaser = FALSE, $page = FALSE) {
+  if (!$teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+
+    $node->content['pi_key_question'] = array(
+    '#value' => theme('pi_key_question', $node),
+    '#weight' => 2
+    );
+      
+  }
+
+  if ($teaser) {
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+
+  return $node;
+}
+
+function pi_measure_filter_theme() {
+  return array(
+    'pi_measure_filter' => array(
+      'arguments' => array('node'),
+    ),
+  );
+}
+
+
+function theme_pi_measure_filter($node) {
+
+  $output .= "<h3>" . $node->short_title . "</h3>";
+  $output .= "<p><strong>Key question:</strong> " . $node->key_question . "</p>";
+  $output .= "<p><strong>Weight:</strong> " . $node->weight . "</p>";
+  
+  return $output;
+}
+

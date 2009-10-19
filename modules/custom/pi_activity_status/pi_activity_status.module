@@ -3,7 +3,7 @@
 
 function get_activity_participants($node_details) {
 		
-		    $content .= t("Selected activity: " . $node_details->activity_id);
+		    $content = t("Selected activity: " . $node_details->activity_id);
     		
     		/*get audience type for the activity*/
 			//load activity
@@ -134,7 +134,7 @@ function get_activity_participants($node_details) {
 			}
 
 			
-		$result = array(activity_participants => $activity_participants, gid_actor => $gid_actor, uid_actor => $uid_actor, audience => $audience, name => $loaded_activity->name);
+		$result = array('activity_participants' => $activity_participants, 'gid_actor' => $gid_actor, 'uid_actor' => $uid_actor, 'audience' => $audience, 'name' => $loaded_activity->name);
 		
 		return $result;
 }
@@ -156,14 +156,19 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
     	**/
     	global $user;
 		
-		$node_details = get_inquiry_details_from_current_path();
-		
-		$content = "";
-		$content .= l(t("Dashboard"), build_teacher_tool_link("dashboard", $node_details->inquiry_id, NULL), array());
+  		$node_details = get_inquiry_details_from_current_path();
+      if (isset($node_details->inquiry_id)) {
+        $node_details_inquiry_id = $node_details->inquiry_id;
+  		}
+      else {
+        $node_details_inquiry_id = '';
+      }
+  		$content = "";
+  		$content .= l(t("Dashboard"), build_teacher_tool_link("dashboard", $node_details_inquiry_id, NULL), array());
     	$content .= "&nbsp;&nbsp;";
-    	$content .= l(t("Events"), build_teacher_tool_link("events", $node_details->inquiry_id, NULL), array());
+    	$content .= l(t("Events"), build_teacher_tool_link("events", $node_details_inquiry_id, NULL), array());
     	$content .= "&nbsp;&nbsp;";
-    	$content .= l(t("Set stage"), stage_selector_link($node_details->inquiry_id, $user->uid), array(query=>build_teacher_tool_link("destination=home", $node_details->inquiry_id, NULL)));
+    	$content .= l(t("Set stage"), stage_selector_link($node_details_inquiry_id, $user->uid), array('query'=>build_teacher_tool_link("destination=home", $node_details_inquiry_id, NULL)));
     	$content .= "<br/><br/>";
     	
     	
@@ -200,7 +205,7 @@ function generate_status_table($activity_participants, $node_details, $audience)
 		$status_image["view"] = "viewable.png";
 		$status_image["unavailable"] = "unavailable.png";
 		
-		$content .= "<table><tr><td>" . $audience . "</td><td>status</td></tr>";
+		$content = "<table><tr><td>" . $audience . "</td><td>status</td></tr>";
 			if ($audience == "individual") {
 				foreach ($activity_participants as $activity_participant) {
 					if ($activity_participant != 1) {
@@ -227,8 +232,14 @@ function generate_status_table($activity_participants, $node_details, $audience)
 }
 
 function stage_selector_link ($inquiry_id, $uid) {
+
 	$current_stage = get_current_stage_of_inquiry_and_user ($inquiry_id, $uid);
-	$current_stage_id = $current_stage->stage_id;
+  if (isset($current_stage->stage_id)) {
+    $current_stage_id = $current_stage->stage_id;
+  }
+  else {
+    $current_stage_id = '';
+  };
 	
 	$query = "SELECT nid FROM node WHERE type=\"pi_stage_selector\"";
 	$result = db_fetch_object(db_query($query));

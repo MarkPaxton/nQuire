@@ -6,10 +6,8 @@
  * Implementation of hook_init().
  */
 function ag_init() {
-
-  drupal_add_css(drupal_get_path('module', 'ag') .'/ag.css');
   
-  drupal_add_js(drupal_get_path('module', 'ag') .'/jquery-1.3.2.min.js');
+  drupal_add_css(drupal_get_path('module', 'ag') .'/ag.css');
   drupal_add_js(drupal_get_path('module', 'ag') .'/jquery-ui-1.7.2.custom.min.js');
   drupal_add_js(drupal_get_path('module', 'ag') .'/ag.js');
   
@@ -82,7 +80,7 @@ function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id
 		if ($params) {
 			$link = $link . "/" . $params;
 		}	
-		$output = l(t("<img class='ag-icon' src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . teacher_only_flag($teacher_gid) . "</span>"), $link,  array(html => true, query => $destination));
+		$output = l(t("<img class='ag-icon' src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . teacher_only_flag($teacher_gid) . "</span>"), $link,  array('html' => true, 'query' => $destination));
 	}
 	else {
 		$nid = get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid);
@@ -91,7 +89,7 @@ function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id
 		if ($params) {
 			$link = $link . "/" . $params;
 		}
-		$output = l(t("<img class='ag-icon' src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . teacher_only_flag($teacher_gid) . "</span>"), $link,  array(html => true, query => $destination));
+		$output = l(t("<img class='ag-icon' src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . teacher_only_flag($teacher_gid) . "</span>"), $link,  array('html' => true, 'query' => $destination));
 	}
 	
 	return $output;
@@ -127,19 +125,20 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 	
 	$teacher_gid = check_teacher_activity_for_inquiry_activity_user ($inquiry_id, $activity_id, $uid);
 	
-  $activity_name_text .= $loaded_activity->name . teacher_only_flag($teacher_gid);
+  $activity_name_text = $loaded_activity->name . teacher_only_flag($teacher_gid);
     
 	if ($visible_status == "unavailable") {
-		$output = array(data => t($activity_name_text), 'class' => 'ag-activity-unavailable');
+		$output = array('data' =>  t($activity_name_text), 'class' => 'ag-activity-unavailable');
 	}
 	elseif ($node_function == "add") {
 		$link = build_link("node", $node_function, str_replace("_", "-", $loaded_activity->node_type), $inquiry_id, $stage_id, $phase_id, $activity_id);
 		if ($params) {
 			$link = $link . "/" . $params;
 		}	
-    $activity_name_link = l($activity_name_text, $link,  array(html => true, query => $destination));
-		$output = array(data => t($activity_name_link), 'class' => 'ag-activity-add');
+    $activity_name_link = l($activity_name_text, $link,  array('html' => true, 'query' => $destination));
+		$output = array('data' =>  t($activity_name_link), 'class' => 'ag-activity-add');
 	}
+
 	else {
 		$nid = get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid);
 		//$nid = get_nid_for_inquiry_activity_and_user(1, 3, 1);
@@ -147,8 +146,13 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 		if ($params) {
 			$link = $link . "/" . $params;
 		}
-    $activity_name_link = l($activity_name_text, $link,  array(html => true, query => $destination));
-		$output = array(data => t($activity_name_link), 'class' => 'ag-activity-view');
+    	$activity_name_link = l($activity_name_text, $link,  array('html' => true, 'query' => $destination));
+    	if ($visible_status == 'edit') {
+			$output = array('data' => t($activity_name_link), 'class' => 'ag-activity-edit');
+		}
+		else {
+			$output = array('data' => t($activity_name_link), 'class' => 'ag-activity-view');
+		}
 	};
 	
 	return $output;
@@ -170,9 +174,14 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
 		$phases = get_phases_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
 
-		$current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);			
-		$current_stage_id = $current_stage->stage_id;
-		$current_stage_phases = get_phases_of_stage ($node_details->inquiry_id, $current_stage_id);
+		$current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);	
+    if (isset($current_stage->stage_id)) {		
+		  $current_stage_id = $current_stage->stage_id;
+		}
+    else {
+      $current_stage_id = '';
+    };
+    $current_stage_phases = get_phases_of_stage ($node_details->inquiry_id, $current_stage_id);
 		
 		$phases_of_current_stage = array();
 
@@ -188,7 +197,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 			$loaded_phase = load_phase($phase->phase_id);
 			$teacher_gid = check_teacher_phase_for_inquiry_phase_user ($node_details->inquiry_id, $phase->phase_id, $user->uid);
 
-			$phase_link = l($loaded_phase->name . teacher_only_flag($teacher_gid), build_link("phase", $phase->phase_id, "view", $node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $node_details->activity_id), array(html => true));
+			$phase_link = l($loaded_phase->name . teacher_only_flag($teacher_gid), build_link("phase", $phase->phase_id, "view", $node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $node_details->activity_id), array('html' => true));
 			
 			$activity_menu_items = array();
 
@@ -205,10 +214,10 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 			};
 			
 			if (in_array($phase->phase_id, $phases_of_current_stage)) {
-			 $phase_menu_items[] = array(data => $phase_link, children => $activity_menu_items, 'class' => 'ag-phase-current');
+			 $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => 'ag-phase-current');
       }
       else {
-			 $phase_menu_items[] = array(data => $phase_link, children => $activity_menu_items, 'class' => 'ag-phase');
+			 $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => 'ag-phase');
       };
 			
 		};
@@ -223,10 +232,21 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
     $ag_content = "<div class='display: block; clear: both; min-height: 180px;'>" . get_ag_content() . "</div>";
       
-      
-      	$loaded_current_stage = load_stage($current_stage_id);
+      $loaded_current_stage = load_stage($current_stage_id);
   		$loaded_current_inquiry = load_inquiry($node_details->inquiry_id);
-  		$inquiry_stage_info = "<strong>" . $loaded_current_inquiry->name . "</strong><br/>&nbsp;&nbsp;" . $loaded_current_stage->name;
+      if (isset($loaded_current_inquiry->name)) {
+        $loaded_current_inquiry_name = $loaded_current_inquiry->name;
+      }
+      else {
+        $loaded_current_inquiry_name = "";
+      };
+      if (isset($loaded_current_stage->name)) {
+        $loaded_current_stage_name = $loaded_current_stage->name;
+      }
+      else {
+        $loaded_current_stage_name = "";
+      };
+  		$inquiry_stage_info = "<strong>" . $loaded_current_inquiry_name . "</strong><br/>&nbsp;&nbsp;" . $loaded_current_stage_name;
 
 		$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
 	
@@ -254,11 +274,11 @@ function get_ag_content() {
         
       <div id='ag_home'>
         <div id='ag_home_icon'>";
-  $content .= l(t("<img src=\"images/unit-navigator-home.png\"/>"), t($home_link), array(html=>true, 'attributes' => array('class' => 'ag-link')));
+  $content .= l(t("<img src=\"images/unit-navigator-home.png\"/>"), t($home_link), array('html'=>true, 'attributes' => array('class' => 'ag-link')));
   $content .= "
         </div>
         <div id='ag_home_text'>";     
-  $content .= l(t("Sustainability<br/>Investigator"), t($home_link), array(html=>true, 'attributes' => array('class' => 'ag-link')));
+  $content .= l(t("Sustainability<br/>Investigator"), t($home_link), array('html'=>true, 'attributes' => array('class' => 'ag-link')));
   $content .= "
         </div>
       </div>";
@@ -269,10 +289,10 @@ function get_ag_content() {
         <div id='ag_controls'>
           <div class='ag_rotator'>
             <div class='ag_top'>
-              <a class='ag-link' href='#' id='ag_prev'><img src='images/inquiry-navigator-up.png'></a>
+              <a class='ag-link' href='#' id='ag_prev'><img src='images/inquiry-navigator-up.png' /></a>
             </div>
             <div class='ag_bottom'>
-              <a class='ag-link' href='#' id='ag_next'><img src='images/inquiry-navigator-down.png'></a>
+              <a class='ag-link' href='#' id='ag_next'><img src='images/inquiry-navigator-down.png' /></a>
             </div>
           </div>
         </div>";
@@ -324,7 +344,7 @@ function get_ag_content() {
         $tab_text_content .= "<div class='ag_currentstage' id='stagetabs-" . $inquiry->inquiry_id . "-" . $stage->stage_id . "'>";
       }
       else {
-        $tab_content .= "<li>";
+        $tab_content .= "<li class='ag_stage'>";
         $tab_text_content .= "<div class='ag_stage' id='stagetabs-" . $inquiry->inquiry_id . "-" . $stage->stage_id . "'>";
       };
 
@@ -367,6 +387,6 @@ function get_ag_content() {
   ";
   
   return $content;
-
+  
 }
 

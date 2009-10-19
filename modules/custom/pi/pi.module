@@ -512,6 +512,27 @@ function get_activity_ids_for_activity_type ($inquiry_id, $activity_type, $uid) 
 
 }
 
+function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
+ /**
+ * Returns an array of node_ids of the specified activity_type
+ * that are visible to that user according to pi_activity_actor.
+ * This uses pi_activity_actor and pi_activity tables.
+ */
+  $query = "SELECT pi_activity_node.nid ";
+  $query .= "FROM pi_activity_node ";
+  $query .= "LEFT JOIN pi_activity ON pi_activity_node.activity_id = pi_activity.activity_id ";
+  $query .= "LEFT JOIN pi_activity_actor ON ((pi_activity_node.inquiry_id = pi_activity_actor.inquiry_id) AND (pi_activity_actor.activity_id = pi_activity.activity_id)) ";
+  $query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
+  $query .= "WHERE pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+  $query .= "AND pi_activity.activity_type =  '" . $activity_type. "' ";
+  $query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
+
+    // print $query;
+    $result = db_query($query);
+    return $result;
+
+}
+
 function get_activity_type_of_node_path ($path) {
 
 /**

@@ -116,7 +116,7 @@ function pi_data_form(&$node) {
   	//set required TRUE/FALSE depending on whether a key measure
   	$query = "SELECT pkm_id FROM pi_key_measures WHERE inquiry_id = '" . $node_details->inquiry_id . "' AND activity_id = '" . $node_details->activity_id . "' AND measure_nid = '" . $measure_row->measure_nid . "' ";
   	$key_test = db_fetch_object(db_query($query));
-  	if ($key_test->pkm_id) {
+  	if (isset($key_test->pkm_id)) {
   		$required_value = TRUE;
   	}
   	else {
@@ -127,7 +127,7 @@ function pi_data_form(&$node) {
      
   	  $measure = node_load($measure_row->measure_nid);
   	  
-  	  $prefix .= t("'-".$measure->field_type."-");
+  	  $prefix .= t("'-" . $measure->field_type . "-");
   	  
   		if (isset($measure->units_short) AND ($measure->units_short !='')) {
       	$units = " (" . $measure->units_short . ")";
@@ -141,28 +141,40 @@ function pi_data_form(&$node) {
   
       // field_type = textfield
       if ($measure->field_type == 'textfield') {
-      	
-				$size = 
-      	$form['data'][$form_key] = array(
+      /*
+      	if (isset($node->$form_key)) {
+  				$form_key = $node->$form_key; 
+      	}
+        else {
+  				$form_key = '';
+        };*/
+        $form['data'][$form_key] = array(
         	'#type' => 'textfield',
         	'#title' => t($measure->title . $units),
         	'#required' => $required_value,
         	'#default_value' => t($node->$form_key),
-          	'#size' => t($measure->textfield_size),
+          '#size' => t($measure->textfield_size),
         	'#weight' => $measure_row->weight
       	);
       }
       
       // field_type = textarea
       elseif ($measure->field_type == 'textarea') {
+      /*
+      	if (isset($node->$form_key)) {
+  				$form_key = $node->$form_key; 
+      	}
+        else {
+  				$form_key = '';
+        };*/
       	$form['text'][$form_key] = array(
         	'#type' => 'textarea',
         	'#title' => t($measure->title . $units),
         	'#required' => $required_value,
-        	'#default_value' => ($node->$form_key),
-          	'#resizable' => TRUE,
-          	'#cols' => t($measure->textarea_cols),
-          	'#rows' => t($measure->textarea_rows),
+        	'#default_value' => t($node->$form_key),
+        	'#resizable' => TRUE,
+        	'#cols' => t($measure->textarea_cols),
+        	'#rows' => t($measure->textarea_rows),
         	'#weight' => $measure_row->weight
       	);
       }
@@ -175,16 +187,23 @@ function pi_data_form(&$node) {
           foreach (explode("\n",$measure->options) as $opt) {
           	$item = substr($opt,0,16);
             $options[] = $item;
-          }
+          };
         }
-       elseif ($measure->content_options) {
+        elseif ($measure->content_options) {
        		$options = array();
        		$query = "SELECT nid, title FROM node WHERE type = '" . $measure->content_options . "' ";
        		$results = db_query($query);
        		while ($result = db_fetch_object($results)) {
        			$options[$result->nid] = $result->title;
        		}
-       }
+        };
+        
+      	/*if (isset($node->$form_key)) {
+  				$form_key = $node->$form_key; 
+      	}
+        else {
+  				$form_key = '';
+        };*/
         
       	$form['menus'][$form_key] = array(
         	'#type' => t($measure->field_type),
@@ -224,8 +243,6 @@ function pi_data_form(&$node) {
       };
      
     };
-    $count = $count + 1;
-
   }
   }
    	//the keys used in the form
