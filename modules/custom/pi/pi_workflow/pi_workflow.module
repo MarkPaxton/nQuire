@@ -62,15 +62,28 @@ function workflow_for_updated_node_adder_activity($node, $user) {
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
 	$loaded_activity = load_activity($details->activity_id);
+	
+	//----
+	//get the values of the key measures for the data node
+	//get pi_key_measure_nid
+  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE og_uid.uid = '" . $uid . "' ");
+  $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
+  
+  //change to only get public and og nids
+  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ORDER BY pi_key_measures.weight ASC");
+  
+  $title_array = array();
+  while ($required_result = db_fetch_array($required_results)) {
+  	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures WHERE pi_collected_data.nid = '" . $node->nid . "' AND pi_collected_data.psm_id = pi_selected_measures.psm_id AND pi_selected_measures.measure_nid = '" . $required_result['nid'] . "' ";
+  	$value_result = db_fetch_object(db_query($query));
+    $title_array[] = $value_result->value;
+  }
+	$activity_name = implode("-",$title_array);
+	
+	//----
 
-	//use the value from lowest weighted measure as activity title
-	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures ";
-	$query .= "WHERE pi_collected_data.nid = " . $node->nid . " ";
-	$query .= "AND pi_collected_data.psm_id = pi_selected_measures.psm_id ";
-	$query .= "ORDER BY pi_selected_measures.weight ASC ";
-	$activity_name = db_result(db_query($query));
 	if (strlen($activity_name) < 2) {
-		$activity_name = "Interview";
+		$activity_name = "Data";
 	}
 	$activity_array = array();
 	$activity_array["name"] = $activity_name;
@@ -275,13 +288,31 @@ function workflow_for_created_node_adder_activity($node, $user, $node_function, 
 	$details = get_inquiry_details_from_current_path();
 	$loaded_activity = load_activity($details->activity_id);
 	
+	
 	//get the values of the key measures for the data node
+	//get pi_key_measure_nid
+  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE og_uid.uid = '" . $user->uid . "' ");
+  $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
+  
+  //change to only get public and og nids
+  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ORDER BY pi_key_measures.weight ASC");
+  
+  $title_array = array();
+  while ($required_result = db_fetch_array($required_results)) {
+  	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures WHERE pi_collected_data.nid = '" . $node->nid . "' AND pi_collected_data.psm_id = pi_selected_measures.psm_id AND pi_selected_measures.measure_nid = '" . $required_result['nid'] . "' ";
+  	$value_result = db_fetch_object(db_query($query));
+    $title_array[] = $value_result->value;
+  }
+	
+	//-------------
+	//get the values of the key measures for the data node
+	/*
 	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures, pi_key_measures WHERE pi_collected_data.nid = '" . $node->nid . "' AND pi_collected_data.psm_id = pi_selected_measures.psm_id AND pi_selected_measures.measure_nid = pi_key_measures.measure_nid AND pi_key_measures.inquiry_id = '" . $details->inquiry_id . "' AND pi_key_measures.activity_id = '" .$details->activity_id . "' ";
 	$results = db_query($query);
 	$title_array= array();
 	while($result = db_fetch_object($results)) {
 		$title_array[] = $result->value;
-	}
+	}*/
 	$activity_name = implode("-",$title_array);
 	
 	//use the value from lowest weighted measure as activity title

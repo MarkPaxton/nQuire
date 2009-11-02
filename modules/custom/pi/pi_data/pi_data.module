@@ -90,8 +90,7 @@ function pi_data_form(&$node) {
   	$measures_node = node_load($measures_param);
   	$measures_array = $measures_node->measure_rows;
   }
-  
-  $prefix = t(":".$measures_param.":");
+ 
   
   $form_key_array = array();
   
@@ -110,11 +109,16 @@ function pi_data_form(&$node) {
   	
   	$query = "SELECT value FROM pi_collected_data WHERE psm_id = '" . $measure_row->psm_id . "' ";
   	$default_value = db_result(db_query($query));
-  	
-  	$prefix .= t("',".$measure_row->psm_id.",");
+  
   	
   	//set required TRUE/FALSE depending on whether a key measure
-  	$query = "SELECT pkm_id FROM pi_key_measures WHERE inquiry_id = '" . $node_details->inquiry_id . "' AND activity_id = '" . $node_details->activity_id . "' AND measure_nid = '" . $measure_row->measure_nid . "' ";
+  	
+  	$query = "SELECT pi_key_measures.pkm_id FROM pi_key_measures LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE og_uid.uid = '" . $uid . "' AND pi_key_measures.measure_nid = '" . $measure_row->measure_nid . "' ";
+
+  	//old query
+  	/*
+  	$query = "SELECT pkm_id FROM pi_key_measures WHERE inquiry_id = '" . $node_details->inquiry_id . "' AND activity_id = '" . $node_details->activity_id . "' AND measure_nid = '" . $measure_row->measure_nid . "' ";*/
+  	
   	$key_test = db_fetch_object(db_query($query));
   	if (isset($key_test->pkm_id)) {
   		$required_value = TRUE;
@@ -126,8 +130,6 @@ function pi_data_form(&$node) {
     if ($measure_row) {
      
   	  $measure = node_load($measure_row->measure_nid);
-  	  
-  	  $prefix .= t("'-" . $measure->field_type . "-");
   	  
   		if (isset($measure->units_short) AND ($measure->units_short !='')) {
       	$units = " (" . $measure->units_short . ")";
@@ -148,7 +150,7 @@ function pi_data_form(&$node) {
         else {
   				$form_key = '';
         };*/
-        $form['data'][$form_key] = array(
+        $form[$form_key] = array(
         	'#type' => 'textfield',
         	'#title' => t($measure->title . $units),
         	'#required' => $required_value,
@@ -167,7 +169,7 @@ function pi_data_form(&$node) {
         else {
   				$form_key = '';
         };*/
-      	$form['text'][$form_key] = array(
+      	$form[$form_key] = array(
         	'#type' => 'textarea',
         	'#title' => t($measure->title . $units),
         	'#required' => $required_value,
@@ -182,11 +184,13 @@ function pi_data_form(&$node) {
       // field_type = select or radios
       elseif ($measure->field_type == 'select' || $measure->field_type == 'radios') {
       	
-        if ($measure->options) {
+        if ($measure->list_options) {
           $options = array();
-          foreach (explode("\n",$measure->options) as $opt) {
-          	$item = substr($opt,0,16);
-            $options[] = $item;
+          foreach (explode("\n",$measure->list_options) as $opt) {
+          	//trim added around item to prevent the following error:
+          	//An illegal choice has been detected. Please contact the site administrator.
+          	$item = trim(substr($opt,0,16));//**now use value as key
+            $options[$item] = $item;
           };
         }
         elseif ($measure->content_options) {
@@ -194,7 +198,7 @@ function pi_data_form(&$node) {
        		$query = "SELECT nid, title FROM node WHERE type = '" . $measure->content_options . "' ";
        		$results = db_query($query);
        		while ($result = db_fetch_object($results)) {
-       			$options[$result->nid] = $result->title;
+       			$options[$result->title] = $result->title;//now use value as key
        		}
         };
         
@@ -205,13 +209,14 @@ function pi_data_form(&$node) {
   				$form_key = '';
         };*/
         
-      	$form['menus'][$form_key] = array(
+      	$form[$form_key] = array(
         	'#type' => t($measure->field_type),
         	'#title' => t($measure->title . $units),
         	'#required' => $required_value,
         	'#default_value' => t($node->$form_key),
           	'#options' => $options,
-        	'#weight' => $measure_row->weight
+        	'#weight' => $measure_row->weight,
+        	'#DANGEROUS_SKIP_CHECK'=>true
       	);
       }
       
@@ -219,9 +224,10 @@ function pi_data_form(&$node) {
       elseif ($measure->field_type == 'checkboxes') {
       	
       	$options = array();
-        if ($measure->options) {
-          foreach (explode("\n",$measure->options) as $opt) {
-            $options[] = substr($opt,0,16);
+        if ($measure->list_options) {
+          foreach (explode("\n",$measure->list_options) as $opt) {
+          	$option_item = substr($opt,0,16);
+            $options[$option_item] = $option_item;
           };
         };
         
@@ -232,7 +238,7 @@ function pi_data_form(&$node) {
           };
         };
         
-      	$form['menus'][$form_key] = array(
+      	$form[$form_key] = array(
         	'#type' => 'checkboxes',
         	'#title' => t($measure->title . $units),
         	'#required' => $required_value,
@@ -253,7 +259,7 @@ function pi_data_form(&$node) {
     
   //$prefix = "";
   
-  $prefix .= "<p>" . t($current_activity->name) . "</p>";
+  $prefix .= "<p>" . t($current_activity->description) . "</p>";
   $prefix .= "<div class='clear_both'>";
   if (isset($prefix_node->map_image_id) AND ($prefix_node->map_image_id != 0)) {
     $prefix .= '<img style="float: left; margin: 0 10px 10px 0;" src="' . url("image/view/" . $prefix_node->map_image_id . "/thumbnail") . '" />';
@@ -426,7 +432,10 @@ function theme_pi_data($node) {
   
   $prefix_node = node_load($prefix_id);
   
-  drupal_set_title(t($prefix_node->title));
+  $node_details = get_inquiry_details_from_current_path();
+  $current_activity = load_activity($node_details->activity_id);
+  
+  drupal_set_title(t($current_activity->name));
   
 	$query = "SELECT node.title AS title, pi_collected_data.value AS value ";
 	$query .= "FROM pi_collected_data ";
@@ -452,7 +461,7 @@ function theme_pi_data($node) {
     };
     
   };
-  
+     
   $output .= '';
 	
   return $output;

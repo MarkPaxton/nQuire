@@ -103,10 +103,6 @@ function pi_home_view () {
 
   $stages = get_stages_of_inquiry_and_user($inquiry->inquiry_id, $user->uid);
 
-  //$output .= "<div style='display: block; margin: 0; vertical-align: top;'>";
-
-  //$output .= "<div style='display: block; clear: both; height: 0.5em;'> </div>";
-
   $current_stage = get_current_stage_of_inquiry_and_user ($inquiry->inquiry_id, $user->uid);
 
   $current_stage_id = $current_stage->stage_id;
@@ -117,77 +113,9 @@ function pi_home_view () {
   
   drupal_set_title(t($loaded_current_inquiry->name . ": " . $loaded_current_stage->name));
 
-  //print "csid:" .  t($current_stage_id);
-
-  
-/*
-  $count = 0;
-
-  while ($result = db_fetch_object($stages)) {
-
-    if ($count == 0) {
-
-      $count++;
-
-      if (!is_numeric($current_stage_id)) {
-
-        $current_stage_id = $result->stage_id;
-
-      };
-
-    };
-
-    $stage = load_stage($result->stage_id);
-
-    
-
-    if ($current_stage_id == $result->stage_id) {
-
-	  $output .= "<div style='height: 1.5em; background-color:#aaaaaa; border: 1px solid #aaaaaa; padding: 0.4em; min-width: 5%; float: left;' title='" . $stage->description . "'>";
-
-      $output .= "<b>" . $stage->name . "</b>";
-
-	  $output .= "</div>";
-
-	  $output .= "<div style='margin-right: 2%; float: left; font-size: 0px; line-height: 0%; width: 0px;
-
-border-top: 18px solid #f6f6f6;
-
-border-left: 36px solid #aaaaaa;
-
-border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
-
-	  
-
-    }
-
-    else {
-
-	  $output .= "<div style='height: 1.5em; background-color:#d2d2d2; border: 1px solid #d2d2d2; padding: 0.4em; min-width: 5%; float: left;' title='" . $stage->description . "'>";
-
-      $output .= $stage->name;
-
-	  $output .= "</div>";
-
-	  $output .= "<div style='margin-right: 2%; float: left; font-size: 0px; line-height: 0%; width: 0px;
-
-border-top: 18px solid #f6f6f6;
-
-border-left: 36px solid #d2d2d2;
-
-border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
-
-    };
-
-    
-
-  };*/
-
-
 
   $output .= "</div>";
 
-  
 
   $output .= "<div style='display: block; clear: both; height: 0.5em;'> </div>";
 
@@ -199,8 +127,6 @@ border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
 
   $output .= "<div style='display: block; clear: both;'>";
 
-  //$output .= "<h2>" . $current_stage->name . "</h2>";
-
   $output .= "<p>" . $current_stage->description . "</p>";
 
   $output .= "</div>";
@@ -209,17 +135,7 @@ border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
 
   $phases = get_phases_of_stage ($inquiry->inquiry_id, $current_stage_id);
 
-  
-
-  //while ($phase = db_fetch_object($phases)) {  
-
-   // $phase_id = $phase->phase_id;
-
-    
-
     $activities = get_activities_of_stage_phase_and_user ($inquiry->inquiry_id, $current_stage_id, NULL, $user->uid);
-
-	
 
 	if ($view_by == "status") {
 
@@ -231,89 +147,67 @@ border-bottom: 16px solid #f6f6f6;'>&nbsp;</div>";
 
 		usort($activities, "compare_phase");
 
-	}	
-
-	
+	}
 
 	$home_link = t(build_home_link($inquiry->inquiry_id, $inquiry->stage_id, $inquiry->phase_id, $activity->activity_id));
 
 
-
-	$output .= "<table class=\"home-table\">";
-
-
-
+	//This is where we specify the headings
 	if ($view_by == "status") {
 
-		$output .= "<tr><td><b>Activity</b></td><td><b>You can...";
+		$col1 = "Activity";
 
-		$output .= "<img src=\"" . $image_path . "arrow.png\"/>";
+		$col2 = "<div style=\"width: 7em\"><div style=\"float:left;\"><span style=\"line-height: 2.2em\">You can</span></div><img src=\"" . $image_path . "arrow.png\"/></div>";
 
-		$output .= "</b></td><td><b>";
+		$col3 = l("Phase", t($home_link . "/phase"), array());
 
-		$output .= l("Phase", t($home_link . "/phase"), array());
-
-		$output .= "</b></td><td><b>Description</b></td></tr>";
+		$col4 .= "Description";
+		
+		$headings = array($col1, $col2, $col3, $col4);
 
 	}
 
 	else {
 
-		$output .= "<tr><td><b>Activity</b></td><td><b>";
+		$col1 = "Activity";
 
-		$output .= l("You can...", t($home_link . "/status"), array());
+		$col2 .= l("You can", t($home_link . "/status"), array());
 
-		$output .= "</b></td><td><b>Phase";
+		$col3 .= "<div style=\"width: 7em\"><div style=\"float:left;\"><span style=\"line-height: 2.2em\">Phase</span></div><img src=\"" . $image_path . "arrow.png\"/></div>";
 
-		$output .= "<img src=\"" . $image_path . "arrow.png\"/>";
-
-		$output .= "</b></td><td><b>Description</b></td></tr>";
+		$col4 .= "Description";
+		
+		$headings = array($col1, $col2, $col3, $col4);
 
 	}
-
+	
+	$table = array();
+		
     foreach ($activities as $activity) { 
 
       $loaded_activity = load_activity($activity->activity_id); 
 
       $loaded_activity_status = load_activity_status ($inquiry->inquiry_id, $activity->activity_id, $user->uid);
 
-	  
-
 	  $loaded_phase = load_phase($activity->phase_id);
+	  
+	  //This is where we specify the row
 
-      $output .= "<tr>";
+	   $cell1 = t(build_activity_link_old($inquiry->inquiry_id, $inquiry->stage_id, $activity->phase_id, $activity->activity_id, $user->uid));
 
-	   $output .= "<td>" .  build_activity_link_old($inquiry->inquiry_id, $inquiry->stage_id, $activity->phase_id, $activity->activity_id, $user->uid) . "</td>";
+	  $cell2 = t(ucwords(t($loaded_activity_status->visible_status)));
 
-	  //$output .= "<td>" . $loaded_activity->name . "</td>";
+	  $cell3 = t($loaded_phase->name);
 
-	  //$output .= "<td>" . ucwords(t($activity->visible_status)) . "</td>";
+      $cell4 = t($loaded_activity->description);
 
-	  $output .= "<td>" . ucwords(t($loaded_activity_status->visible_status)) . "</td>";
+      $table[] = array($cell1, $cell2, $cell3, $cell4);
 
-	  //$output .= "<td>" . $loaded_phase->name . "</td>";
-
-	  $output .= "<td>" . $loaded_phase->name . "</td>";
-
-      $output .= "<td>" . $loaded_activity->description . "</td>";
-
-      $output .= "</tr>";
-
-
-
-    };
-
+    };	
 	
-
-	$output .= "</table>";
-
-  //};
-
-  
-
+	$output .= theme('table', $headings, $table);
+	
   return $output;
-
- 
 
 }
 
@@ -1838,3 +1732,111 @@ function next_activity_for_stage_phase_and_uid ($inquiry_id, $stage_id, $phase_i
 }
 
 
+
+
+// ----------------------------------------------------------------------------------
+
+/**
+ * Functions in this block are for data retrieval
+ */
+
+function get_selected_measures_headings_for_inquiry_and_user ($inquiry_id, $selected_measures, $uid) {
+
+    $headings = array();
+
+    foreach (explode(',', $selected_measures) as $measure_id) {
+
+        if ($measure_id != 0) {
+            
+            $query = "SELECT node.title AS title, pi_available_measures.symbol AS symbol, pi_available_measures.units AS units, pi_available_measures.units_short AS units_short ";
+            $query .= "FROM pi_available_measures ";
+            $query .= "LEFT JOIN node ON node.nid = pi_available_measures.nid ";
+            $query .= "WHERE (pi_available_measures.nid = '" . $measure_id . "') ";
+
+            // print $query;
+            $heading = db_fetch_object(db_query($query));
+
+            if (isset($heading->symbol) AND ($heading->symbol != '')) {
+                $label = $heading->symbol;
+            }
+            elseif (isset($heading->title) AND ($heading->title != '')) {
+                $label = $heading->title;
+            }
+            else {
+                $label = '';
+            };
+
+            if (isset($heading->units_short) AND ($heading->units_short != '')) {
+                $units = ' (' . $heading->units_short . ')';
+            }
+            elseif (isset($heading->units) AND ($heading->units != '')) {
+                $units = ' (' . $heading->units . ')';
+            }
+            else {
+                $units = '';
+            };
+
+            $headings[] = $label . $units;
+
+        };
+    };
+
+    return $headings;
+
+}
+
+function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected_measures, $uid) {
+
+    $result = array();
+
+    foreach (explode(',', $selected_measures) as $measure_id) {
+
+        if ($measure_id != 0) {
+            $result[] = get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid);
+        };
+    };
+
+    // Now rotate the values table so that each measure's data 
+    // is in a column (rather than a row)
+    $i = 0;
+    $j = 0;
+    $fliped_results = array();
+
+    foreach ($result as $row) {
+        foreach ($row as $col) {
+            $fliped_results[$i][$j] = $col;
+            $i = $i + 1;
+        };
+        $j = $j + 1;
+        $i = 0;
+    };
+
+    return $fliped_results;
+
+}
+
+function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) {
+
+    $query = "SELECT DISTINCT(pcd_id), pi_collected_data.value AS value ";
+    $query .= "FROM pi_collected_data ";
+    $query .= "LEFT JOIN pi_selected_measures ON pi_collected_data.psm_id = pi_selected_measures.psm_id ";
+    $query .= "LEFT JOIN node ON pi_collected_data.nid = node.nid ";
+    $query .= "LEFT JOIN node_access ON node.nid = node_access.nid ";
+    $query .= "LEFT JOIN og_uid ON node_access.gid = og_uid.nid ";
+    $query .= "WHERE (pi_selected_measures.measure_nid = '" . $measure_id . "') ";
+    $query .= "AND (node.uid = '" . $uid . "' ";
+    $query .= "OR og_uid.uid = '" . $uid . "') ";
+    $query .= "ORDER BY pi_selected_measures.weight ASC";
+
+    // print $query;
+    $db_result = db_query($query);
+
+    $values = array();
+
+    while ($result = db_fetch_object($db_result)) {
+        $values[] = $result->value;
+    };
+
+    return $values;
+
+ }

@@ -96,7 +96,7 @@ function pi_measure_filter_form(&$node) {
     '#type' => 'textfield',
     '#title' => t('Symbol default value'),
     '#required' => FALSE,
-    '#default_value' => $node->symbol_test,
+    '#default_value' => $node->symbol_value,
     '#resizable' => FALSE,
     '#size' => 2,
     '#weight' => 0.2
@@ -105,7 +105,7 @@ function pi_measure_filter_form(&$node) {
     '#type' => 'radios',
     '#title' => t('Units shown'),
     '#required' => FALSE,
-    '#default_value' => $node->symbol_test,
+    '#default_value' => $node->units_test,
     '#options' => array(0 => "No", 1 => "Yes"),
     '#weight' => 0.3
   );
@@ -113,7 +113,7 @@ function pi_measure_filter_form(&$node) {
     '#type' => 'textfield',
     '#title' => t('Units default value'),
     '#required' => FALSE,
-    '#default_value' => $node->symbol_test,
+    '#default_value' => $node->units_value,
     '#resizable' => FALSE,
     '#size' => 2,
     '#weight' => 0.4
@@ -122,7 +122,7 @@ function pi_measure_filter_form(&$node) {
     '#type' => 'radios',
     '#title' => t('Units short shown'),
     '#required' => FALSE,
-    '#default_value' => $node->symbol_test,
+    '#default_value' => $node->units_short_test,
     '#options' => array(0 => "No", 1 => "Yes"),
     '#weight' => 0.5
   );
@@ -130,7 +130,7 @@ function pi_measure_filter_form(&$node) {
     '#type' => 'textfield',
     '#title' => t('Units short default value'),
     '#required' => FALSE,
-    '#default_value' => $node->symbol_test,
+    '#default_value' => $node->units_short_value,
     '#resizable' => FALSE,
     '#size' => 2,
     '#weight' => 0.6
@@ -139,7 +139,7 @@ function pi_measure_filter_form(&$node) {
     '#type' => 'radios',
     '#title' => t('Field type shown'),
     '#required' => FALSE,
-    '#default_value' => $node->symbol_test,
+    '#default_value' => $node->field_type_test,
     '#options' => array(0 => "No", 1 => "Yes"),
     '#weight' => 0.7
   );
@@ -147,8 +147,9 @@ function pi_measure_filter_form(&$node) {
     '#type' => 'select',
     '#title' => t('Field type default value'),
     '#required' => FALSE,
-    '#default_value' => $node->field_type,
+    '#default_value' => $node->field_type_value,
     '#options' => array('textfield' => 'Single text line','textarea' => 'Multi-line text area','select' => 'Single select pull-down menu', 'radios' => 'Single select radio buttons', 'checkboxes' => 'Multi-select checkboxes'),
+    '#description' => t('Select the type of form field you require. This will be used in the data collection interface.'),
     '#weight' => 0.8
   );  
    $form['data_type_test'] = array(
@@ -167,14 +168,55 @@ function pi_measure_filter_form(&$node) {
     '#options' => array('numeric' => 'Numeric','text' => 'Text','menu' => 'Menu'),
     '#description' => t('Select the type of data that should be entered. This will be used to validate the submitted form.'),
     '#weight' => 1
-  );       
+  );
+  $form['list_options_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Options shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->list_options_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.1
+  );
+  $form['list_options_value'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Options default value'),
+    '#required' => FALSE,
+    '#default_value' => $node->list_options_value,
+    '#description' => t('Enter the set of menu options (putting each option on a new line).'),
+    '#weight' => 1.2
+  );
+   $form['content_options_test'] = array(
+    '#type' => 'radios',
+    '#title' => t('Content options shown'),
+    '#required' => FALSE,
+    '#default_value' => $node->content_options_test,
+    '#options' => array(0 => "No", 1 => "Yes"),
+    '#weight' => 1.3
+  );
+  $query = "SELECT node_type.type, node_type.name FROM node_type, pi_available_content_types WHERE node_type.type = pi_available_content_types.type";
+  $results = db_query($query);
+  $node_types = array();
+  $node_types[0] = "";
+  while($result = db_fetch_object($results)) {
+  	$node_types[$result->type] = $result->name;
+  }
+  $form['content_options_value'] = array(
+    '#type' => 'select',
+    '#title' => t('Content options default value'),
+    '#required' => FALSE,
+    '#description' => t('Alternatively, enter the content type from which the menu options will be taken.'),
+    '#default_value' => $node->content_options_value,
+	'#options' => $node_types,
+    '#weight' => 1.4
+  );
+  
    $form['textfield_size_test'] = array(
     '#type' => 'radios',
     '#title' => t('Textfield size shown'),
     '#required' => FALSE,
     '#default_value' => $node->textfield_size_test,
     '#options' => array(0 => "No", 1 => "Yes"),
-    '#weight' => 1.1
+    '#weight' => 1.5
   );
   $form['textfield_size_value'] = array(
     '#type' => 'textfield',
@@ -182,7 +224,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#size' => 3,
     '#default_value' => $node->textfield_size_value,
-	'#weight' => 1.2
+	'#weight' => 1.6
   );  
    $form['textarea_cols_test'] = array(
     '#type' => 'radios',
@@ -190,7 +232,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#default_value' => $node->textarea_cols_test,
     '#options' => array(0 => "No", 1 => "Yes"),
-    '#weight' => 1.3
+    '#weight' => 1.7
   );
   $form['textarea_cols_value'] = array(
     '#type' => 'textfield',
@@ -198,7 +240,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#size' => 3,
     '#default_value' => $node->textarea_cols_value,
-	'#weight' => 1.4
+	'#weight' => 1.8
   ); 
    $form['textarea_rows_test'] = array(
     '#type' => 'radios',
@@ -206,7 +248,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#default_value' => $node->textarea_rows_test,
     '#options' => array(0 => "No", 1 => "Yes"),
-    '#weight' => 1.5
+    '#weight' => 1.9
   );
   $form['textarea_rows_value'] = array(
     '#type' => 'textfield',
@@ -214,7 +256,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#size' => 3,
     '#default_value' => $node->textarea_rows_value,
-	'#weight' => 1.6
+	'#weight' => 2.0
   ); 
    $form['measurement_device_name_test'] = array(
     '#type' => 'radios',
@@ -222,7 +264,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#default_value' => $node->measurement_device_name_test,
     '#options' => array(0 => "No", 1 => "Yes"),
-    '#weight' => 1.7
+    '#weight' => 2.1
   );
   $form['measurement_device_name_value'] = array(
     '#type' => 'textfield',
@@ -230,7 +272,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#size' => 3,
     '#default_value' => $node->measurement_device_name_value,
-	'#weight' => 1.8
+	'#weight' => 2.2
   );
    $form['measurement_device_description_test'] = array(
     '#type' => 'radios',
@@ -238,7 +280,7 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#default_value' => $node->measurement_device_description_test,
     '#options' => array(0 => "No", 1 => "Yes"),
-    '#weight' => 1.9
+    '#weight' => 2.3
   );
   $form['measurement_device_description_value'] = array(
     '#type' => 'textfield',
@@ -246,28 +288,37 @@ function pi_measure_filter_form(&$node) {
     '#required' => FALSE,
     '#size' => 3,
     '#default_value' => $node->measurement_device_description_value,
-	'#weight' => 2
+	'#weight' => 2.4
   );
-   $form['image_id_test'] = array(
+   $form['image_filename_test'] = array(
     '#type' => 'radios',
     '#title' => t('Image id shown'),
     '#required' => FALSE,
-    '#default_value' => $node->measurement_device_description_test,
+    '#default_value' => $node->image_filename_test,
     '#options' => array(0 => "No", 1 => "Yes"),
-    '#weight' => 1.9
+    '#weight' => 2.5
   );
-  $form['image_id_value'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Image id value'),
-    '#required' => FALSE,
-    '#size' => 3,
-    '#default_value' => $node->measurement_device_description_value,
-	'#weight' => 2
+  
+  //image filename
+  if (isset($node->image_filename_value)) {
+    $image = node_load($node->image_filename_value);
+    $current_text = '(current image = ' . $image->title . ')';
+  }
+  else {
+    $current_text = '(no image currently selected)';
+  }
+  $form['image_filename_value'] = array(
+    '#type' => 'file',
+    '#title' => t('Picture'),
+    '#size' => 48,
+    '#description' => t('Select an image to illustrate the measurement or measurement device ' . $current_text . '.'),
+    '#default_value' => $node->image_filename_value,
+    '#weight' => 2.6
   );  
+
   
 
-  $prefix = "<p>A key question helps you break down your hypothesis into parts, so that you can devise a way for test your hypothesis.</p>";
-  $prefix .= "<p>Providing a short title for your key question will help enable you to refer to each of your key questions.</p>";
+  $prefix = "<p>For an inquiry specify which fields wil be shown when a measure is added and default values for any field.</p>";
  
   $form['#prefix'] = $prefix;
   
@@ -281,8 +332,8 @@ function pi_measure_filter_form(&$node) {
 
  
 function pi_measure_filter_insert($node) {
-  db_query("INSERT INTO {pi_key_questions} (nid, vid, inquiry_id, short_title, key_question, weight) VALUES (%d, %d,'%d', '%s', '%s', '%d')",
-    $node->nid, $node->vid, $node->inquiry_id, $node->short_title, $node->key_question, $node->weight);
+  db_query("INSERT INTO {pi_measure_filter} (nid, vid, inquiry_id, symbol_test, symbol_value, units_test, units_value, units_short_test, units_short_value, field_type_test, field_type_value, data_type_test, data_type_value, list_options_test, list_options_value, content_options_test, content_options_value, textfield_size_test, textfield_size_value, textarea_cols_test, textarea_cols_value, textarea_rows_test, textarea_rows_value, measurement_device_name_test, measurement_device_name_value, measurement_device_description_test, measurement_device_description_value, image_filename_test, image_filename_value) VALUES ('%d', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%d' )",
+    $node->nid, $node->vid, $node->inquiry_id, $node->symbol_test, $node->symbol_value, $node->units_test, $node->units_value, $node->units_short_test, $node->units_short_value, $node->field_type_test, $node->field_type_value, $node->data_type_test, $node->data_type_value, $node->list_options_test, $node->list_options_value, $node->content_options_test, $node->content_options_value, $node->textfield_size_test, $node->textfield_size_value, $node->textarea_cols_test, $node->textarea_cols_value, $node->textarea_rows_test, $node->textarea_rows_value, $node->measurement_device_name_test, $node->measurement_device_name_value, $node->measurement_device_description_test, $node->measurement_device_description_value, $node->image_filename_test, $node->image_filename_value);
 }
 
 /**
@@ -291,11 +342,10 @@ function pi_measure_filter_insert($node) {
 
 function pi_measure_filter_update($node) {
   if ($node->revision) {
-    pi_key_question_insert($node);
+    pi_measure_filter_insert($node);
   }
-  
   else {
-    db_query("UPDATE {pi_key_questions} SET inquiry_id = '%d', short_title = '%s', key_question = '%s', weight = '%d' WHERE vid = '%d'", $node->inquiry_id, $node->short_title, $node->key_question, $node->weight, $node->vid);
+    db_query("UPDATE {pi_measure_filter} SET inquiry_id = '%d', symbol_test = '%d', symbol_value = '%s', units_test = '%d', units_value = '%s', units_short_test = '%d', units_short_value = '%s', field_type_test = '%d', field_type_value = '%s', data_type_test = '%d', data_type_value = '%s', list_options_test = '%d', list_options_value = '%s', content_options_test = '%d', content_options_value = '%s', textfield_size_test = '%d', textfield_size_value = '%d', textarea_cols_test = '%d', textarea_cols_value = '%d', textarea_rows_test = '%d', textarea_rows_value = '%d', measurement_device_name_test = '%d', measurement_device_name_value = '%s', measurement_device_description_test = '%d', measurement_device_description_value = '%s', image_filename_test = '%d', image_filename_value = '%d' WHERE vid = '%d'", $node->inquiry_id, $node->symbol_test, $node->symbol_value, $node->units_test, $node->units_value, $node->units_short_test, $node->units_short_value, $node->field_type_test, $node->field_type_value, $node->data_type_test, $node->data_type_value, $node->list_options_test, $node->list_options_value, $node->content_options_test, $node->content_options_value, $node->textfield_size_test, $node->textfield_size_value, $node->textarea_cols_test, $node->textarea_cols_value, $node->textarea_rows_test, $node->textarea_rows_value, $node->measurement_device_name_test, $node->measurement_device_name_value, $node->measurement_device_description_test, $node->measurement_device_description_value, $node->image_filename_test, $node->image_filename_value, $node->vid);                         
   }
 }
 
@@ -305,7 +355,7 @@ function pi_measure_filter_update($node) {
 
 function pi_measure_filter_delete(&$node) {
   // Delete the related information we were saving for this node.
-  db_query('DELETE FROM {pi_key_questions} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {pi_measure_filter} WHERE nid = %d', $node->nid);
 }
 
 /**
@@ -313,7 +363,7 @@ function pi_measure_filter_delete(&$node) {
  */
 
 function pi_measure_filter_load($node) {
-  return db_fetch_object(db_query('SELECT * FROM {pi_key_questions} WHERE vid = %d',
+  return db_fetch_object(db_query('SELECT * FROM {pi_measure_filter} WHERE vid = %d',
     $node->vid));
 }
 
@@ -329,7 +379,6 @@ function pi_measure_filter_view($node, $teaser = FALSE, $page = FALSE) {
     '#value' => theme('pi_key_question', $node),
     '#weight' => 2
     );
-      
   }
 
   if ($teaser) {

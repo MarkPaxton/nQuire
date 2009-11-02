@@ -68,9 +68,10 @@ function pi_measures_order_form(&$node) {
   $form_key_array = array();
   
   $prefix = "<p>" . t($current_activity->description) . "</p>";
-  $prefix .= "<p>" . t($measures_param) . "</p>";
+
   $weight_count = -5;
   $psm_node = node_load($measures_param);
+  if ($psm_node->selected_measures) {
   foreach ($psm_node->selected_measures as $measure) {
     $form_key = t("k" . $measure);
   	$form_key_array[] = $form_key;
@@ -87,7 +88,7 @@ function pi_measures_order_form(&$node) {
   	);
   	$weight_count =  $weight_count + 0.1;
   }
-  
+  }
   $form['title'] = array(
     '#type' => 'hidden',
     '#value' => 'Order measures',
@@ -173,19 +174,37 @@ function pi_measures_order_theme() {
 }
 
 function theme_pi_measures_order($node) {
-
- 	$details = get_inquiry_details_from_current_path();
+	global $user;
+	$output = "";
+  $details = get_inquiry_details_from_current_path();
   $current_activity = load_activity($details->activity_id);
   drupal_set_title(t($current_activity->name));
   $output = "<p>" . $current_activity->description . "</p>";
   
+  $measures_param = find_selected_measures_nid_for_uid ($user->uid);
+  
+  $measures_array = array();
+  if ($measures_param) {
+  	$measures_node = node_load($measures_param);
+  	$measures_array = $measures_node->selected_measures;
+  }
+  
+  $output .= "<ul>";
+  foreach($measures_array as $measure) {
+  	$loaded_measure = node_load($measure);
+  	$output .= "<li>" . $loaded_measure->title . "</li>";
+  }
+  $output .= "</ul>";
+  
+  /*
   $query = "SELECT node.title FROM node, pi_selected_measures WHERE pi_selected_measures.nid = '" . $node->nid . "' AND pi_selected_measures.measure_nid = node.nid ORDER BY pi_selected_measures.weight";
   $result = db_query($query);
   $output .= "<ul>";
   while($measure = db_fetch_object($result)) {
   	$output .= "<li>" . $measure->title . "</li>";
   }
-	$output .= "</ul>";
+	$output .= "</ul>";*/
+	
 	return $output;
 }
 
