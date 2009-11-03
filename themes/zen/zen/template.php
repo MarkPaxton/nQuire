@@ -101,14 +101,14 @@ function zen_menu_item_link($link) {
  */
 function zen_menu_local_tasks() {
   $output = '';
-
+/*
   if ($primary = menu_primary_local_tasks()) {
     $output .= '<ul class="tabs primary clear-block">' . $primary . '</ul>';
   }
   if ($secondary = menu_secondary_local_tasks()) {
     $output .= '<ul class="tabs secondary clear-block">' . $secondary . '</ul>';
   }
-
+*/
   return $output;
 }
 

@@ -6,6 +6,31 @@
  * Module for creating "pi_data" node type
  */
 
+
+
+/*
+function pi_data_menu_alter(&$items) {
+	$items['node/%node/view']['type'] = MENU_CALLBACK;
+	$items['node/%node/edit']['type'] = MENU_CALLBACK;
+}	*/
+	
+// Altering menu title on node display
+// change title to anything you want
+//$items['node/%node/view/1/2/3/4']['title'] = 'My view';
+//$items['node/%node/edit/1/2/3/4']['title'] = 'My edit';
+
+//$items['node/%node/view']['path'] = 'node/add/pi-hypothesis';
+//$items['node/%node/edit']['path'] = 'node/add/pi-hypothesis';
+// Change type to MENU_CALLBACK
+//$items['node/%node/edit']['type'] = MENU_CALLBACK;
+
+
+// Fully unset these tabs and their paths, don't want them at all. This breaks the path as well:
+//unset($items['node/%node/view']);
+//unset($items['node/%node/edit']);
+
+
+ 
 /**
  * Implementation of pi_data_node_info().
  */
@@ -89,6 +114,7 @@ function pi_data_form(&$node) {
   if ($measures_param) {
   	$measures_node = node_load($measures_param);
   	$measures_array = $measures_node->measure_rows;
+  	$optional_measures_array = $measures_node->optional_measures;
   }
  
   
@@ -113,19 +139,27 @@ function pi_data_form(&$node) {
   	
   	//set required TRUE/FALSE depending on whether a key measure
   	
-  	$query = "SELECT pi_key_measures.pkm_id FROM pi_key_measures LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE og_uid.uid = '" . $uid . "' AND pi_key_measures.measure_nid = '" . $measure_row->measure_nid . "' ";
+  	if (in_array($measure_row->measure_nid, $optional_measures_array)) {
+  		$required_value = FALSE;
+  	}
+  	else {
+  		$required_value = TRUE;
+  	}
+  	
+  	/*
+  	$query = "SELECT pi_key_measures.pkm_id FROM pi_key_measures LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE og_uid.uid = '" . $uid . "' AND pi_key_measures.measure_nid = '" . $measure_row->measure_nid . "' ";*/
 
   	//old query
   	/*
   	$query = "SELECT pkm_id FROM pi_key_measures WHERE inquiry_id = '" . $node_details->inquiry_id . "' AND activity_id = '" . $node_details->activity_id . "' AND measure_nid = '" . $measure_row->measure_nid . "' ";*/
-  	
+  	/*
   	$key_test = db_fetch_object(db_query($query));
   	if (isset($key_test->pkm_id)) {
   		$required_value = TRUE;
   	}
   	else {
   		$required_value = FALSE;
-  	}
+  	}*/
   	
     if ($measure_row) {
      
@@ -155,7 +189,7 @@ function pi_data_form(&$node) {
         	'#title' => t($measure->title . $units),
         	'#required' => $required_value,
         	'#default_value' => t($node->$form_key),
-          '#size' => t($measure->textfield_size),
+            '#size' => t($measure->textfield_size),
         	'#weight' => $measure_row->weight
       	);
       }
@@ -189,7 +223,7 @@ function pi_data_form(&$node) {
           foreach (explode("\n",$measure->list_options) as $opt) {
           	//trim added around item to prevent the following error:
           	//An illegal choice has been detected. Please contact the site administrator.
-          	$item = trim(substr($opt,0,16));//**now use value as key
+          	$item = trim(substr($opt,0,64));//**now use value as key
             $options[$item] = $item;
           };
         }
@@ -216,7 +250,6 @@ function pi_data_form(&$node) {
         	'#default_value' => t($node->$form_key),
           	'#options' => $options,
         	'#weight' => $measure_row->weight,
-        	'#DANGEROUS_SKIP_CHECK'=>true
       	);
       }
       
@@ -258,6 +291,26 @@ function pi_data_form(&$node) {
     );
     
   //$prefix = "";
+  
+  if(arg(2) == 'edit') {
+  	$link = build_link('node', $node->nid, 'view', $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+  	
+  	switch ($current_activity->destination) {
+    case "self":
+		$destination = "";
+        break;
+    case "phase":
+		$destination = t("destination=" . build_link("phase", $node_details->phase_id, "view", $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id,$node_details->activity_id));
+        break;
+    default:
+		$destination = t("destination=" . build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id));
+        break;
+	}
+
+  	$prefix .= '<div style="float:right">';
+  	$prefix .= l(t('View'), $link,  array('html' => true, 'query' => $destination));
+  	$prefix .= '</div>';
+  }
   
   $prefix .= "<p>" . t($current_activity->description) . "</p>";
   $prefix .= "<div class='clear_both'>";
@@ -423,7 +476,7 @@ function pi_data_theme() {
 }
 
 function theme_pi_data($node) {
-
+	global $user;
   $output = '';
     
   if (!($prefix_id)) {
@@ -436,6 +489,29 @@ function theme_pi_data($node) {
   $current_activity = load_activity($node_details->activity_id);
   
   drupal_set_title(t($current_activity->name));
+  
+  if(check_node_function_of_activity ($node_details->inquiry_id, $node_details->activity_id, $user->uid, 'edit')) {
+  
+  	$link = build_link('node', $node->nid, 'edit', $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+  	
+  	switch ($current_activity->destination) {
+    case "self":
+		$destination = "";
+        break;
+    case "phase":
+		$destination = t("destination=" . build_link("phase", $node_details->phase_id, "view", $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id,$node_details->activity_id));
+        break;
+    default:
+		$destination = t("destination=" . build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id));
+        break;
+	}
+	
+  	$output .= '<div style="float:right">';
+  	$output .= l(t('Edit'), $link,  array('html' => true, 'query' => $destination));
+  	$output .= '</div>';
+  	
+  	}
+  	
   
 	$query = "SELECT node.title AS title, pi_collected_data.value AS value ";
 	$query .= "FROM pi_collected_data ";
@@ -450,15 +526,7 @@ function theme_pi_data($node) {
 		$value = $row->value;
     $title = $row->title;
     
-    if ($value == '0') {
-      $output .= t('<p>' . $title . ': <b>Agree</b></p>');
-    }
-    elseif ($value == '1') {
-      $output .= t('<p>' . $title . ': <b>Disagree</b></p>');
-    }
-    else {
       $output .= t('<p>' . $title . ': <b>' . $value . '</b></p>');
-    };
     
   };
      

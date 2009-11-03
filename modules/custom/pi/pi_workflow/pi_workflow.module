@@ -360,9 +360,22 @@ function workflow_for_created_node_adder_activity($node, $user, $node_function, 
 	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
 	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
 	$new_activity_actor["activity_id"] = $new_activity_id;
+	if ($loaded_activity->audience == "individual") {
+		$new_activity_actor["uid"] = $activity_actor[0]["uid"];
+	}
+	else {
+		$users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
+		$new_activity_actor["gid"] = $users_group;
+	}
+	insert_activity_actor($new_activity_actor);
+	
+	/*
+	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
+	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
+	$new_activity_actor["activity_id"] = $new_activity_id;
 	$new_activity_actor["uid"] = $activity_actor[0]["uid"];
 	$new_activity_actor["gid"] = $activity_actor[0]["gid"];
-	insert_activity_actor($new_activity_actor);
+	insert_activity_actor($new_activity_actor);*/
 	
 	//set the stage phase activity
 	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
