@@ -28,6 +28,21 @@ function pi_hypothesis_node_info() {
 }
 
 
+//hide node revisions box - this is a node type often set to keep revisions
+//if form alter not included then user sees the log message box
+function pi_hypothesis_form_alter(&$form, $form_state, $form_id) 
+{
+  global $user; // Bring $user object into scope if displaying shall depend on userid or role
+  #if ( $user->uid != 1 ) // 0 -> Anonymous, 1 -> SuperAdmin, 2+ -> Authenticated users
+  if ( !in_array('USER ROLE NAME', $user->roles) ) // Check for role (using role name)
+  {
+    // add class 'hideme' to elements which shall be hidden
+    $form['revision_information']['#attributes'] = array('class' => 'hideme'); // Revision information
+    // This class has been added to the CSS file:
+   //  .hideme { display: none; }
+  }
+}
+
 /**
  * Implementation of hook_perm().
  */
