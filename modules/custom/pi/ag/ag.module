@@ -33,10 +33,15 @@ function build_link($first, $second, $third, $inquiry_id = 0, $stage_id = 0, $ph
 }
 
 function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) {
+	
 	if (!$inquiry_id) {
-		$query = "SELECT inquiry_id FROM pi_current_stage ORDER BY inquiry_id DESC";
-		$result = db_fetch_object(db_query($query));
-		$inquiry_id = $result->inquiry_id;
+		$db_result = get_inquiries_of_user ($uid);
+		$latest_inquiry = db_fetch_object($db_result);
+		$inquiry_id = $latest_inquiry->inquiry_id;
+		
+		//$query = "SELECT inquiry_id FROM pi_current_stage ORDER BY inquiry_id DESC";
+		//$result = db_fetch_object(db_query($query));
+		//$inquiry_id = $result->inquiry_id;
 	}
 	return t("home///" . $inquiry_id . "///");
 	//return t("home///" . $inquiry_id . "/" . $stage_id . "/" . $phase_id . "/" . $activity_id);
@@ -171,6 +176,13 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 		global $user;
 		$image_path = "images/";
 		$node_details = get_inquiry_details_from_current_path();
+		
+		//get default inquiry_id if not set
+		if(!$node_details->inquiry_id) {
+			$db_result = get_inquiries_of_user ($user->uid);
+			$latest_inquiry = db_fetch_object($db_result);
+			$node_details->inquiry_id = $latest_inquiry->inquiry_id;
+		}
 
 		$phases = get_phases_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
 
@@ -264,8 +276,15 @@ function teacher_only_flag ($gid) {
 }
 
 function get_ag_content() {
+	global $user;
 
   $node_details = get_inquiry_details_from_current_path();
+  //get default inquiry_id if not set
+	if(!$node_details->inquiry_id) {
+		$db_result = get_inquiries_of_user ($user->uid);
+		$latest_inquiry = db_fetch_object($db_result);
+		$node_details->inquiry_id = $latest_inquiry->inquiry_id;
+	}
   $home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
 
   $content = "

@@ -848,12 +848,16 @@ function insert_activity_actor ($activity_actor_array) {
  * $activity_actor_array ->uid
  * $activity_actor_array ->gid
  */
- 
+	
 	$query = "INSERT INTO pi_activity_actor SET ";
 	$query .= "inquiry_id = '" . $activity_actor_array["inquiry_id"] . "' ";
 	$query .= ", activity_id = '" . $activity_actor_array["activity_id"] . "' ";
-	$query .= ", uid = '" . $activity_actor_array["uid"] . "' ";
-	$query .= ", gid = '" . $activity_actor_array["gid"] . "' ";
+   	if (isset($activity_actor_array["uid"])) {
+       	$query .= ", uid = '" . $activity_actor_array["uid"] . "' ";
+  	 };
+   	if (isset($activity_actor_array["gid"])) {
+       	$query .= ", gid = '" . $activity_actor_array["gid"] . "' ";
+   	};
 	
 	db_query($query);
 
@@ -1550,13 +1554,13 @@ function get_inquiries_of_user ($uid) {
  
 	$query = "SELECT DISTINCT(pi_inquiry_actor.inquiry_id) AS inquiry_id, pi_inquiry.name AS name ";
 	$query .= "FROM pi_inquiry_actor ";
-  $query .= "LEFT JOIN og_uid ON og_uid.nid = pi_inquiry_actor.gid ";
-  $query .= "LEFT JOIN pi_inquiry ON pi_inquiry.inquiry_id = pi_inquiry_actor.inquiry_id ";
-	$query .= "WHERE pi_inquiry_actor.uid = " . $uid;
-  $query .= " OR og_uid.uid =  " . $uid;
-
-  $result = db_query($query);
-  return $result;
+  	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_inquiry_actor.gid ";
+  	$query .= "LEFT JOIN pi_inquiry ON pi_inquiry.inquiry_id = pi_inquiry_actor.inquiry_id ";
+	$query .= "WHERE pi_inquiry_actor.uid = '" . $uid . "' ";
+  	$query .= " OR og_uid.uid =  '" . $uid . "' ";
+	$query .= " ORDER BY pi_inquiry_actor.inquiry_id DESC";
+  	$result = db_query($query);
+  	return $result;
 }
 
 
