@@ -44,13 +44,13 @@ function pi_result_presentations_access($op, $node) {
 
     if ($op == 'create') {
         return TRUE;
-        //return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
-        //return (user_access('create pi_result_presentations'));
+    //return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    //return (user_access('create pi_result_presentations'));
     }
 
     if ($op == 'update' || $op == 'delete') {
         return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-        //return (user_access('edit own pi_result_presentations'));
+    //return (user_access('edit own pi_result_presentations'));
     }
 }
 
@@ -98,15 +98,20 @@ function pi_result_presentations_form(&$node) {
         };
     };
 
-    $form['key_question_id'] = array(
-        '#type' => 'select',
-        '#title' => t('Key question to investigate'),
-        '#required' => TRUE,
-        '#default_value' => $node->key_question_id,
-        '#description' => t('Select a key question to investigate'),
-        '#options' => $key_question_options,
-        '#weight' => 0
-    );
+    if (isset($key_question_options) AND ($key_question_options != array())) {
+
+        $form['key_question_id'] = array(
+            '#type' => 'select',
+            '#title' => t('Key question to investigate'),
+            '#required' => TRUE,
+            '#default_value' => $node->key_question_id,
+            '#description' => t('Select a key question to investigate'),
+            '#options' => $key_question_options,
+            '#weight' => 0
+        );
+
+    };
+
 
     $form['title'] = array(
         '#type' => 'textfield',
@@ -144,8 +149,7 @@ function pi_result_presentations_form(&$node) {
         $prefix .= "<p><strong>Your hypothesis is</strong>: " . $hypothesis_node->hypothesis . "</p>";
     };
 
-    $prefix .= "<p>A key question helps you break down your hypothesis into parts, so that you can devise a way for test your hypothesis.</p>";
-    $prefix .= "<p>Providing a short title for your key question will help enable you to refer to each of your key questions.</p>";
+    $prefix .= "<p>Enter a short title and select a set of your measures in order to generate a data table that you can use to explore your results.</p>";
 
     $form['#prefix'] = $prefix;
 
@@ -231,7 +235,9 @@ function theme_pi_result_presentations($node) {
     global $user;
     $node_details = get_inquiry_details_from_current_path();
 
-    $output .= "<p><strong>Key question id:</strong> " . $node->key_question_id . "</p>";
+    if (isset($node->key_question_id) AND ($node->key_question_id > 0)) {
+        $output .= "<p><strong>Key question id:</strong> " . $node->key_question_id . "</p>";
+    };
 
     $headings = get_selected_measures_headings_for_inquiry_and_user ($node_details->inquiry_id, $node->presentation_measures, $user->uid);
     $values = get_selected_measures_data_for_inquiry_and_user ($node_details->inquiry_id, $node->presentation_measures, $user->uid);
