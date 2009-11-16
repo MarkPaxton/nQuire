@@ -74,9 +74,6 @@ function pi_key_measures_form(&$node) {
   while ($result = db_fetch_array($results)) {
     $options[$result['nid']] = $result['title'];
   }
-  
-  
-
   $form['title'] = array(
     '#type' => 'hidden',
     '#title' => check_plain($type->title_label),
@@ -130,8 +127,7 @@ function pi_key_measures_validate($node) {
 function pi_key_measures_insert($node) {
   foreach ($node->key_measures as $measure) {
   	if ($measure != 0) {
-		$weight = 1;
-  		db_query("INSERT INTO pi_key_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->vid, $measure, $weight);
+  		db_query("INSERT INTO pi_key_measures (nid, vid, measure_nid) VALUES (%d, %d, %d) ", $node->nid, $node->vid, $measure);
   	}
   }
 }
@@ -171,7 +167,7 @@ function pi_key_measures_load($node) {
 
 function find_key_measures($vid) {
 	$measure_array = array();
-	$prev_query = "SELECT measure_nid FROM pi_key_measures WHERE vid = '" . $vid . "' ORDER BY weight ASC";
+	$prev_query = "SELECT measure_nid FROM pi_key_measures WHERE vid = '" . $vid . "' ";
 	$db_result = db_query($prev_query);
   	while ($prev_result = db_fetch_object($db_result)) {
   		$prev_result2 = $prev_result->measure_nid;
@@ -213,12 +209,12 @@ function pi_key_measures_theme() {
 
 function theme_pi_key_measures($node) {
 
-	$details = get_inquiry_details_from_current_path();
+  $details = get_inquiry_details_from_current_path();
   $current_activity = load_activity($details->activity_id);
   drupal_set_title(t($current_activity->name));
   $output = "<p>" . $current_activity->description . "</p>";
   
-  $query = "SELECT node.title FROM node, pi_key_measures WHERE pi_key_measures.nid = '" . $node->nid . "' AND pi_key_measures.measure_nid = node.nid ORDER BY pi_key_measures.weight";
+  $query = "SELECT node.title FROM node, pi_key_measures WHERE pi_key_measures.nid = '" . $node->nid . "' AND pi_key_measures.measure_nid = node.nid ";
   $result = db_query($query);
   $output .= "<ul>";
   while($measure = db_fetch_object($result)) {

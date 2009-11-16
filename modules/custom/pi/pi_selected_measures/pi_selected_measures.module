@@ -66,13 +66,18 @@ function pi_selected_measures_form(&$node) {
   
   $prefix = "<p>" . t($current_activity->description) . "</p>";
   
-  
   //get pi_key_measure_nid
-  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE og_uid.uid = '" . $uid . "' ");
+  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
   $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
   
+  //get pi_selected_measure_nid
+  $pi_selected_measures_query = db_query("SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON pi_selected_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_selected_measures.nid = pi_activity_node.nid WHERE og_uid.uid = '" . $uid . "' AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
+  $pi_selected_measures_nid = db_fetch_object($pi_selected_measures_query);
+  
   //change to only get public and og nids
-  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ORDER BY pi_key_measures.weight ASC");
+  /*
+  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid LEFT JOIN pi_selected_measures ON pi_key_measures.measure_nid = pi_selected_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' AND  pi_selected_measures.nid = '" . $pi_selected_measures_nid->nid . "' ORDER BY pi_selected_measures.weight ASC");*/
+  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
   
   $compulsory = array();
   $compulsory_default = array();
@@ -159,12 +164,12 @@ function find_default_measures($nid) {
 
 
 function find_default_optional_measures($nid, $uid) {
+  $details = get_inquiry_details_from_current_path();
   //get pi_key_measure_nid
-  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE og_uid.uid = '" . $uid . "' ");
+  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
   $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
   
-  //change to only get public and og nids
-  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ORDER BY pi_key_measures.weight ASC");
+  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
   
   $compulsory = array();
   $compulsory_default = array();
@@ -268,7 +273,7 @@ function pi_selected_measures_delete(&$node) {
  * Implementation of hook_load().
  */
 function pi_selected_measures_load($node) {
-	global $user;
+  global $user;
   $details = get_inquiry_details_from_current_path();
   $result = new stdClass;
   //selected measures
