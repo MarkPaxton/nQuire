@@ -1,0 +1,232 @@
+<?php
+// $Id: pi_describe_location.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_describe_location" node type
+ */
+
+
+/**
+ * Implementation of hook_node_info().
+ */
+
+function pi_describe_location_node_info() {
+
+    return array(
+    'pi_describe_location' => array(
+    'name' => t('Describe location'), // Required.
+    'module' => 'pi_describe_location',  // Required.
+    'description' => t('Describe your location'), // Required.
+    'has_title' => TRUE,
+    'title_label' => t('Inquiry location description'),
+    'has_body' => TRUE,
+    'body_label' => t('Location description'),
+    'locked' => TRUE)
+    );
+
+}
+
+
+/**
+ * Implementation of hook_perm().
+ */
+
+function pi_describe_location_perm() {
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_describe_location_access($op, $node) {
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+    if ($op == 'create') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    }
+
+    if ($op == 'update' || $op == 'delete') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+
+function pi_describe_location_form(&$node) {
+
+// Get metadata for this node type
+// (we use it for labeling title and body fields).
+// We defined this in pi_hypothesis_node_info().
+    $type = node_get_types('type', $node);
+  	global $user;
+  
+  	$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id)) {
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
+
+    $form['title'] = array(
+        '#type' => 'hidden',
+        '#title' => check_plain($type->title_label),
+        '#required' => FALSE,
+        '#default_value' => check_plain($type->title_label),
+        '#weight' => -5
+    );
+
+    $form['weather'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Weather'),
+        '#required' => FALSE,
+        '#default_value' => $node->weather,
+        '#description' => t('Describe the weather conditions'),
+        '#resizable' => TRUE,
+        '#rows' => 5,
+        '#cols' => 40,
+        '#weight' => -4
+    );
+    
+    $form['nearest_tree'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Nearest tree'),
+        '#required' => FALSE,
+        '#default_value' => $node->nearest_tree,
+        '#description' => t('Distance from bird feeder to next nearest tree'),
+        '#resizable' => TRUE,
+        '#weight' => -3
+    );
+    
+    $form['leaf_coverage'] = array(
+        '#type' => 'select',
+        '#title' => t('Leaf coverage'),
+        '#required' => FALSE,
+        '#default_value' => $node->leaf_coverage,
+        '#description' => t('Amount of leaf coverage'),
+        '#options' => array("None at all" => "None at all", "Very few" => "Very few", "Patchy" => "Patchy", "Mostly covered" => "Mostly covered", "Fully covered" => "Fully covered"),
+        '#weight' => -2
+    );
+    
+    $form['feeder_height'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Feeder height'),
+        '#required' => FALSE,
+        '#default_value' => $node->feeder_height,
+        '#description' => t('Height of feeder from the ground'),
+        '#weight' => -1
+    );
+    
+    $form['trunk_distance'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Trunk distance'),
+        '#required' => FALSE,
+        '#default_value' => $node->trunk_distance,
+        '#description' => t('Distance from hanging feeder to the tree trunk'),
+        '#weight' => 0
+    );
+
+    $prefix = "";
+    /*
+    if ($current_activity->description) {
+    	$prefix .= "<p>" . t($current_activity->description) . "</p>";
+    }
+    else {
+    	$prefix .= "<p>Description of location.</p>";
+    }*/
+
+    $form['#prefix'] = $prefix;
+
+    return $form;
+
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+
+
+function pi_describe_location_insert($node) {
+    db_query("INSERT INTO {pi_describe_location} (nid, vid, weather, nearest_tree, leaf_coverage, feeder_height, trunk_distance) VALUES ('%d', '%d', '%s', '%s', '%s', '%s', '%s')",
+        $node->nid, $node->vid, $node->weather, $node->nearest_tree, $node->leaf_coverage, $node->feeder_height, $node->trunk_distance);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+
+function pi_describe_location_update($node) {
+    if ($node->revision) {
+        pi_describe_location_insert($node);
+    }
+
+    else {
+        db_query("UPDATE {pi_describe_location} SET weather = '%s',  nearest_tree = '%s', leaf_coverage = '%s', feeder_height = '%s', trunk_distance = '%s' WHERE vid = %d", $node->weather, $node->nearest_tree, $node->leaf_coverage, $node->feeder_height, $node->trunk_distance, $node->vid);
+    }
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+
+function pi_describe_location_delete(&$node) {
+// Delete the related information we were saving for this node.
+    db_query('DELETE FROM {pi_describe_location} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of hook_load().
+ */
+
+function pi_describe_location_load($node) {
+    return db_fetch_object(db_query('SELECT * FROM {pi_describe_location} WHERE vid = %d',
+    $node->vid));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_describe_location_view($node, $teaser = FALSE, $page = FALSE) {
+    if (!$teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+
+        $node->content['pi_describe_location'] = array(
+            '#value' => theme('pi_describe_location', $node),
+            '#weight' => 2
+        );
+
+    }
+
+    if ($teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+    }
+
+    return $node;
+}
+
+function pi_describe_location_theme() {
+    return array(
+    'pi_describe_location' => array(
+    'arguments' => array('node'),
+    ),
+    );
+}
+
+
+function theme_pi_describe_location($node) {
+
+    $output = '<p><strong>Weather:</strong> ' . check_plain($node->weather). '</p>';
+    $output = '<p><strong>Nearest tree:</strong> ' . check_plain($node->nearest_tree). '</p>';
+    $output = '<p><strong>Leaf coverage:</strong> ' . check_plain($node->leaf_coverage). '</p>';
+    $output = '<p><strong>Feeder height:</strong> ' . check_plain($node->feeder_height). '</p>';
+    $output = '<p><strong>Trunk distance:</strong> ' . check_plain($node->trunk_distance). '</p>';
+
+    return $output;
+}
+
