@@ -64,8 +64,26 @@ function pi_hypothesis_conclusion_form(&$node) {
 // (we use it for labeling title and body fields).
 // We defined this in pi_hypothesis_conclusion_node_info().
 
+
+  $details = get_inquiry_details_from_current_path();
+  
+  if ($details->activity_id) {
+  	$current_activity = load_activity($details->activity_id);
+  }
+  
+  if ($current_activity->name) {
+  	drupal_set_title(t($current_activity->name));
+  }
+  else {
+  	drupal_set_title(t('Conclusion'));
+  }
+
+
     global $user;
     $type = node_get_types('type', $node);
+    
+    
+    
 
     $form['title'] = array(
         '#type' => 'hidden',
@@ -77,10 +95,10 @@ function pi_hypothesis_conclusion_form(&$node) {
 
     $form['conclusion'] = array(
         '#type' => 'textarea',
-        '#title' => t('My conclusion is'),
+
         '#required' => TRUE,
         '#default_value' => $node->conclusion,
-        '#description' => t('Type your conclusion into the above box and click on the Save button when you are finished'),
+        '#description' => t('Type your answer into the above box and click on the Save button when you are finished'),
         '#resizable' => FALSE,
         '#rows' => 8,
         '#cols' => 40,
@@ -97,7 +115,13 @@ function pi_hypothesis_conclusion_form(&$node) {
         $prefix .= "<p><strong>Your hypothesis was</strong>: " . $hypothesis_node->hypothesis . "</p>";
     };
     
-    $prefix .= "<p>A conclusion explains what you conclude from your inquiry.</p>";
+    
+  if ($current_activity->description) {
+  	$prefix = "<p>" . t($current_activity->description) . "</p>";  
+  }
+  else {
+    $prefix = "<p>" . t('Our conclusion') . "</p>";
+  }
 
     $form['#prefix'] = $prefix;
 

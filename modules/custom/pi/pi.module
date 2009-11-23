@@ -1819,15 +1819,27 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 
 }
 
+/*
+ * $query = "SELECT pi_selected_measures.nid FROM pi_selected_measures
+ * LEFT JOIN node_access ON node_access.nid = pi_selected_measures.nid
+ * LEFT JOIN node ON node.nid = pi_selected_measures.nid
+ * LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_selected_measures.nid
+ * LEFT JOIN og_uid ON node_access.gid = og_uid.nid
+ * WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "')
+ * AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+ */
+
 function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) {
 
     $query = "SELECT DISTINCT(pcd_id), pi_collected_data.value AS value ";
     $query .= "FROM pi_collected_data ";
     $query .= "LEFT JOIN pi_selected_measures ON pi_collected_data.psm_id = pi_selected_measures.psm_id ";
     $query .= "LEFT JOIN node ON pi_collected_data.nid = node.nid ";
+    $query .= "LEFT JOIN pi_activity_node ON node.nid = pi_activity_node.nid  ";
     $query .= "LEFT JOIN node_access ON node.nid = node_access.nid ";
     $query .= "LEFT JOIN og_uid ON node_access.gid = og_uid.nid ";
     $query .= "WHERE (pi_selected_measures.measure_nid = '" . $measure_id . "') ";
+    $query .= "AND (pi_activity_node.inquiry_id = '" . $inquiry_id . "') ";
     $query .= "AND (node.uid = '" . $uid . "' ";
     $query .= "OR og_uid.uid = '" . $uid . "') ";
     $query .= "ORDER BY pi_selected_measures.weight ASC";
