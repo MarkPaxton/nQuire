@@ -77,7 +77,7 @@ function pi_result_presentations_form(&$node) {
 
     $measure_options = array();
 
-    $measures_param = find_selected_measures_nid_for_uid ($user->uid);
+    $measures_param = find_selected_measures_nid_for_uid_and_inquiry ($user->uid, $node_details->inquiry_id);
 
     if ($measures_param) {
         $measures_node = node_load($measures_param);
@@ -87,7 +87,7 @@ function pi_result_presentations_form(&$node) {
     if ($measure_array) {
         foreach ($measure_array as $measure_row) {
             $measure = node_load($measure_row->measure_nid);
-            $measure_options[$measure_row->measure_nid] = substr($measure->title,0,16);
+            $measure_options[$measure_row->measure_nid] = $measure->title;
         };
     };
 
@@ -112,7 +112,6 @@ function pi_result_presentations_form(&$node) {
 
     };
 
-
     $form['title'] = array(
         '#type' => 'textfield',
         '#title' => t('Short title'),
@@ -132,11 +131,10 @@ function pi_result_presentations_form(&$node) {
     );
 
     $form['weight'] = array(
-        '#type' => 'textfield',
+        '#type' => 'hidden',
         '#title' => t('Weight'),
-        '#required' => TRUE,
-        '#default_value' => $node->weight,
-        '#resizable' => FALSE,
+        '#required' => FALSE,
+        '#value' => '1',
         '#weight' => 8
     );
 

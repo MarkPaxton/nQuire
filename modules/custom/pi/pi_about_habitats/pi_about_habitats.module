@@ -1,0 +1,214 @@
+<?php
+// $Id: pi_about_habitats.module,v 1.0 2009/11/20 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_about_habitats" node type
+ */
+
+
+/**
+ * Implementation of hook_node_info().
+ */
+
+function pi_about_habitats_node_info() {
+
+    return array(
+    'pi_about_habitats' => array(
+    'name' => t('About habitats'), // Required.
+    'module' => 'pi_about_habitats',  // Required.
+    'description' => t('About habitats'), // Required.
+    'has_title' => TRUE,
+    'title_label' => t('About habitats'),
+    'has_body' => FALSE,
+    'body_label' => t('About habitats'),
+    'locked' => TRUE)
+    );
+
+}
+
+
+/**
+ * Implementation of hook_perm().
+ */
+
+function pi_about_habitats_perm() {
+    return array('create pi_about_habitats content', 'edit pi_about_habitats');
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_about_habitats_access($op, $node) {
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+    if ($op == 'create') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    }
+
+    if ($op == 'update' || $op == 'delete') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+
+function pi_about_habitats_form(&$node) {
+
+// Get metadata for this node type
+// (we use it for labeling title and body fields).
+// We defined this in pi_about_habitats_node_info().
+    $type = node_get_types('type', $node);
+  	global $user;
+  
+  	$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id)) {
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
+
+    $form['title'] = array(
+        '#type' => 'hidden',
+        '#title' => check_plain($type->title_label),
+        '#required' => FALSE,
+        '#default_value' => check_plain($type->title_label),
+        '#weight' => -5
+    );
+
+    $form['fiveq'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Write down five key words to summarise habitat'),
+        '#required' => FALSE,
+        '#default_value' => $node->fiveq,
+        '#resizable' => FALSE,
+        '#rows' => 5,
+        '#cols' => 40,
+        '#weight' => -4
+    );
+    $form['isgood'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Is Attenborough a good habitat for birds?'),
+        '#required' => FALSE,
+        '#default_value' => $node->isgood,
+        '#resizable' => FALSE,
+        '#rows' => 5,
+        '#cols' => 40,
+        '#weight' => -3
+    );
+    $form['missing'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Is there anything missing?'),
+        '#required' => FALSE,
+        '#default_value' => $node->missing,
+        '#resizable' => FALSE,
+        '#rows' => 5,
+        '#cols' => 40,
+        '#weight' => -2
+    );
+
+    $prefix = "";
+
+/*
+    if ($current_activity->description) {
+    	$prefix .= "<p>" . t($current_activity->description) . "</p>";
+    }
+    else {
+    	$prefix .= "<p>About habitats.</p>";
+    }
+*/
+    
+    $form['#prefix'] = $prefix;
+
+    return $form;
+
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+
+
+function pi_about_habitats_insert($node) {
+    db_query("INSERT INTO {pi_about_habitats} (nid, vid, fiveq, isgood, missing) VALUES ('%d', '%d', '%s', '%s', '%s')",
+        $node->nid, $node->vid, $node->fiveq, $node->isgood, $node->missing);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+
+function pi_about_habitats_update($node) {
+    if ($node->revision) {
+        pi_about_habitats_insert($node);
+    }
+
+    else {
+        db_query("UPDATE {pi_about_habitats} SET fiveq = '%s', isgood = '%s', missing = '%s'  WHERE vid = %d", $node->fiveq, $node->isgood, $node->missing, $node->vid);
+    }
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+
+function pi_about_habitats_delete(&$node) {
+// Delete the related information we were saving for this node.
+    db_query('DELETE FROM {pi_about_habitats} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of hook_load().
+ */
+
+function pi_about_habitats_load($node) {
+    return db_fetch_object(db_query('SELECT * FROM {pi_about_habitats} WHERE vid = %d',
+    $node->vid));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_about_habitats_view($node, $teaser = FALSE, $page = FALSE) {
+    if (!$teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+
+        $node->content['pi_about_habitats'] = array(
+            '#value' => theme('pi_about_habitats', $node),
+            '#weight' => 2
+        );
+
+    }
+
+    if ($teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+    }
+
+    return $node;
+}
+
+function pi_about_habitats_theme() {
+    return array(
+    'pi_about_habitats' => array(
+    'arguments' => array('node'),
+    ),
+    );
+}
+
+
+function theme_pi_about_habitats($node) {
+
+    $output = '<p><strong>Write down five key words to summarise habitat</strong> ' . check_plain($node->fiveq). '</p>';
+    $output .= '<p><strong>Is Attenborough a good habitat for birds?</strong> ' . check_plain($node->isgood). '</p>';
+    $output .= '<p><strong>Is there anything missing?</strong> ' . check_plain($node->missing). '</p>';
+
+    return $output;
+}
+
