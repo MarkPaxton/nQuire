@@ -1,0 +1,239 @@
+<?php
+// $Id: pi_feeders_analysis.module,v 1.0 2009/12/01 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_feeders_analysis" node type
+ */
+
+
+/**
+ * Implementation of hook_node_info().
+ */
+
+function pi_feeders_analysis_node_info() {
+
+    return array(
+    'pi_feeders_analysis' => array(
+    'name' => t('Analysis of school bird feeders experiment'), // Required.
+    'module' => 'pi_feeders_analysis',  // Required.
+    'description' => t('Analysis of school bird feeders experiment'), // Required.
+    'has_title' => TRUE,
+    'title_label' => t('Analysis of school bird feeders experiment'),
+    'has_body' => FALSE,
+    'body_label' => t('Analysis of school bird feeders experiment'),
+    'locked' => TRUE)
+    );
+
+}
+
+
+//hide node revisions box - this is a node type often set to keep revisions
+//if form alter not included then user sees the log message box
+function pi_feeders_analysis_form_alter(&$form, $form_state, $form_id) {
+    global $user; // Bring $user object into scope if displaying shall depend on userid or role
+    #if ( $user->uid != 1 ) // 0 -> Anonymous, 1 -> SuperAdmin, 2+ -> Authenticated users
+    if ( !in_array('USER ROLE NAME', $user->roles) ) // Check for role (using role name)
+    {
+    // add class 'hideme' to elements which shall be hidden
+        $form['revision_information']['#attributes'] = array('class' => 'hideme'); // Revision information
+    // This class has been added to the CSS file:
+    //  .hideme { display: none; }
+    }
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+
+function pi_feeders_analysis_perm() {
+    return array('create pi_feeders_analysis content', 'edit pi_feeders_analysis');
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_feeders_analysis_access($op, $node) {
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+    if ($op == 'create') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    //return (user_access('create pi_feeders_analysis'));
+    }
+
+    if ($op == 'update' || $op == 'delete') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    //return (user_access('edit own pi_feeders_analysis'));
+    }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+
+function pi_feeders_analysis_form(&$node) {
+
+// Get metadata for this node type
+// (we use it for labeling title and body fields).
+// We defined this in pi_feeders_analysis_node_info().
+    $type = node_get_types('type', $node);
+    global $user;
+
+    $node_details = get_inquiry_details_from_current_path();
+    if (is_numeric($node_details->activity_id)) {
+        $current_activity = load_activity($node_details->activity_id);
+    }
+
+    if ($current_activity->name) {
+        drupal_set_title(t($current_activity->name));
+    }
+
+    $form['title'] = array(
+        '#type' => 'hidden',
+        '#title' => check_plain($type->title_label),
+        '#required' => FALSE,
+        '#default_value' => check_plain($type->title_label),
+        '#weight' => -6
+    );
+
+    $form['results'] = array(
+        '#type' => 'textarea',
+        '#title' => t('What can you tell from the results?'),
+        '#required' => FALSE,
+        '#default_value' => $node->results,
+        '#resizable' => FALSE,
+        '#rows' => 5,
+        '#cols' => 40,
+        '#weight' => -5
+    );
+    
+        $form['feeder'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Which feeder was the most visited?'),
+        '#required' => FALSE,
+        '#default_value' => $node->feeder,
+        '#resizable' => FALSE,
+        '#rows' => 5,
+        '#cols' => 40,
+        '#weight' => -4
+    );
+    
+
+    $prefix = "";
+
+    if(arg(2) == 'edit') {
+        $link = build_link('node', $node->nid, 'view', $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+
+        switch ($current_activity->destination) {
+            case "self":
+                $destination = "";
+                break;
+            case "phase":
+                $destination = t("destination=" . build_link("phase", $node_details->phase_id, "view", $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id,$node_details->activity_id));
+                break;
+            default:
+                $destination = t("destination=" . build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id));
+                break;
+        }
+
+        $prefix .= '<p>';
+        $prefix .= l(t('View'), $link,  array('html' => true, 'query' => $destination));
+        $prefix .= '</p>';
+    }
+
+/*
+    if ($current_activity->description) {
+    	$prefix .= "<p>" . t($current_activity->description) . "</p>";
+    }
+    else {
+    	$prefix .= "<p>Making sense of the data</p>";
+    }
+*/
+
+    $form['#prefix'] = $prefix;
+
+    return $form;
+
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+
+
+function pi_feeders_analysis_insert($node) {
+    db_query("INSERT INTO {pi_feeders_analysis} (nid, vid, results, feeder) VALUES ('%d', '%d', '%s', '%s')",
+        $node->nid, $node->vid, $node->results, $node->feeder);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+
+function pi_feeders_analysis_update($node) {
+    if ($node->revision) {
+        pi_feeders_analysis_insert($node);
+    }
+
+    else {
+        db_query("UPDATE {pi_feeders_analysis} SET results = '%s', feeder = '%s' WHERE vid = %d", $node->results, $node->feeder, $node->vid);
+    }
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+
+function pi_feeders_analysis_delete(&$node) {
+// Delete the related information we were saving for this node.
+    db_query('DELETE FROM {pi_feeders_analysis} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of hook_load().
+ */
+
+function pi_feeders_analysis_load($node) {
+    return db_fetch_object(db_query('SELECT * FROM {pi_feeders_analysis} WHERE vid = %d',
+    $node->vid));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_feeders_analysis_view($node, $teaser = FALSE, $page = FALSE) {
+    if (!$teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+
+        $node->content['pi_feeders_analysis'] = array(
+            '#value' => theme('pi_feeders_analysis', $node),
+            '#weight' => 2
+        );
+
+    }
+
+    if ($teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+    }
+
+    return $node;
+}
+
+function pi_feeders_analysis_theme() {
+    return array(
+    'pi_feeders_analysis' => array(
+    'arguments' => array('node'),
+    ),
+    );
+}
+
+function theme_pi_feeders_analysis($node) {
+
+    $output = '<p><strong>What can you tell from the results?</strong> ' . check_plain($node->results). '</p>';
+    $output .= '<p><strong>Which feeder was the most visited?</strong> ' . check_plain($node->feeder). '</p>';
+
+    return $output;
+}

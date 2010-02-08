@@ -1,0 +1,97 @@
+<?php
+
+/**
+ * Implementation of hook_init().
+ */
+function pi_ag_header_init() {
+}
+
+/**
+ * @file
+ * Implements block for Activity Guide navigation.
+ */
+ 
+ /**  and n.uid = %d' $uid,
+ * Implementation of hook_block().
+ */
+function pi_ag_header_block($op = 'list', $delta = 0, $edit = array())
+{
+	switch ($op) {
+  
+    case 'list':
+		$blocks[0]['info'] = t('PI Activity Guide Header');
+		return $blocks;
+
+	case 'view':
+		global $user;
+		$image_path = "images/";
+		$node_details = get_inquiry_details_from_current_path();
+		//get default inquiry_id if not set
+		if($node_details->inquiry_id)
+		{
+			$inquiry = load_inquiry($node_details->inquiry_id);
+		}
+		else
+		{
+			$db_result = get_inquiries_of_user ($user->uid);
+			$inquiry = db_fetch_object($db_result);
+		}
+
+		$ag_content = "<div id='pi_ag_header'>" . get_pi_ag_header_content($user, $inquiry, $node_details) . "</div>";
+		$block['content'] = "$ag_content";
+		return $block;
+	};
+}
+
+function get_pi_ag_header_content($user, $inquiry, $node_details)
+{
+    $current_stage = get_current_stage_of_inquiry_and_user($inquiry->inquiry_id, $user->uid);
+
+	$content = "<div id='pi_ag_header_title_and_tabs'>";
+
+    $inquiry_link = build_home_link($inquiry->inquiry_id, $current_stage->stage_id, $node_details->phase_id, $node_details->activity_id);
+	$content .= l("The Effect of Noise Pollution on Birds", t($inquiry_link), array('html'=>true, 'attributes' => array('id' => 'pi_ag_header_title')));
+	$content .= "\n\t\t<div id='pi_ag_header_tabs'>";
+    
+    //$content .= l(t($inquiry->name), t($inquiry_link), array('attributes'=>array('class' => 'ag-link')));
+
+    $tab_content = '';
+    $tab_text_content = '';
+    
+    $inquiry_stage_ids = array();
+    $inquiry_stage_ids_result = get_stages_of_inquiry_and_user($inquiry->inquiry_id, $user->uid);
+    while($result=db_fetch_object($inquiry_stage_ids_result))
+    {
+    	$inquiry_stage_ids[] = $result->stage_id;
+    }
+    
+    $stage_count = 0;
+	foreach($inquiry_stage_ids as $inquiry_stage_id)
+	{
+		$stage_count++;
+		$stage = load_stage($inquiry_stage_id);
+		if ($current_stage->stage_id == $inquiry_stage_id)
+		{
+			$stage_class = 'pi_ag_currentstage';
+		}
+		else
+		{
+			$stage_class = 'pi_ag_stage';
+		}
+		$tab_content .= "\t\t\t<span class='$stage_class'>";
+/*		$tab_content .= l(t("$stage_count: $stage->name"),
+			build_home_link($inquiry->inquiry_id, $stage->stage_id),
+			array('attributes' => array('class' => 'ag_stage_link')));
+*/
+		$tab_content .= t($stage->name);
+		$tab_content .=  "</a></span>\n";
+	};
+    
+    $content .= $tab_content;
+    
+//    $content .= $tab_text_content;
+
+	$content .= "\t\t</div>\n";
+	$content .= "\t</div>\n";
+	return $content;
+}

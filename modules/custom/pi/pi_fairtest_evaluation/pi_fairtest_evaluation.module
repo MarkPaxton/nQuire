@@ -1,0 +1,226 @@
+<?php
+// $Id: pi_fairtest_evaluation.module,v 1.0 2009/11/30 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_fairtest_evaluation" node type
+ */
+
+
+/**
+ * Implementation of hook_node_info().
+ */
+
+function pi_fairtest_evaluation_node_info() {
+
+    return array(
+    'pi_fairtest_evaluation' => array(
+    'name' => t('Evaluation of fair test experiment'), // Required.
+    'module' => 'pi_fairtest_evaluation',  // Required.
+    'description' => t('Evaluation of fair test experiment'), // Required.
+    'has_title' => TRUE,
+    'title_label' => t('Evaluation of fair test experiment'),
+    'has_body' => FALSE,
+    'body_label' => t('Evaluation of fair test experiment'),
+    'locked' => TRUE)
+    );
+
+}
+
+
+//hide node revisions box - this is a node type often set to keep revisions
+//if form alter not included then user sees the log message box
+function pi_fairtest_evaluation_form_alter(&$form, $form_state, $form_id) {
+    global $user; // Bring $user object into scope if displaying shall depend on userid or role
+    #if ( $user->uid != 1 ) // 0 -> Anonymous, 1 -> SuperAdmin, 2+ -> Authenticated users
+    if ( !in_array('USER ROLE NAME', $user->roles) ) // Check for role (using role name)
+    {
+    // add class 'hideme' to elements which shall be hidden
+        $form['revision_information']['#attributes'] = array('class' => 'hideme'); // Revision information
+    // This class has been added to the CSS file:
+    //  .hideme { display: none; }
+    }
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+
+function pi_fairtest_evaluation_perm() {
+    return array('create pi_fairtest_evaluation content', 'edit pi_fairtest_evaluation');
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_fairtest_evaluation_access($op, $node) {
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+    if ($op == 'create') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    //return (user_access('create pi_fairtest_evaluation'));
+    }
+
+    if ($op == 'update' || $op == 'delete') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    //return (user_access('edit own pi_fairtest_evaluation'));
+    }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+
+function pi_fairtest_evaluation_form(&$node) {
+
+// Get metadata for this node type
+// (we use it for labeling title and body fields).
+// We defined this in pi_fairtest_evaluation_node_info().
+    $type = node_get_types('type', $node);
+    global $user;
+
+    $node_details = get_inquiry_details_from_current_path();
+    if (is_numeric($node_details->activity_id)) {
+        $current_activity = load_activity($node_details->activity_id);
+    }
+
+    if ($current_activity->name) {
+        drupal_set_title(t($current_activity->name));
+    }
+
+    $form['title'] = array(
+        '#type' => 'hidden',
+        '#title' => check_plain($type->title_label),
+        '#required' => FALSE,
+        '#default_value' => check_plain($type->title_label),
+        '#weight' => -6
+    );
+
+    $form['eval'] = array(
+        '#type' => 'textarea',
+        '#title' => t('What did you think about the garden experiment?'),
+        '#collapsible' => FALSE,
+        '#collapsed' => FALSE,
+	'#rows' => 3,
+        '#cols' => 40,
+        '#weight' => -5
+    );
+
+    $prefix = "";
+
+    if(arg(2) == 'edit') {
+        $link = build_link('node', $node->nid, 'view', $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+
+        switch ($current_activity->destination) {
+            case "self":
+                $destination = "";
+                break;
+            case "phase":
+                $destination = t("destination=" . build_link("phase", $node_details->phase_id, "view", $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id,$node_details->activity_id));
+                break;
+            default:
+                $destination = t("destination=" . build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id));
+                break;
+        }
+
+        $prefix .= '<p>';
+        $prefix .= l(t('View'), $link,  array('html' => true, 'query' => $destination));
+        $prefix .= '</p>';
+    }
+
+/*
+    if ($current_activity->description) {
+    	$prefix .= "<p>" . t($current_activity->description) . "</p>";
+    }
+    else {
+    	$prefix .= "<p>What did you think about the garden experiment?</p>";
+    }
+*/
+
+    $form['#prefix'] = $prefix;
+
+    return $form;
+
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+
+
+function pi_fairtest_evaluation_insert($node) {
+    db_query("INSERT INTO {pi_fairtest_evaluation} (nid, vid, eval) VALUES ('%d', '%d', '%s')",
+        $node->nid, $node->vid, $node->eval);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+
+function pi_fairtest_evaluation_update($node) {
+    if ($node->revision) {
+        pi_fairtest_evaluation_insert($node);
+    }
+
+    else {
+        db_query("UPDATE {pi_fairtest_evaluation} SET eval = '%s' WHERE vid = %d", $node->eval, $node->vid);
+    }
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+
+function pi_fairtest_evaluation_delete(&$node) {
+// Delete the related information we were saving for this node.
+    db_query('DELETE FROM {pi_fairtest_evaluation} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of hook_load().
+ */
+
+function pi_fairtest_evaluation_load($node) {
+    return db_fetch_object(db_query('SELECT * FROM {pi_fairtest_evaluation} WHERE vid = %d',
+    $node->vid));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_fairtest_evaluation_view($node, $teaser = FALSE, $page = FALSE) {
+    if (!$teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+
+        $node->content['pi_fairtest_evaluation'] = array(
+            '#value' => theme('pi_fairtest_evaluation', $node),
+            '#weight' => 2
+        );
+
+    }
+
+    if ($teaser) {
+    // Use Drupal's default node view.
+        $node = node_prepare($node, $teaser);
+    }
+
+    return $node;
+}
+
+function pi_fairtest_evaluation_theme() {
+    return array(
+    'pi_fairtest_evaluation' => array(
+    'arguments' => array('node'),
+    ),
+    );
+}
+
+function theme_pi_fairtest_evaluation($node) {
+
+    $output = '<p><strong>What do you think about the garden experiment?</strong> ' . check_plain($node->eval). '</p>';
+
+
+    return $output;
+}
