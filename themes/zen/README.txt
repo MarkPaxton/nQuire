@@ -1,3 +1,5 @@
+*** This line added in mcp_test_edit_1 by mcp to demonstrate merging with mcp_test_edit_2 into next ***
+
 Full documentation on the Zen theme can be found in Drupal's Handbook:
   http://drupal.org/node/193318
 
