@@ -10,7 +10,6 @@
 /**
  * Implementation of hook_node_info().
  */
-
 function pi_hypothesis_node_info() {
 
     return array(
@@ -27,9 +26,15 @@ function pi_hypothesis_node_info() {
 
 }
 
-
-//hide node revisions box - this is a node type often set to keep revisions
-//if form alter not included then user sees the log message box
+/**
+ * Hide node revisions box - this is a node type often set to keep revisions
+ * if form alter not included then user sees the log message box
+ * 
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ * @param unknown_type $form_id
+ * @return unknown_type
+ */
 function pi_hypothesis_form_alter(&$form, $form_state, $form_id) 
 {
   global $user; // Bring $user object into scope if displaying shall depend on userid or role
@@ -46,7 +51,6 @@ function pi_hypothesis_form_alter(&$form, $form_state, $form_id)
 /**
  * Implementation of hook_perm().
  */
-
 function pi_hypothesis_perm() {
     return array('create pi_hypothesis content', 'edit pi_hypothesis');
 }
@@ -72,7 +76,6 @@ function pi_hypothesis_access($op, $node) {
 /**
  * Implementation of hook_form().
  */
-
 function pi_hypothesis_form(&$node) {
 
 // Get metadata for this node type
@@ -127,8 +130,6 @@ function pi_hypothesis_form(&$node) {
 /**
  * Implementation of hook_insert().
  */
-
-
 function pi_hypothesis_insert($node) {
     db_query("INSERT INTO {pi_hypothesis} (nid, vid, hypothesis) VALUES ('%d', '%d', '%s')",
         $node->nid, $node->vid, $node->hypothesis);
@@ -137,7 +138,6 @@ function pi_hypothesis_insert($node) {
 /**
  * Implementation of hook_update().
  */
-
 function pi_hypothesis_update($node) {
     if ($node->revision) {
         pi_hypothesis_insert($node);
@@ -151,7 +151,6 @@ function pi_hypothesis_update($node) {
 /**
  * Implementation of hook_delete().
  */
-
 function pi_hypothesis_delete(&$node) {
 // Delete the related information we were saving for this node.
     db_query('DELETE FROM {pi_hypothesis} WHERE nid = %d', $node->nid);
@@ -160,7 +159,6 @@ function pi_hypothesis_delete(&$node) {
 /**
  * Implementation of hook_load().
  */
-
 function pi_hypothesis_load($node) {
     return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis} WHERE vid = %d',
     $node->vid));
@@ -189,6 +187,11 @@ function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
     return $node;
 }
 
+/**
+ * MISSING
+ * 
+ * @return multitype:multitype:multitype:string   
+ */
 function pi_hypothesis_theme() {
     return array(
     'pi_hypothesis' => array(
@@ -198,6 +201,12 @@ function pi_hypothesis_theme() {
 }
 
 
+/**
+ * MISSING
+ * 
+ * @param unknown_type $node
+ * @return string
+ */
 function theme_pi_hypothesis($node) {
 
     $output = '<p><strong>Your hypothesis is:</strong> ' . check_plain($node->hypothesis). '</p>';

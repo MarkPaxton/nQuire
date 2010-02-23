@@ -10,7 +10,6 @@
 /**
  * Implementation of pi_stage_selector_node_info().
  */
-
 function pi_stage_selector_node_info() {
   return array(
 	'pi_stage_selector' => array(
@@ -28,13 +27,8 @@ function pi_stage_selector_node_info() {
 }
 
 /**
-
  * Implementation of pi_hypothesis_perm().
-
  */
-
-
-
 function pi_stage_selector_perm() {
 
   return array('create pi_stage_selector content', 'edit pi_stage_selector');
@@ -44,11 +38,8 @@ function pi_stage_selector_perm() {
 
 
 /**
-
  * Implementation of pi_hypothesis_access().
-
  */
-
 function pi_stage_selector_access($op, $node) {
 
   global $user;
@@ -76,13 +67,8 @@ function pi_stage_selector_access($op, $node) {
 
 
 /**
-
  * Implementation of pi_stage_selector_form().
-
  */
-
-
-
 function pi_stage_selector_form(&$node) {
 
 
@@ -159,57 +145,37 @@ function pi_stage_selector_form(&$node) {
 	'#options' => array("Restrict access to activities of this stage", "Add access to activities of this stage")
   );
 
-
-
    $form['pcs_id'] = array(
-
 	'#type' => 'hidden',
-
 	'#value' => t($current_stage->pcs_id)
-
 	);
-
-  
 
   $prefix .= "<p>This allows you to change the current stage and determine how this change effects access to activities.</p>";
 
- 
-
   $form['#prefix'] = $prefix;
 
-  
-
   return $form;
-
-
-
 }
 
-
 /**
-
  * Implementation of pi_stage_selector_insert().
-
  */
-
-
-
- 
-
 function pi_stage_selector_insert($node) {
 	pi_update_stage($node);
 }
 
+/**
+ * MISSING
+ * 
+ * @param unknown_type $node
+ * @return unknown_type
+ */
 function pi_stage_selector_update($node) {
 	pi_update_stage($node);
 }
 
-
-
 /**
-
  * Implementation of pi_stage_selector_update().
-
  */
 function pi_update_stage($node) {
 
@@ -259,7 +225,18 @@ function pi_update_stage($node) {
 }
 
 
-function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
+/**
+ * MISSING
+ * 
+ * @param unknown_type $activity_type
+ * @param unknown_type $activity_id
+ * @param unknown_type $inquiry_id
+ * @param unknown_type $node_function
+ * @param unknown_type $visible_status
+ * @param unknown_type $table
+ * @return unknown
+ */
+function find_new_status($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
 	
 	$query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND (prior_nf = \"" . $node_function . "\" OR prior_nf IS NULL) AND (prior_vs = \"" . $visible_status . "\" OR prior_vs IS NULL) ";
 	
@@ -282,10 +259,16 @@ function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_funct
 }
  
 
-//this function shows how activity status can be updated by a stage change
-//for all activities in the stage it changes view to edit and unavailable to add
-//for all activities outside the stage it changes edit to view and add to unavailable
-
+/**
+ * This function shows how activity status can be updated by a stage change
+ * for all activities in the stage it changes view to edit and unavailable to add
+ * for all activities outside the stage it changes edit to view and add to unavailable
+ *
+ * @param unknown_type $inquiry_id
+ * @param unknown_type $stage_id
+ * @param unknown_type $transition_type
+ * @return unknown_type
+ */
 function pi_change_activty_status_for_stage($inquiry_id, $stage_id, $transition_type) {
 	make_change_to_status($inquiry_id, $stage_id, "add", "start", "unavailable", 1);
 	make_change_to_status($inquiry_id, $stage_id, "edit", "edit", "view", 1);
@@ -297,6 +280,17 @@ function pi_change_activty_status_for_stage($inquiry_id, $stage_id, $transition_
 
 
 
+/**
+ * MISSING
+ * 
+ * @param unknown_type $inquiry_id
+ * @param unknown_type $stage_id
+ * @param unknown_type $new_function
+ * @param unknown_type $new_visible_status
+ * @param unknown_type $test_visible_status
+ * @param unknown_type $valence
+ * @return unknown_type
+ */
 function make_change_to_status($inquiry_id, $stage_id, $new_function, $new_visible_status, $test_visible_status, $valence) {
 
 	$query = "UPDATE pi_activity_status ";
