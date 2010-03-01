@@ -1,516 +1,80 @@
 <?php
-// $Id: pi_available_locations.install,v 1.2 2009/06/12 11:30:10 ou_mbg Exp $
 
-/**
- * @file
- * Install....
- */
+// $Id: pi_data.install,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
  * Implementation of pi_data_install().
  */
+ 
 function pi_data_install() {
   // Create tables.
-  drupal_install_schema('pi_data_values');
-  drupal_install_schema('pi_data_totals');
-  drupal_install_schema('pi_data_averages');
-  drupal_install_schema('pi_data_locations');
+  drupal_install_schema('pi_data');
 }
 
 /**
  * Implementation of pi_data_uninstall().
  */
+ 
 function pi_data_uninstall() {
   // Remove tables.
-  drupal_uninstall_schema('pi_data_values');
-  drupal_uninstall_schema('pi_data_totals');
-  drupal_uninstall_schema('pi_data_averages');
-  drupal_uninstall_schema('pi_data_locations');
+  drupal_uninstall_schema('pi_data');
+  variable_del('pi_data');
 }
 
 /**
- * Implementation of pi_data_values_schema().
+ * Implementation of pi_data_schema().
  */
-function pi_data_values_schema() {
-  $schema['pi_data_values'] = array(
-    'description' => 'PI data values',
+ 
+function pi_data_schema() {
+
+  $schema['pi_collected_data'] = array(
+    'description' => t('PI data'),
     'fields' => array(
       'nid' => array(
+        'description' => t('node id'),
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-	'default' => '0',
-        'description' => 'Primary Key: Unique ID.',
+        'size' => 'medium',
+        'default' => 0,
       ),
       'vid' => array(
+        'description' => t('The current vid version identifier'),
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => '0',
-        'description' => 'Primary Key: Unique: The current vid version identifier.',
-	),
-      'inquiry_id' => array(
-        'type' => 'int',
-	'unsigned' => TRUE,
-        'not null' => FALSE,
-        'description' => 'Inquiry ID',
+        'size' => 'medium',
+        'default' => 0,
       ),
-
-	'value_1' => array(
-    	'type' => 'text',
-       	'not null' => FALSE,
- 		),
-	'value_2' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_3' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_4' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_5' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_6' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_7' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_8' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_9' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_10' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_11' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_12' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_13' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_14' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_15' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_16' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_17' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_18' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_19' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_20' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_21' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_22' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_23' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-      'value_24' => array(
-        'type' => 'text',
-        'not null' => FALSE,
-      ),
-),
-
-    'primary key' => array('nid','vid'),
-
-    'unique keys' => array(
-	'vid'	=> array('vid')
-	),
-
-    'indexes' => array(
-	'nid'	=> array('nid'),
-	), 
-  );
-  return $schema;
-}
-
-/**
- * Implementation of pi_data_totals_schema().
- */
-function pi_data_totals_schema() {
-  $schema['pi_data_totals'] = array(
-    'description' => 'PI data totals',
-    'fields' => array(
-      'nid' => array(
+      'selected_measures_nid' => array(
+        'description' => t('The nid of a selected measure'),
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-	'default' => '0',
-        'description' => 'Primary Key: Unique ID.',
+        'size' => 'medium',
+        'default' => 0,
       ),
-      'vid' => array(
+      'available_measure_nid' => array(
+        'description' => t('The nid of an available measure'),
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => '0',
-        'description' => 'Primary Key: Unique: The current vid version identifier.',
-	),
-      'inquiry_id' => array(
-        'type' => 'int',
-	'unsigned' => TRUE,
-        'not null' => FALSE,
-        'description' => 'Inquiry ID',
+        'size' => 'medium',
+        'default' => 0,
       ),
-
-	'total_1' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_2' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_3' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_4' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_5' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_6' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_7' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_8' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_9' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_10' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_11' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_12' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_13' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_14' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_15' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_16' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_17' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_18' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_19' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_20' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_21' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_22' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_23' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-	'total_24' => array(
-        	'type' => 'float',
-        	'not null' => FALSE,
-      		),
-
+      'value' => array(
+        'description' => t('Value of the data entry'),
+        'type' => 'text',
+        'size' => 'normal',
+        'not null' => TRUE,
+      ),
     ),
-
-    'primary key' => array('nid','vid'),
-
-    'unique keys' => array(
-	'vid'	=> array('vid')
-	),
-
     'indexes' => array(
-	'nid'	=> array('nid'),
-	), 
-  );
-  return $schema;
-}
-
-/**
- * Implementation of pi_data_averages_schema().
- */
-function pi_data_averages_schema() {
-  $schema['pi_data_averages'] = array(
-    'description' => 'PI data averages',
-    'fields' => array(
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-	'default' => '0',
-        'description' => 'Primary Key: Unique ID.',
-      ),
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => '0',
-        'description' => 'Primary Key: Unique: The current vid version identifier.',
-	),
-      'inquiry_id' => array(
-        'type' => 'int',
-	'unsigned' => TRUE,
-        'not null' => FALSE,
-        'description' => 'Inquiry ID',
-      ),
-	'average_1' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_2' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_3' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_4' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_5' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_6' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_7' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_8' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_9' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_10' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_11' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_12' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_13' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_14' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_15' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_16' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_17' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_18' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_19' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_20' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_21' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_22' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_23' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-	'average_24' => array(
-        'type' => 'float',
-	'default' => NULL,
-      		),
-
+      'nid' => array('nid'),
+      'vid' => array('vid'),
     ),
-
-    'primary key' => array('nid','vid'),
-
-    'unique keys' => array(
-	'vid'	=> array('vid')
-	),
-
-    'indexes' => array(
-	'nid'	=> array('nid'),
-	), 
   );
+  
   return $schema;
+
 }
-
-/**
- * Implementation of pi_data_locations_schema().
- */
-function pi_data_locations_schema() {
-  $schema['pi_data_locations'] = array(
-    'description' => 'PI data locations',
-    'fields' => array(
-      'nid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-	'default' => '0',
-        'description' => 'Primary Key: Unique ID.',
-      ),
-      'vid' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => '0',
-        'description' => 'Primary Key: Unique: The current vid version identifier.',
-	),
-      'inquiry_id' => array(
-        'type' => 'int',
-	'unsigned' => TRUE,
-        'not null' => FALSE,
-        'description' => 'Inquiry ID',
-      ),
-      'grid_square' => array(
-        'type' => 'char',
-        'not null' => FALSE,
-	'length' => 2,
-        'default' => 'SP',
-        'description' => 'Ordnance Survey format grid square',
-      ),
-      'eastings' => array(
-        'type' => 'varchar',
-        'not null' => FALSE,
-	'length' => 5,
-        'default' => '00000',
-        'description' => 'Ordnance Survey format 5 digit Eastings reference',
-      ),
-      'northings' => array(
-        'type' => 'varchar',
-        'not null' => FALSE,
-	'length' => 5,
-        'default' => '00000',
-        'description' => 'Ordnance Survey format 5 digit Northings reference',
-      ),
-	
-
-    ),
-
-    'primary key' => array('nid','vid'),
-
-    'unique keys' => array(
-	'vid'	=> array('vid')
-	),
-
-    'indexes' => array(
-	'nid'	=> array('nid'),
-	), 
-  );
-  return $schema;
-}
-
-
-
-

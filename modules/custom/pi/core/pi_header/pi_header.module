@@ -1,0 +1,38 @@
+<?php
+// $Id: pi_header.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
+
+
+function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
+
+    switch ($op) {
+
+        case 'list':
+            $blocks[0]['info'] = t('Activity guide header');
+            return $blocks;
+
+        case 'view':
+
+            global $user;
+            $image_path = "images/";
+            $details = get_inquiry_details_from_current_path();
+
+            //$block['subject'] = "nQuire";
+            if(arg(0) == 'phase' || arg(0) == 'activity') {  
+            	$home_icon = l(t("<h1 style='color: white; margin-left: 0.7em;'>home</h1>"), t("inquiry/" . $details->inquiry_id), array('html' => TRUE));
+            }
+            else {
+            	$home_icon = "&nbsp;";
+            }
+            $output = "";
+            $output .= "<div style='float:left;width:209px'>" . $home_icon . "</div>";
+            $output .= "<div style='float:left'><h1>nQuire</h1></div>";
+            if ($user->uid) {
+            	$output .= "<div style='float:left, width:100%'><div style='float:right'><div style='float:right'>" . t($user->name) . "</div><div style='clear:both, float:right'>" . l("logout","logout") . "</div></div>";
+            }
+
+            $block['content'] = $output;
+
+            return $block;
+    };
+}
+

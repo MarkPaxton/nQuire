@@ -1,5 +1,5 @@
 <?php
-// $Id: maintenance-page.tpl.php,v 1.1.2.1 2009/02/13 18:17:08 johnalbin Exp $
+// $Id: maintenance-page.tpl.php,v 1.1.2.2 2009/05/03 11:12:28 johnalbin Exp $
 
 /**
  * @file maintenance-page.tpl.php
@@ -27,7 +27,7 @@
 
   <div id="page"><div id="page-inner">
 
-    <a name="top" id="navigation-top"></a>
+    <a name="navigation-top" id="navigation-top"></a>
     <?php if ($navbar): ?>
       <div id="skip-to-nav"><a href="#navigation"><?php print t('Skip to Navigation'); ?></a></div>
     <?php endif; ?>

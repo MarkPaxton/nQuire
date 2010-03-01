@@ -7,38 +7,18 @@
  */
 
 
-/**
- * MISSING
- * 
- * @param unknown_type $uid
- * @param unknown_type $inquiry_id
- * @return unknown
- */
-function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id) {
+function find_selected_measures_nid_for_uid_and_inquiry ($uid, $inquiry_id) {
     $query = "SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON node_access.nid = pi_selected_measures.nid LEFT JOIN node ON node.nid = pi_selected_measures.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_selected_measures.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
     $result = db_result(db_query($query));
     return $result;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $uid
- * @return unknown
- */
-function find_selected_measures_nid_for_uid($uid) {
+function find_selected_measures_nid_for_uid ($uid) {
     $query = "SELECT pi_selected_measures.nid FROM pi_selected_measures, node_access, og_uid WHERE pi_selected_measures.nid = node_access.nid AND node_access.gid = og_uid.nid AND og_uid.uid = '" . $uid . "' ";
     $result = db_result(db_query($query));
     return $result;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @return NULL|NULL
- */
 function add_data_parameter_when_selected_measures_created($node, $user) {
     $node_details = get_inquiry_details_from_current_path();
 
@@ -84,69 +64,50 @@ function add_data_parameter_when_selected_measures_created($node, $user) {
 
 }
 
-
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @return unknown_type
+/*
+ * Create pi data activity is updated. Update the name.
  */
 function workflow_for_updated_node_adder_activity($node, $user) {
-    $uid = $user->uid;
-    $details = get_inquiry_details_from_current_path();
-    $loaded_activity = load_activity($details->activity_id);
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+	$loaded_activity =  load_activity($details->activity_id);
+		
+	/*Get values of key measures and use these to name the new activity*/
+	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
 
-    //----
-    //get the values of the key measures for the data node
-    //get pi_key_measure_nid
-    $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
-    $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
+	if ($measures_param) {
+		$measures_node = node_load($measures_param);
+		$measure_rows = $measures_node->categories;
+	}
+	
+	$title_array = array();
+	
+	foreach ($measure_rows as $measure_nid => $measure_selection) {
+  	if($measure_selection['#status'] == 'key') {
+  		$key = t($measures_param . "-" . $measure_nid);
+  		$title_array[] = t($node->onepageprofile_categories[$key]['value']);
+  	}
+  }
 
-    //get pi_selected_measure_nid
-    $pi_selected_measures_query = db_query("SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON pi_selected_measures.nid = node_access.nid LEFT JOIN node ON pi_selected_measures.nid = node.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_selected_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
-    $pi_selected_measures_nid = db_fetch_object($pi_selected_measures_query);
+	$activity_name = implode("-",$title_array);
 
-    //change to only get public and og nids
-  /*
-  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid LEFT JOIN pi_selected_measures ON pi_key_measures.measure_nid = pi_selected_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' AND  pi_selected_measures.nid = '" . $pi_selected_measures_nid->nid . "' ORDER BY pi_selected_measures.weight ASC");*/
-    $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
+	if (strlen($activity_name) < 2) {
+		$activity_name = "Data";
+	}
+	
+	$activity_array = array();
+	$activity_array["name"] = $activity_name;
+	$activity_array["activity_id"] = $loaded_activity->activity_id;
+	$activity_array["description"] = $loaded_activity->description;
+	$activity_array["activity_type"] = $loaded_activity->activity_type;
+	$activity_array["node_type"] = $loaded_activity->node_type;
+	$activity_array["parameters"] = $loaded_activity->parameters;
+	$activity_array["destination"] = $loaded_activity->destination;
+	$activity_array["audience"] = $loaded_activity->audience;
 
-    $title_array = array();
-    $count = 0;
-    while ($required_result = db_fetch_array($required_results)) {
-        $query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures WHERE pi_collected_data.nid = '" . $node->nid . "' AND pi_collected_data.psm_id = pi_selected_measures.psm_id AND pi_selected_measures.measure_nid = '" . $required_result['nid'] . "' ";
-        $value_result = db_fetch_object(db_query($query));
-        $title_array[$count++] = $value_result->value;
-    }
-
-    $activity_name = implode("-",$title_array);
-
-    //----
-
-    if (strlen($activity_name) < 2) {
-        $activity_name = "Data";
-    }
-    $activity_array = array();
-    $activity_array["name"] = $activity_name;
-    $activity_array["activity_id"] = $loaded_activity->activity_id;
-    $activity_array["description"] = $loaded_activity->description;
-    $activity_array["activity_type"] = $loaded_activity->activity_type;
-    $activity_array["node_type"] = $loaded_activity->node_type;
-    $activity_array["parameters"] = $loaded_activity->parameters;
-    $activity_array["destination"] = $loaded_activity->destination;
-    $activity_array["audience"] = $loaded_activity->audience;
-
-    save_activity($activity_array);
+	save_activity($activity_array);
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @return unknown_type
- */
 function update_activity_when_result_presentations_updated($node, $user) {
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
@@ -166,13 +127,6 @@ function update_activity_when_result_presentations_updated($node, $user) {
     save_activity($activity_array);
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @return unknown_type
- */
 function update_activity_when_key_question_updated($node, $user) {
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
@@ -192,13 +146,6 @@ function update_activity_when_key_question_updated($node, $user) {
     save_activity($activity_array);
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @return unknown_type
- */
 function update_activity_when_add_measure_updated($node, $user) {
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
@@ -218,15 +165,6 @@ function update_activity_when_add_measure_updated($node, $user) {
     save_activity($activity_array);
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @param unknown_type $node_function
- * @param unknown_type $visible_status
- * @return unknown_type
- */
 function add_activity_when_result_presentations_created($node, $user, $node_function, $visible_status) {
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
@@ -247,7 +185,7 @@ function add_activity_when_result_presentations_created($node, $user, $node_func
     $query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
     $new_activity_id = db_result(db_query($query2));
 
-    //new details object
+    //****new details object
     $new_details = new stdClass;
     $new_details->inquiry_id = $details->inquiry_id;
     $new_details->stage_id = $details->stage_id;
@@ -299,15 +237,6 @@ function add_activity_when_result_presentations_created($node, $user, $node_func
 }	
 
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @param unknown_type $node_function
- * @param unknown_type $visible_status
- * @return unknown_type
- */
 function add_activity_when_key_question_created($node, $user, $node_function, $visible_status) {
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
@@ -328,7 +257,7 @@ function add_activity_when_key_question_created($node, $user, $node_function, $v
     $query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
     $new_activity_id = db_result(db_query($query2));
 
-    //new details object
+    //****new details object
     $new_details = new stdClass;
     $new_details->inquiry_id = $details->inquiry_id;
     $new_details->stage_id = $details->stage_id;
@@ -381,15 +310,6 @@ function add_activity_when_key_question_created($node, $user, $node_function, $v
 }
 
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @param unknown_type $node_function
- * @param unknown_type $visible_status
- * @return unknown_type
- */
 function add_activity_when_add_measure_created($node, $user, $node_function, $visible_status) {
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
@@ -410,7 +330,7 @@ function add_activity_when_add_measure_created($node, $user, $node_function, $vi
     $query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
     $new_activity_id = db_result(db_query($query2));
 
-    //new details object
+    //****new details object
     $new_details = new stdClass;
     $new_details->inquiry_id = $details->inquiry_id;
     $new_details->stage_id = $details->stage_id;
@@ -463,150 +383,103 @@ function add_activity_when_add_measure_created($node, $user, $node_function, $vi
 }
 
 
-
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @param unknown_type $node_function
- * @param unknown_type $visible_status
- * @return unknown_type
+/*
+ * PI add data used. Create another activity containing the entered data.
  */
 function workflow_for_created_node_adder_activity($node, $user, $node_function, $visible_status) {
-    $uid = $user->uid;
-    $details = get_inquiry_details_from_current_path();
-    $loaded_activity = load_activity($details->activity_id);
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+	$loaded_activity =  load_activity($details->activity_id);
+		
+	/*Get values of key measures and use these to name the new activity*/
+	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
 
-    //get the values of the key measures for the data node
-    //get pi_key_measure_nid
-    $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
-    $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
-
-    //get pi_selected_measure_nid
-    $pi_selected_measures_query = db_query("SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON pi_selected_measures.nid = node_access.nid LEFT JOIN node ON pi_selected_measures.nid = node.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_selected_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
-    $pi_selected_measures_nid = db_fetch_object($pi_selected_measures_query);
-
-    //change to only get public and og nids
-    $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid LEFT JOIN pi_selected_measures ON pi_key_measures.measure_nid = pi_selected_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' AND  pi_selected_measures.nid = '" . $pi_selected_measures_nid->nid . "' ORDER BY pi_selected_measures.weight ASC");
-
-    $title_array = array();
-    while ($required_result = db_fetch_array($required_results)) {
-        $query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures WHERE pi_collected_data.nid = '" . $node->nid . "' AND pi_collected_data.psm_id = pi_selected_measures.psm_id AND pi_selected_measures.measure_nid = '" . $required_result['nid'] . "' ";
-        $value_result = db_fetch_object(db_query($query));
-        $title_array[] = $value_result->value;
-    }
-
-    //-------------
-    //get the values of the key measures for the data node
-	/*
-	$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures, pi_key_measures WHERE pi_collected_data.nid = '" . $node->nid . "' AND pi_collected_data.psm_id = pi_selected_measures.psm_id AND pi_selected_measures.measure_nid = pi_key_measures.measure_nid AND pi_key_measures.inquiry_id = '" . $details->inquiry_id . "' AND pi_key_measures.activity_id = '" .$details->activity_id . "' ";
-	$results = db_query($query);
-	$title_array= array();
-	while($result = db_fetch_object($results)) {
-		$title_array[] = $result->value;
-	}*/
-    $activity_name = implode("-",$title_array);
-
-    //use the value from lowest weighted measure as activity title
-	/*$query = "SELECT pi_collected_data.value FROM pi_collected_data, pi_selected_measures ";
-	$query .= "WHERE pi_collected_data.nid = " . $node->nid . " ";
-	$query .= "AND pi_collected_data.psm_id = pi_selected_measures.psm_id ";
-	$query .= "ORDER BY pi_selected_measures.weight ASC ";
-	$activity_name = db_result(db_query($query));*/
-    if (strlen($activity_name) < 2) {
+	if ($measures_param) {
+		$measures_node = node_load($measures_param);
+		$measure_rows = $measures_node->categories;
+	}
+	
+	$title_array = array();
+	
+	foreach ($measure_rows as $measure_nid => $measure_selection) {
+  	if($measure_selection['#status'] == 'key') {
+  		$key = t($measures_param . "-" . $measure_nid);
+  		$title_array[] = t($node->onepageprofile_categories[$key]['value']);
+  	}
+  }
+	
+	//values of key measures becomes the activity name
+	$activity_name = implode("-",$title_array);
+	
+	//if empty give a placeholder name
+	if (strlen($activity_name) < 2) {
         $activity_name = "Data";
-    }
-    $activity_array = array();
-    $activity_array["name"] = $activity_name;
-    $activity_array["description"] = $loaded_activity->description;
-    $activity_array["activity_type"] = $loaded_activity->activity_type;
-    $activity_array["node_type"] = $loaded_activity->node_type;
-    $activity_array["parameters"] = $loaded_activity->parameters;
-    $activity_array["destination"] = $loaded_activity->destination;
-    $activity_array["audience"] = $loaded_activity->audience;
+  }
+  
+  //the new activity
+	$activity_array = array();
+	$activity_array["name"] = $activity_name;
+	$activity_array["description"] = $loaded_activity->description;
+	$activity_array["activity_type"] = $loaded_activity->activity_type;
+	$activity_array["node_type"] = $loaded_activity->node_type;
+	$activity_array["parameters"] = $loaded_activity->parameters;
+	$activity_array["destination"] = $loaded_activity->destination;
+	$activity_array["audience"] = $loaded_activity->audience;
 
-    //create the new activity
-    save_activity($activity_array);
-    $query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
-    $new_activity_id = db_result(db_query($query2));
+	//create the new activity
+	save_activity($activity_array);
+	$query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
+	$new_activity_id = db_result(db_query($query2));
 
-    //new details object
-    $new_details = new stdClass;
-    $new_details->inquiry_id = $details->inquiry_id;
-    $new_details->stage_id = $details->stage_id;
-    $new_details->phase_id = $details->phase_id;
-    $new_details->activity_id = $new_activity_id;
+	//****new details object
+	$new_details = new stdClass;
+	$new_details->inquiry_id = $details->inquiry_id;
+	$new_details->stage_id = $details->stage_id;
+	$new_details->phase_id = $details->phase_id;
+	$new_details->activity_id = $new_activity_id;
 
-    //set status for the new activity
-    $activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
-    $new_activity_status = new stdClass;
-    $new_activity_status->inquiry_id = $activity_status->inquiry_id;
-    $new_activity_status->activity_id = $new_activity_id;
-    $new_activity_status->uid = $activity_status->uid;
-    $new_activity_status->gid = $activity_status->gid;
-    $new_activity_status->node_function = $activity_status->node_function;
-    $new_activity_status->visible_status = $activity_status->visible_status;
-    save_activity_status($new_activity_status);
+	//set status for the new activity
+	$activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
+	$new_activity_status = new stdClass;
+	$new_activity_status->inquiry_id = $activity_status->inquiry_id;
+	$new_activity_status->activity_id = $new_activity_id;
+	$new_activity_status->uid = $activity_status->uid;
+	$new_activity_status->gid = $activity_status->gid;
+	$new_activity_status->node_function = $activity_status->node_function;
+	$new_activity_status->visible_status = $activity_status->visible_status;
+	save_activity_status($new_activity_status);
 
-    //set actor for the new activity
-    $activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
-    $new_activity_actor["inquiry_id"] = $details->inquiry_id;
-    $new_activity_actor["activity_id"] = $new_activity_id;
-    if ($loaded_activity->audience == "individual") {
-        $new_activity_actor["uid"] = $user->uid;
-    }
-    else {
-        $users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
-        $new_activity_actor["gid"] = $users_group;
-    }
-    insert_activity_actor($new_activity_actor);
-
-	/*
+	//set actor for the new activity
 	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
 	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
 	$new_activity_actor["activity_id"] = $new_activity_id;
-	$new_activity_actor["uid"] = $activity_actor[0]["uid"];
-	$new_activity_actor["gid"] = $activity_actor[0]["gid"];
-	insert_activity_actor($new_activity_actor);*/
+	if ($loaded_activity->audience == "individual") {
+		$new_activity_actor["uid"] = $user->uid;
+	}
+	else {
+		$users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
+		$new_activity_actor["gid"] = $users_group;
+	}
+	insert_activity_actor($new_activity_actor);
 
-    //set the stage phase activity
-    $psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+	//set the stage phase activity
+	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
 
-    $query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
-    $current_pos = db_result(db_query($query));
-    $new_pos = $current_pos + 1;
-    insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
+	$query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
+	$current_pos = db_result(db_query($query));
+	$new_pos = $current_pos + 1;
+	insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
 
-    //set pi activity node
-    add_new_pi_activity_node($node, $user, $node_function, $visible_status, $new_details);
+	//set pi activity node
+	add_new_pi_activity_node($node, $user, $node_function, $visible_status, $new_details);
 }
 
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @param unknown_type $node_function
- * @param unknown_type $visible_status
- * @return unknown_type
- */
 function workflow_for_created_node($node, $user, $node_function, $visible_status) {
     $details = get_inquiry_details_from_current_path();
     add_new_pi_activity_node($node, $user, $node_function, $visible_status, $details);
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @param unknown_type $user
- * @param unknown_type $node_function
- * @param unknown_type $visible_status
- * @param unknown_type $details
- * @return unknown_type
- */
 function add_new_pi_activity_node($node, $user, $node_function, $visible_status, $details) {
     $uid = $user->uid;
     //set the PI activity node
@@ -644,14 +517,6 @@ function add_new_pi_activity_node($node, $user, $node_function, $visible_status,
 }
 
 
-/**
- * MISSING
- * 
- * @param unknown_type $inquiry
- * @param unknown_type $activity
- * @param unknown_type $nid
- * @return unknown_type
- */
 function set_pi_activity_node_for_activity($inquiry, $activity, $nid) {
     $query = "INSERT INTO pi_activity_node SET ";
     $query .= "inquiry_id = '" . $inquiry . "'";

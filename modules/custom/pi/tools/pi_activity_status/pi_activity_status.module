@@ -1,16 +1,6 @@
 <?php
 
-/**
- * @file
- * Implements....
- */ 
 
-/**
- * MISSING
- * 
- * @param unknown_type $node_details
- * @return multitype:unknown NULL Ambigous <unknown, multitype:> 
- */
 function get_activity_participants($node_details) {
 		
 		    $content = t("Selected activity: " . $node_details->activity_id);
@@ -150,14 +140,6 @@ function get_activity_participants($node_details) {
 }
 
 
-/**
- * MISSING
- * 
- * @param unknown_type $op
- * @param unknown_type $delta
- * @param unknown_type $edit
- * @return unknown|string
- */
 function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
 	switch ($op) {
   
@@ -182,11 +164,14 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
         $node_details_inquiry_id = '';
       }
   		$content = "";
-  		$content .= l(t("Dashboard"), build_teacher_tool_link("dashboard", $node_details_inquiry_id, NULL), array());
+  		$content .= t("Dashboard");
+  		//$content .= l(t("Dashboard"), build_teacher_tool_link("dashboard", $node_details_inquiry_id, NULL), array());
     	$content .= "&nbsp;&nbsp;";
-    	$content .= l(t("Events"), build_teacher_tool_link("events", $node_details_inquiry_id, NULL), array());
+    	$content .= t("Events");
+    	//$content .= l(t("Events"), build_teacher_tool_link("events", $node_details_inquiry_id, NULL), array());
     	$content .= "&nbsp;&nbsp;";
-    	$content .= l(t("Set stage"), stage_selector_link($node_details_inquiry_id, $user->uid), array('query'=>build_teacher_tool_link("destination=home", $node_details_inquiry_id, NULL)));
+    	$content .= l(t("Set stage"), t('set_stage/' . $node_details->inquiry_id), array('query'=> t('destination=inquiry/'. $node_details->inquiry_id)));
+    	//$content .= l(t("Set stage"), t(stage_selector_link($node_details_inquiry_id, $user->uid), array('query'=>build_teacher_tool_link("destination=home", $node_details_inquiry_id, NULL)));
     	$content .= "<br/><br/>";
     	
     	
@@ -214,14 +199,6 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
 	};
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $activity_participants
- * @param unknown_type $node_details
- * @param unknown_type $audience
- * @return string
- */
 function generate_status_table($activity_participants, $node_details, $audience) {
 			
 		$image_path = "images/";
@@ -257,14 +234,7 @@ function generate_status_table($activity_participants, $node_details, $audience)
 		return $content;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $inquiry_id
- * @param unknown_type $uid
- * @return unknown
- */
-function stage_selector_link($inquiry_id, $uid) {
+function stage_selector_link ($inquiry_id, $uid) {
 
 	$current_stage = get_current_stage_of_inquiry_and_user ($inquiry_id, $uid);
   if (isset($current_stage->stage_id)) {
@@ -285,14 +255,6 @@ function stage_selector_link($inquiry_id, $uid) {
 	return $link;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $item
- * @param unknown_type $inquiry_id
- * @param unknown_type $stage_id
- * @return unknown_type
- */
 function build_teacher_tool_link($item, $inquiry_id, $stage_id) {
 	if (!$inquiry_id) {
 		$query = "SELECT inquiry_id FROM pi_current_stage";
@@ -307,38 +269,18 @@ function build_teacher_tool_link($item, $inquiry_id, $stage_id) {
 	}
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $uid
- * @return unknown_type
- */
 function get_user_name($uid){
 	$query = "SELECT * FROM users WHERE uid = '" . $uid . "'";
 	$object = db_fetch_object(db_query($query));
 	return $object->name;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $gid
- * @return unknown_type
- */
 function get_group_name($gid){
 	$query = "SELECT * FROM og WHERE nid = '" . $gid . "'";
 	$object = db_fetch_object(db_query($query));
 	return $object->og_description;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $inquiry_id
- * @param unknown_type $activity_id
- * @param unknown_type $gid
- * @return unknown_type
- */
 function get_status_of_group($inquiry_id, $activity_id, $gid){
 	$status_query = "SELECT * FROM pi_activity_status WHERE";
 	$status_query .= " inquiry_id = '" . $inquiry_id . "'";
@@ -349,15 +291,6 @@ function get_status_of_group($inquiry_id, $activity_id, $gid){
 	return $object->visible_status;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $inquiry_id
- * @param unknown_type $activity_id
- * @param unknown_type $uid
- * @param unknown_type $gid
- * @return unknown_type
- */
 function get_status_of_user_in_group($inquiry_id, $activity_id, $uid, $gid){
 	$status_query = "SELECT * FROM pi_activity_status WHERE";
 	$status_query .= " inquiry_id = '" . $inquiry_id . "'";
@@ -373,14 +306,6 @@ function get_status_of_user_in_group($inquiry_id, $activity_id, $uid, $gid){
 	}
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $inquiry_id
- * @param unknown_type $activity_id
- * @param unknown_type $uid
- * @return unknown_type
- */
 function get_status_of_user($inquiry_id, $activity_id, $uid){
 	$status_query = "SELECT * FROM pi_activity_status WHERE";
 	$status_query .= " inquiry_id = '" . $inquiry_id . "'";

@@ -1,0 +1,103 @@
+<?php
+// $Id: pi_breadcrumb.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
+
+
+function pi_breadcrumb_block($op = 'list', $delta = 0, $edit = array()) {
+
+    switch ($op) {
+
+        case 'list':
+            $blocks[0]['info'] = t('Activity guide breadcrumb');
+            return $blocks;
+
+        case 'view':
+
+            global $user;
+            $image_path = "images/";
+            $details = get_inquiry_details_from_current_path();
+
+            //$block['subject'] = "nQuire";
+            
+
+            	$output = "";
+            if(arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {  
+            	$output .= pi_stage_bar($details);
+            	//$output .= "<br/>";
+            }
+            if(arg(0) == 'home' || arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {            	
+            	$output .= pi_breadcrumb(arg(0), $details);
+            }
+            
+            	//theme('breadcrumb',array("a","b"));//array(l("home","home"), l("phase","phase/3")));
+            $block['content'] = $output;
+
+            return $block;
+    };
+}
+
+function pi_breadcrumb($page_level, $details) {
+	global $user;
+	$uid = $user->uid;
+	$breadcrumb = array('');
+	if($page_level == 'home') {
+		$breadcrumb[] = t('My inquiries');
+	}
+	else {
+		$breadcrumb[] = l('My inquiries', 'home');
+	}
+	if($page_level == 'inquiry' || $page_level == 'phase' || $page_level == 'activity') {
+		if($page_level == 'inquiry') {
+			$loaded_inquiry = load_inquiry($details->inquiry_id);
+			$breadcrumb[] = t($loaded_inquiry->name);
+		}
+		else {
+			$loaded_inquiry = load_inquiry($details->inquiry_id);
+			$breadcrumb[] = l(t($loaded_inquiry->name), t('inquiry/' . $details->inquiry_id));
+		}
+	}
+	if($page_level == 'phase' || $page_level == 'activity') {
+		if($page_level == 'phase') {
+			$loaded_phase = load_phase($details->phase_id);
+			$breadcrumb[] = t($loaded_phase->name);
+		}
+		else {
+			$loaded_phase = load_phase($details->phase_id);
+			$breadcrumb[] = l(t($loaded_phase->name), t('phase/' . $details->phase_id));		
+		}
+	}	
+	if($page_level == 'activity') {
+		$visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
+		$loaded_activity = load_activity($details->activity_id);
+		$breadcrumb[] = t($loaded_activity->name);
+	}
+	//$output = implode(' > ', $breadcrumb);
+	
+	$output = theme('breadcrumb', $breadcrumb);
+
+	return $output;
+}
+
+function pi_stage_bar($details) {
+	global $user;
+	$uid = $user->uid;
+	$stage_list = array();
+	$count = 1;
+	$stages = get_stages_of_inquiry_and_user ($details->inquiry_id, $uid);
+	while($stage = db_fetch_object($stages)) {
+		$loaded_stage = load_stage($stage->stage_id);
+		if ($stage->stage_id == $details->stage_id) {
+			$stage_list[] = t('<b>' . $count++ . '</b>');
+		}
+		else {
+		$stage_list[] = t($count++);
+		}
+	}
+	$output = '<p><b>My progress:</b> ' . implode(' &rarr; ', $stage_list) . '</p>';
+	return $output;
+}
+
+
+
+
+
+	
