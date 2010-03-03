@@ -1,8 +1,8 @@
 <?php
 
 /**
- * @file
- * pi_authoring provides some forms to help author an inquiry
+ * @file This provides the inquiry authoring wizard which allows the user to create and
+ * edit inquiries.  The authoring system appears in the navigation menu. 
  */
 
 /**
@@ -45,6 +45,15 @@ function pi_authoring_menu() {
       'access arguments' => array('access pi_authoring content'),
 	);
 
+	$items['piauthoring/edit/%'] = array(
+	//'path' => 'piauthoring',
+      'title' => t('Edit Inquiry'),
+  	  'page callback' => 'pi_authoring_edit_inquiry',
+  	  'page arguments' => array(2),
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access pi_authoring content'),
+	);
+	
 	$items['piauthoring/newinquiry'] = array(
 	//'path' => 'piauthoring/newinquiry',
       'title' => t('1. Define the basics'),
@@ -331,19 +340,9 @@ function pi_authoring_view(){
 	$inquiries = get_inquiries();
 	while($inquiry = db_fetch_object($inquiries))
 	{
-		$content .= "<p>\n";
-		$content .="<div><strong>" . t($inquiry->name) . "</strong></div>\n";
-		$content .="<div>" . t($inquiry->description) . "</div>\n";
-		var_dump($inquiry);
-		$content .= "</p>\n";
+		$content .="<h3>" . t($inquiry->name) . " " . l(t("Edit"), 'piauthoring/edit/' . $inquiry->inquiry_id )  . "</h3>\n";
+		$content .="<div>" . t($inquiry->description) . "</div>\n";		
 	}
-	//inquiry
-/*	$query = "SELECT * FROM pi_inquiry";
-	$inquiries = db_query($query);
-	while($inquiry = db_fetch_object($inquiries)){
-		$content .= draw_table($inquiry, 'view');
-		$content .= '<br>';
-	}*/
 	return $content;
 }
 
@@ -933,9 +932,34 @@ function uninclude_activity_link(){
 //-------------------------------------------------------------------------------------------------------------------
 
 /**
- * pi_authoring_new_inquiry: define the basics
+ * This generates the page to allow the adding of phases and stages to an inquiry
+ * @param $inquiry_id (uint) is a valid inquiry id.
+ * @todo handle invalid inquiry id by redurecting or something other than a message
  */
-function pi_authoring_new_inquiry(){
+function pi_authoring_edit_inquiry($inquiry_id) {
+	$content = "";
+	
+	// First check if the inquiry exists, if it doesn't redirect to the selection page
+	// if the inquiry doesn't exist, load inquiry retuerns FALSE
+	$inquiry = load_inquiry($inquiry_id);
+	if($inquiry != false)
+	{
+		$content ="<h2>" . t($inquiry->name) . "</h2>\n";	
+	}
+	else
+	{
+		$content .= "<p>Inquiry number " . t($inquiry_id) ." can't be found.</p>\n";
+	}
+	
+	return t($content);
+}
+
+
+
+/**
+ * This generates the page to allow the adding of phases and stages to an inquiry
+ */
+function pi_authoring_new_inquiry() {
 	$content = "<p>For each new inquiry you need to give it a name and to define the phases and stages.";
 	$content .= "  Each new inquiry needs to include a new set of phases and stages.</p>";
 	$content .= "<p><strong>Phase:</strong>  A phase is a part of the inquiry model.  For example, ";
