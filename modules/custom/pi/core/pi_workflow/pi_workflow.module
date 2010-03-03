@@ -7,7 +7,19 @@
  */
 
 
-function find_selected_measures_nid_for_uid_and_inquiry ($uid, $inquiry_id) {
+function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id){
+    $query = "SELECT pi_hypothesis.nid FROM pi_hypothesis LEFT JOIN node_access ON node_access.nid = pi_hypothesis.nid LEFT JOIN node ON node.nid = pi_hypothesis.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_hypothesis.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+    $result = db_result(db_query($query));
+    return $result;
+}
+
+function find_measure_filter_nid_for_uid_and_inquiry($uid, $inquiry_id) {
+    $query = "SELECT pi_measure_filter.nid FROM pi_measure_filter LEFT JOIN node_access ON node_access.nid = pi_measure_filter.nid LEFT JOIN node ON node.nid = pi_measure_filter.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_measure_filter.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+    $result = db_result(db_query($query));
+    return $result;
+}
+
+function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id) {
     $query = "SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON node_access.nid = pi_selected_measures.nid LEFT JOIN node ON node.nid = pi_selected_measures.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_selected_measures.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
     $result = db_result(db_query($query));
     return $result;

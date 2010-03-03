@@ -75,55 +75,55 @@ function pi_hypothesis_conclusion_form(&$node) {
   	drupal_set_title(t('Conclusion'));
   }
 
+	global $user;
+	$type = node_get_types('type', $node);
 
-    global $user;
-    $type = node_get_types('type', $node);
+	$form['title'] = array(
+		'#type' => 'hidden',
+		'#title' => check_plain($type->title_label),
+		'#required' => FALSE,
+		'#default_value' => check_plain($type->title_label),
+		'#weight' => -5
+	);
+
+	$form['conclusion'] = array(
+		'#type' => 'textarea',
+		'#required' => TRUE,
+		'#default_value' => $node->conclusion,
+		'#description' => t('Type your answer into the above box and click on the Save button when you are finished'),
+		'#resizable' => FALSE,
+		'#rows' => 8,
+		'#cols' => 40,
+		'#weight' => -2
+	);
+
+	$prefix = "";
     
-    
-    
+	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
 
-    $form['title'] = array(
-        '#type' => 'hidden',
-        '#title' => check_plain($type->title_label),
-        '#required' => FALSE,
-        '#default_value' => check_plain($type->title_label),
-        '#weight' => -5
-    );
-
-    $form['conclusion'] = array(
-        '#type' => 'textarea',
-
-        '#required' => TRUE,
-        '#default_value' => $node->conclusion,
-        '#description' => t('Type your answer into the above box and click on the Save button when you are finished'),
-        '#resizable' => FALSE,
-        '#rows' => 8,
-        '#cols' => 40,
-        '#weight' => -2
-    );
-
-    $prefix = "";
-
-    $node_details = get_inquiry_details_from_current_path();
-    $hypothesis_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'pi_hypothesis', $user->uid);
-
-    while ($hypothesis_node_nid = db_fetch_object($hypothesis_node_nids)) {
-        $hypothesis_node = node_load($hypothesis_node_nid->nid);
-        $prefix .= "<p><strong>Your hypothesis was</strong>: " . $hypothesis_node->hypothesis . "</p>";
-    };
-    
+	if ($hypothesis_param) {
+		$hypothesis_node = node_load($hypothesis_param);
+		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
+		$hypothesis_activity = load_activity($hypothesis_activity_id);
+		if ($hypothesis_activity->description) {
+  		$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";  
+  	}
+  	else {
+    	$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
+  	}
+		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
+	}
     
   if ($current_activity->description) {
-  	$prefix = "<p>" . t($current_activity->description) . "</p>";  
+  	$prefix .= "<p><strong>" . t($current_activity->description) . ":</strong></p>";  
   }
   else {
-    $prefix = "<p>" . t('Our conclusion') . "</p>";
+    $prefix .= "<p><strong>" . t('Our conclusion') . ":</strong></p>";
   }
 
-    $form['#prefix'] = $prefix;
+	$form['#prefix'] = $prefix;
 
-    return $form;
-
+	return $form;
 }
 
 /**
