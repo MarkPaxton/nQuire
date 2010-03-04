@@ -5,6 +5,16 @@
  * edit inquiries.  The authoring system appears in the navigation menu. 
  */
 
+
+/**
+ * This is executed before every page request and provides the functionality to include particular files,
+ * e.g. custom css and javascript files. 
+ */
+function pi_authoring_init() {
+    drupal_add_css(drupal_get_path('module', 'pi_authoring') .'/pi_authoring.css');
+}
+
+
 /**
  * Implementation of _help hook for pi_authoring
  */
@@ -29,7 +39,7 @@ function pi_authoring_perm() {
 }
 
 /**
- * Implementation of _menu hook which has a info page displaing a table of swim lanes
+ * Implementation of _menu hook which has a info page displaying a table of swim lanes
  * similar to the paper based one for authoring and a set of numbered links to define
  * elements of the inquiry i.e. the inquiry, phases, stages and activities along with
  * audience, groups and individual users who will be able to access them
@@ -332,6 +342,9 @@ function pi_authoring_menu() {
 function pi_authoring_view(){
 	$content = '';
 	
+	// Wrap the contet in a named element to allow css styles to be unique to this module 
+	$content .="<div id='pi_authoring'>";
+	
 	$content .= "<p>To create a new inquiry " . l(t("click here"), 'piauthoring/newinquiry/inquiry') . 
 		".  To edit an existing inquiry select it from the list below.</p>\n";
 
@@ -340,18 +353,24 @@ function pi_authoring_view(){
 	$inquiries = get_inquiries();
 	while($inquiry = db_fetch_object($inquiries))
 	{
+		$content .="<div class='inquiry_block'>";
+
 		$content .="<h3>" . t($inquiry->name) . " " . l(t("Edit"), 'piauthoring/edit/' . $inquiry->inquiry_id )  . "</h3>\n";
-		$content .="<div>" . t($inquiry->description) . "</div>\n";		
+		$content .="<div class='inquiry_description'>" . t($inquiry->description) . "</div>\n";		
+
+		$content .="</div>\n";  //End of '.inquiry_block'
 	}
+	
+	$content .="</div>\n";  // End of '#pi_authoring'
 	return $content;
 }
 
 /**
- * Get all stage for this inquiry
+ * Draws the grid view for an inquiry showing phases, stages and activities.
  * 
- * @param unknown_type $inquiry
+ * @param db_fetch_object $inquiry The inquiry for which to draw the table given as an object returned by db_fetch_object 
  * @param unknown_type $view_type
- * @return string
+ * @return string html content of the inquiry table view
  */
 function draw_table($inquiry, $view_type){
 
@@ -933,23 +952,46 @@ function uninclude_activity_link(){
 
 /**
  * This generates the page to allow the adding of phases and stages to an inquiry
- * @param $inquiry_id (uint) is a valid inquiry id.
+ * @param $inquiry_id (uint) is a valid inquiry id (invalid inquiry_ids generate error message).
  * @todo handle invalid inquiry id by redurecting or something other than a message
  */
 function pi_authoring_edit_inquiry($inquiry_id) {
-	$content = "";
+	$content = '';
 	
+	// Use this to apply module specific css
+	$content .= "<div id='pi_authoring'>\n";
+
 	// First check if the inquiry exists, if it doesn't redirect to the selection page
 	// if the inquiry doesn't exist, load inquiry retuerns FALSE
 	$inquiry = load_inquiry($inquiry_id);
 	if($inquiry != false)
 	{
-		$content ="<h2>" . t($inquiry->name) . "</h2>\n";	
+		$content .="<h2>" . t($inquiry->name) . "</h2>\n";	
+
+		// Query for inquiry phases and list them if there are any, otherwise show 
+		// placeholder text
+		$phases = get_phases_of_inquiry($inquiry_id);
+		if($phases != false)
+		{
+			$content .= "<ol>\n"; 
+			while($phase = db_fetch_object($phases))
+			{
+				$content .= "\t<li><span class='inquiry_phase_name'>" . t($phase->name) . ":</span> " . 
+					"<span class='inquiry_phase_description'>" . t($phase->description) . "</span></li>\n";
+			}
+			$content .= "</ol>\n"; 
+		}
+		else 
+		{
+			$content .= "<p>No phases added so far in this inquiry.</p>\n";
+		}
 	}
 	else
 	{
-		$content .= "<p>Inquiry number " . t($inquiry_id) ." can't be found.</p>\n";
+		$content .= "<p>Inquiry number " . t($inquiry_id) . " can't be found.</p>\n";
 	}
+
+	$content .= "</div>\n"; // #pi_authoring
 	
 	return t($content);
 }
