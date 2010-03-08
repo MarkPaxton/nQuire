@@ -64,12 +64,10 @@ function pi_hypothesis_access($op, $node) {
 
     if ($op == 'create') {
         return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
-    //return (user_access('create pi_hypothesis'));
     }
 
-    if ($op == 'update' || $op == 'delete') {
+    if ($op == 'update') {
         return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-    //return (user_access('edit own pi_hypothesis'));
     }
 }
 
@@ -208,8 +206,24 @@ function pi_hypothesis_theme() {
  * @return string
  */
 function theme_pi_hypothesis($node) {
-
-    $output = '<p><strong>Your hypothesis is:</strong> ' . check_plain($node->hypothesis). '</p>';
+	$output = "";
+		$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id)) {
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
+  	
+  	if ($current_activity->description) {
+    	$output .= "<p>" . t($current_activity->description) . "</p>";
+    }
+    else {
+    	$output .= "<p>A hypothesis is a prediction that you can test.</p>";
+    }
+    
+    $output .= '<p><strong>Your hypothesis is:</strong> ' . check_plain($node->hypothesis). '</p>';
 
     return $output;
 }

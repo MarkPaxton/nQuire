@@ -37,105 +37,170 @@ function pi_key_questions_perm() {
  * Implementation of hook_access().
  */
 function pi_key_questions_access($op, $node) {
-    global $user;
-    $details = get_inquiry_details_from_current_path();
-
-    if ($op == 'create') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
-    //return (user_access('create pi_key_questions'));
-    }
-
-    if ($op == 'update' || $op == 'delete') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-    //return (user_access('edit own pi_key_questions'));
-    }
+  global $user;
+  $uid = $user->uid;
+  $details = get_inquiry_details_from_current_path();
+  if ($op == 'create') {
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+  }
+  if ($op == 'update') {
+    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+  }
+	if ($op == 'delete') {
+		if (arg(0) == 'node' && arg(2) == 'delete') {
+		//get inquiry for session id and activity
+			$nid = arg(1);
+			$sid = get_current_session_id();
+			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
+			$inquiry_id = $inquiry_id->inquiry_id;
+			$activity_id = get_activity_id_for_nid($nid);
+			if($inquiry_id && $activity_id) {
+				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+			}
+			else {
+				return FALSE;
+			}
+		}
+		else {
+			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		}
+	}
 }
+
+
+/*	global $user;
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+
+	if ($op == 'create') {
+		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+	}
+
+	if ($op == 'update') {
+		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+	}
+    
+	if ($op == 'delete') {
+		if (arg(0) == 'node' && arg(2) == 'delete') {
+		//get inquiry for session id and activity
+			$nid = arg(1);
+			$sid = get_current_session_id();
+			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
+			$activity_id = get_activity_id_for_nid($nid);
+		
+			return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+		}
+		else {
+			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		}
+   }
+}*/
 
 /**
  * Implementation of hook_form().
  */
 function pi_key_questions_form(&$node) {
+	global $user;
+	$node_details = get_inquiry_details_from_current_path();
+	
+	if (is_numeric($node_details->activity_id)) {
+		$current_activity = load_activity($node_details->activity_id);
+	}
+  	
+	if ($current_activity->name) {
+		drupal_set_title(t($current_activity->name));
+	
+	}
+	// Get metadata for this node type
+	// (we use it for labeling title and body fields).
+	// We defined this in pi_key_questions_node_info().
+	$type = node_get_types('type', $node);
 
-    $node_details = get_inquiry_details_from_current_path();
-    $current_activity = load_activity($node_details->activity_id);
+	$form['title'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Short title'),
+		'#required' => TRUE,
+		'#default_value' => check_plain($node->title),
+		'#description' => t('Enter a short label for your key question'),
+		'#weight' => -2
+	);
 
-    drupal_set_title(t($current_activity->name));
+	$form['body_filter']['body'] = array(
+		'#type' => 'textarea',
+		'#title' => t('Key question'),
+		'#required' => TRUE,
+		'#default_value' => check_plain($node->body),
+		'#description' => t('Enter a key question that addresses part of your hypothesis'),
+		'#resizable' => FALSE,
+		'#rows' => 4,
+		'#cols' => 40,
+		'#weight' => 0
+	);
+/*
+	if ($node->inquiry_id) {
+		$inquiry_value = $node->inquiry_id;
+	}
+	else {
+		$inquiry_value = $node_details->inquiry_id;
+	}
+	$form['inquiry_id'] = array(
+		'#type' => 'hidden',
+		'#value' => $inquiry_value,
+		'#weight' => 4
+	);
 
-    // Get metadata for this node type
-    // (we use it for labeling title and body fields).
-    // We defined this in pi_key_questions_node_info().
-    $type = node_get_types('type', $node);
+	$form['weight'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Order'),
+		'#required' => FALSE,
+		'#default_value' => $node->weight,
+		'#description' => t('Enter a number from 1 to 10 used to oder your key questions'),
+		'#resizable' => FALSE,
+		'#weight' => 6
+	);*/
+    
+	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
-    $form['title'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Short title'),
-        '#required' => TRUE,
-        '#default_value' => check_plain($node->title),
-        '#description' => t('Enter a short label for your key question'),
-        '#weight' => 2
-    );
-
-    $form['body_filter']['body'] = array(
-        '#type' => 'textarea',
-        '#title' => t('Key question'),
-        '#required' => TRUE,
-        '#default_value' => check_plain($node->body),
-        '#description' => t('Enter a key question that addresses part of your hypothesis'),
-        '#resizable' => FALSE,
-        '#rows' => 4,
-        '#cols' => 40,
-        '#weight' => 0
-    );
-
-    if ($node->inquiry_id) {
-        $inquiry_value = $node->inquiry_id;
-    }
-    else {
-        $inquiry_value = $node_details->inquiry_id;
-    };
-    $form['inquiry_id'] = array(
-        '#type' => 'hidden',
-        '#value' => $inquiry_value,
-        '#weight' => 4
-    );
-
-    $form['weight'] = array(
-        '#type' => 'textfield',
-        '#title' => t('Order'),
-        '#required' => FALSE,
-        '#default_value' => $node->weight,
-        '#description' => t('Enter a number from 1 to 10 used to oder your key questions'),
-        '#resizable' => FALSE,
-        '#weight' => 6
-    );
-
-    $prefix = "<p>A key question helps you break down your hypothesis into parts, so that you can devise a way for test your hypothesis.</p>";
-
-    global $user;
+/*Shows the hypothesis
+	if ($hypothesis_param) {
+		$hypothesis_node = node_load($hypothesis_param);
+		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
+		$hypothesis_activity = load_activity($hypothesis_activity_id);
+		if ($hypothesis_activity->description) {
+  		$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";  
+  	}
+  	else {
+    	$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
+  	}
+		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
+	}*/
+	
+	$prefix .= "<p>" . $current_activity->description . "</p>";
+/*
     $hypothesis_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'pi_hypothesis', $user->uid);
 
     while ($hypothesis_node_nid = db_fetch_object($hypothesis_node_nids)) {
         $hypothesis_node = node_load($hypothesis_node_nid->nid);
         $prefix .= "<p><strong>Your hypothesis is</strong>: " . $hypothesis_node->hypothesis . "</p>";
-    };
+    };*/
 
-    $form['#prefix'] = $prefix;
+	$form['#prefix'] = $prefix;
 
-    return $form;
+	return $form;
 
 }
 
 /**
  * Implementation of hook_insert().
- */
+
 function pi_key_questions_insert($node) {
     db_query("INSERT INTO {pi_key_questions} (nid, vid, inquiry_id, weight) VALUES (%d, %d, %d, %d)",
         $node->nid, $node->vid, $node->inquiry_id, $node->weight);
-}
+} */
 
 /**
  * Implementation of hook_update().
- */
+
 function pi_key_questions_update($node) {
     if ($node->revision) {
         pi_key_question_insert($node);
@@ -143,23 +208,23 @@ function pi_key_questions_update($node) {
     else {
         db_query("UPDATE {pi_key_questions} SET inquiry_id = '%d', weight = '%d' WHERE vid = '%d'", $node->inquiry_id, $node->weight, $node->vid);
     };
-}
+} */
 
 /**
  * Implementation of hook_delete().
- */
+
 function pi_key_questions_delete(&$node) {
 // Delete the related information we were saving for this node.
     db_query('DELETE FROM {pi_key_questions} WHERE nid = %d', $node->nid);
-}
+} */
 
 /**
  * Implementation of hook_load().
- */
+
 function pi_key_questions_load($node) {
     return db_fetch_object(db_query('SELECT * FROM {pi_key_questions} WHERE vid = %d',
     $node->vid));
-}
+} */
 
 /**
  * Implementation of hook_view().
@@ -171,8 +236,9 @@ function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
 
         $node->content['pi_key_questions'] = array(
             '#value' => theme('pi_key_questions', $node),
-            '#weight' => 2
+            '#weight' => -8
         );
+        
         
     }
 
@@ -205,10 +271,23 @@ function pi_key_questions_theme() {
  * @return string
  */
 function theme_pi_key_questions($node) {
-
-    $output = "";
-    $output .= "<p><strong>Weight:</strong> " . $node->weight . "</p>";
-
+		$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id)) {
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
+  	
+  	if ($current_activity->description) {
+    	$output .= "<p>" . t($current_activity->description) . "</p>";
+    }
+    else {
+    	$output .= "<p>Key question for my inquiry.</p>";
+    }
+    
     return $output;
+
 }
 

@@ -5,9 +5,26 @@
  * @file
  * Implements Activity Guide workflow.
  */
+ 
+function find_sort_key_questions_nid_for_uid_and_inquiry($uid, $inquiry_id) {
+    $query = "SELECT pi_sort_key_questions.nid FROM pi_sort_key_questions LEFT JOIN node_access ON node_access.nid = pi_sort_key_questions.nid LEFT JOIN node ON node.nid = pi_sort_key_questions.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_sort_key_questions.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+    $result = db_result(db_query($query));
+    return $result;
+}
 
+function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id){
+    $query = "SELECT pi_hypothesis.nid FROM pi_hypothesis LEFT JOIN node_access ON node_access.nid = pi_hypothesis.nid LEFT JOIN node ON node.nid = pi_hypothesis.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_hypothesis.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+    $result = db_result(db_query($query));
+    return $result;
+}
 
-function find_selected_measures_nid_for_uid_and_inquiry ($uid, $inquiry_id) {
+function find_measure_filter_nid_for_uid_and_inquiry($uid, $inquiry_id) {
+    $query = "SELECT pi_measure_filter.nid FROM pi_measure_filter LEFT JOIN node_access ON node_access.nid = pi_measure_filter.nid LEFT JOIN node ON node.nid = pi_measure_filter.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_measure_filter.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+    $result = db_result(db_query($query));
+    return $result;
+}
+
+function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id) {
     $query = "SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON node_access.nid = pi_selected_measures.nid LEFT JOIN node ON node.nid = pi_selected_measures.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_selected_measures.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
     $result = db_result(db_query($query));
     return $result;
@@ -96,7 +113,7 @@ function workflow_for_updated_node_adder_activity($node, $user) {
 	}
 	
 	$activity_array = array();
-	$activity_array["name"] = $activity_name;
+	$activity_array["name"] = t("D: " . $activity_name);
 	$activity_array["activity_id"] = $loaded_activity->activity_id;
 	$activity_array["description"] = $loaded_activity->description;
 	$activity_array["activity_type"] = $loaded_activity->activity_type;
@@ -115,7 +132,26 @@ function update_activity_when_result_presentations_updated($node, $user) {
 
     //save current activity including the activity_id
     $activity_array = array();
-    $activity_array["name"] = $node->title;
+    $activity_array["name"] = t("R: " . $node->title);
+    $activity_array["activity_id"] = $loaded_activity->activity_id;
+    $activity_array["description"] = $loaded_activity->description;
+    $activity_array["activity_type"] = $loaded_activity->activity_type;
+    $activity_array["node_type"] = $loaded_activity->node_type;
+    $activity_array["parameters"] = $loaded_activity->parameters;
+    $activity_array["destination"] = $loaded_activity->destination;
+    $activity_array["audience"] = $loaded_activity->audience;
+
+    save_activity($activity_array);
+}
+
+function update_activity_when_key_answer_updated($node, $user) {
+    $uid = $user->uid;
+    $details = get_inquiry_details_from_current_path();
+    $loaded_activity = load_activity($details->activity_id);
+
+    //save current activity including the activity_id
+    $activity_array = array();
+    $activity_array["name"] = t("A: " . $node->title);
     $activity_array["activity_id"] = $loaded_activity->activity_id;
     $activity_array["description"] = $loaded_activity->description;
     $activity_array["activity_type"] = $loaded_activity->activity_type;
@@ -134,7 +170,7 @@ function update_activity_when_key_question_updated($node, $user) {
 
     //save current activity including the activity_id
     $activity_array = array();
-    $activity_array["name"] = t("Q:" . $node->short_title);
+    $activity_array["name"] = t("Q: " . $node->title);
     $activity_array["activity_id"] = $loaded_activity->activity_id;
     $activity_array["description"] = $loaded_activity->description;
     $activity_array["activity_type"] = $loaded_activity->activity_type;
@@ -153,7 +189,7 @@ function update_activity_when_add_measure_updated($node, $user) {
 
     //save current activity including the activity_id
     $activity_array = array();
-    $activity_array["name"] = $node->title;
+    $activity_array["name"] = t("M: " . $node->title);
     $activity_array["activity_id"] = $loaded_activity->activity_id;
     $activity_array["description"] = $loaded_activity->description;
     $activity_array["activity_type"] = $loaded_activity->activity_type;
@@ -172,7 +208,7 @@ function add_activity_when_result_presentations_created($node, $user, $node_func
 
     //copy over current except for the activity_id
     $activity_array = array();
-    $activity_array["name"] = $node->title;
+    $activity_array["name"] = t("R: " . $node->title);
     $activity_array["description"] = $loaded_activity->description;
     $activity_array["activity_type"] = $loaded_activity->activity_type;
     $activity_array["node_type"] = $loaded_activity->node_type;
@@ -218,6 +254,9 @@ function add_activity_when_result_presentations_created($node, $user, $node_func
 
     //set the stage phase activity
     $psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+    if(!$psp_id) {
+    	$psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
+    }
     $query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
     $current_pos = db_result(db_query($query));
     $new_pos = $current_pos + 1;
@@ -236,15 +275,14 @@ function add_activity_when_result_presentations_created($node, $user, $node_func
     }
 }	
 
-
-function add_activity_when_key_question_created($node, $user, $node_function, $visible_status) {
+function add_activity_when_key_answer_created($node, $user, $node_function, $visible_status) {
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
     $loaded_activity = load_activity($details->activity_id);
 
     //copy over current except for the activity_id
     $activity_array = array();
-    $activity_array["name"] = t("Q:" . $node->short_title);
+    $activity_array["name"] = t("A: " . $node->title);
     $activity_array["description"] = $loaded_activity->description;
     $activity_array["activity_type"] = $loaded_activity->activity_type;
     $activity_array["node_type"] = $loaded_activity->node_type;
@@ -291,7 +329,87 @@ function add_activity_when_key_question_created($node, $user, $node_function, $v
 
     //set the stage phase activity
     $psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
-    $query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
+    if(!$psp_id) {
+    	$psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
+    }
+
+    $query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = '" . $psp_id . "' ORDER BY position DESC";
+    $current_pos = db_result(db_query($query));
+    $new_pos = $current_pos + 1;
+    insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
+
+    //set pi activity node
+    add_new_pi_activity_node($node, $user, $node_function, $visible_status, $new_details);
+
+    //set og if necessary for new node
+    $details = get_inquiry_details_from_current_path();
+    $activity = load_activity($details->activity_id);
+    if ($loaded_activity->audience != "individual") {
+        $users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
+        $context['group'] = $users_group;
+        og_add_group_action($node, $context);
+    }
+}
+
+function add_activity_when_key_question_created($node, $user, $node_function, $visible_status) {
+    $uid = $user->uid;
+    $details = get_inquiry_details_from_current_path();
+    $loaded_activity = load_activity($details->activity_id);
+
+    //copy over current except for the activity_id
+    $activity_array = array();
+    $activity_array["name"] = t("Q: " . $node->title);
+    $activity_array["description"] = $loaded_activity->description;
+    $activity_array["activity_type"] = $loaded_activity->activity_type;
+    $activity_array["node_type"] = $loaded_activity->node_type;
+    $activity_array["parameters"] = $loaded_activity->parameters;
+    $activity_array["destination"] = $loaded_activity->destination;
+    $activity_array["audience"] = $loaded_activity->audience;
+
+    //create the new activity
+    save_activity($activity_array);
+    $query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
+    $new_activity_id = db_result(db_query($query2));
+
+    //****new details object
+    $new_details = new stdClass;
+    $new_details->inquiry_id = $details->inquiry_id;
+    $new_details->stage_id = $details->stage_id;
+    $new_details->phase_id = $details->phase_id;
+    $new_details->activity_id = $new_activity_id;
+
+
+    //set status for the new activity
+    $activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
+    $new_activity_status = new stdClass;
+    $new_activity_status->inquiry_id = $activity_status->inquiry_id;
+    $new_activity_status->activity_id = $new_activity_id;
+    $new_activity_status->uid = $activity_status->uid;
+    $new_activity_status->gid = $activity_status->gid;
+    $new_activity_status->node_function = $activity_status->node_function;
+    $new_activity_status->visible_status = $activity_status->visible_status;
+    save_activity_status($new_activity_status);
+
+    //set actor for the new activity
+    $activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
+    $new_activity_actor["inquiry_id"] = $details->inquiry_id;
+    $new_activity_actor["activity_id"] = $new_activity_id;
+    if ($loaded_activity->audience == "individual") {
+        $new_activity_actor["uid"] = $user->uid;
+    }
+    else {
+        $users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
+        $new_activity_actor["gid"] = $users_group;
+    }
+    insert_activity_actor($new_activity_actor);
+
+    //set the stage phase activity
+    $psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+    if(!$psp_id) {
+    	$psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
+    }
+
+    $query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = '" . $psp_id . "' ORDER BY position DESC";
     $current_pos = db_result(db_query($query));
     $new_pos = $current_pos + 1;
     insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
@@ -317,7 +435,7 @@ function add_activity_when_add_measure_created($node, $user, $node_function, $vi
 
     //copy over current except for the activity_id
     $activity_array = array();
-    $activity_array["name"] = $node->title;
+    $activity_array["name"] = t("M: " . $node->title);
     $activity_array["description"] = $loaded_activity->description;
     $activity_array["activity_type"] = $loaded_activity->activity_type;
     $activity_array["node_type"] = $loaded_activity->node_type;
@@ -361,9 +479,13 @@ function add_activity_when_add_measure_created($node, $user, $node_function, $vi
         $new_activity_actor["gid"] = $users_group;
     }
     insert_activity_actor($new_activity_actor);
-
-    //set the stage phase activity
+		
+		//set the stage phase activity
     $psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+    if(!$psp_id) {
+    	$psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
+    }
+    
     $query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
     $current_pos = db_result(db_query($query));
     $new_pos = $current_pos + 1;
@@ -415,10 +537,10 @@ function workflow_for_created_node_adder_activity($node, $user, $node_function, 
 	if (strlen($activity_name) < 2) {
         $activity_name = "Data";
   }
-  
+  	
   //the new activity
 	$activity_array = array();
-	$activity_array["name"] = $activity_name;
+	$activity_array["name"] = t("D: " . $activity_name);
 	$activity_array["description"] = $loaded_activity->description;
 	$activity_array["activity_type"] = $loaded_activity->activity_type;
 	$activity_array["node_type"] = $loaded_activity->node_type;
@@ -461,9 +583,12 @@ function workflow_for_created_node_adder_activity($node, $user, $node_function, 
 		$new_activity_actor["gid"] = $users_group;
 	}
 	insert_activity_actor($new_activity_actor);
-
+	
 	//set the stage phase activity
 	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+	if(!$psp_id) {
+		$psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
+	}
 
 	$query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
 	$current_pos = db_result(db_query($query));
@@ -472,6 +597,7 @@ function workflow_for_created_node_adder_activity($node, $user, $node_function, 
 
 	//set pi activity node
 	add_new_pi_activity_node($node, $user, $node_function, $visible_status, $new_details);
+	
 }
 
 

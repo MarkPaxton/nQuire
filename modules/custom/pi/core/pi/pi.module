@@ -704,7 +704,7 @@ function get_activity_id_for_nid($nid) {
 	return $result->activity_id;
 }
 
-function get_activity_type_of_node_path ($path) {
+function get_activity_type_of_node_path($path) {
 
 /**
  * Uses arguments from the path and the pi_activity_table to return the activity type.
@@ -1292,7 +1292,7 @@ function delete_activity_type_for_user ($activity_type, $user) {
 
 	return $items;
 }
- 
+
 function load_stage ($stage_id) {
 
 /**
@@ -1823,7 +1823,11 @@ function get_unique_activities($activities){
 	return $unique;
 }
 
-function get_inquiries_of_user ($uid) {
+function get_inquiries($uid = 0) {
+	get_inquiries_of_user($uid);
+}
+
+function get_inquiries_of_user ($uid = 0) {
 
 /**
  * Returns array of inquiry_id values and inquiry names for user or user's groups
@@ -1831,13 +1835,17 @@ function get_inquiries_of_user ($uid) {
  
 	$query = "SELECT DISTINCT(pi_inquiry_actor.inquiry_id) AS inquiry_id, pi_inquiry.name AS name ";
 	$query .= "FROM pi_inquiry_actor ";
-  	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_inquiry_actor.gid ";
-  	$query .= "LEFT JOIN pi_inquiry ON pi_inquiry.inquiry_id = pi_inquiry_actor.inquiry_id ";
-	$query .= "WHERE pi_inquiry_actor.uid = '" . $uid . "' ";
-  	$query .= " OR og_uid.uid =  '" . $uid . "' ";
+	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_inquiry_actor.gid ";
+	$query .= "LEFT JOIN pi_inquiry ON pi_inquiry.inquiry_id = pi_inquiry_actor.inquiry_id ";
+	if ($uid != '0') {
+		$query .= "WHERE pi_inquiry_actor.uid = '" . $uid . "' ";
+		$query .= " OR og_uid.uid =  '" . $uid . "' ";
+	}
+	
 	$query .= " ORDER BY pi_inquiry_actor.inquiry_id DESC";
-  	$result = db_query($query);
-  	return $result;
+	$result = db_query($query);
+
+	return $result;
 }
 
 
