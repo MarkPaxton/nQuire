@@ -15,6 +15,20 @@ function pi_authoring_init() {
 }
 
 
+
+/**
+ * This implements the theme hook for pi_authoring which defines the available theme
+ * functions within this module
+ * @return array of theme names and arguments
+ */
+function pi_authoring_theme() {
+  return array(
+    'pi_authoring_order_phases_form' => array(
+      'arguments' => array('form' => NULL),
+    ),
+  );
+}
+
 /**
  * Implementation of _help hook for pi_authoring
  */
@@ -973,15 +987,19 @@ function pi_authoring_edit_inquiry($inquiry_id) {
 		$phases = get_phases_of_inquiry($inquiry_id);
 		if($phases != false)
 		{
-			$content .= "<ol>\n"; 
-			while($phase = db_fetch_object($phases))
+		    $header = array(
+		        t("Phase"),
+		        t("Description")
+		    );
+
+		    $rows = array();
+		    while($phase = db_fetch_object($phases))
 			{
-				$content .= "\t<li><span class='inquiry_phase_name'>" . t($phase->name) . ":</span> " . 
-					"<span class='inquiry_phase_description'>" . t($phase->description) . "</span></li>\n";
+				$phase_objects[] = $phase;
 			}
-			$content .= "</ol>\n"; 
+			$content .= drupal_get_form('pi_authoring_order_phases_form', $phase_objects);
 		}
-		else 
+		else
 		{
 			$content .= "<p>No phases added so far in this inquiry.</p>\n";
 		}
@@ -996,7 +1014,83 @@ function pi_authoring_edit_inquiry($inquiry_id) {
 	return t($content);
 }
 
+/**
+ * This function creates the form for draggable phase ordering on the edit inquiry page
+ * @param $phases array of each of the phases in the inquiry created from db_fetch_object 
+ * @return array describing a form in drupal api format
+ */
+function pi_authoring_order_phases_form(&$form_state, $phases) {
+	$form = array();
+	$form['#theme'] = 'pi_authoring_order_phases_form';
+	
+	$form['#title'] = array(
+		'#type' => 'hidden',
+		'#value' => t('pi_phase'),
+	);
+	
+	$form['order_phases_phases'] = array(
+		'#tree' => TRUE
+	);
+	
+	$position = 0;
+	foreach($phases as $phase)
+	{
+		$form['order_phases_phases'][$phase->phase_id]['name'] =
+		 	array(
+		 		'#value' => $phase->name
+		 	);
+		$form['order_phases_phases'][$phase->phase_id]['description'] = 
+			array(
+				'#value' => $phase->description
+			);
+		$form['order_phases_phases'][$phase->phase_id]['position'] = 
+			array(
+	            '#type'          => 'weight',
+	            '#delta'         => count($phases),
+	            '#default_value' => $position
+	        );
+        
+        $position++;
+	}
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+  	);
+  	//firep($form);
+	return $form;	
+}
 
+/**
+ * This creates the layour for the order phases form, with draggable elelemts 
+ * @param array $form description of a form based on drupal api
+ * @return string html output for the form
+ */
+function theme_pi_authoring_order_phases_form($form) {
+  drupal_add_tabledrag('pi-authoring-order-phases-sort', 'order', 'sibling', 'pi-authoring-order-phases-element');
+  $header = array('', 'Name', 'Description', 'Position');
+  
+  $rows = array();
+  foreach (element_children($form['order_phases_phases']) as $key)
+  {
+    // Add class to group weight fields for drag and drop.
+    firep("Key is $key.");
+    firep($form['order_phases_phases'][$key]);
+    $form['order_phases_phases'][$key]['position']['#attributes']['class'] = 'pi-authoring-order-phases-element';
+
+    firep("AFTER $key.");
+    firep($form['order_phases_phases'][$key]);
+    
+    $row = array('');
+    $row[] = drupal_render($form['order_phases_phases'][$key]['name']);
+    $row[] = drupal_render($form['order_phases_phases'][$key]['description']);
+    $row[] = drupal_render($form['order_phases_phases'][$key]['position']);
+    
+    $rows[] = array('data' => $row, 'class' => 'draggable');
+  }
+  $output = theme('table', $header, $rows, array('id' => 'pi-authoring-order-phases-sort'));
+  $output .= drupal_render($form);
+  return $output;
+}
 
 /**
  * This generates the page to allow the adding of phases and stages to an inquiry
