@@ -119,7 +119,7 @@ function save_inquiry_phase($inquiry_phase)
 	$allowed_fields = array("inquiry_id", "phase_id", "position");
 	
 	// Assume this is an INSERT unless pip_id is set and exists in db.
-	$query = "INSERT INTO `pi_inquiry_phase` SET (%fields)";
+	$query = "INSERT INTO `pi_inquiry_phase` SET (%s)";
 	if(isset($inquiry_phase['pip_id']))
 	{
 		// pip_id is specified so try an UPDATE only if it exists in db already
@@ -130,7 +130,7 @@ function save_inquiry_phase($inquiry_phase)
 		if(db_result($result)==1)
 		{
 			// There is an existing inquiry_phase to go ahead and update it.
-			$query = "UPDATE `pi_inquiry_phase` SET (%fields) WHERE pip_id='" . 
+			$query = "UPDATE `pi_inquiry_phase` SET (%s) WHERE pip_id='" . 
 				db_escape_string($inquiry_phase['pip_id']) . "'";
 		}
 	}
@@ -149,7 +149,7 @@ function save_inquiry_phase($inquiry_phase)
 	}
 	firep($query);
 	firep($fields);
-	$result = db_query($query, array('fields' => $fields));
+	$result = db_query($query, array($fields));
 	return $result;
 }
 
