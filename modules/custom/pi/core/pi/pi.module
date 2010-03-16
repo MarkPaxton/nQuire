@@ -95,11 +95,11 @@ function pi_stage_selector_view() {
  * Returns a database resource handle to a table of all the phases of the given inquiry
  * ordered by ascending inquiry_phase->position aliased as position.
  * @param unint $inquiry_id should be a valid inquiry id
- * @returns db_result_object for pi_phase with additional attibute 'position' taken from pi_inquiry_phase
+ * @return db_result_object for pi_phase with additional attribute 'position' taken from pi_inquiry_phase and pip_id as pi_inquiry_phase.pip_id
  *
  */
 function get_phases_of_inquiry($inquiry_id) {
-	$query = "SELECT pi_phase.*, pi_inquiry_phase.position as position FROM pi_phase LEFT JOIN pi_inquiry_phase ON pi_inquiry_phase.phase_id=pi_phase.phase_id WHERE pi_inquiry_phase.inquiry_id='" . $inquiry_id . "' ORDER BY position ASC";
+	$query = "SELECT pi_phase.*, pi_inquiry_phase.pip_id as pip_id, pi_inquiry_phase.position as position FROM pi_phase LEFT JOIN pi_inquiry_phase ON pi_inquiry_phase.phase_id=pi_phase.phase_id WHERE pi_inquiry_phase.inquiry_id='" . $inquiry_id . "' ORDER BY position ASC";
 	$result = db_query($query);
 	return $result;
 }
@@ -109,7 +109,7 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 	//get phase of inquiry
 	//that the user can see
 	//that has a stage phase
-	//containing the activty
+	//containing the activity
 	$query = "SELECT pi_phase.phase_id FROM pi_phase LEFT JOIN pi_inquiry_phase ON pi_inquiry_phase.phase_id = pi_phase.phase_id LEFT JOIN pi_phase_actor ON pi_phase_actor.phase_id = pi_phase.phase_id LEFT JOIN og_uid ON og_uid.nid = pi_phase_actor.gid LEFT JOIN pi_stage_phase ON pi_stage_phase.phase_id = pi_phase.phase_id LEFT JOIN pi_stage_phase_activity ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry_id . "' AND (pi_phase_actor.uid = '" . $uid . "' OR og_uid.uid = '" . $uid . "') AND  pi_stage_phase_activity.activity_id = '" . $activity_id . "' ";
 	$result = db_fetch_object(db_query($query));
 	return $result;
@@ -1320,7 +1320,7 @@ function load_stage ($stage_id) {
 	return $items;
 }
 
-function load_phase ($phase_id) {
+function load_phase($phase_id) {
 
 /**
  * Returns the phase_object from pi_phase table.
