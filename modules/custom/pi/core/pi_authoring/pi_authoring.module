@@ -23,7 +23,7 @@ function pi_authoring_init() {
  */
 function pi_authoring_theme() {
   return array(
-    'pi_authoring_order_phases_form' => array(
+  'pi_authoring_order_phases_form' => array(
       'arguments' => array('form' => NULL),
     ),
   );
@@ -60,6 +60,86 @@ function pi_authoring_perm() {
  */
 function pi_authoring_menu() {
 	$items = array();
+	
+	// Add some items to the administration menu
+	$items['admin/piauthoring'] = array(
+      'title' => t('nQuire Inquiry Authoring'),
+	  'position' => 'right',
+	  'weight' => -5,
+  	  'page callback' => 'pi_authoring_view',
+      'access arguments' => array('administer site configuration'),
+	);
+
+	$items['admin/piauthoring/inquires'] = array(
+      'title' => 'Inquiries',
+	  'description' => 'Manage Inquiries.',
+  	  'page callback' => 'pi_authoring_view',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('administer site configuration'),
+	);
+
+	//Add a new Inquiry Authoring top level menu
+	$items['nQuire'] = array(
+      'title' => 'Inquiry Authoring',
+  	  'page callback' => 'pi_authoring_view',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['nQuire/list'] = array(
+      'title' => t('Inquiries'),
+  	  'page callback' => 'pi_authoring_view',
+  	  'type' => MENU_DEFAULT_LOCAL_TASK,
+      'access arguments' => array('access pi_authoring content'),
+	  'weight' => 0,
+	);
+	
+	$items['nQuire/new'] = array(
+      'title' => 'New Inquiry',
+  	  'page callback' => 'pi_authoring_new_inquiry_inquiry',
+	  'type' => MENU_LOCAL_TASK,
+      'access arguments' => array('access pi_authoring content'),
+	  'weight' => 1,
+	);
+
+	$items['nQuire/inquiry/%inquiry'] = array(
+      'title' => t('Inquiry'),
+  	  'page callback' => 'pi_authoring_inquiry_phases',
+  	  'page arguments' => array(2),
+  	  'type' => MENU_NORMAL_ITEM,
+	  'access_callback' => TRUE,
+      'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['nQuire/inquiry/%inquiry/phases'] = array(
+      'title' => t('Edit Phases'),
+  	  'page callback' => 'pi_authoring_inquiry_phases',
+  	  'page arguments' => array(2),
+  	  'type' => MENU_DEFAULT_LOCAL_TASK,
+	  'access_callback' => TRUE,
+      'access arguments' => array('access pi_authoring content'),
+	  'weight' => 0,
+	);
+	
+	$items['nQuire/inquiry/%inquiry/edit'] = array(
+      'title' => t('Edit Inquiry'),
+  	  'page callback' => 'drupal_get_form',
+  	  'page arguments' => array('pi_authoring_new_inquiry_inquiry_form', 2),
+  	  'type' => MENU_LOCAL_TASK,
+	  'access_callback' => TRUE,
+      'access arguments' => array('access pi_authoring content'),
+	  'weight' => 1,
+	);
+	
+	$items['nQuire/inquiry/%inquiry/delete'] = array(
+      'title' => t('Delete Inquiry'),
+  	  'page callback' => 'drupal_get_form',
+  	  'page arguments' => array('pi_authoring_delete_inquiry_confirm', 2),
+      'access arguments' => array('access pi_authoring content'),
+	  'access_callback' => TRUE,
+	  'type' => MENU_LOCAL_TASK,
+	  'weight' => 2,
+	);
 
 	$items['piauthoring'] = array(
 	//'path' => 'piauthoring',
@@ -69,15 +149,6 @@ function pi_authoring_menu() {
       'access arguments' => array('access pi_authoring content'),
 	);
 
-	$items['piauthoring/edit/%'] = array(
-	//'path' => 'piauthoring',
-      'title' => t('Edit Inquiry'),
-  	  'page callback' => 'pi_authoring_edit_inquiry',
-  	  'page arguments' => array(2),
-  	  'type' => MENU_NORMAL_ITEM,
-      'access arguments' => array('access pi_authoring content'),
-	);
-	
 	$items['piauthoring/newinquiry'] = array(
 	//'path' => 'piauthoring/newinquiry',
       'title' => t('1. Define the basics'),
@@ -86,22 +157,6 @@ function pi_authoring_menu() {
       'access arguments' => array('access pi_authoring content'),
 	);
 	
-	$items['piauthoring/newinquiry/1'] = array(
-	//'path' => 'piauthoring/newinquiry/stages',
-     'title' => t('Remove'),
-  	 'page callback' => 'pi_authoring_new_inquiry_remove',
-	 'type' => MENU_CALLBACK,
-     'access arguments' => array('access pi_authoring content'),
-	);
-
-	$items['piauthoring/newinquiry/inquiry'] = array(
-	//'path' => 'piauthoring/newinquiry/inquiry',
-      'title' => t('1.1. Inquiry'),
-  	  'page callback' => 'pi_authoring_new_inquiry_inquiry',
-  	  'type' => MENU_NORMAL_ITEM,
-      'access arguments' => array('access pi_authoring content'),
-	);
-
 	$items['piauthoring/newinquiry/phases'] = array(
 	//'path' => 'piauthoring/newinquiry/phases',
       'title' => t('1.2. Phases'),
@@ -109,7 +164,7 @@ function pi_authoring_menu() {
   	  'type' => MENU_NORMAL_ITEM,
       'access arguments' => array('access pi_authoring content'),
 	);
-
+	
 	$items['piauthoring/newinquiry/stages'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
      'title' => t('1.3. Stages'),
@@ -345,6 +400,22 @@ function pi_authoring_menu() {
 	return $items;
 }
 
+/**
+ * This is a generic loader for inquires which pre-loads an inquiry when %inquiry_id
+ * is specified in a menu item path.
+ * If the inquiry id noe found it returns false which causes a 404 page not found error to be returned
+ * by drupal.
+ * @param uint $inquiry_id the id of an inquiry to load
+ * @return db_object inquiry or FALSE
+ */
+function inquiry_load($inquiry_id)
+{
+	// utilises the get_inquiry function from pi.module
+	$inquiry = load_inquiry($inquiry_id);
+	return $inquiry;	
+}
+
+
 //-------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------Table View of Inquiry------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------
@@ -359,21 +430,30 @@ function pi_authoring_view(){
 	// Wrap the contet in a named element to allow css styles to be unique to this module 
 	$content .="<div id='pi_authoring'>";
 	
-	$content .= "<p>To create a new inquiry " . l(t("click here"), 'piauthoring/newinquiry/inquiry') . 
-		".  To edit an existing inquiry select it from the list below.</p>\n";
-
+	$content .= "<p>To create a new inquiry enter the details here. " . 
+		"To edit an existing inquiry select it from the list below.</p>\n";
+/*	
+	$content .="<div id='new_inquiry'>\n"; 
+	$content .= drupal_get_form('pi_authoring_new_inquiry_inquiry_form');
+	$content .="</div>\n";  // End of '#new_inquiry
+*/	
 	$content .= "<h2>Current Inquiries</h2>\n";
 	
 	$inquiries = get_inquiries();
+	$headings = array(array('data'=>'Title','width'=>'20%'), 'Description', '');
+	$rows = array();
 	while($inquiry = db_fetch_object($inquiries))
 	{
-		$content .="<div class='inquiry_block'>";
-
-		$content .="<h3>" . t($inquiry->name) . " " . l(t("Edit"), 'piauthoring/edit/' . $inquiry->inquiry_id )  . "</h3>\n";
-		$content .="<div class='inquiry_description'>" . t($inquiry->description) . "</div>\n";		
-
-		$content .="</div>\n";  //End of '.inquiry_block'
+		$row = array();
+		$row[] = array( 'data' => l(t($inquiry->name), '/nQuire/inquiry/' . $inquiry->inquiry_id . '/phases'), 
+						'class'=> 'inquiry_name');
+		$row[] = array('data' => t($inquiry->description) , 
+						'class' => 'inquiry_description');		
+		$row[] = l(t("Delete"), '/nQuire/inquiry/' . $inquiry->inquiry_id . '/delete');
+		
+		$rows[] = $row;
 	}
+	$content .= theme('table', $headings, $rows);
 	
 	$content .="</div>\n";  // End of '#pi_authoring'
 	return $content;
@@ -966,67 +1046,75 @@ function uninclude_activity_link(){
 
 /**
  * This generates the page to allow the adding of phases and stages to an inquiry
- * @param $inquiry_id (uint) is a valid inquiry id (invalid inquiry_ids generate error message).
- * @todo handle invalid inquiry id by redurecting or something other than a message
+ * @param uint $inquiry_id is a valid inquiry id.  Invalid inquiry_ids generate error message and
+ *  redirect back to /piauthoring/.
  */
-function pi_authoring_edit_inquiry($inquiry_id) {
-	$content = '';
-	
+function pi_authoring_inquiry_phases($inquiry) {
 	// Use this to apply module specific css
-	$content .= "<div id='pi_authoring'>\n";
-
-	// First check if the inquiry exists, if it doesn't redirect to the selection page
-	// if the inquiry doesn't exist, load inquiry retuerns FALSE
-	$inquiry = load_inquiry($inquiry_id);
-	if($inquiry != false)
+	$output .= "<div id='pi_authoring'>\n";
+	
+	//set the page title to be the inquiry name
+	drupal_set_title("Editing " .  t($inquiry->name));
+	$output .="<p class='inquiry_description'>" . t($inquiry->description) . "</p>\n";
+	
+	// Query for inquiry phases and list them if there are any, otherwise show 
+	// placeholder text
+	$phases = get_phases_of_inquiry($inquiry->inquiry_id);
+	if($phases != false)
 	{
-		$content .="<h2>" . t($inquiry->name) . "</h2>\n";	
+		$output .="<h2>Phases of this inquiry</h2>\n";
+		$header = array(
+	        t("Phase name"),
+	        t("Description")
+	    );
 
-		// Query for inquiry phases and list them if there are any, otherwise show 
-		// placeholder text
-		$phases = get_phases_of_inquiry($inquiry_id);
-		if($phases != false)
+	    $rows = array();
+	    while($phase = db_fetch_object($phases))
 		{
-		    $header = array(
-		        t("Phase"),
-		        t("Description")
-		    );
-
-		    $rows = array();
-		    while($phase = db_fetch_object($phases))
-			{
-				$phase_objects[] = $phase;
-			}
-			$content .= drupal_get_form('pi_authoring_order_phases_form', $phase_objects);
+			$phase_objects[] = $phase;
+		}
+		if(!empty($phase_objects))
+		{
+			$output .= drupal_get_form('pi_authoring_order_phases_form', $phase_objects);
 		}
 		else
 		{
-			$content .= "<p>No phases added so far in this inquiry.</p>\n";
+			// Display a warning message to the user as there are no phases yet defined 
+			drupal_set_message("No phases added so far in this inquiry, to add phases.", 'warning', FALSE);
+
+			// Also display some boilerplate text about defining inquiries
+			$output .="<div class='help'>\n";
+			$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
+			$output .= "A phase is a conceptual part of the inquiry model, for example, ";
+			$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
+			$output .= "be phases in an inquiry.</p>\n";
+			$output .= "</div>\n"; // #help
+			
 		}
+		$output .= drupal_get_form('pi_authoring_inquiry_add_phase_form', $inquiry);
 	}
 	else
 	{
-		$content .= "<p>Inquiry number " . t($inquiry_id) . " can't be found.</p>\n";
+		drupal_set_message("There was a problem accessing the inquiry data: " . t(db_error()), 'error', FALSE);
+		drupal_goto("/piauthoring");
 	}
-
-	$content .= "</div>\n"; // #pi_authoring
+	$output .= "</div>\n"; // #pi_authoring
 	
-	return t($content);
+	return $output;
 }
 
 /**
  * This function creates the form for draggable phase ordering on the edit inquiry page
- * @param $phases array of each of the phases in the inquiry created from db_fetch_object 
+ * @param $phases array of each of the phases in the inquiry created from db_fetch_object
+ * @param db_result_object $inquiry the inquiry these phases belong to used to redirect user back to 
+ *  inquiry phases page
  * @return array describing a form in drupal api format
  */
 function pi_authoring_order_phases_form(&$form_state, $phases) {
 	$form = array();
 	$form['#theme'] = 'pi_authoring_order_phases_form';
 	
-	$form['#title'] = array(
-		'#type' => 'hidden',
-		'#value' => t('pi_phase'),
-	);
+	$form['#title'] = 'Inquiry Phases';
 	
 	$form['order_phases_phases'] = array(
 		'#tree' => TRUE
@@ -1035,15 +1123,15 @@ function pi_authoring_order_phases_form(&$form_state, $phases) {
 	$position = 0;
 	foreach($phases as $phase)
 	{
-		$form['order_phases_phases'][$phase->phase_id]['name'] =
+		$form['order_phases_phases'][$phase->pip_id]['name'] =
 		 	array(
 		 		'#value' => $phase->name
 		 	);
-		$form['order_phases_phases'][$phase->phase_id]['description'] = 
+		$form['order_phases_phases'][$phase->pip_id]['description'] = 
 			array(
 				'#value' => $phase->description
 			);
-		$form['order_phases_phases'][$phase->phase_id]['position'] = 
+		$form['order_phases_phases'][$phase->pip_id]['position'] = 
 			array(
 	            '#type'          => 'weight',
 	            '#delta'         => count($phases),
@@ -1061,25 +1149,60 @@ function pi_authoring_order_phases_form(&$form_state, $phases) {
 }
 
 /**
- * This creates the layour for the order phases form, with draggable elelemts 
+ * This handles the data from the inquiry phase ordering form, it does not take the actual order
+ * numbers provided by the form, but reorders them from 0..(n-1) so that the position data in the 
+ * table is always consistant and not surceptable to wrrors introduced by bad post data.
+ * @todo this currently displays a diagnostic message using firebug for drupal and redirects to inquiry phases 
+ * @param array $form drupal api form data
+ * @param array $form_state drupal api submitted form data
+ */
+function pi_authoring_order_phases_form_submit($form, &$form_state)
+{
+	firep($form_state['values']['order_phases_phases'], "Form data");
+	$phase_order = array();
+	
+	//put all the phases in an array
+	foreach($form_state['values']['order_phases_phases'] as $inquiry_pip_id => $new_order)
+	{
+		$phase_order[$inquiry_pip_id] = $new_order; 
+	}
+	//sort the elements by the new order
+	asort($phase_order);
+	//firep(var_dump($phase_order), "New order");
+	
+	// Now reorder from 0..n based on this order
+	$count = 0;
+	foreach($phase_order as $pip_id => $order)
+	{
+		$phase_order[$pip_id] = $count++;		
+	}
+	//firep(var_dump($phase_order), "New order");
+	// This modification needs to be done in an transaction so lock the pi_inquiry_phase table
+	
+	db_lock_table('pi_inquiry_phase');
+	foreach($phase_order as $pip_id => $position)
+	{
+		save_inquiry_phase(array('pip_id'=>$pip_id, 'position'=>$position));
+	}
+	db_unlock_tables();
+}
+
+
+/**
+ * This creates the layout for the order phases form, with draggable elelemts 
  * @param array $form description of a form based on drupal api
  * @return string html output for the form
  */
 function theme_pi_authoring_order_phases_form($form) {
   drupal_add_tabledrag('pi-authoring-order-phases-sort', 'order', 'sibling', 'pi-authoring-order-phases-element');
-  $header = array('', 'Name', 'Description', 'Position');
+  $header = array(array('data' => '', 'width' => '29'), 'Phase', 'Description', 'Position');
   
   $rows = array();
   foreach (element_children($form['order_phases_phases']) as $key)
   {
     // Add class to group weight fields for drag and drop.
-    firep("Key is $key.");
-    firep($form['order_phases_phases'][$key]);
     $form['order_phases_phases'][$key]['position']['#attributes']['class'] = 'pi-authoring-order-phases-element';
 
-    firep("AFTER $key.");
-    firep($form['order_phases_phases'][$key]);
-    
     $row = array('');
     $row[] = drupal_render($form['order_phases_phases'][$key]['name']);
     $row[] = drupal_render($form['order_phases_phases'][$key]['description']);
@@ -1091,6 +1214,54 @@ function theme_pi_authoring_order_phases_form($form) {
   $output .= drupal_render($form);
   return $output;
 }
+
+/**
+ * This provides the form to include in the piauthoring/edit/% page to allow adding
+ * phases to an inquiry.
+ * 
+ * @param unknown_type $form_state
+ * @param db_result_object inquiry the db result for for the inquiry
+ * @return array Form description according to the drupal forms api
+ */
+function pi_authoring_inquiry_add_phase_form(&$form_state, $inquiry){
+	$form['add'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Add A New Phase'),
+		'#tree' => TRUE,
+	);
+	
+	$form['add']['inquiry_id'] = array(
+		'#type' => 'hidden',
+		'#value' => $inquiry->inquiry_id,
+	);
+
+	$form['add']['name'] = array(
+		'#title' => t('Phase Name'),
+		'#default_value' => '',
+		'#type' => 'textfield',
+		'#size' => '20',
+	);
+
+	$form['add']['description'] = array(
+		'#title' => t('Description of this phase'),
+		'#default_value' => '',
+		'#type' => 'textarea',
+		'#rows' => 3,
+		'#resizable' => TRUE
+	);
+
+	$form['add']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Add'),
+	);
+
+	return $form;
+}
+
+
+
+
+
 
 /**
  * This generates the page to allow the adding of phases and stages to an inquiry
@@ -1138,6 +1309,64 @@ function pi_authoring_new_inquiry() {
 	$content .= "</table>";
 	
 	return t($content);
+}
+
+/** 
+ * Provides the confirmation page to delete an inquiry
+ * @param $inquiry_id the id of the inquiry to be deleted
+ * @return null
+ */
+function pi_authoring_delete_inquiry_confirm(&$form_state, $inquiry) {
+	$return_data = array();
+	
+	$form['_inquiry'] = array (
+		'#type' => 'value',
+		'#value' => $inquiry,
+	);
+	$return_data = confirm_form($form,
+	   	t('Are you sure you want to delete ' . t($inquiry->inquiry_id) . '?'),
+    	isset($_GET['destination']) ? $_GET['destination'] : 'piauthoring',
+    	t('This action cannot be undone.'),
+    	t('Delete'),
+    	t('Cancel')
+    );
+    return $return_data;
+}
+
+
+/**
+ * Handles the respose to the depete inquiry confirmation page, deletes whole inquiry and
+ *  associated stages, phases and activities.
+ *  @todo make this database function work
+ *  @todo fatm database operation out to pi.module.
+ * @param array $form druypal form definition as specifiod by drupal api
+ * @param array $form_state drupal form response from http post
+ * @return null
+ */
+function pi_authoring_delete_inquiry_confirm_submit($form, &$form_state)
+{
+	$form_values = $form_state['values'];
+ 
+	if ($form_state['values']['confirm'])
+	{
+		$inquiry_id = $form_state['values']['_inquiry_id'];
+ 		pi_inquiry_delete($form_state['values'], $inquiry->inquiry_id);			
+ 
+		drupal_set_message(t('Inquiry has been deleted.'));
+  	}
+	drupal_goto("/piauthoring");
+}
+
+/**
+ * Deletes an inquiry with a given inquiry id and retuens the database result or error on doing so.
+ * It will also delete the associuated content in the database: phases, stages and activities, etc.
+ * If the inquiry id is not valid it will return false, like a database query error
+ * @param uint $inquiry_id the id of the inquiry to be deleted.
+ * @todo write this function and move it to pi.module
+ */
+function pi_inquiry_delete($inquiry_id)
+{
+	
 }
 
 /**
@@ -1201,12 +1430,12 @@ function pi_authoring_new_inquiry_inquiry(){
 }
 
 /**
- * MISSING
+ * This provides the form to enter the details of a new inquiry as part of the pi_authoring module
  * 
- * @param unknown_type $form_state
- * @return multitype:string NULL 
+ * @param $form_state
+ * @return array describing the form according to drupal forms api 
  */
-function pi_authoring_new_inquiry_inquiry_form($form_state){
+function pi_authoring_new_inquiry_inquiry_form(&$form_state){
 
 	$form['add'] = array(
 		'#type' => 'fieldset',
@@ -1221,9 +1450,10 @@ function pi_authoring_new_inquiry_inquiry_form($form_state){
 	);
 
 	$form['add']['description'] = array(
-		'#type' => 'textfield',
 		'#title' => t('Inquiry Description'),
 		'#default_value' => '',
+		'#type' => 'textarea',
+		'#rows' => 3,
 	);
 
 	$form['add']['submit'] = array(
@@ -1235,22 +1465,31 @@ function pi_authoring_new_inquiry_inquiry_form($form_state){
 }
 
 /**
- * MISSING
+ * This deals with the submitted pi_authoring_new_inquiry_inquiry_form and it redirects to
+ * piauthoring/edit/% for the newly created id, or piauthoring/edit/ on errror.
  * 
- * @param unknown_type $form
- * @param unknown_type $form_state
- * @return unknown_type
+ * @param array $form the form structure
+ * @param array $form_state the posted values
+ * @return null
  */
 function pi_authoring_new_inquiry_inquiry_form_submit($form, &$form_state){
 	$query = "INSERT INTO pi_inquiry SET ";
-	$query .= "name = '" . $form_state['values']['add']['name'] . "' ";
-	$query .= ", description = '" . $form_state['values']['add']['description'] . "'";
-	db_query($query);
-
-	$text = "New Inquiry " . $form_state['values']['add']['name'];
-	$text .= " Added: " . $form_state['values']['add']['description'];
-	drupal_set_message(t($text));
-	drupal_goto("piauthoring/newinquiry/phases");
+	$query .= "name='" . db_escape_string($form_state['values']['add']['name']) . "' ";
+	$query .= ", description='" . db_escape_string($form_state['values']['add']['description']) . "'";
+	$result = db_query($query);
+	if($result)
+	{
+		$inquiry_id = db_last_insert_id('pi_inquiry', 'inquiry_id');
+		$text = "New Inquiry \"" . $form_state['values']['add']['name'] . "\" has been added";
+		drupal_set_message($text, 'status');
+	}
+	else
+	{
+		$inquiry_id ="";
+		drupal_set_message("There was problem creating this inquiry: " . t(db_error()), 'error');
+	}
+	// Redirect to phase adding page, setting "new flag" to suppress the 'no phases' warning message.
+	drupal_goto("piauthoring/edit/" . $inquiry_id, array('new_flag'=>TRUE));
 }
 
 /**
@@ -1263,10 +1502,11 @@ function pi_authoring_new_inquiry_phases(){
 }
 
 /**
- * MISSING
+ * This provides the single page form to adding a phase to an inquiry
+ * @todo this should be removed and merged into 'inquiry_edit' page
  * 
  * @param unknown_type $form_state
- * @return multitype:string NULL 
+ * @return array desvribing the form according to the drupal forms api 
  */
 function pi_authoring_new_inquiry_phases_form($form_state){
 	$form['add'] = array(
@@ -1284,8 +1524,8 @@ function pi_authoring_new_inquiry_phases_form($form_state){
 	}
 
 	$form['add']['inquiry_id'] = array(
-		'#type' => 'select',
-		'#title' => t('Phase Belongs to Which Inquiry?'),
+		'#type' => 'hidden',
+		'#vlaue' => t('Phase Belongs to Which Inquiry?'),
 		'#options' => $options,
 	);
 
