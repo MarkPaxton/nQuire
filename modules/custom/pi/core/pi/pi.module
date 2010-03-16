@@ -99,8 +99,56 @@ function pi_stage_selector_view() {
  *
  */
 function get_phases_of_inquiry($inquiry_id) {
-	$query = "SELECT pi_phase.*, pi_inquiry_phase.pip_id as pip_id, pi_inquiry_phase.position as position FROM pi_phase LEFT JOIN pi_inquiry_phase ON pi_inquiry_phase.phase_id=pi_phase.phase_id WHERE pi_inquiry_phase.inquiry_id='" . $inquiry_id . "' ORDER BY position ASC";
-	$result = db_query($query);
+	$query = "SELECT pi_phase.*, pi_inquiry_phase.pip_id as pip_id, pi_inquiry_phase.position as position FROM pi_phase LEFT JOIN pi_inquiry_phase ON pi_inquiry_phase.phase_id=pi_phase.phase_id WHERE pi_inquiry_phase.inquiry_id=%d ORDER BY position ASC";
+	$result = db_query($query, $inquiry_id);
+	return $result;
+}
+
+/**
+ * Saves an inquiry_phase into the pi_inquiry_phase table
+ * If it does not exist (pip_id is null) then it will be created.
+ * If pip_id is specified the inquiry phase will be updated, unless pip_id doesn't exist
+ * if $inquiry_phase does not specify all columns updates will work but inserts will not 
+ * and then it will be treated as a new record and issued with a new id. 
+ * @param array $inquiry_phase consists of pip_id uint, inquiry_id uint, phase_id uint and position tinyint.
+ * @return db_query() result: FALSE on failure.
+ */
+function save_inquiry_phase($inquiry_phase)
+{
+	// These are the fields that will be inserted if specified
+	$allowed_fields = array('inquiry_id', 'phase_id', 'position');
+	
+	// Assume this is an INSERT unless pip_id is set and exists in db.
+	$query = "INSERT INTO `pi_inquiry_phase` SET (%s)";
+	if(isset($inquiry_phase['pip_id']))
+	{
+		// pip_id is specified so try an UPDATE only if it exists in db already
+		$query = "SELECT COUNT(`pip_id`) from pi_inquiry_phase WHERE pip_id=%d";
+		firep($query. "save_inquiry_phase");
+		$result = db_query($query, array($inquiry_phase['pip_id']));
+		if(db_result($result)==1)
+		{
+			// There is an existing inquiry_phase to go ahead and update it.
+			$query = "UPDATE `pi_inquiry_phase` SET %s WHERE `pip_id`='" . 
+				db_escape_string($inquiry_phase['pip_id']) . "'";
+		}
+	}
+	$fields = ''; 
+	foreach($inquiry_phase as $field => $value)
+	{
+		if(in_array($field, $allowed_fields))
+		{
+			// Add comma if it's not the first value
+			if($fields!='')
+			{
+				$fields .= ', ';
+			}
+			$fields .= "`$field`='" . db_escape_string($value) . "'";
+		}
+	}
+	firep($query);
+	firep($fields);
+	$result = db_query(str_replace('%s', $fields, $query));
 	return $result;
 }
 
