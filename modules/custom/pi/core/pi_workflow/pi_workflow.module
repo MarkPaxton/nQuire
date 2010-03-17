@@ -5,7 +5,13 @@
  * @file
  * Implements Activity Guide workflow.
  */
- 
+
+function find_pi_data_nids_for_uid_and_inquiry($uid, $inquiry_id) {
+	$query = "SELECT DISTINCT pi_collected_data.nid FROM pi_collected_data LEFT JOIN node_access ON node_access.nid = pi_collected_data.nid LEFT JOIN node ON node.nid = pi_collected_data.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_collected_data.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_sort_data ON pi_sort_data.data = pi_collected_data.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ORDER BY pi_sort_data.weight ASC ";
+	$result = db_query($query);
+	return $result;
+}
+
 function find_sort_key_questions_nid_for_uid_and_inquiry($uid, $inquiry_id) {
     $query = "SELECT pi_sort_key_questions.nid FROM pi_sort_key_questions LEFT JOIN node_access ON node_access.nid = pi_sort_key_questions.nid LEFT JOIN node ON node.nid = pi_sort_key_questions.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_sort_key_questions.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
     $result = db_result(db_query($query));
