@@ -22,11 +22,11 @@ function pi_authoring_init() {
  * @return array of theme names and arguments
  */
 function pi_authoring_theme() {
-  return array(
-  'pi_authoring_order_phases_form' => array(
-      'arguments' => array('form' => NULL),
-    ),
-  );
+	return array(
+		'pi_authoring_order_phases_form' => array(
+			'arguments' => array('form' => NULL),
+		),
+	);
 }
 
 /**
@@ -1324,7 +1324,7 @@ function pi_authoring_delete_inquiry_confirm(&$form_state, $inquiry) {
 		'#value' => $inquiry,
 	);
 	$return_data = confirm_form($form,
-	   	t('Are you sure you want to delete ' . t($inquiry->inquiry_id) . '?'),
+	   	t('Are you sure you want to delete ' . t($inquiry->name) . '?'),
     	isset($_GET['destination']) ? $_GET['destination'] : 'piauthoring',
     	t('This action cannot be undone.'),
     	t('Delete'),
@@ -1435,32 +1435,31 @@ function pi_authoring_new_inquiry_inquiry(){
  * @param $form_state
  * @return array describing the form according to drupal forms api 
  */
-function pi_authoring_new_inquiry_inquiry_form(&$form_state){
+function pi_authoring_new_inquiry_inquiry_form(&$node, $inquiry){
 
-	$form['add'] = array(
+	$form = array(
 		'#type' => 'fieldset',
 		'#title' => t('Add A New Inquiry'),
-		'#tree' => TRUE,
 	);
 
-	$form['add']['name'] = array(
+	$form['name'] = array(
 		'#type' => 'textfield',
 		'#title' => t('Inquiry Name'),
-		'#default_value' => '',
+		'#default_value' => $inquiry->name,
 	);
 
-	$form['add']['description'] = array(
+	$form['description'] = array(
 		'#title' => t('Inquiry Description'),
-		'#default_value' => '',
+		'#default_value' => $inquiry->description,
 		'#type' => 'textarea',
 		'#rows' => 3,
 	);
 
-	$form['add']['submit'] = array(
+	$form['submit'] = array(
 		'#type' => 'submit',
 		'#value' => t('Add'),
 	);
-
+firep($form);
 	return $form;
 }
 
@@ -1469,18 +1468,18 @@ function pi_authoring_new_inquiry_inquiry_form(&$form_state){
  * piauthoring/edit/% for the newly created id, or piauthoring/edit/ on errror.
  * 
  * @param array $form the form structure
- * @param array $form_state the posted values
+ * @param array pointer &$form_state the posted values
  * @return null
  */
 function pi_authoring_new_inquiry_inquiry_form_submit($form, &$form_state){
-	$query = "INSERT INTO pi_inquiry SET ";
-	$query .= "name='" . db_escape_string($form_state['values']['add']['name']) . "' ";
-	$query .= ", description='" . db_escape_string($form_state['values']['add']['description']) . "'";
+	$query = "INSERT INTO `pi_inquiry` SET ";
+	$query .= "name='" . db_escape_string($form_state['values']['name']) . "' ";
+	$query .= ", description='" . db_escape_string($form_state['values']['description']) . "'";
 	$result = db_query($query);
 	if($result)
 	{
 		$inquiry_id = db_last_insert_id('pi_inquiry', 'inquiry_id');
-		$text = "New Inquiry \"" . $form_state['values']['add']['name'] . "\" has been added";
+		$text = 'New Inquiry "' . t($form_state['values']['name']) . '" has been added';
 		drupal_set_message($text, 'status');
 	}
 	else
