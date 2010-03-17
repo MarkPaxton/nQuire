@@ -1,0 +1,154 @@
+<?php
+// $Id: pi_phase.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry Phase content type
+ * @todo Rename table to pi_phase rather than pi_phase_node when it's tested and working
+ */
+
+ 
+ /**
+ * Define the pi_inquiry node type
+ */
+function pi_phase_node_info() {
+	return array(
+		'pi_phase' => array(
+			'name' => t('Inquiry Phase'), // Required.
+			'module' => 'pi_phase',  // Required.
+			'description' => t('This is the Inquiry Phase content type for nQuire'), // Required.
+			'has_title' => TRUE,
+			'title_label' => t('Phase Name'),
+			'has_body' => TRUE,
+			'body_label' => t('Phase Description'),
+			'min_word_count' => 1,
+		)
+	);
+}
+
+/**
+ * Define permissions available for pi_inquiry module
+ */
+function pi_phase_perm() {
+	return array('create inquiry', 'edit own inquiry', 'edit any inquiry', 'delete own inquiry', 'delete any inquiry');
+}
+
+/**
+ * Work out if a user has permission to do something with an Inquiry
+ */
+function pi_phase_access($op, $node, $account) {
+  $is_author = $account->uid == $node->uid;
+  switch ($op) {
+    case 'create':
+      // Allow if user's role has 'create inquiry' permission.
+      return user_access('create inquiry', $account);
+
+    case 'update':
+      // Allow if user's role has 'edit own inquiry' permission and user is
+      // the author; or if the user's role has 'edit any inquiry' permission.
+      return user_access('edit own inquiry', $account) && is_author ||
+        user_access('edit any inquiry', $account);
+    case 'delete':
+      // Allow if user's role has 'delete own inquiry' permission and user is
+      // the author; or if the user's role has 'delete any inquiry' permission.
+      return user_access('delete own inquiry', $account) && $is_author ||
+        user_access('delete any inquiry', $account);
+  }
+}
+
+
+/**
+ * The form for adding/editing an Inquiry
+ */
+function pi_phase_form($node) {
+	// Get metadata for the node type which is defined in pi_phase_info()
+	$type = node_get_types('type', $node);
+
+	if ($type->has_title)
+	{
+		$form['title'] = array(
+			'#type' => 'textfield',
+			'#title' => check_plain($type->title_label),
+			'#required' => TRUE,
+			'#default_value' => $node->title,
+		);
+	}
+	if ($type->has_body)
+	{
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+	}
+	
+	$inquiry_data = array();
+	$inquiry_nids = pi_inquiry_load_nids();
+	foreach($inquiry_nids as $nid)
+	{
+		$inquiry = node_load($nid);
+		if($inquiry)
+		{
+			$inquiry_data[$nid] = $inquiry->title;
+		}
+	} 
+	if(count($inquiry_data)==0)
+	{
+		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
+	}
+	$form['inquiry_id'] = array(
+		'#type' => 'select',
+		'#title' => t('Layout'),
+		'#default_value' => isset($node->inquiry_id) ? $node->inquiry_id : NULL,
+		'#options' => $inquiry_data,
+	);
+	
+	return $form;
+}
+
+/**
+ * Builds the view for the inquiry
+ * @todo Add a detailed inquiry view to be used in the whole system
+ */
+function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
+	// If $teaser is FALSE, the entire node is being displayed.
+	if (!$teaser)
+	{
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+		
+		// render the phase activities using a theme function
+		$node->content['activities'] = array(
+			'#value' => theme('phase_activities', $node),
+			'#weight' => 2,
+		);
+		// Add more involved phase layout here
+	}
+
+	// If $teaser is true, node is being displayed as a teaser,
+	// in this case, just show the description and none of the rest of the inquiry stuff
+	if ($teaser) 
+	{
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+	}
+	return $node;
+}
+
+/**
+ * Declare theme functions for pi_inquiry
+ */
+function pi_phase_theme() {
+  return array(
+    'phase_activities' => array(
+      'arguments' => array('node'),
+    ),
+  );
+}
+
+
+/**
+ * Theme function to display the inquiry description
+ * @param drupal node data $node Inquiry node details.
+ */
+function theme_phase_activities($node) {
+	$output = '<div class="phase-activities">';
+	$output = "Phase activities";
+	$output .= '</div>';
+	return $output;
+}
