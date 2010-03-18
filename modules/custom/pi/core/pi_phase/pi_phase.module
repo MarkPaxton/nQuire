@@ -91,15 +91,99 @@ function pi_phase_form($node) {
 	{
 		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
 	}
-	$form['inquiry_id'] = array(
+	$form['inquiry_nid'] = array(
 		'#type' => 'select',
-		'#title' => t('Layout'),
-		'#default_value' => isset($node->inquiry_id) ? $node->inquiry_id : NULL,
+		'#title' => t('Inquiry for phase'),
+		'#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
 		'#options' => $inquiry_data,
+		'#allowed_inquiry_nids' => $inquiry_nids,
+		'#element_validate' => array('pi_phase_form_inquiry_nid_validate')
 	);
 	
 	return $form;
 }
+
+/**
+ * hook_form_alter - changes the form to change it from default node layout
+ */
+function pi_phase_form_alter(&$form, $form_state, $form_id) {
+	// Stuff for this demo, best to keep it inside the house
+	if($form_id == 'pi_phase_node_form')
+	{
+		$form['menu']['#weight'] = 2;
+	}
+}
+
+
+/**
+ * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry
+ * @param unknown_type $element 
+ * @param unknown_type $form_state
+ */
+function pi_phase_form_inquiry_nid_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['inquiry_nid'], $element['#allowed_inquiry_nids']))
+	{
+		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));				
+	}
+}
+
+
+
+/**
+ * INSERT command for a new inquiry phase
+ */
+function pi_phase_insert($node) {
+  db_query("INSERT INTO {pi_phase} (nid, vid, inquiry_nid) VALUES (%d, %d, %d)",
+    $node->nid, $node->vid, $node->inquiry_nid);
+}
+
+/**
+ * UPDATE command for an existing inquiry phase
+ */
+function pi_phase_update($node) {
+  if ($node->revision) {
+    // New revision; treat it as a new record.
+    pi_phase_insert($node);
+  }
+  else {
+    db_query("UPDATE {pi_phase} SET inquiry_nid = %d WHERE vid = %d",
+      $node->inquiry_nid, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function pi_phase_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case 'delete revision':
+      // Notice that we're matching a single revision based on the node's vid.
+      db_query('DELETE FROM {pi_phase} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * DELETE command for an inquiry
+ * @todo this should delete all the associated data with the inquiry too!
+ */
+function pi_phase_delete(&$node) {
+	// Delete the related information we were saving for this node.
+	db_query('DELETE FROM {pi_phase} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Custom loader for phase type (called when %phase is specified in a menu parameter)
+ */
+function pi_phase_load($node) {
+	return db_fetch_object(db_query('SELECT inquiry_nid FROM {pi_phase} WHERE vid = %d', $node->vid));
+}
+
 
 /**
  * Builds the view for the inquiry
@@ -131,6 +215,27 @@ function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
 }
 
 /**
+ * Queries the node database to provide a list of nids referring to phases in an
+ * inquiry given by $inquiry_nid
+ * Use node_load($nid) to then access the phase details
+ * @param int $inquiry_nid the nid of the inquiry to load the phases for
+ * @return array of nids referring to pi_phase nodes in the given inquiry
+ */
+function pi_phase_load_nids($inquiry_nid)
+{
+	$query = "SELECT node.nid from node INNER JOIN pi_phase ON node.nid = pi_phase.nid ". 
+	 " WHERE node.type='pi_phase' AND pi_phase.inquiry_nid=%d";
+	$result = db_query($query, $inquiry_nid);
+	$inquiry_phase_nodes = array();
+	while($nid=db_result($result))
+	{
+		$inquiry_phase_nodes[] = $nid;
+	}
+	return $inquiry_phase_nodes;
+}
+
+
+/**
  * Declare theme functions for pi_inquiry
  */
 function pi_phase_theme() {
@@ -148,7 +253,7 @@ function pi_phase_theme() {
  */
 function theme_phase_activities($node) {
 	$output = '<div class="phase-activities">';
-	$output = "Phase activities";
+	$output .= "Phase activities";
 	$output .= '</div>';
 	return $output;
 }

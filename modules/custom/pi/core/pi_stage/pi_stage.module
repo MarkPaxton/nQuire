@@ -3,11 +3,9 @@
 
 /**
  * @file  This module provides the implementation of the Inquiry Stage content type
- * @todo Rename table to pi_stage rather than pi_stage_node when it's tested and working
  */
 
- 
- /**
+/**
  * Define the pi_stage node type
  */
 function pi_stage_node_info() {
@@ -59,10 +57,12 @@ function pi_stage_access($op, $node, $account) {
 /**
  * The form for adding/editing an Inquiry
  */
-function pi_stage_form($node) {
+function pi_stage_form(&$node, $form_state) {
 	// Get metadata for the node type which is defined in pi_stage_info()
 	$type = node_get_types('type', $node);
 
+	$form=array();
+	
 	if ($type->has_title)
 	{
 		$form['title'] = array(
@@ -77,7 +77,8 @@ function pi_stage_form($node) {
 		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
 	}
 	
-	$inquiry_data = array();
+	//Generate list of inquiry options from existing inquiries
+	$inquiry_data = array();	
 	$inquiry_nids = pi_inquiry_load_nids();
 	foreach($inquiry_nids as $nid)
 	{
@@ -89,16 +90,171 @@ function pi_stage_form($node) {
 	} 
 	if(count($inquiry_data)==0)
 	{
-		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
+		drupal_set_message(t('There are no inquiries defined, please create an inquiry before defining phases.'), 'error');		
 	}
-	$form['inquiry_id'] = array(
+	// Add default value
+	$inquiry_data['none'] = 'Select Inquiry...';
+	
+	//This section allows a dynamic list of stages to appear on the form to allow 
+	// pi_stage_phase links to be created at the same time as a stage.
+	// This uses the ahah_helper module
+	
+	ahah_helper_register($form, $form_state);
+	
+	// If there's no value in storage and the node has one set, then use that
+	if(isset($node->inquiry_nid) && !isset($form_state['storage']['inquiry_nid']))
+	{
+		$inquiry_nid_default_value = $node->inquiry_nid;
+	}
+	else
+	{
+		//If there's a value in storage use that
+		if(isset($form_state['storage']['inquiry_nid']))
+		{
+			$inquiry_nid_default_value =  $form_state['storage']['inquiry_nid'];
+		}
+		else
+		{
+			//Otherwise, use 'none'
+			$inquiry_nid_default_value = 'none';
+		}
+	}
+	
+	$form['inquiry_nid'] = array(
 		'#type' => 'select',
-		'#title' => t('Layout'),
-		'#default_value' => isset($node->inquiry_id) ? $node->inquiry_id : NULL,
+		'#title' => t('Inquiry for stage'),
+		'#default_value' => $inquiry_nid_default_value,
 		'#options' => $inquiry_data,
+		'#allowed_inquiry_nids' => $inquiry_nids,
+		'#element_validate' => array('pi_stage_form_inquiry_nid_validate'),
+		'#ahah' => array(
+			'event'   => 'change',
+			'path'    => ahah_helper_path(array('stage_phases')),
+			'wrapper' => 'stage-phases-wrapper',
+		),
+	);	
+	
+	//This uses the generic submit callback provided by the ahah_helper module here
+	// Is sets $form_state['rebuild'] = TRUE.
+	// 'no-js' class is set so that the submit button will be shown if JS is enabled.
+	$form['inquiry_nid']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Update phase list'),
+	    '#submit' => array('ahah_helper_generic_submit'),
+	    '#attributes' => array('class' => 'no-js'),
 	);
 	
+	// Based on the selection above generate the select boxes for phases
+	$phase_select_boxes = array();
+	if($usage_default_value != 'none')
+	{
+		$inquiry_phase_nids = pi_phase_load_nids($form_state['storage']['inquiry_nid']);
+		foreach($inquiry_phase_nids as $nid)
+		{
+			$phase = node_load($nid);
+			if($phase)
+			{
+				$phase_select_boxes[$phase->nid] = $phase->title;				
+			}
+		}
+	}
+	
+	$form['stage_phases'] = array(
+		'#type' => 'checkboxes',
+	    '#title'  => t('Select the phases to be included in this stage'),
+	    '#prefix' => '<div id="stage-phases-wrapper">', // This is wrapper div for ahah response to fill
+	    '#suffix' => '</div>',
+		'#options' => $phase_select_boxes,
+	);	
+	
 	return $form;
+}
+
+/**
+ * hook_form_alter - changes the form to change it from default node layout
+ */
+function pi_stage_form_alter(&$form, $form_state, $form_id) {
+	// Stuff for this demo, best to keep it inside the house
+	if($form_id == 'pi_stage_node_form')
+	{
+		ahah_helper_register($form, $form_state);
+		$form['menu']['#weight'] = 2;
+
+		// ISSUE 2: content cannot be saved by another user
+		/**
+		 * @TODO: Figure out the main cause why this happens. It has something
+		 * to do with staying on the node form instead of redirecting to the view.
+		 */
+		$form['changed']['#default_value'] = $_SERVER['REQUEST_TIME'];
+
+	}
+}
+
+
+/**
+ * This is the validation function to make sure that pi_stage.inquiry_nid is a valid inquiry
+ * @param unknown_type $element 
+ * @param unknown_type $form_state
+ */
+function pi_stage_form_inquiry_nid_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['inquiry_nid'], $element['#allowed_inquiry_nids']))
+	{
+		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));				
+	}
+}
+
+/**
+ * INSERT command for a new inquiry stage
+ */
+function pi_stage_insert($node) {
+  db_query("INSERT INTO {pi_stage} (nid, vid, inquiry_nid) VALUES (%d, %d, %d)",
+    $node->nid, $node->vid, $node->inquiry_nid);
+}
+
+/**
+ * UPDATE command for an existing inquiry  stage
+ */
+function pi_stage_update($node) {
+  if ($node->revision) {
+    // New revision; treat it as a new record.
+    pi_inquiry_insert($node);
+  }
+  else {
+    db_query("UPDATE {pi_stage} SET inquiry_nid = %d WHERE vid = %d",
+      $node->layout, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function pi_stage_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case 'delete revision':
+      // Notice that we're matching a single revision based on the node's vid.
+      db_query('DELETE FROM {pi_stage} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * DELETE command for an inquiry stage
+ */
+function pi_stage_delete(&$node) {
+	// Delete the related information we were saving for this node.
+	db_query('DELETE FROM {pi_stage} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Custom loader for inquiry type (called when %inquiry is specified in a menu parameter)
+ */
+function pi_stage_load($node) {
+	return db_fetch_object(db_query('SELECT inquiry_nid FROM {pi_stage} WHERE vid = %d', $node->vid));
 }
 
 /**
@@ -114,7 +270,7 @@ function pi_stage_view($node, $teaser = FALSE, $page = FALSE) {
 		
 		// render the phase activities using a theme function
 		$node->content['activities'] = array(
-			'#value' => theme('phase_activities', $node),
+			'#value' => theme('stage_activities', $node),
 			'#weight' => 2,
 		);
 		// Add more involved phase layout here
@@ -134,11 +290,11 @@ function pi_stage_view($node, $teaser = FALSE, $page = FALSE) {
  * Declare theme functions for pi_inquiry
  */
 function pi_stage_theme() {
-  return array(
-    'phase_activities' => array(
-      'arguments' => array('node'),
-    ),
-  );
+	return array(
+  		'stage_activities' => array(
+			'arguments' => array('node'),
+		),
+	);
 }
 
 
@@ -146,9 +302,9 @@ function pi_stage_theme() {
  * Theme function to display the inquiry description
  * @param drupal node data $node Inquiry node details.
  */
-function theme_phase_activities($node) {
+function theme_stage_activities($node) {
 	$output = '<div class="phase-activities">';
-	$output = "Phase activities";
+	$output .= "Stage activities";
 	$output .= '</div>';
 	return $output;
 }
