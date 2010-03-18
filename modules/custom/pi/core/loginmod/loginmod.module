@@ -1,0 +1,29 @@
+<?php
+/**
+* Implementation of hook_help().
+*/
+function loginmod_help($path, $arg) {
+  switch ($path) {
+    case 'admin/modules#description':
+      return t('Makes login block collapsible');
+  }
+}
+
+/**
+* Implementation of hook_form_alter().
+*/
+function loginmod_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'user_login_block'){
+       unset($form['links']);
+       $items = array();
+       if (variable_get('user_register', 1)) {
+           $items[] = /* TODO
+   Please manually fix the parameters on the l() or url() function on the next line.
+   Typically, this was not changed because of a function call inside an array call like
+   array('title' => t('View user profile.')).*/
+l(t('Create new account'), 'user/register', array('title' => t('Create a new user account.')));
+       }
+       $form['links'] = array('#value' => theme('item_list', $items));
+  }
+}
+?>

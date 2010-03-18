@@ -1,0 +1,42 @@
+<?php
+// $Id: pi_inquiry_info.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
+
+
+
+function pi_inquiry_info_block($op = 'list', $delta = 0, $edit = array()) {
+
+    switch ($op) {
+
+        case 'list':
+            $blocks[0]['info'] = t('New Activity summary');
+            return $blocks;
+
+        case 'view':
+						
+						$show_activities = TRUE;
+						$show_phases = TRUE;
+						global $user;
+            $image_path = "images/";
+            $node_details = get_inquiry_details_from_current_path();
+            
+            if($node_details->inquiry_id) {
+            	$loaded_inquiry = load_inquiry($node_details->inquiry_id);
+							$block['subject'] = l(t($loaded_inquiry->name), t("inquiry/" . $node_details->inquiry_id));
+							$block['content'] = t($loaded_inquiry->description);
+						}
+						elseif(arg(0)=='home') {
+							$block['subject'] = 'Choose investigation';
+							$block['content'] = 'Choose an inquiry from the table on the right.';
+						}
+						elseif ($user->uid) {
+							$block['subject'] = 'nQuire';
+							$block['content'] = t('Click ' . l('here','home') . ' to access your inquiries.');
+						}
+						else {
+							$block['subject'] = 'nQuire';
+							$block['content'] = 'Login to access your inquiries.';
+						}
+            return $block;
+    };
+}
+

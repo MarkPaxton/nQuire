@@ -30,47 +30,101 @@
  * activity_id, parameters, destination_nid
  */
  
+ 
+function pi_init() {
+    drupal_add_css(drupal_get_path('module', 'pi') .'/pi.css');
+}
+    
 function pi_menu() {
 
-  $items = array();
+	$items = array();
 
-  // Do not cache this menu item during the development of this module.
-  
-  $items['home'] = array(
-    'title' => t('Home'),
-    'page callback' => 'pi_home_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['inquiry'] = array(
-    'title' => t('Inquiry'),
-    'page callback' => 'pi_inquiry_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['phase'] = array(
-    'title' => t('Phase'),
-    'page callback' => 'pi_phase_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  
-  $items['activity'] = array(
-    'title' => t('Activity'),
-    'page callback' => 'pi_activity_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  
-  $items['set_stage'] = array(
-    'title' => t('Stage selector'),
-    'page callback' => 'pi_stage_selector_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  
-  return $items;
+	// Do not cache this menu item during the development of this module.
+
+	$items['home'] = array(
+		'title' => t('Home'),
+		'page callback' => 'pi_home_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['inquiry'] = array(
+		'title' => t('Inquiry'),
+		'page callback' => 'pi_inquiry_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['phase'] = array(
+		'title' => t('Phase'),
+		'page callback' => 'pi_phase_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['activity/%'] = array(
+		'title' => t('<none>'),
+		'access callback' => 'activity_view',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_CALLBACK,
+	);
+	$items['activity/%/view'] = array(
+		'title' => t('View'),
+		'access callback' => 'activity_view',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 0,
+	);
+	$items['activity/%/edit'] = array(
+		'title' => t('Edit'),
+		'access callback' => 'activity_edit',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 1,
+	);
+
+	$items['activity/%/add'] = array(
+		'title' => t('Add'),
+		'access callback' => 'activity_add',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_CALLBACK,
+	);
+
+	$items['set_stage'] = array(
+		'title' => t('Stage selector'),
+		'page callback' => 'pi_stage_selector_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+
+	return $items;
 }
+
+
+function activity_access($op) {
+
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, $op);
+
+}
+
+function activity_add() {
+
+    return activity_access('add');
+
+}
+
+function activity_edit() {
+
+    return activity_access('edit');
+
+}
+
+function activity_view() {
+
+    return activity_access('view') || activity_access('edit');
+
+}
+
 
 function pi_stage_selector_view() {
 	$query = "SELECT nid FROM node WHERE type = 'pi_stage_selector' ORDER BY nid DESC LIMIT 1";
@@ -163,6 +217,26 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 	return $result;
 }
 
+
+function octogon_phase($headings, $rows) {
+	$phases = array();
+	$output = "1";
+	if(count($rows)) {
+		foreach($rows as $number => $row) {
+			if (isset($row['data'])) {
+				foreach ($row as $key => $value) {
+					if ($key == 'data') {
+						$phase[] = 'x'.$value[0];
+					}
+				}
+			}
+		}
+	}
+	return $output;
+}
+
+
+
 function pi_inquiry_view() {
 	global $user;
 	$uid = $user->uid;
@@ -216,7 +290,8 @@ function pi_inquiry_view() {
 		$rows[] = array('data' => $row);
 
 	}
-
+	//get_phase_view_preference
+	//$output .= octogon_phase($headings, $rows);
 	$output .= theme('table', $header, $rows);
   return $output;
 }	  
@@ -230,25 +305,22 @@ function pi_activity_view() {
 	$details = get_inquiry_details_from_current_path();
 	
 	//get the visible status
-	$visible_status = arg(2);
+	$arg_node_function = arg(2);
 	
 	//get Drupal node function
 	$node_function = get_node_function_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-	
-	if($node_function == 'add') {
+
+	if($node_function == 'add' && $arg_node_function ==  'add') {
 		//get node type
 		$loaded_activity = load_activity($details->activity_id);
 		$node_type = $loaded_activity->node_type;
-		
-		//build link
-		//$node_type2 = "node/add/" . str_replace("_", "-", $node_type);
 		
 		if( ! function_exists("node_add")) { 
       include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
    	}
 		$output = node_add($node_type);
 	}
-	elseif ($node_function == 'edit') {
+	elseif ($node_function == 'edit' && $arg_node_function ==  'edit') {
 		//get nid
 		$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $uid);
 		//build form
@@ -258,12 +330,15 @@ function pi_activity_view() {
    	}
 		$output = node_page_edit($loaded_node);
 	}
-	elseif ($node_function == 'view') {
+	elseif ($arg_node_function == 'view'  && ($node_function ==  'view' || $node_function ==  'edit')) {
 		//get nid
 		$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $uid);
 		//build page
 		$loaded_node = node_load($nid);
 		$output = node_view($loaded_node, FALSE, TRUE, TRUE);
+	}
+	else {
+		$output = t("Permission denied");
 	}
 
   return $output;
@@ -589,7 +664,7 @@ function pi_phase_view () {
       $table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
                         
     };
- 
+ 		
     $output .= theme('table', $headings, $table);
  
     if ($active_activity_flag == 0) {
@@ -607,7 +682,6 @@ function pi_phase_view () {
  
 }
 
- 
 
 // ****************************************************************
 
@@ -766,7 +840,7 @@ function get_activity_id_for_nid($nid) {
 	return $result->activity_id;
 }
 
-function get_activity_type_of_node_path ($path) {
+function get_activity_type_of_node_path($path) {
 
 /**
  * Uses arguments from the path and the pi_activity_table to return the activity type.
@@ -1354,7 +1428,7 @@ function delete_activity_type_for_user ($activity_type, $user) {
 
 	return $items;
 }
- 
+
 function load_stage ($stage_id) {
 
 /**
@@ -1896,6 +1970,7 @@ function get_inquiries() {
 	return $result;
 }
 
+
 /**
  * Returns array of inquiry_id values and inquiry names for user or user's groups
  */
@@ -2173,6 +2248,7 @@ function get_selected_measures_headings_for_inquiry_and_user ($inquiry_id, $sele
 
 }
 
+
 function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected_measures, $uid) {
 
     $result = array();
@@ -2184,6 +2260,26 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
         };
     };
 
+    //sort $result by up to first three columns
+    if (isset($result[2]) AND $result[2] != NULL AND $result[1] != NULL AND $result[0] != NULL) {
+		array_multisort(
+			$result[0], SORT_ASC, SORT_STRING,
+			$result[1], SORT_ASC, SORT_STRING,
+			$result[2], SORT_ASC, SORT_STRING
+		);
+    }
+    elseif (isset($result[1]) AND $result[1] != NULL AND $result[0] != NULL) {
+		array_multisort(
+			$result[0], SORT_ASC, SORT_STRING,
+			$result[1], SORT_ASC, SORT_STRING
+		);
+    }
+    elseif (isset($result[0]) AND $result[0] != NULL) {
+		array_multisort(
+			$result[0], SORT_ASC, SORT_STRING
+		);
+    };
+    
     // Now rotate the values table so that each measure's data 
     // is in a column (rather than a row)
     $i = 0;
@@ -2215,29 +2311,24 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 
 function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) {
 
-    $query = "SELECT DISTINCT(pcd_id), pi_collected_data.value AS value, pi_selected_measures.weight ";
+    $query = "SELECT pi_collected_data.value AS value ";
     $query .= "FROM pi_collected_data ";
-    $query .= "LEFT JOIN pi_selected_measures ON pi_collected_data.psm_id = pi_selected_measures.psm_id ";
     $query .= "LEFT JOIN node ON pi_collected_data.nid = node.nid ";
-    $query .= "LEFT JOIN pi_activity_node ON node.nid = pi_activity_node.nid  ";
     $query .= "LEFT JOIN node_access ON node.nid = node_access.nid ";
     $query .= "LEFT JOIN og_uid ON node_access.gid = og_uid.nid ";
-    $query .= "WHERE (pi_selected_measures.measure_nid = '" . $measure_id . "') ";
-    $query .= "AND (pi_activity_node.inquiry_id = '" . $inquiry_id . "') ";
+    $query .= "WHERE (pi_collected_data.available_measure_nid = '" . $measure_id . "') ";
     $query .= "AND (node.uid = '" . $uid . "' ";
     $query .= "OR og_uid.uid = '" . $uid . "') ";
     $query .= "ORDER BY node.nid ASC";
-    //$query .= "ORDER BY pi_selected_measures.weight ASC";
 
     $db_result = db_query($query);
 	
     $values = array();
-
+	
     while ($result = db_fetch_object($db_result)) {
-
         $values[] = $result->value;
     };
-
+    
     return $values;
 
  }

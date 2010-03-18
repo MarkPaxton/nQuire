@@ -1,0 +1,320 @@
+<?php
+// $Id: pi_sort_key_answers.module,v 1.2 2010/02/15 09:17:48 ou_pm Exp $
+
+function pi_sort_key_answers_node_info() {
+    return array(
+    'pi_sort_key_answers' => array(
+    'name' => t('Draggable key answers'), // Required.
+    'module' => 'pi_sort_key_answers',  // Required.
+    'description' => t('Draggable key answers'), // Required.
+    'has_title' => TRUE,
+    'title_label' => t('Draggable key answers'),
+    'has_body' => TRUE,
+    'body_label' => t('Draggable key answers'),
+    'locked' => TRUE)
+    );
+
+}
+
+function pi_sort_key_answers_perm() {
+}
+
+function pi_sort_key_answers_access($op, $node) {
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+    if ($op == 'create') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    }
+
+    if ($op == 'update') {
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    }
+}
+
+
+/**
+ * Implementation of hook_theme().
+ */
+function pi_sort_key_answers_theme() {
+    return array(
+    'pi_sort_key_answers_node_form' => array(
+    'arguments' => array('form'),
+    ),
+    'pi_sort_key_answers' => array(
+    'arguments' => array('node'),
+    ),
+    );
+}
+
+
+/**
+ * Admin page to change category weights
+ */
+function pi_sort_key_answers_form(&$node) {
+		$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id)) {
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
+// Build the form
+    $form = array();
+
+    $type = node_get_types('type', $node);
+    $form['title'] = array (
+        '#type' => 'hidden',
+        '#value' => check_plain($type->title_label),
+    );
+
+    // onepageprofile_categories and tree used for draggable menu items
+    $form['onepageprofile_categories'] = array(
+        '#tree'   => TRUE,
+    );
+
+    // Add the categories of existing nodes and the options list for new nodes
+    if(isset($node->nid)) {
+        $node_categories = $node->categories;
+    }
+    else {
+        $node_categories = array();
+    }
+		
+		$option_categories = pi_sort_key_answers_get_options();
+		
+		foreach ($option_categories as $key => $category) {
+			$categories[$key]['#title'] = $category['#title'];
+			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+		}
+		uasort($categories, "my_weight_compare");
+		
+    // set $tree to point to the above $form['onepageprofile_categories'] object
+    $tree = &$form['onepageprofile_categories'];
+    foreach ($categories as $key => $category) {
+
+        $key_answer = node_load($key);
+
+        // add $tree entries for current category (i.e. $key)
+        $tree[$key]['title'] = array(
+            '#value' => t($category['#title']),
+        );
+
+        $tree[$key]['weight'] = array(
+            '#type'          => 'weight',
+            '#delta'         => max(10, count($categories)),
+            '#default_value' => $node_categories[$key]['#weight'],
+        );
+    }
+
+    return $form;
+}
+
+function pi_sort_key_answers_insert($node) {
+	$details  = get_inquiry_details_from_current_path();
+    while ($key_answer = current($node->onepageprofile_categories)) {
+
+        db_query("INSERT INTO pi_sort_key_answers (nid, vid, key_answer, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->onepageprofile_categories) . "', '" . $key_answer['weight'] . "')");
+        
+        update_activity_weight_from_node(key($node->onepageprofile_categories), $key_answer['weight'], $details);
+
+        next($node->onepageprofile_categories);
+    }
+    reset($node->onepageprofile_categories);
+}
+
+function pi_sort_key_answers_update($node) {
+// if this is a new node or we're adding a new revision,
+    if ($node->revision) {
+        pi_sort_key_answers_insert($node);
+    }
+    else {
+        db_query("DELETE FROM pi_sort_key_answers WHERE vid = '" . $node->vid . "' ");
+        pi_sort_key_answers_insert($node);
+    }
+}
+
+function pi_sort_key_answers_delete(&$node) {
+    db_query("DELETE FROM pi_sort_key_answers WHERE nid = '" . $node->nid . "' ");
+}
+
+
+function pi_sort_key_answers_load($node) {
+    $result = new stdClass;
+    $result->categories = pi_sort_key_answers_get_choice($node);
+    return $result;
+}
+
+
+function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
+    if (!$teaser) {
+        $node = node_prepare($node, $teaser);
+
+        $node->content['pi_sort_key_answers'] = array(
+            '#value' => theme('pi_sort_key_answers', $node),
+            '#weight' => 2
+        );
+    }
+    if ($teaser) {
+        $node = node_prepare($node, $teaser);
+    }
+    return $node;
+}
+
+function theme_pi_sort_key_answers(&$node) {
+	global $user;
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+  	if (is_numeric($details->activity_id)) {
+  		$current_activity = load_activity($details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
+  	
+    $output = "";
+
+    $header = array(
+        t("Key answer"),
+        t('Action')
+    );
+
+    $rows = array();
+
+    if (is_array($node->categories)) {
+    	foreach($node->categories as $key => $category) {
+    	
+            $row_activity_id = get_activity_id_for_nid($key);
+						$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
+						$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
+						$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
+						
+						$row = array();
+            $row[] = t($category['#title']);
+            $row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
+            $rows[] = array('data' => $row);
+        }
+    }
+
+    $output .= theme('table', $header, $rows);
+    return $output;
+}
+
+
+
+/**
+ * Theme admin settings form
+ */
+function theme_pi_sort_key_answers_node_form($form) {
+	global $user;
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+	//Get the key questions. One table will be made for each.
+	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
+  
+  // Add the categories of existing nodes and the options list for new nodes
+  if(isset($key_questions_nid)) {
+    $key_questions_node = node_load($key_questions_nid);
+    $categories = $key_questions_node->categories;
+  }
+  
+	$header = array();
+	$rows = array();
+	
+  $key_question_options = array();
+  foreach ($categories as $key => $category) {
+    //Make a table for each key question
+  	drupal_add_tabledrag(t('onepageprofile-categories'.$key), 'order', 'sibling', 'onepageprofile-element');
+  	$rows[$key] = array();
+    $key_question = node_load($key);
+    $key_question_options[$key] = $key_question->title;
+    $header[$key] = array(t($key_question->title), t('Weight'), t('Action'));
+  }
+
+	$tree = &$form['onepageprofile_categories'];
+	foreach (element_children($tree) as $key) {
+		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
+
+		$row_activity_id = get_activity_id_for_nid($key);
+		$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
+		$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
+		$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
+				
+		$row = array();
+		$row[] = drupal_render($tree[$key]['title']);
+		$row[] = drupal_render($tree[$key]['weight']);
+		$row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
+		
+		$key_answer_node = node_load($key);
+		$key_question = $key_answer_node->key_question_id;
+		
+		$rows[$key_question][] = array('data' => $row, 'class' => 'draggable');
+		
+   }
+   
+
+	// Build the output
+	  $activity = load_activity($details->activity_id);
+    if ($activity->description) {
+    	$output  .= '<p>' . t($activity->description) . '</p>';
+    }
+    else {
+    	$output  .= '<p>' . t('Order your key questions.') . '</p>';
+    }
+	foreach ($categories as $key => $category) {
+		if (count($rows[$key]) > 0) {
+			$output .= theme('table', $header[$key], $rows[$key], array('id' => t('onepageprofile-categories'.$key)));
+		}
+		else {
+			reset($header[$key]);
+			$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
+		}
+	}
+	$output .= drupal_render($form);
+
+	return $output;
+}
+
+/**
+ * Load the user edit form and grab all of the fieldsets
+ */
+function pi_sort_key_answers_get_choice($node) {
+
+    global $user;
+    $categories = array();
+				
+    $result = db_query("SELECT * FROM pi_sort_key_answers WHERE pi_sort_key_answers.nid = '" . $node->nid . "' AND pi_sort_key_answers.vid = '" . $node->vid . "'");
+
+    while ($row = db_fetch_object($result)) {
+        $loaded_node = node_load($row->key_answer, NULL, TRUE);
+        $categories[$row->key_answer] = array(
+            '#weight' => $row->weight,
+            '#title'  => t($loaded_node->title)
+        );
+    }
+
+    uasort($categories, "my_weight_compare");
+
+    return $categories;
+}
+
+/**
+ * Load the user edit form and grab all of the fieldsets
+ */
+function pi_sort_key_answers_get_options() {
+    global $user;
+    $categories = array();
+    
+    $result = db_query("SELECT DISTINCT node.nid FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE TYPE = 'pi_key_answers' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $user->uid . "') ORDER BY nid ASC");
+
+    while ($row = db_fetch_object($result)) {
+        $title_result = db_result(db_query("SELECT node.title FROM node WHERE node.nid = '" . $row->nid . "' ORDER BY node.vid DESC"));
+        $categories[$row->nid] = array(
+            '#weight' => 1,
+            '#title'  => t($title_result)
+        );
+    }
+    return $categories;
+}

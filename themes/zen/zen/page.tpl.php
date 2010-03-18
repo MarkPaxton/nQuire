@@ -1,5 +1,5 @@
 <?php
-// $Id: page.tpl.php,v 1.14.2.6 2009/02/13 16:28:33 johnalbin Exp $
+// $Id: page.tpl.php,v 1.14.2.10 2009/11/05 14:26:26 johnalbin Exp $
 
 /**
  * @file page.tpl.php
@@ -33,6 +33,8 @@
  *   path, whether the user is logged in, and so on.
  * - $body_classes_array: An array of the body classes. This is easier to
  *   manipulate then the string in $body_classes.
+ * - $node: Full node object. Contains data that may not be safe. This is only
+ *   available if the current page is on the node's primary url.
  *
  * Site identity:
  * - $front_page: The URL of the front page. Use this instead of $base_path,
@@ -90,7 +92,7 @@
 
   <div id="page"><div id="page-inner">
 
-    <a name="top" id="navigation-top"></a>
+    <a name="navigation-top" id="navigation-top"></a>
     <?php if ($primary_links || $secondary_links || $navbar): ?>
       <div id="skip-to-nav"><a href="#navigation"><?php print t('Skip to Navigation'); ?></a></div>
     <?php endif; ?>
@@ -191,13 +193,13 @@
           <?php endif; ?>
 
           <?php if ($primary_links): ?>
-            <div id="primary">
+            <div id="primary" class="clear-block">
               <?php print theme('links', $primary_links); ?>
             </div> <!-- /#primary -->
           <?php endif; ?>
 
           <?php if ($secondary_links): ?>
-            <div id="secondary">
+            <div id="secondary" class="clear-block">
               <?php print theme('links', $secondary_links); ?>
             </div> <!-- /#secondary -->
           <?php endif; ?>
