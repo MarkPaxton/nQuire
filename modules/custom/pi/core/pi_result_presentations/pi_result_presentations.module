@@ -58,7 +58,6 @@ function pi_result_presentations_access($op, $node) {
  */
 function pi_result_presentations_form(&$node) {
 
-
     global $user;
 
     $node_details = get_inquiry_details_from_current_path();
@@ -66,8 +65,7 @@ function pi_result_presentations_form(&$node) {
 
     $measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
-    //drupal_set_title(t($current_activity->name));
-    drupal_set_title(t($current_activity->name));
+    // drupal_set_title(t(''));
 
     $key_question_options = array();
     $key_question_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'Add key question', $user->uid);
@@ -102,7 +100,6 @@ function pi_result_presentations_form(&$node) {
     };
 
     if (isset($key_question_options) AND ($key_question_options != array())) {
-
         $form['key_question_id'] = array(
             '#type' => 'select',
             '#title' => t('Key question to investigate'),
@@ -110,9 +107,8 @@ function pi_result_presentations_form(&$node) {
             '#default_value' => $node->key_question_id,
             '#description' => t('Select a key question to investigate'),
             '#options' => $key_question_options,
-            '#weight' => 0
+            '#weight' => -4
         );
-
     };
 
     $form['title'] = array(
@@ -121,7 +117,7 @@ function pi_result_presentations_form(&$node) {
         '#required' => TRUE,
         '#default_value' => check_plain($node->title),
         '#description' => t('Enter a short label for your results presentation'),
-        '#weight' => 0
+        '#weight' => -2
     );
 
     $form['body_filter']['body'] = array(
@@ -130,14 +126,14 @@ function pi_result_presentations_form(&$node) {
         '#required' => FALSE,
         '#default_value' => check_plain($node->body),
         '#description' => t('Enter what you would predict this data set to show'),
-        '#weight' => 6
+        '#weight' => -1
     );
 
 
     // onepageprofile_categories and tree used for draggable menu items
     $form['onepageprofile_categories'] = array(
         '#tree'   => TRUE,
-        '#weight' => 3
+        '#weight' => 0
     );
 
     // Add the categories of existing nodes and the options list for new nodes
@@ -185,24 +181,14 @@ function pi_result_presentations_form(&$node) {
     }
 
     $prefix = "";
-	$hypothesis_prefix = "";
-
 	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
 	if ($hypothesis_param) {
 		$hypothesis_node = node_load($hypothesis_param);
-		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
-		$hypothesis_activity = load_activity($hypothesis_activity_id);
-		if ($hypothesis_activity->description) {
-  		$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";  
-  	}
-  	else {
-    	$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
-  	}
-		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
+		$prefix .= theme_pi_hypothesis($hypothesis_node);
 	}
 
-    $prefix .= "<p>Enter a short title, select a set of your measures to generate a data table you can use to answer your question, and enter what you would predict to find.</p>";
+    $prefix .= '<p>' . t('Enter a short title, select a set of your measures to generate a data table you can use to answer your question, and enter what you would predict to find.') . '</p>';
 
     $form['#prefix'] = $prefix;
 
@@ -305,9 +291,11 @@ function pi_result_presentations_theme() {
  */
 function theme_pi_result_presentations($node) {
 
+    
     global $user;
-    $details = get_inquiry_details_from_current_path();
 
+    drupal_set_title(t($node->title));
+    
     $output = "";
         
     if (isset($node->key_question_id) AND ($node->key_question_id > 0)) {

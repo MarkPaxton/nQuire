@@ -30,74 +30,101 @@
  * activity_id, parameters, destination_nid
  */
  
+ 
+function pi_init() {
+    drupal_add_css(drupal_get_path('module', 'pi') .'/pi.css');
+}
+    
 function pi_menu() {
 
-  $items = array();
+	$items = array();
 
-  // Do not cache this menu item during the development of this module.
-  
-  $items['home'] = array(
-    'title' => t('Home'),
-    'page callback' => 'pi_home_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['inquiry'] = array(
-    'title' => t('Inquiry'),
-    'page callback' => 'pi_inquiry_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  $items['phase'] = array(
-    'title' => t('Phase'),
-    'page callback' => 'pi_phase_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  /*
-  $items['activity'] = array(
-    'title' => t('Activity'),
-    'page callback' => 'pi_activity_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );*/
- $items['activity/%'] = array(
-   'title' => t('<none>'),
-   'access arguments' => array('access content'),
-   'page callback' => 'pi_activity_view',
-   'type' => MENU_CALLBACK,
- );
- $items['activity/%/view'] = array(
-   'title' => t('View'),
-   'access arguments' => array('access content'),
-   'page callback' => 'pi_activity_view',
-   'type' => MENU_LOCAL_TASK,
-   'weight' => 0,
- );
+	// Do not cache this menu item during the development of this module.
 
- $items['activity/%/edit'] = array(
-   'title' => t('Edit'),
-   'access arguments' => array('access content'),
-   'page callback' => 'pi_activity_view',
-   'type' => MENU_LOCAL_TASK,
-   'weight' => 1,
- );
-  $items['activity/%/add'] = array(
-   'title' => t('Activity add'),
-   'access arguments' => array('access content'),
-   'page callback' => 'pi_activity_view',
-   'type' => MENU_CALLBACK
- );
+	$items['home'] = array(
+		'title' => t('Home'),
+		'page callback' => 'pi_home_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['inquiry'] = array(
+		'title' => t('Inquiry'),
+		'page callback' => 'pi_inquiry_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['phase'] = array(
+		'title' => t('Phase'),
+		'page callback' => 'pi_phase_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	$items['activity/%'] = array(
+		'title' => t('<none>'),
+		'access callback' => 'activity_view',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_CALLBACK,
+	);
+	$items['activity/%/view'] = array(
+		'title' => t('View'),
+		'access callback' => 'activity_view',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 0,
+	);
+	$items['activity/%/edit'] = array(
+		'title' => t('Edit'),
+		'access callback' => 'activity_edit',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 1,
+	);
 
-  $items['set_stage'] = array(
-    'title' => t('Stage selector'),
-    'page callback' => 'pi_stage_selector_view',
-    'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
-  );
-  
-  return $items;
+	$items['activity/%/add'] = array(
+		'title' => t('Add'),
+		'access callback' => 'activity_add',
+		'page callback' => 'pi_activity_view',
+		'type' => MENU_CALLBACK,
+	);
+
+	$items['set_stage'] = array(
+		'title' => t('Stage selector'),
+		'page callback' => 'pi_stage_selector_view',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+
+	return $items;
 }
+
+
+function activity_access($op) {
+
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, $op);
+
+}
+
+function activity_add() {
+
+    return activity_access('add');
+
+}
+
+function activity_edit() {
+
+    return activity_access('edit');
+
+}
+
+function activity_view() {
+
+    return activity_access('view') || activity_access('edit');
+
+}
+
 
 function pi_stage_selector_view() {
 	$query = "SELECT nid FROM node WHERE type = 'pi_stage_selector' ORDER BY nid DESC LIMIT 1";
