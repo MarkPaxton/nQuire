@@ -28,29 +28,49 @@ function pi_available_measures_node_info() {
 /**
  * Implementation of pi_available_measures_perm().
  */
-
 function pi_available_measures_perm() {
 }
 
 /**
  * Implementation of pi_available_measures_access().
  */
-
 function pi_available_measures_access($op, $node) {
   global $user;
+  $uid = $user->uid;
   $details = get_inquiry_details_from_current_path();
   if ($op == 'create') {
     return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
   }
-  if ($op == 'update' || $op == 'delete') {
+  if ($op == 'update') {
     return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
   }
+	if ($op == 'delete') {
+		if (arg(0) == 'node' && arg(2) == 'delete') {
+		//get inquiry for session id and activity
+			$nid = arg(1);
+			$sid = get_current_session_id();
+			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
+			$inquiry_id = $inquiry_id->inquiry_id;
+			$activity_id = get_activity_id_for_nid($nid);
+			if($inquiry_id && $activity_id) {
+				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+			}
+			else {
+				return FALSE;
+			}
+		}
+		else {
+			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		}
+	}
 }
 
 /**
  * Implementation of pi_available_measures_form().
  */
 function pi_available_measures_form(&$node) {
+	global $user;
+	$uid = $user->uid;
 
 	$details = get_inquiry_details_from_current_path();
 	
@@ -89,13 +109,19 @@ function pi_available_measures_form(&$node) {
   );
   
   //find filter properties for this inquiry
-  
+  $filter_param = find_measure_filter_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+	
+	if ($filter_param) {
+		$filter_node = node_load($filter_param);
+	}
+    
+/*    
   if ($details->inquiry_id) {
   	$result = db_fetch_object(db_query("SELECT nid FROM pi_measure_filter WHERE inquiry_id = '" . $details->inquiry_id . "' "));
   	if ($result->nid) {
   		$filter_node = node_load($result->nid);
   	}
-  }
+  }*/
   
   $form['#prefix'] = $prefix;
   
@@ -152,7 +178,8 @@ function pi_available_measures_form(&$node) {
   else {
   	$default = $filter_node->units_short_value;
   }
-  if ($filter_node->units_short_test) {
+  
+if ($filter_node->units_short_test) {
   $form['units_short'] = array(
     '#type' => 'textfield',
     '#title' => t('Units symbol / short name'),
@@ -188,7 +215,7 @@ function pi_available_measures_form(&$node) {
   );
   }
   else {
-  	$form['units_short'] = array(
+  	$form['field_type'] = array(
    	 '#type' => 'hidden',
      '#value' => $filter_node->field_type_value
   	);
@@ -372,7 +399,6 @@ function pi_available_measures_validate($node) {
 /**
  * Implementation of pi_available_measures_insert().
  */
-
 function pi_available_measures_insert($node) {
 
     $validators = array(
@@ -456,6 +482,11 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
   return $node;
 }
 
+/**
+ * MISSING
+ * 
+ * @return multitype:multitype:multitype:string   
+ */
 function pi_available_measures_theme() {
   return array(
     'pi_available_measures' => array(
@@ -465,67 +496,91 @@ function pi_available_measures_theme() {
 }
 
 
+/**
+ * MISSING
+ * 
+ * @param unknown_type $node
+ * @return string
+ */
 function theme_pi_available_measures($node) {
+	global $user;
+	$uid = $user->uid;
+		$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id)) {
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
+  	
+  	$output =  "";
+    
+  $filter_nid = find_measure_filter_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
+
+  if($filter_nid) {
+  	$filter_node = node_load($filter_nid);
+  }
   
   if ($node->image_id) {
     $page_nid = arg(1);
     if (is_numeric($page_nid)) {
       $page = node_load($page_nid);
       if ($page->type == 'pi_available_measures') {
-        $output = '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/preview") . '" />';
+        $output .= '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/preview") . '" />';
       }
       else {
-        $output = '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
+        $output .= '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
       };
     }
     else {
-      $output = '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
+      $output .= '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
     };
   };
   
   $types = array(t('Type a number'), t('Type text'), t('Select menu option'));
   
   $output .= '<p>';
-  if (isset($node->symbol) AND ($node->symbol != '')) {
+  if (isset($node->symbol) AND ($node->symbol != '') AND $filter_node->symbol_test) {
     $output .= t('<strong>Symbol / short name: </strong>' . $node->symbol);
     $output .= '<br />';
   };
-  if (isset($node->units) AND ($node->units != '')) {
+  if (isset($node->units) AND ($node->units != '') AND $filter_node->units_test) {
     $output .= t('<strong>Units: </strong>' . $node->units);
     $output .= '<br />';
   };
-  if (isset($node->units_short) AND ($node->units_short != '')) {
+  if (isset($node->units_short) AND ($node->units_short != '') AND $filter_node->units_short_test) {
     $output .= t('<strong>Units symbol / short name: </strong>' . $node->units_short);
   };
   $output .= '</p>';
   $output .= '<p>';
-  if (isset($node->field_type)) {
+  if (isset($node->field_type)  AND $filter_node->field_type_test) {
     $output .= t('<strong>Field type: </strong>' . $node->field_type);
     $output .= '<br />';
   };
   $output .= '<p>';
-  if (isset($node->data_type)) {
+  if (isset($node->data_type) AND $filter_node->data_type_test) {
     $output .= t('<strong>Data type: </strong>' . $node->data_type);
     $output .= '<br />';
   };
   $output .= '</p>';
-  if (($node->field_type == 'checkboxes' || $node->field_type == 'select' ) AND ((isset($node->list_options)) AND ($node->list_options != ''))) {
+  if (($node->field_type == 'checkboxes' || $node->field_type == 'select' ) AND ((isset($node->list_options)) AND ($node->list_options != '') AND $filter_node->list_options_test)) {
   	$output .= '<p>';
     $output .= t('<strong>Menu options: </strong>' . str_replace(array("\r\n", "\n", "\r"), '; ', $node->list_options) . '.');
     $output .= '</p>';
   };
-  if (($node->field_type == 'checkboxes' || $node->field_type == 'select' ) AND ((isset($node->content_options)) AND ($node->content_options != '0'))) {
+  if (($node->field_type == 'checkboxes' || $node->field_type == 'select' ) AND ((isset($node->content_options)) AND ($node->content_options != '0') AND $filter_node->content_options_test)) {
   	$output .= '<p>';
     $output .= t('<strong>Menu content: </strong>' . str_replace(array("\r\n", "\n", "\r"), '; ', $node->content_options) . '.');
     $output .= '</p>';
   };
 
   $output .= '<p>';
-  if (isset($node->measurement_device_name) AND ($node->measurement_device_name != '')) {
+  if (isset($node->measurement_device_name) AND ($node->measurement_device_name != '') AND $filter_node->measurement_device_name_test) {
     $output .= t('<strong>Device name: </strong>' . $node->measurement_device_name);
     $output .= '<br />';
   };
-  if (isset($node->measurement_device_description) AND ($node->measurement_device_description != '')) {
+  if (isset($node->measurement_device_description) AND ($node->measurement_device_description != '')  AND $filter_node->measurement_device_description_test) {
     $output .= t('<strong>Instructions: </strong>' . $node->measurement_device_description);
   };
   $output .= '</p>';

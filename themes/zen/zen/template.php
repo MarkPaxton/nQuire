@@ -1,5 +1,5 @@
 <?php
-// $Id: template.php,v 1.44.2.6 2009/02/13 19:02:49 johnalbin Exp $
+// $Id: template.php,v 1.44.2.11 2009/11/05 13:11:38 johnalbin Exp $
 
 /**
  * @file
@@ -24,10 +24,10 @@ if (theme_get_setting('zen_rebuild_registry')) {
  */
 if ($GLOBALS['theme'] == 'zen') { // If we're in the main theme
   if (theme_get_setting('zen_layout') == 'border-politics-fixed') {
-    drupal_add_css(drupal_get_path('theme', 'zen') . '/layout-fixed.css', 'theme', 'all');
+    drupal_add_css(_zen_path() . '/layout-fixed.css', 'theme', 'all');
   }
   else {
-    drupal_add_css(drupal_get_path('theme', 'zen') . '/layout-liquid.css', 'theme', 'all');
+    drupal_add_css(_zen_path() . '/layout-liquid.css', 'theme', 'all');
   }
 }
 
@@ -35,10 +35,7 @@ if ($GLOBALS['theme'] == 'zen') { // If we're in the main theme
  * Implements HOOK_theme().
  */
 function zen_theme(&$existing, $type, $theme, $path) {
-  if (!db_is_active()) {
-    return array();
-  }
-  include_once './' . drupal_get_path('theme', 'zen') . '/template.theme-registry.inc';
+  include_once './' . _zen_path() . '/template.theme-registry.inc';
   return _zen_theme($existing, $type, $theme, $path);
 }
 
@@ -66,8 +63,9 @@ function zen_breadcrumb($breadcrumb) {
       $breadcrumb_separator = theme_get_setting('zen_breadcrumb_separator');
       $trailing_separator = $title = '';
       if (theme_get_setting('zen_breadcrumb_title')) {
-        $trailing_separator = $breadcrumb_separator;
-        $title = menu_get_active_title();
+        if ($title = drupal_get_title()) {
+          $trailing_separator = $breadcrumb_separator;
+        }
       }
       elseif (theme_get_setting('zen_breadcrumb_trailing')) {
         $trailing_separator = $breadcrumb_separator;
@@ -101,14 +99,14 @@ function zen_menu_item_link($link) {
  */
 function zen_menu_local_tasks() {
   $output = '';
-/*
+
   if ($primary = menu_primary_local_tasks()) {
     $output .= '<ul class="tabs primary clear-block">' . $primary . '</ul>';
   }
   if ($secondary = menu_secondary_local_tasks()) {
     $output .= '<ul class="tabs secondary clear-block">' . $secondary . '</ul>';
   }
-*/
+
   return $output;
 }
 
@@ -129,7 +127,7 @@ function zen_preprocess_page(&$vars, $hook) {
 
   // Classes for body element. Allows advanced theming based on context
   // (home page, node of certain type, etc.)
-  $classes = split(' ', $vars['body_classes']);
+  $classes = explode(' ', $vars['body_classes']);
   // Remove the mostly useless page-ARG0 class.
   if ($index = array_search(preg_replace('![^abcdefghijklmnopqrstuvwxyz0-9-_]+!s', '', 'page-'. drupal_strtolower(arg(0))), $classes)) {
     unset($classes[$index]);
@@ -155,6 +153,25 @@ function zen_preprocess_page(&$vars, $hook) {
   }
   $vars['body_classes_array'] = $classes;
   $vars['body_classes'] = implode(' ', $classes); // Concatenate with spaces.
+}
+
+/**
+ * Override or insert variables into the maintenance page template.
+ *
+ * @param $vars
+ *   An array of variables to pass to the theme template.
+ * @param $hook
+ *   The name of the template being rendered ("maintenance_page" in this case.)
+ */
+function zen_preprocess_maintenance_page(&$vars, $hook) {
+  // Add conditional stylesheets.
+  if (!module_exists('conditional_styles')) {
+    $vars['styles'] .= $vars['conditional_styles'] = variable_get('conditional_styles_' . $GLOBALS['theme'], '');
+  }
+
+  // Classes for body element. Allows advanced theming based on context
+  // (home page, node of certain type, etc.)
+  $vars['body_classes_array'] = explode(' ', $vars['body_classes']);
 }
 
 /**
@@ -198,7 +215,7 @@ function zen_preprocess_node(&$vars, $hook) {
  *   The name of the template being rendered ("comment" in this case.)
  */
 function zen_preprocess_comment(&$vars, $hook) {
-  include_once './' . drupal_get_path('theme', 'zen') . '/template.comment.inc';
+  include_once './' . _zen_path() . '/template.comment.inc';
   _zen_preprocess_comment($vars, $hook);
 }
 
@@ -224,7 +241,7 @@ function zen_preprocess_block(&$vars, $hook) {
   $vars['edit_links_array'] = array();
   $vars['edit_links'] = '';
   if (theme_get_setting('zen_block_editing') && user_access('administer blocks')) {
-    include_once './' . drupal_get_path('theme', 'zen') . '/template.block-editing.inc';
+    include_once './' . _zen_path() . '/template.block-editing.inc';
     zen_preprocess_block_editing($vars, $hook);
     $classes[] = 'with-block-editing';
   }
@@ -250,10 +267,22 @@ function zen_preprocess_block(&$vars, $hook) {
  */
 function zen_id_safe($string) {
   // Replace with dashes anything that isn't A-Z, numbers, dashes, or underscores.
-  $string = strtolower(preg_replace('/[^a-zA-Z0-9-]+/', '-', $string));
-  // If the first character is not a-z, add 'id' in front.
-  if (!ctype_lower($string{0})) { // Don't use ctype_alpha since its locale aware.
-    $string = 'id' . $string;
+  return strtolower(preg_replace('/[^a-zA-Z0-9-]+/', '-', $string));
+}
+
+/**
+ * Returns the path to the Zen theme.
+ *
+ * drupal_get_filename() is broken; see #341140. When that is fixed in Drupal 6,
+ * replace _zen_path() with drupal_get_path('theme', 'zen').
+ */
+function _zen_path() {
+  static $path = FALSE;
+  if (!$path) {
+    $matches = drupal_system_listing('zen\.info$', 'themes', 'name', 0);
+    if (!empty($matches['zen']->filename)) {
+      $path = dirname($matches['zen']->filename);
+    }
   }
-  return $string;
+  return $path;
 }
