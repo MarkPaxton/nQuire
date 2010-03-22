@@ -280,6 +280,12 @@ function teacher_only_flag ($gid) {
     }
 }
 
+function new_activity_list($inquiry_id, $phase_id, $uid) {
+	$query = "SELECT DISTINCT pi_activity_status.activity_id FROM pi_activity_status LEFT JOIN pi_previous_activity_status ON pi_activity_status.pas_id = pi_previous_activity_status.pas_id LEFT JOIN og_uid ON og_uid.nid = pi_activity_status.gid LEFT JOIN pi_stage_phase_activity ON pi_stage_phase_activity.activity_id = pi_activity_status.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase.psp_id =  pi_stage_phase_activity.psp_id WHERE pi_stage_phase.phase_id = '" . $phase_id . "' AND (pi_activity_status.node_function = 'add' OR pi_activity_status.node_function = 'edit' OR pi_activity_status.node_function = 'view') AND (pi_previous_activity_status.node_function = 'unavailable' OR pi_previous_activity_status.node_function IS NULL) AND pi_activity_status.inquiry_id = '" . $inquiry_id . "' AND (pi_activity_status.uid = '" . $uid . "' OR og_uid.uid = '" . $uid . "') ";
+	db_query($query);
+}
+
+
 function get_ag_content() {
 
     $node_details = get_inquiry_details_from_current_path();
