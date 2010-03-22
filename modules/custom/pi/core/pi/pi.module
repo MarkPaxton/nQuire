@@ -218,21 +218,129 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 }
 
 
-function octogon_phase($headings, $rows) {
-	$phases = array();
-	$output = "1";
+function octogon_phase($headings, $rows, $activity_count) {
+	
+	$output = "";
+	
+	$layout = 'list';
+
+	if ($layout == 'list') {
+		$left_positions = array('200px', '200px', '200px', '200px', '200px', '200px', '200px', '200px');
+		$top_positions = array('35px', '110px', '185px', '260px', '335px', '410px', '485px', '560px');
+	}
+	elseif ($layout == 'pentagon') {
+		$left_positions = array('180px', '345px', '320px', '40px', '15px');
+		$top_positions = array('5px', '85px', '165px', '165px', '85px');
+	}
+	elseif ($layout == 'octogon') {		
+		$left_positions = array('380px', '450px', '450px', '380px', '80px', '40px', '40px', '80px');
+		$top_positions = array('10px', '95px', '180px', '270px', '270px', '180px', '95px', '10px');
+	};
+	
+	$output .= <<<'HTML'
+	<div style="position: relative; width: 100%; height: 500px;">
+	<div style="position: absolute; top: 5px; left: 150px;">
+		<img width="150" height="625" src="sites/default/files/images/arrow_loop.png">
+	</div>
+HTML;
+
+	$output .= <<<'HTML'
+	<style type="text/css">
+		div.phasebox {
+			width: 240px; 
+			height: 40px; 
+			border: 1px solid black; 
+			background-color: #ffffff;
+		}
+		div.imgbox {
+			float:left; 
+			height: 40px;  
+			width: 40px; 
+			background-color: #ffffff; 
+			text-align: center;
+		}
+		div.textcont {
+			float:left; 
+			height: 40px; 
+			width: 200px; 
+			background-color: #ffffff
+		}
+		div.titlebox {
+			clear:both; 
+			float:left; 
+			height: 20px;  
+			width: 195px; 
+			background-color: #888888;
+			font-weight:bold; 
+			font-size:1.1em; 
+			generic-family: san-serif; 
+			color: #ffffff; 
+			padding-left: 5px;
+		}
+		div.activitybox {
+			clear:both;
+			float:left; 
+			height: 19px;  
+			width: 90px; 
+			background-color: #e7e7e7; 
+			font-size: 1em; 
+			generic-family: san-serif; 
+			color: #777777; 
+			padding:0px 0px 1px 5px;
+		}
+		div.newactbox {
+			float:left; 
+			height: 19px;  
+			width: 70px; 
+			background-color: #e7e7e7; 
+			font-size: 1em; 
+			generic-family: san-serif;
+			font-weight:bold; 
+			color: #777777; 
+			padding:0px 0px 1px 5px;
+		}
+		div.iconbox {
+			float:left; 
+			height: 19px;  
+			width: 30px; 
+			background-color: #e7e7e7; 
+			font-size: 1em; 
+			generic-family: san-serif; 
+			font-weight: bold; 
+			color: #777777; 
+			padding: 0px 0px 1px 0px;
+		}
+	</style>
+HTML;
+
+	$count = 0;
 	if(count($rows)) {
 		foreach($rows as $number => $row) {
 			if (isset($row['data'])) {
 				foreach ($row as $key => $value) {
 					if ($key == 'data') {
-						$phase[] = 'x'.$value[0];
+					    $output .= <<<"HTML"
+					    <div style="position: absolute; top: $top_positions[$count]; left: $left_positions[$count];" class="phasebox">
+							<div class="imgbox"><img src="sites/default/files/images/tube40.png"></div>
+							<div class="textcont">
+								<div class="titlebox">$value[0]</div>
+								<div class="activitybox">$activity_count[$count] Activities</div>
+								<div class="newactbox">2 new!</div>
+								<div class="iconbox"><img src="sites/default/files/images/star10.png"></div>
+							</div>
+						</div>
+HTML;
 					}
 				}
+				$count = $count + 1;
 			}
 		}
 	}
+	
+	$output .= '</div>';
+
 	return $output;
+
 }
 
 
@@ -259,6 +367,7 @@ function pi_inquiry_view() {
     );
   
   $rows = array();
+  $activity_count = array();
   
   //current phase check
               $current_stage = get_current_stage_of_inquiry_and_user($details->inquiry_id, $user->uid);
@@ -276,7 +385,6 @@ function pi_inquiry_view() {
                 $phases_of_current_stage[] =  $phase_of_current_stage->phase_id;
             };
             
-            
 	while($phase = db_fetch_object($phases)) {
 		$loaded_phase = load_phase($phase->phase_id);
 		$row = array();
@@ -288,11 +396,12 @@ function pi_inquiry_view() {
 		}
 		$row[] = $loaded_phase->description;
 		$rows[] = array('data' => $row);
+		$activity_count[] = count(get_activities_of_stage_phase_and_user ($details->inquiry_id, $details->stage_id, $phase->phase_id, $user->uid));
 
 	}
 	//get_phase_view_preference
-	//$output .= octogon_phase($headings, $rows);
-	$output .= theme('table', $header, $rows);
+	$output .= octogon_phase($headings, $rows, $activity_count);
+	//$output .= theme('table', $header, $rows);
   return $output;
 }	  
 /*
