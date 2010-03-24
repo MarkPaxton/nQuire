@@ -72,9 +72,11 @@ function pi_inquiry_form($node) {
 
 	if ($type->has_body)
 	{
-		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);	
+		$form['body_field']['body']['#rows'] = 6;
+		$form['body_field']['teaser_include']['#access'] = FALSE;			
 	}
-  
+	
 	$form['layout'] = array(
 		'#type' => 'select',
 		'#title' => t('Layout'),
@@ -97,10 +99,9 @@ function pi_inquiry_form($node) {
  * hook_form_alter - changes the form to change it from default node layout
  */
 function pi_inquiry_form_alter(&$form, $form_state, $form_id) {
-	// Stuff for this demo, best to keep it inside the house
 	if($form_id == 'pi_inquiry_node_form')
 	{
-		$form['menu']['#weight'] = 3;
+		$form['menu']['#weight'] = 3;	
 	}
 }
 
@@ -153,7 +154,7 @@ function pi_inquiry_delete(&$node) {
 }
 
 /**
- * Custom loader for inquiry type (called when %inquiry is specified in a menu parameter)
+ * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
 	return db_fetch_object(db_query('SELECT layout FROM {pi_inquiry} WHERE vid = %d', $node->vid));

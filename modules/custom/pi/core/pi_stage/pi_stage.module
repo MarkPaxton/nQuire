@@ -68,6 +68,7 @@ function pi_stage_form(&$node, $form_state) {
 		$form['title'] = array(
 			'#type' => 'textfield',
 			'#title' => check_plain($type->title_label),
+			'#weight' => 0,
 			'#required' => TRUE,
 			'#default_value' => $node->title,
 		);
@@ -75,10 +76,15 @@ function pi_stage_form(&$node, $form_state) {
 	if ($type->has_body)
 	{
 		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+		$form['body_field']['body']['#rows'] = 6;
+		$form['body_field']['teaser_include']['#access'] = FALSE;			
 	}
 	
 	//Generate list of inquiry options from existing inquiries
 	$inquiry_data = array();	
+	// Add default value
+	$inquiry_data['none'] = 'Select Inquiry...';
+	
 	$inquiry_nids = pi_inquiry_load_nids();
 	foreach($inquiry_nids as $nid)
 	{
@@ -92,8 +98,6 @@ function pi_stage_form(&$node, $form_state) {
 	{
 		drupal_set_message(t('There are no inquiries defined, please create an inquiry before defining phases.'), 'error');		
 	}
-	// Add default value
-	$inquiry_data['none'] = 'Select Inquiry...';
 	
 	//This section allows a dynamic list of stages to appear on the form to allow 
 	// pi_stage_phase links to be created at the same time as a stage.
@@ -124,6 +128,7 @@ function pi_stage_form(&$node, $form_state) {
 		'#type' => 'select',
 		'#title' => t('Inquiry for stage'),
 		'#default_value' => $inquiry_nid_default_value,
+		'#weight' => 2,
 		'#options' => $inquiry_data,
 		'#allowed_inquiry_nids' => $inquiry_nids,
 		'#element_validate' => array('pi_stage_form_inquiry_nid_validate'),
@@ -140,7 +145,8 @@ function pi_stage_form(&$node, $form_state) {
 	$form['inquiry_nid']['update_usage'] = array(
 	    '#type'  => 'submit',
 	    '#value' => t('Update phase list'),
-	    '#submit' => array('ahah_helper_generic_submit'),
+	    '#weight' => 2,
+		'#submit' => array('ahah_helper_generic_submit'),
 	    '#attributes' => array('class' => 'no-js'),
 	);
 	
@@ -158,11 +164,12 @@ function pi_stage_form(&$node, $form_state) {
 			}
 		}
 	}
-	
+		
 	$form['stage_phases'] = array(
 		'#type' => 'checkboxes',
-	    '#title'  => t('Select the phases to be included in this stage'),
-	    '#prefix' => '<div id="stage-phases-wrapper">', // This is wrapper div for ahah response to fill
+		'#title'  => t('Select the phases to be included in this stage'),
+	    '#weight' => 3,
+		'#prefix' => '<div id="stage-phases-wrapper">', // This is wrapper div for ahah response to fill
 	    '#suffix' => '</div>',
 		'#options' => $phase_select_boxes,
 	);	
@@ -178,7 +185,7 @@ function pi_stage_form_alter(&$form, $form_state, $form_id) {
 	if($form_id == 'pi_stage_node_form')
 	{
 		ahah_helper_register($form, $form_state);
-		$form['menu']['#weight'] = 2;
+		$form['menu']['#weight'] = 4;
 
 		// ISSUE 2: content cannot be saved by another user
 		/**

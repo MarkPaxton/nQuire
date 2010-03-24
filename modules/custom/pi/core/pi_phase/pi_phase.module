@@ -63,20 +63,6 @@ function pi_phase_form($node) {
 	// Get metadata for the node type which is defined in pi_phase_info()
 	$type = node_get_types('type', $node);
 
-	if ($type->has_title)
-	{
-		$form['title'] = array(
-			'#type' => 'textfield',
-			'#title' => check_plain($type->title_label),
-			'#required' => TRUE,
-			'#default_value' => $node->title,
-		);
-	}
-	if ($type->has_body)
-	{
-		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-	}
-	
 	$inquiry_data = array();
 	$inquiry_nids = pi_inquiry_load_nids();
 	foreach($inquiry_nids as $nid)
@@ -94,11 +80,29 @@ function pi_phase_form($node) {
 	$form['inquiry_nid'] = array(
 		'#type' => 'select',
 		'#title' => t('Inquiry for phase'),
+		'#weight' => -1,
 		'#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
 		'#options' => $inquiry_data,
 		'#allowed_inquiry_nids' => $inquiry_nids,
 		'#element_validate' => array('pi_phase_form_inquiry_nid_validate')
-	);
+	);	
+	
+	if ($type->has_title)
+	{
+		$form['title'] = array(
+			'#type' => 'textfield',
+			'#title' => check_plain($type->title_label),
+			'#required' => TRUE,
+			'#weight' => 0,
+			'#default_value' => $node->title,
+		);
+	}
+	if ($type->has_body)
+	{
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+		$form['body_field']['body']['#rows'] = 6;	
+		$form['body_field']['teaser_include']['#access'] = FALSE;			
+	}
 	
 	return $form;
 }
