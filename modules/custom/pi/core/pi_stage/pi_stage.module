@@ -134,8 +134,8 @@ function pi_stage_form(&$node, $form_state) {
 		'#element_validate' => array('pi_stage_form_inquiry_nid_validate'),
 		'#ahah' => array(
 			'event'   => 'change',
-			'path'    => ahah_helper_path(array('stage_phases')),
-			'wrapper' => 'stage-phases-wrapper',
+			'path'    => ahah_helper_path(array('stage_phases','phases')),
+			'wrapper' => 'stages-phases-wrapper',
 		),
 	);	
 	
@@ -164,13 +164,22 @@ function pi_stage_form(&$node, $form_state) {
 			}
 		}
 	}
-		
+
 	$form['stage_phases'] = array(
+		'#type' => 'fieldset',
+		//'#title'  => t('Select the phases to be included in this stage'),
+		'#attributes' => array('id'=> 'stages-phases-wrapper'),
+		'#collapsible' => FALSE,
+		'#tree' => TRUE,
+	    '#weight' => 3,
+	);
+
+	$form['stage_phases']['phases'] = array(
 		'#type' => 'checkboxes',
 		'#title'  => t('Select the phases to be included in this stage'),
 	    '#weight' => 3,
-		'#prefix' => '<div id="stage-phases-wrapper">', // This is wrapper div for ahah response to fill
-	    '#suffix' => '</div>',
+		//'#prefix' => '<div id="stage-phases-wrapper">', // This is wrapper div for ahah response to fill
+	    //'#suffix' => '</div>', 
 		'#options' => $phase_select_boxes,
 	);	
 	
@@ -181,12 +190,11 @@ function pi_stage_form(&$node, $form_state) {
  * hook_form_alter - changes the form to change it from default node layout
  */
 function pi_stage_form_alter(&$form, $form_state, $form_id) {
-	// Stuff for this demo, best to keep it inside the house
 	if($form_id == 'pi_stage_node_form')
 	{
-		ahah_helper_register($form, $form_state);
 		$form['menu']['#weight'] = 4;
 
+		ahah_helper_register($form, $form_state);
 		// ISSUE 2: content cannot be saved by another user
 		/**
 		 * @TODO: Figure out the main cause why this happens. It has something
@@ -200,8 +208,8 @@ function pi_stage_form_alter(&$form, $form_state, $form_id) {
 
 /**
  * This is the validation function to make sure that pi_stage.inquiry_nid is a valid inquiry
- * @param unknown_type $element 
- * @param unknown_type $form_state
+ * @param array $element drupal forms api element data
+ * @param array $form_state form submit data as per drupal api
  */
 function pi_stage_form_inquiry_nid_validate($element, $form_state)
 {
