@@ -223,6 +223,7 @@ function pi_stage_form_inquiry_nid_validate($element, $form_state)
  * INSERT command for a new inquiry stage
  */
 function pi_stage_insert($node) {
+	firep($node);
   db_query("INSERT INTO {pi_stage} (nid, vid, inquiry_nid) VALUES (%d, %d, %d)",
     $node->nid, $node->vid, $node->inquiry_nid);
 }
@@ -263,10 +264,11 @@ function pi_stage_nodeapi(&$node, $op, $teaser, $page) {
 function pi_stage_delete(&$node) {
 	// Delete the related information we were saving for this node.
 	db_query('DELETE FROM {pi_stage} WHERE nid = %d', $node->nid);
+	db_query('DELETE FROM {pi_stage_phase} WHERE stage_nid = %d', $node->nid);
 }
 
 /**
- * Custom loader for inquiry type (called when %inquiry is specified in a menu parameter)
+ * Custom loader for pi_stage type valled via node_load
  */
 function pi_stage_load($node) {
 	return db_fetch_object(db_query('SELECT inquiry_nid FROM {pi_stage} WHERE vid = %d', $node->vid));
