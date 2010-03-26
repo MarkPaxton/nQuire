@@ -101,7 +101,24 @@ function ahah_helper_register(&$form, &$form_state) {
     drupal_add_js(drupal_get_path('module', 'ahah_helper') . '/ahah_helper.js', 'footer');
     $js_file_added = TRUE;
   }
+  
+  // Add our submit function, which will clean up form storage, so that redirects will work.
+  $form['#submit'][] = 'ahah_helper_real_submit';
+  if ($form['#id'] == 'node-form') {
+    foreach ($form['buttons'] as $name => &$button) {
+      $button['#submit'][] = 'ahah_helper_real_submit';
+    }
+  } 
 }
+
+/**
+ * Submit callback; gets rid of storage at the end, so that we can redirect.
+ */
+function ahah_helper_real_submit($form, &$form_state) {
+  unset($form_state['storage']);
+}
+
+
 
 /**
  * Submit callback; for any button that's used when JS is disabled (i.e. to
@@ -130,6 +147,14 @@ function ahah_helper_render($form_item_to_render = FALSE) {
   $form = form_get_cache($form_build_id, $form_state);
   $args = $form['#parameters'];
   $form_id = array_shift($args);
+  
+  // Are we on the node form?
+  $node_form = FALSE;
+  if (preg_match('/_node_form$/', $form_id)) {
+    $node_form = TRUE;
+    module_load_include('inc', 'node', 'node.pages');
+  }
+  
   // We will run some of the submit handlers so we need to disable redirecting.
   $form['#redirect'] = FALSE;
   // We need to process the form, prepare for that by setting a few internals
@@ -182,6 +207,14 @@ function ahah_helper_render($form_item_to_render = FALSE) {
 
   // Build, validate and if possible, submit the form.
   drupal_process_form($form_id, $form, $form_state);
+  if ($node_form) {
+    // get the node from the submitted values
+    $node = node_form_submit_build_node($form, $form_state);
+
+    // hack to stop taxonomy from resetting when the form is rebuilt
+    $form_state['node']['taxonomy'] = taxonomy_preview_terms($node);
+  }
+
   // This call recreates the form relying solely on the form_state that the
   // drupal_process_form set up.
   //$form = drupal_rebuild_form($form_id, $form_state, $args, $form_build_id);

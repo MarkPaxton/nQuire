@@ -80,6 +80,7 @@ function pi_phase_form($node) {
 	$form['inquiry_nid'] = array(
 		'#type' => 'select',
 		'#title' => t('Inquiry for phase'),
+		'#required' => TRUE,
 		'#weight' => -1,
 		'#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
 		'#options' => $inquiry_data,
@@ -135,29 +136,33 @@ function pi_phase_form_inquiry_nid_validate($element, $form_state)
 
 
 /**
- * INSERT command for a new inquiry phase
+ * hook_insert() - INSERT command for a new inquiry phase
  */
 function pi_phase_insert($node) {
-  db_query("INSERT INTO {pi_phase} (nid, vid, inquiry_nid) VALUES (%d, %d, %d)",
-    $node->nid, $node->vid, $node->inquiry_nid);
+	// The default value for order will always be the number of nodes (since ordering starts at 0).
+	$initial_weight = db_result(db_query("SELECT COUNT(nid) from pi_phase WHERE inquiry_nid=%d", $node->inquiry_nid));
+	db_query("INSERT INTO {pi_phase} (nid, vid, inquiry_nid, weight) VALUES (%d, %d, %d, %d)",
+	$node->nid, $node->vid, $node->inquiry_nid, $initial_weight);
 }
 
 /**
- * UPDATE command for an existing inquiry phase
+ * hook_update() - UPDATE command for an existing inquiry phase
  */
 function pi_phase_update($node) {
-  if ($node->revision) {
-    // New revision; treat it as a new record.
-    pi_phase_insert($node);
-  }
-  else {
-    db_query("UPDATE {pi_phase} SET inquiry_nid = %d WHERE vid = %d",
-      $node->inquiry_nid, $node->vid);
-  }
+	if ($node->revision)
+	{
+		// New revision; treat it as a new record.
+		pi_phase_insert($node);
+	}
+	else 
+	{
+		db_query("UPDATE {pi_phase} SET inquiry_nid = %d, weight = %d WHERE vid = %d",
+			$node->inquiry_nid, $node->order, $node->vid);
+	}
 }
 
 /**
- * Implementation of hook_nodeapi().
+ * hook_nodeapi().
  *
  * When a node revision is deleted, we need to remove the corresponding record
  * from our table. The only way to handle revision deletion is by implementing
@@ -173,7 +178,7 @@ function pi_phase_nodeapi(&$node, $op, $teaser, $page) {
 }
 
 /**
- * DELETE command for an inquiry
+ * hook_delete() DELETE command for an inquiry
  * @todo this should delete all the associated data with the inquiry too!
  */
 function pi_phase_delete(&$node) {
