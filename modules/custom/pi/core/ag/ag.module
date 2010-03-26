@@ -176,98 +176,94 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
             return $blocks;
 
         case 'view':
-						global $user;
+        	global $user;
 
-						$show_activities = show_activites($user->uid);
-						$show_phases = show_phases($user->uid);
-						
-            $image_path = "images/";
-            $node_details = get_inquiry_details_from_current_path();
-            
-						if(arg(0) == 'phase' || arg(0) == 'activity') {
-						
-            $phases = get_phases_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
+        	$show_activities = show_activites($user->uid);
+        	$show_phases = show_phases($user->uid);
 
-            $current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
-            if (isset($current_stage->stage_id)) {
-                $current_stage_id = $current_stage->stage_id;
-            }
-            else {
-                $current_stage_id = '';
-            };
-            $current_stage_phases = get_phases_of_stage ($node_details->inquiry_id, $current_stage_id);
+        	$image_path = "images/";
+        	$node_details = get_inquiry_details_from_current_path();
 
-            $phases_of_current_stage = array();
+        	if(arg(0) == 'phase' || arg(0) == 'activity')
+        	{
+        		$phases = get_phases_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
+        		$current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
 
-            while ($phase_of_current_stage = db_fetch_object($current_stage_phases)) {
-                $phases_of_current_stage[] =  $phase_of_current_stage->phase_id;
-            };
+        		if (isset($current_stage->stage_id)) {
+        			$current_stage_id = $current_stage->stage_id;
+        		}
+        		else {
+        			$current_stage_id = '';
+        		};
 
-            $phase_menu_items = array();
-            $phase_menu_item = array();
+        		$stage = node_load($current_stage_id);
+        		$phases_of_current_stage = $stage->stage_phases; 
 
-            while ($phase = db_fetch_object($phases)) {
-							
-                $loaded_phase = load_phase($phase->phase_id);
-                $teacher_gid = check_teacher_phase_for_inquiry_phase_user ($node_details->inquiry_id, $phase->phase_id, $user->uid);
+        		$phase_menu_items = array();
+        		$phase_menu_item = array();
+
+        		foreach($phases as $phase_nid)
+        		{
+        			$loaded_phase = load_phase($phase_nid);
+        			$teacher_gid = check_teacher_phase_for_inquiry_phase_user ($node_details->inquiry_id, $phase->phase_id, $user->uid);
+
+        			if ($phase_nid == $node_details->phase_id && arg(0) == 'phase') {
+        				$phase_link = t($loaded_phase->name);
+        			}
+        			else {
+        				$phase_link = l($loaded_phase->name . teacher_only_flag($teacher_gid), t("phase/" . $phase->phase_id), array('html' => true));
+        			}
+
+        			$activity_menu_items = array();
+
+        			//expand activities of the phase if it is current
+        			if ($phase->phase_id == $node_details->phase_id && $show_activities) {
+
+        				//$activities = get_activities_of_stage_phase_and_user(1, NULL, NULL, 1);
+        				$activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->phase_id, $user->uid);
+
+        				foreach($activities as $activity) {
+        					$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+        				};
+
+        			};
 								
-								if ($phase->phase_id == $node_details->phase_id && arg(0) == 'phase') {
-                	$phase_link = t($loaded_phase->name);
-                }
-                else {
-                	$phase_link = l($loaded_phase->name . teacher_only_flag($teacher_gid), t("phase/" . $phase->phase_id), array('html' => true));
-                }
+        			if ($phase->phase_id == $node_details->phase_id) {
+        				$phase_class = 'expanded active-trail';
+        			}
+        			else {
+        				$phase_class = 'collapsed';
+        			}
+        			if (in_array($phase->phase_id, $phases_of_current_stage) && $phase->phase_id == $node_details->phase_id) {
+        				$phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='images/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
+        			}
+        			elseif (in_array($phase->phase_id, $phases_of_current_stage) && $show_phases) {
+        				$phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='images/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
+        			}
+        			elseif ($phase->phase_id == $node_details->phase_id && $show_activities) {
+        				$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
+        			}
+        			elseif ($show_phases) {
+        				$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
+        			}
 
-                $activity_menu_items = array();
+        		}
 
-                //expand activities of the phase if it is current
-                if ($phase->phase_id == $node_details->phase_id && $show_activities) {
+        		$home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
 
-                //$activities = get_activities_of_stage_phase_and_user(1, NULL, NULL, 1);
-                    $activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->phase_id, $user->uid);
+        		// $block['subject'] = l(t("Sustainability investigator&nbsp;" . "<img src=\"" . $image_path . "home.png\"/>"), t($home_link), array(html=>true));
 
-                    foreach($activities as $activity) {
-                        $activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
-                    };
+        		$previous_answers = array("title" => "my title", "author" => "my author");
 
-                };
-								
-								if ($phase->phase_id == $node_details->phase_id) {
-									$phase_class = 'expanded active-trail';
-								}
-								else {
-									$phase_class = 'collapsed';
-								}
-                if (in_array($phase->phase_id, $phases_of_current_stage) && $phase->phase_id == $node_details->phase_id) {
-                    $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='images/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
-                }
-                elseif (in_array($phase->phase_id, $phases_of_current_stage) && $show_phases) {
-                    $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='images/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
-                }
-               	elseif ($phase->phase_id == $node_details->phase_id && $show_activities) {
-                    $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
-                }
-                elseif ($show_phases) {
-                    $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
-                }
+        		$block_content = t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')));
 
-            }
-
-            $home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-
-            // $block['subject'] = l(t("Sustainability investigator&nbsp;" . "<img src=\"" . $image_path . "home.png\"/>"), t($home_link), array(html=>true));
-
-            $previous_answers = array("title" => "my title", "author" => "my author");
-
-            $block_content = t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')));
-            
-            }
-            if(arg(0) == 'phase' && $show_phases || arg(0) == 'activity' && ($show_phases || $show_activities)) {
-            	$loaded_inquiry = load_inquiry($node_details->inquiry_id);
-							$block['subject'] = t('Navigation');
-							            	$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
-						}
-            return $block;
+        	}
+        	if(arg(0) == 'phase' && $show_phases || arg(0) == 'activity' && ($show_phases || $show_activities)) {
+        		$loaded_inquiry = node_load($node_details->inquiry_id);
+        		$block['subject'] = t('Navigation');
+        		$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
+        	}
+        	return $block;
     };
 }
 
@@ -364,14 +360,15 @@ function get_ag_content() {
                   <div class='tabs'>
                     <ul>";
 
-        $stages = get_stages_of_inquiry_and_user ($inquiry->inquiry_id, $user->uid);
+        $stages = get_stages_of_inquiry_and_user($inquiry->inquiry_id, $user->uid);
         $stage_count = 1;
 
         $tab_content = '';
         $tab_text_content = '';
 
-        while ($stage = db_fetch_object($stages)) {
-            $stage_data = load_stage($stage->stage_id);
+        foreach($stages as $stage_nid)
+        {
+            $stage_data = node_load($stage_nid);
             if ($current_stage->stage_id == $stage->stage_id) {
                 $tab_content .= "<li class='ag_currentstage'>";
                 $tab_text_content .= "<div class='ag_currentstage' id='stagetabs-" . $inquiry->inquiry_id . "-" . $stage->stage_id . "'>";
@@ -380,14 +377,14 @@ function get_ag_content() {
                 $tab_content .= "<li class='ag_stage'>";
                 $tab_text_content .= "<div class='ag_stage' id='stagetabs-" . $inquiry->inquiry_id . "-" . $stage->stage_id . "'>";
             };
-            $short_name = $stage_data->short_name;
+            $short_name = $stage_data->title;
             if (!isset ($short_name)) {
                 $short_name = $stage_count;
             };
             $tab_content .= "<a href='#stagetabs-" . $inquiry->inquiry_id . "-" . $stage->stage_id . "'>$short_name</a>";
             $tab_content .= "</li>";
 
-            $tab_text_content .= $stage_data->name;
+            $tab_text_content .= $stage_data->body;
             $tab_text_content .= "</div>";
 
             $stage_count = $stage_count + 1;

@@ -47,12 +47,12 @@ function pi_breadcrumb($page_level, $details) {
 	}
 	if($page_level == 'inquiry' || $page_level == 'phase' || $page_level == 'activity') {
 		if($page_level == 'inquiry') {
-			$loaded_inquiry = load_inquiry($details->inquiry_id);
-			$breadcrumb[] = t($loaded_inquiry->name);
+			$loaded_inquiry = node_load($details->inquiry_id);
+			$breadcrumb[] = t($loaded_inquiry->title);
 		}
 		else {
-			$loaded_inquiry = load_inquiry($details->inquiry_id);
-			$breadcrumb[] = l(t($loaded_inquiry->name), t('inquiry/' . $details->inquiry_id));
+			$loaded_inquiry = node_load($details->inquiry_id);
+			$breadcrumb[] = l(t($loaded_inquiry->title), t('inquiry/' . $details->inquiry_id));
 		}
 	}
 	if($page_level == 'phase' || $page_level == 'activity') {
@@ -81,14 +81,17 @@ function pi_stage_bar($details) {
 	$uid = $user->uid;
 	$stage_list = array();
 	$count = 1;
-	$stages = get_stages_of_inquiry_and_user ($details->inquiry_id, $uid);
-	while($stage = db_fetch_object($stages)) {
-		$loaded_stage = load_stage($stage->stage_id);
+	$stages = get_stages_of_inquiry_and_user($details->inquiry_id, $uid);
+	$stage_list = array();
+	foreach($stages as $stage_nid)
+	{
+		$stage = node_load($stage_nid);
 		if ($stage->stage_id == $details->stage_id) {
 			$stage_list[] = t('<b>' . $count++ . '</b>');
 		}
-		else {
-		$stage_list[] = t($count++);
+		else
+		{
+			$stage_list[] = t($count++);
 		}
 	}
 	$output = '<p><b>My progress:</b> ' . implode(' &rarr; ', $stage_list) . '</p>';

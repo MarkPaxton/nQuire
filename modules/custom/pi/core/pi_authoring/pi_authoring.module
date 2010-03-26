@@ -455,17 +455,18 @@ function pi_authoring_view(){
 */	
 	$content .= "<h2>Current Inquiries</h2>\n";
 	
-	$inquiries = get_inquiries();
+	$inquiry_nids = pi_inquiry_load_nids();
 	$headings = array(array('data'=>'Title','width'=>'20%'), 'Description', '');
 	$rows = array();
-	while($inquiry = db_fetch_object($inquiries))
+	foreach($inquiry_nids as $nid)
 	{
+		$inquiry = node_load($nid);
 		$row = array();
-		$row[] = array( 'data' => l(t($inquiry->name), '/nQuire/inquiry/' . $inquiry->inquiry_id . '/phases'), 
+		$row[] = array( 'data' => l(t($inquiry->title), '/nQuire/inquiry/' . $inquiry->nid . '/phases'), 
 						'class'=> 'inquiry_name');
-		$row[] = array('data' => t($inquiry->description) , 
+		$row[] = array('data' => t($inquiry->body) , 
 						'class' => 'inquiry_description');		
-		$row[] = l(t("Delete"), '/nQuire/inquiry/' . $inquiry->inquiry_id . '/delete');
+		$row[] = l(t("Delete"), '/nQuire/inquiry/' . $inquiry->nid . '/delete');
 		
 		$rows[] = $row;
 	}

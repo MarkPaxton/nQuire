@@ -7,7 +7,7 @@
 
  
  /**
- * Define the pi_inquiry node type
+ * hook_node_info()Define the pi_inquiry node type
  */
 function pi_inquiry_node_info() {
 	return array(
@@ -110,8 +110,9 @@ function pi_inquiry_form_alter(&$form, $form_state, $form_id) {
  * INSERT command for a new inquiry
  */
 function pi_inquiry_insert($node) {
-  db_query("INSERT INTO {pi_inquiry} (nid, vid, layout) VALUES (%d, %d, %d)",
-    $node->nid, $node->vid, $node->layout);
+	$initial_weight = db_result(db_query("SELECT COUNT(nid) from pi_inquiry"));
+	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight) VALUES (%d, %d, %d, %d)",
+		$node->nid, $node->vid, $node->layout, $initial_weight);
 }
 
 /**
@@ -123,8 +124,8 @@ function pi_inquiry_update($node) {
     pi_inquiry_insert($node);
   }
   else {
-    db_query("UPDATE {pi_inquiry} SET layout = %d WHERE vid = %d",
-      $node->layout, $node->vid);
+    db_query("UPDATE {pi_inquiry} SET layout = %d, weight= %d WHERE vid = %d",
+      $node->layout, $node->weight, $node->vid);
   }
 }
 
@@ -157,7 +158,7 @@ function pi_inquiry_delete(&$node) {
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-	return db_fetch_object(db_query('SELECT layout FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+	return db_fetch_object(db_query('SELECT layout, weight FROM {pi_inquiry} WHERE vid = %d', $node->vid));
 }
 
 /**
