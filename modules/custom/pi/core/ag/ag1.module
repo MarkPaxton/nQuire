@@ -190,32 +190,31 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
         		foreach($phases as $phase_nid)
         		{
-        			$loaded_phase = load_phase($phase_nid);
-        		
-					$phase_link = l($loaded_phase->name . teacher_only_flag($teacher_gid), 
-							t("phase/" . $phase->phase_nid), array('html' => true));
+        			$phase = node_load($phase_nid);        		
+					$phase_link = l($phase->title . teacher_only_flag($teacher_gid), 
+							t("phase/" . $phase->nid), array('html' => true));
 
 					$activity_menu_items = array();
 
 					//expand activities of the phase if it is current
-					if ($phase->phase_nid == $node_details->phase_id && $show_activities) {
+					if ($phase->nid == $node_details->phase_id && $show_activities) {
 
 						//$activities = get_activities_of_stage_phase_and_user(1, NULL, NULL, 1);
-						$activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->phase_id, $user->uid);
+						$activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->nid, $user->uid);
 
 						foreach($activities as $activity) {
-							$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+							$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->nid, $activity->activity_id, $user->uid);
 						};
 
 					};
 
-					if (in_array($phase->phase_id, $phases_of_current_stage) && $phase->phase_id == $node_details->phase_id) {
+					if (in_array($phase->nid, $phases_of_current_stage) && $phase->nid == $node_details->phase_id) {
 						$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => 'ag-phase-current');
 					}
-					elseif (in_array($phase->phase_id, $phases_of_current_stage) && $show_phases) {
+					elseif (in_array($phase->nid, $phases_of_current_stage) && $show_phases) {
 						$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => 'ag-phase-current');
 					}
-					elseif ($phase->phase_id == $node_details->phase_id && $show_activities) {
+					elseif ($phase->nid == $node_details->phase_id && $show_activities) {
 						$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => 'ag-phase');
 					}
 					elseif ($show_phases) {

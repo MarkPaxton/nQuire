@@ -1077,44 +1077,34 @@ function pi_authoring_inquiry_phases($inquiry) {
 	// Query for inquiry phases and list them if there are any, otherwise show 
 	// placeholder text
 	$phases = get_phases_of_inquiry($inquiry->inquiry_id);
-	if($phases != false)
+
+	$output .="<h2>Phases of this inquiry</h2>\n";
+	$header = array(
+        t("Phase name"),
+        t("Description")
+    );
+
+    $rows = array();
+	if(!empty($phases))
 	{
-		$output .="<h2>Phases of this inquiry</h2>\n";
-		$header = array(
-	        t("Phase name"),
-	        t("Description")
-	    );
-
-	    $rows = array();
-	    while($phase = db_fetch_object($phases))
-		{
-			$phase_objects[] = $phase;
-		}
-		if(!empty($phase_objects))
-		{
-			$output .= drupal_get_form('pi_authoring_order_phases_form', $phase_objects);
-		}
-		else
-		{
-			// Display a warning message to the user as there are no phases yet defined 
-			drupal_set_message("No phases added so far in this inquiry, to add phases.", 'warning', FALSE);
-
-			// Also display some boilerplate text about defining inquiries
-			$output .="<div class='help'>\n";
-			$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
-			$output .= "A phase is a conceptual part of the inquiry model, for example, ";
-			$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
-			$output .= "be phases in an inquiry.</p>\n";
-			$output .= "</div>\n"; // #help
-			
-		}
-		$output .= drupal_get_form('pi_authoring_inquiry_add_phase_form', $inquiry);
+		$output .= drupal_get_form('pi_authoring_order_phases_form', $phase_objects);
 	}
 	else
 	{
-		drupal_set_message("There was a problem accessing the inquiry data: " . t(db_error()), 'error', FALSE);
-		drupal_goto("/piauthoring");
+		// Display a warning message to the user as there are no phases yet defined 
+		drupal_set_message("No phases added so far in this inquiry, to add phases.", 'warning', FALSE);
+
+		// Also display some boilerplate text about defining inquiries
+		$output .="<div class='help'>\n";
+		$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
+		$output .= "A phase is a conceptual part of the inquiry model, for example, ";
+		$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
+		$output .= "be phases in an inquiry.</p>\n";
+		$output .= "</div>\n"; // #help
+		
 	}
+	$output .= drupal_get_form('pi_authoring_inquiry_add_phase_form', $inquiry);
+
 	$output .= "</div>\n"; // #pi_authoring
 	
 	return $output;

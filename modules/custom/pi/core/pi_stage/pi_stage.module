@@ -280,7 +280,7 @@ function pi_stage_insert($node) {
 	{
 		if($value==TRUE)
 		{
-			db_query("INSERT INTO {pi_stage_phase} (stage_nid, phase_nid) VALUES (%d, %d)",
+			db_query("INSERT INTO {pi_stage_phase} (stage_id, phase_id) VALUES (%d, %d)",
 				$node->nid, $phase_nid);
 		}
 	}
@@ -299,12 +299,12 @@ function pi_stage_update($node) {
 	{
 		db_query("UPDATE {pi_stage} SET inquiry_nid = %d, weight = %d WHERE vid = %d",
 			$node->vid, $node->weight);	
-		db_query('DELETE FROM {pi_stage_phase} WHERE stage_nid = %d', $node->nid);
+		db_query('DELETE FROM {pi_stage_phase} WHERE stage_id = %d', $node->nid);
 		foreach($node->stage_phases['phases'] as $phase_nid => $value)
 		{
 			if($value==TRUE)
 			{
-				db_query("INSERT INTO {pi_stage_phase} (stage_nid, phase_nid) VALUES (%d, %d)",
+				db_query("INSERT INTO {pi_stage_phase} (stage_id, phase_id) VALUES (%d, %d)",
 					$node->nid, $phase_nid);
 			}
 		}
@@ -335,7 +335,7 @@ function pi_stage_nodeapi(&$node, $op, $teaser, $page) {
 function pi_stage_delete(&$node) {
 	// Delete the related information we were saving for this node.
 	db_query('DELETE FROM {pi_stage} WHERE nid = %d', $node->nid);
-	db_query('DELETE FROM {pi_stage_phase} WHERE stage_nid = %d', $node->nid);
+	db_query('DELETE FROM {pi_stage_phase} WHERE stage_id = %d', $node->nid);
 }
 
 /**
@@ -344,10 +344,10 @@ function pi_stage_delete(&$node) {
 function pi_stage_load($node) {
 	$data = db_fetch_object(db_query('SELECT inquiry_nid, weight FROM {pi_stage} WHERE vid = %d', $node->vid));
 	$phase_nids = array();
-	$result = db_query("SELECT phase_nid from {pi_stage_phase} WHERE stage_nid = %d", $node->nid);
+	$result = db_query("SELECT phase_id from {pi_stage_phase} WHERE stage_id = %d", $node->nid);
 	while($row=db_fetch_array($result))
 	{
-		$phase_nids[] = $row['phase_nid'];
+		$phase_nids[] = $row['phase_id'];
 	}
 	$data->stage_phases = $phase_nids;
 	return $data;
