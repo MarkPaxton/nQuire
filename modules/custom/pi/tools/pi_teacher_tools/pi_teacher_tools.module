@@ -61,16 +61,17 @@ function pi_dashboard() {
 	}
 	
 	$content .= "<div>";
-	while ($result = db_fetch_object($stages)) {
-	
-		$stage = load_stage($result->stage_id);
+	foreach($stages as $stage_nid)
+	{
+		$stage = node_load($stage_nid);
 		$content .= "<div style=\"float: left; width: 8em\">";
-		if ($result->stage_id == $selected_stage) {
-			$content .= "<b>" . $stage->name . "</b>";
+		if ($stage->nid == $selected_stage)
+		{
+			$content .= "<b>" . $stage->title . "</b>";
 		}
-		else {
-			
-			$content .= l(t($stage->name), build_teacher_tool_link("dashboard", $details->inquiry_id, $result->stage_id), array());
+		else
+		{
+			$content .= l(t($stage->title), build_teacher_tool_link("dashboard", $details->inquiry_id, $stage->nid), array());
 			//$content .= $stage->name . " ";
 		}
 		$content .= "</div>";
@@ -80,14 +81,11 @@ function pi_dashboard() {
 	$activities = get_activities_of_stage_phase_and_user ($details->inquiry_id, $selected_stage, NULL, $user->uid);
 	
 	$content .= "<br/><table class=\"home-table\"><tr>";
-	
-	foreach ($activities as $activity) { 
-
+	foreach ($activities as $activity)
+	{ 
       $loaded_activity = load_activity($activity->activity_id);
       $loaded_activity_actor = load_activity_actor($details->inquiry_id, $activity->activity_id);
-      
       $content .= "<td><b>" . $loaded_activity->name . "</b></td>";
-    
     }
 	
 	$content .= "</tr><tr>";

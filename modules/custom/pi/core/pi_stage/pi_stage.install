@@ -1,0 +1,104 @@
+<?php
+// $Id: pi_stage.install,v 0.1 MCP$
+
+/**
+ * Implementation of hook_install().
+ */
+function pi_stage_install() {
+  // Create tables.
+  drupal_install_schema('pi_stage');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function pi_stage_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pi_stage');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function pi_stage_schema() {
+	$schema['pi_stage'] = array(
+		'description' => 'PI Inquiry Stage',
+		'fields' => array(
+			'nid' => array(
+		        'description' => t('node id'),
+		        'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'size' => '10',
+		        'default' => 0,
+			),
+			'vid' => array(
+		        'description' => t('The current vid version identifier'),
+		        'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'size' => '10',
+		      	'default' => 0,
+			),
+			'inquiry_nid' => array(
+		        	'description' => 'The nid for the inquiry this stage is attached to.',
+					'type' => 'int',
+		        	'unsigned' => TRUE,
+					'not null' => TRUE,
+		        	'size' => '10',
+			),
+			'weight' => array(
+		        	'description' => 'The order of the stage in the inquiry.',
+					'type' => 'int',
+		        	'unsigned' => TRUE,
+					'not null' => TRUE,
+		        	'size' => 'tiny',
+		    	  	'default' => 0,
+			),		
+			
+		),
+		'primary key' => array('nid', 'vid'),
+		'unique keys' => array(
+			'vid' => array('vid')
+		),
+		'indexes' => array(
+			'nid' => array('nid')
+		),
+	);
+	$schema['pi_stage_phase'] = array(
+		'description' => 'nQuire Stage-Phase link table',
+			'psp_id' => array(
+		        'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'size' => '10',
+				'description' => 'Stage-Phase link id (used for stage-phase-activity links)',
+			),		'fields' => array(
+			'stage_id' => array(
+		        'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'size' => '10',
+				'description' => 'Stage node id',
+			),
+			'phase_id' => array(
+		        'type' => 'int',
+		        'unsigned' => TRUE,
+		        'not null' => TRUE,
+		        'size' => '10',
+				'description' => 'Phase node id',
+			),
+		),
+		'primary key' => array('psp_id', 'stage_nid', 'phase_nid'),
+		'unique keys' => array(
+			'stage_nid_phase_nid' => array('psp_id')
+		),
+		'indexes' => array(
+			'stage_id' => array('stage_nid'),
+			'phase_id' => array('phase_nid'),
+		),
+	);
+	
+	
+	return $schema;
+}

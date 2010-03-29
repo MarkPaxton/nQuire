@@ -1,0 +1,268 @@
+<?php
+// $Id: pi_phase.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry Phase content type
+ * @todo Rename table to pi_phase rather than pi_phase_node when it's tested and working
+ */
+
+ 
+ /**
+ * Define the pi_inquiry node type
+ */
+function pi_phase_node_info() {
+	return array(
+		'pi_phase' => array(
+			'name' => t('Inquiry Phase'), // Required.
+			'module' => 'pi_phase',  // Required.
+			'description' => t('This is the Inquiry Phase content type for nQuire'), // Required.
+			'has_title' => TRUE,
+			'title_label' => t('Phase Name'),
+			'has_body' => TRUE,
+			'body_label' => t('Phase Description'),
+			'min_word_count' => 1,
+		)
+	);
+}
+
+/**
+ * Define permissions available for pi_inquiry module
+ */
+function pi_phase_perm() {
+	return array('create inquiry', 'edit own inquiry', 'edit any inquiry', 'delete own inquiry', 'delete any inquiry');
+}
+
+/**
+ * Work out if a user has permission to do something with an Inquiry
+ */
+function pi_phase_access($op, $node, $account) {
+  $is_author = $account->uid == $node->uid;
+  switch ($op) {
+    case 'create':
+      // Allow if user's role has 'create inquiry' permission.
+      return user_access('create inquiry', $account);
+
+    case 'update':
+      // Allow if user's role has 'edit own inquiry' permission and user is
+      // the author; or if the user's role has 'edit any inquiry' permission.
+      return user_access('edit own inquiry', $account) && is_author ||
+        user_access('edit any inquiry', $account);
+    case 'delete':
+      // Allow if user's role has 'delete own inquiry' permission and user is
+      // the author; or if the user's role has 'delete any inquiry' permission.
+      return user_access('delete own inquiry', $account) && $is_author ||
+        user_access('delete any inquiry', $account);
+  }
+}
+
+
+/**
+ * The form for adding/editing an Inquiry
+ */
+function pi_phase_form($node) {
+	// Get metadata for the node type which is defined in pi_phase_info()
+	$type = node_get_types('type', $node);
+
+	$inquiry_data = array();
+	$inquiry_nids = pi_inquiry_load_nids();
+	foreach($inquiry_nids as $nid)
+	{
+		$inquiry = node_load($nid);
+		if($inquiry)
+		{
+			$inquiry_data[$nid] = $inquiry->title;
+		}
+	} 
+	if(count($inquiry_data)==0)
+	{
+		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
+	}
+	$form['inquiry_nid'] = array(
+		'#type' => 'select',
+		'#title' => t('Inquiry for phase'),
+		'#required' => TRUE,
+		'#weight' => -1,
+		'#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
+		'#options' => $inquiry_data,
+		'#allowed_inquiry_nids' => $inquiry_nids,
+		'#element_validate' => array('pi_phase_form_inquiry_nid_validate')
+	);	
+	
+	if ($type->has_title)
+	{
+		$form['title'] = array(
+			'#type' => 'textfield',
+			'#title' => check_plain($type->title_label),
+			'#required' => TRUE,
+			'#weight' => 0,
+			'#default_value' => $node->title,
+		);
+	}
+	if ($type->has_body)
+	{
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+		$form['body_field']['body']['#rows'] = 6;	
+		$form['body_field']['teaser_include']['#access'] = FALSE;			
+	}
+	
+	return $form;
+}
+
+/**
+ * hook_form_alter - changes the form to change it from default node layout
+ */
+function pi_phase_form_alter(&$form, $form_state, $form_id) {
+	// Stuff for this demo, best to keep it inside the house
+	if($form_id == 'pi_phase_node_form')
+	{
+		$form['menu']['#weight'] = 2;
+	}
+}
+
+
+/**
+ * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry
+ * @param unknown_type $element 
+ * @param unknown_type $form_state
+ */
+function pi_phase_form_inquiry_nid_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['inquiry_nid'], $element['#allowed_inquiry_nids']))
+	{
+		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));				
+	}
+}
+
+
+
+/**
+ * hook_insert() - INSERT command for a new inquiry phase
+ */
+function pi_phase_insert($node) {
+	// The default value for order will always be the number of nodes (since ordering starts at 0).
+	$initial_weight = db_result(db_query("SELECT COUNT(nid) from pi_phase WHERE inquiry_nid=%d", $node->inquiry_nid));
+	db_query("INSERT INTO {pi_phase} (nid, vid, inquiry_nid, weight) VALUES (%d, %d, %d, %d)",
+	$node->nid, $node->vid, $node->inquiry_nid, $initial_weight);
+}
+
+/**
+ * hook_update() - UPDATE command for an existing inquiry phase
+ */
+function pi_phase_update($node) {
+	if ($node->revision)
+	{
+		// New revision; treat it as a new record.
+		pi_phase_insert($node);
+	}
+	else 
+	{
+		db_query("UPDATE {pi_phase} SET inquiry_nid = %d, weight = %d WHERE vid = %d",
+			$node->inquiry_nid, $node->weight, $node->vid);
+	}
+}
+
+/**
+ * hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function pi_phase_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case 'delete revision':
+      // Notice that we're matching a single revision based on the node's vid.
+      db_query('DELETE FROM {pi_phase} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * hook_delete() DELETE command for an inquiry
+ * @todo this should delete all the associated data with the inquiry too!
+ */
+function pi_phase_delete(&$node) {
+	// Delete the related information we were saving for this node.
+	db_query('DELETE FROM {pi_phase} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Custom loader for phase type (called when %phase is specified in a menu parameter)
+ */
+function pi_phase_load($node) {
+	return db_fetch_object(db_query('SELECT inquiry_nid, weight FROM {pi_phase} WHERE vid = %d', $node->vid));
+}
+
+
+/**
+ * Builds the view for the inquiry
+ * @todo Add a detailed inquiry view to be used in the whole system
+ */
+function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
+	// If $teaser is FALSE, the entire node is being displayed.
+	if (!$teaser)
+	{
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+		
+		// render the phase activities using a theme function
+		$node->content['activities'] = array(
+			'#value' => theme('phase_activities', $node),
+			'#weight' => 2,
+		);
+		// Add more involved phase layout here
+	}
+
+	// If $teaser is true, node is being displayed as a teaser,
+	// in this case, just show the description and none of the rest of the inquiry stuff
+	if ($teaser) 
+	{
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+	}
+	return $node;
+}
+
+/**
+ * Queries the node database to provide a list of nids referring to phases in an
+ * inquiry given by $inquiry_nid
+ * Use node_load($nid) to then access the phase details
+ * @param int $inquiry_nid the nid of the inquiry to load the phases for
+ * @return array of nids referring to pi_phase nodes in the given inquiry
+ */
+function pi_phase_load_nids($inquiry_nid)
+{
+	$query = "SELECT node.nid from node INNER JOIN pi_phase ON node.nid = pi_phase.nid ". 
+	 " WHERE node.type='pi_phase' AND pi_phase.inquiry_nid=%d";
+	$result = db_query($query, $inquiry_nid);
+	$inquiry_phase_nodes = array();
+	while($nid=db_result($result))
+	{
+		$inquiry_phase_nodes[] = $nid;
+	}
+	return $inquiry_phase_nodes;
+}
+
+
+/**
+ * Declare theme functions for pi_inquiry
+ */
+function pi_phase_theme() {
+  return array(
+    'phase_activities' => array(
+      'arguments' => array('node'),
+    ),
+  );
+}
+
+
+/**
+ * Theme function to display the inquiry description
+ * @param drupal node data $node Inquiry node details.
+ */
+function theme_phase_activities($node) {
+	$output = '<div class="phase-activities">';
+	$output .= "Phase activities";
+	$output .= '</div>';
+	return $output;
+}
