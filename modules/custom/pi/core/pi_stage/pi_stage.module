@@ -287,7 +287,8 @@ function pi_stage_insert($node) {
 }
 
 /**
- * hook_update - UPDATE command for an existing inquiry  stage
+ * hook_update - UPDATE command for an existing inquiry stage, 
+ * also adds or removes the pi_stage_phase roes where appropriate
  */
 function pi_stage_update($node) {
 	if ($node->revision)
@@ -297,15 +298,49 @@ function pi_stage_update($node) {
 	}
 	else
 	{
+		$old_stage = node_load($node->nid);
 		db_query("UPDATE {pi_stage} SET inquiry_nid = %d, weight = %d WHERE vid = %d",
-			$node->vid, $node->weight);	
-		db_query('DELETE FROM {pi_stage_phase} WHERE stage_id = %d', $node->nid);
+			$node->inquiry_nid, $node->weight, $node->vid);	
+		// Since pi_stage_phase has a unique id and this is used on other tables, when updating the
+		//  phases for a stage you need to work out which already exist and need removing, which 
+		//  already exist and should be unchanged, and which need to be created.
+		//  This preserves psp_id for the pi_stage_phases 
+		
+		// First of all, if the inquiry has changed, all the current stage_phases should be dropped
+		//  so check $node->inquiry_nid and $old_stage->inquiry_nid; if they are not the same then
+		//  delete all the related pi_stage_phases from the database 
+		if($node->inquiry_nid != $old_stage->inquiry_nid)
+		{
+			db_query('DELETE FROM {pi_stage_phase} WHERE (stage_id = %d)', $node->nid);			
+		}
+		
+		// The form returns an array stage_phases['phases'] with all the phases available to the stage
+		// containing TRUE or FALSE indicating whether they should be included, so use this to iterate through
+		// the phases and update pi_stage_phase accordingly 
 		foreach($node->stage_phases['phases'] as $phase_nid => $value)
 		{
+			// $value is true if the phase should be included 
 			if($value==TRUE)
 			{
-				db_query("INSERT INTO {pi_stage_phase} (stage_id, phase_id) VALUES (%d, %d)",
-					$node->nid, $phase_nid);
+				// if the phase is to be included, and it was already included it will be 
+				//  in $old_stage->stage_phases  (see pi_stage_load() below)
+				// if it is not, then it should be inserted.
+				if(!in_array($phase_nid, $old_stage->stage_phases))
+				{
+					db_query("INSERT INTO {pi_stage_phase} (stage_id, phase_id) VALUES (%d, %d)",
+						$node->nid, $phase_nid);
+				}
+			}
+			else
+			{
+				// If the phase is not to be included, then check to see if it needs to be removed
+				//  by looking at $old_stage->stage_phases; if it is in the array, it needs to be removed
+				//  from the database
+				if(in_array($phase_nid, $old_stage->stage_phases))
+				{
+					db_query('DELETE FROM {pi_stage_phase} WHERE (stage_id = %d AND phase_id = %d)', 
+						$node->nid, $phase_nid);
+				}				
 			}
 		}
 	}
