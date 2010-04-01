@@ -157,6 +157,22 @@ function pi_authoring_menu() {
       'access arguments' => array('access pi_authoring content'),
 	);
 	
+	$items['piauthoring/newinquiry/1'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+     'title' => t('Remove'),
+  	 'page callback' => 'pi_authoring_new_inquiry_remove',
+	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+
+	$items['piauthoring/newinquiry/inquiry'] = array(
+	//'path' => 'piauthoring/newinquiry/inquiry',
+      'title' => t('1.1. Inquiry'),
+  	  'page callback' => 'pi_authoring_new_inquiry_inquiry',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access pi_authoring content'),
+	);
+
 	$items['piauthoring/newinquiry/phases'] = array(
 	//'path' => 'piauthoring/newinquiry/phases',
       'title' => t('1.2. Phases'),
@@ -439,17 +455,18 @@ function pi_authoring_view(){
 */	
 	$content .= "<h2>Current Inquiries</h2>\n";
 	
-	$inquiries = get_inquiries();
+	$inquiry_nids = pi_inquiry_load_nids();
 	$headings = array(array('data'=>'Title','width'=>'20%'), 'Description', '');
 	$rows = array();
-	while($inquiry = db_fetch_object($inquiries))
+	foreach($inquiry_nids as $nid)
 	{
+		$inquiry = node_load($nid);
 		$row = array();
-		$row[] = array( 'data' => l(t($inquiry->name), '/nQuire/inquiry/' . $inquiry->inquiry_id . '/phases'), 
+		$row[] = array( 'data' => l(t($inquiry->title), '/nQuire/inquiry/' . $inquiry->nid . '/phases'), 
 						'class'=> 'inquiry_name');
-		$row[] = array('data' => t($inquiry->description) , 
+		$row[] = array('data' => t($inquiry->body) , 
 						'class' => 'inquiry_description');		
-		$row[] = l(t("Delete"), '/nQuire/inquiry/' . $inquiry->inquiry_id . '/delete');
+		$row[] = l(t("Delete"), '/nQuire/inquiry/' . $inquiry->nid . '/delete');
 		
 		$rows[] = $row;
 	}
@@ -1060,44 +1077,34 @@ function pi_authoring_inquiry_phases($inquiry) {
 	// Query for inquiry phases and list them if there are any, otherwise show 
 	// placeholder text
 	$phases = get_phases_of_inquiry($inquiry->inquiry_id);
-	if($phases != false)
+
+	$output .="<h2>Phases of this inquiry</h2>\n";
+	$header = array(
+        t("Phase name"),
+        t("Description")
+    );
+
+    $rows = array();
+	if(!empty($phases))
 	{
-		$output .="<h2>Phases of this inquiry</h2>\n";
-		$header = array(
-	        t("Phase name"),
-	        t("Description")
-	    );
-
-	    $rows = array();
-	    while($phase = db_fetch_object($phases))
-		{
-			$phase_objects[] = $phase;
-		}
-		if(!empty($phase_objects))
-		{
-			$output .= drupal_get_form('pi_authoring_order_phases_form', $phase_objects);
-		}
-		else
-		{
-			// Display a warning message to the user as there are no phases yet defined 
-			drupal_set_message("No phases added so far in this inquiry, to add phases.", 'warning', FALSE);
-
-			// Also display some boilerplate text about defining inquiries
-			$output .="<div class='help'>\n";
-			$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
-			$output .= "A phase is a conceptual part of the inquiry model, for example, ";
-			$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
-			$output .= "be phases in an inquiry.</p>\n";
-			$output .= "</div>\n"; // #help
-			
-		}
-		$output .= drupal_get_form('pi_authoring_inquiry_add_phase_form', $inquiry);
+		$output .= drupal_get_form('pi_authoring_order_phases_form', $phase_objects);
 	}
 	else
 	{
-		drupal_set_message("There was a problem accessing the inquiry data: " . t(db_error()), 'error', FALSE);
-		drupal_goto("/piauthoring");
+		// Display a warning message to the user as there are no phases yet defined 
+		drupal_set_message("No phases added so far in this inquiry, to add phases.", 'warning', FALSE);
+
+		// Also display some boilerplate text about defining inquiries
+		$output .="<div class='help'>\n";
+		$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
+		$output .= "A phase is a conceptual part of the inquiry model, for example, ";
+		$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
+		$output .= "be phases in an inquiry.</p>\n";
+		$output .= "</div>\n"; // #help
+		
 	}
+	$output .= drupal_get_form('pi_authoring_inquiry_add_phase_form', $inquiry);
+
 	$output .= "</div>\n"; // #pi_authoring
 	
 	return $output;
@@ -1364,7 +1371,7 @@ function pi_authoring_delete_inquiry_confirm_submit($form, &$form_state)
  * @param uint $inquiry_id the id of the inquiry to be deleted.
  * @todo write this function and move it to pi.module
  */
-function pi_inquiry_delete($inquiry_id)
+function pi_authoring_inquiry_delete($inquiry_id)
 {
 	
 }
@@ -1523,7 +1530,7 @@ function pi_authoring_new_inquiry_phases_form($form_state){
 	}
 
 	$form['add']['inquiry_id'] = array(
-		'#type' => 'hidden',
+		'#type' => 'select',
 		'#vlaue' => t('Phase Belongs to Which Inquiry?'),
 		'#options' => $options,
 	);

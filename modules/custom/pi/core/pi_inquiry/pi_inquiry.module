@@ -1,0 +1,233 @@
+<?php
+// $Id: pi_inquiry.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry content type
+ */
+
+ 
+ /**
+ * hook_node_info()Define the pi_inquiry node type
+ */
+function pi_inquiry_node_info() {
+	return array(
+		'pi_inquiry' => array(
+			'name' => t('Inquiry'), // Required.
+			'module' => 'pi_inquiry',  // Required.
+			'description' => t('An nQuire Inquiry'), // Required.
+			'has_title' => TRUE,
+			'title_label' => t('Inquiry Name'),
+			'has_body' => TRUE,
+			'body_label' => t('Inquiry Description'),
+		)
+	);
+}
+
+/**
+ * Define permissions available for pi_inquiry module
+ */
+function pi_inquiry_perm() {
+	return array('create inquiry', 'edit own inquiry', 'edit any inquiry', 'delete own inquiry', 'delete any inquiry');
+}
+
+/**
+ * Work out if a user has permission to do something with an Inquiry
+ */
+function pi_inquiry_access($op, $node, $account) {
+  $is_author = $account->uid == $node->uid;
+  switch ($op) {
+    case 'create':
+      // Allow if user's role has 'create inquiry' permission.
+      return user_access('create inquiry', $account);
+    case 'update':
+      // Allow if user's role has 'edit own inquiry' permission and user is
+      // the author; or if the user's role has 'edit any inquiry' permission.
+      return user_access('edit own inquiry', $account) && is_author ||
+        user_access('edit any inquiry', $account);
+    case 'delete':
+      // Allow if user's role has 'delete own inquiry' permission and user is
+      // the author; or if the user's role has 'delete any inquiry' permission.
+      return user_access('delete own inquiry', $account) && $is_author ||
+        user_access('delete any inquiry', $account);
+  }
+}
+
+
+/**
+ * The form for adding/editing an Inquiry
+ */
+function pi_inquiry_form($node) {
+  // Get metadata for the node type which is defined in pi_inquiry_info()
+  $type = node_get_types('type', $node);
+
+	if ($type->has_title)
+	{
+		$form['title'] = array(
+			'#type' => 'textfield',
+			'#title' => check_plain($type->title_label),
+			'#required' => TRUE,
+			'#default_value' => $node->title,
+		);
+	}
+
+	if ($type->has_body)
+	{
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);	
+		$form['body_field']['body']['#rows'] = 6;
+		$form['body_field']['teaser_include']['#access'] = FALSE;			
+	}
+	
+	$form['layout'] = array(
+		'#type' => 'select',
+		'#title' => t('Layout'),
+		'#weight' => 1,
+		'#default_value' => isset($node->layout) ? $node->layout : 0,
+		'#options' => array(
+			0=> "One",
+			1=> "Two",
+			2=> "Fish",
+			3=> "Four",
+			4=> "Five",
+		),		
+	);
+	
+	return $form;
+}
+
+
+/**
+ * hook_form_alter - changes the form to change it from default node layout
+ */
+function pi_inquiry_form_alter(&$form, $form_state, $form_id) {
+	if($form_id == 'pi_inquiry_node_form')
+	{
+		$form['menu']['#weight'] = 3;	
+	}
+}
+
+
+/**
+ * INSERT command for a new inquiry
+ */
+function pi_inquiry_insert($node) {
+	$initial_weight = db_result(db_query("SELECT COUNT(nid) from pi_inquiry"));
+	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight) VALUES (%d, %d, %d, %d)",
+		$node->nid, $node->vid, $node->layout, $initial_weight);
+}
+
+/**
+ * UPDATE command for an existing inquiry
+ */
+function pi_inquiry_update($node) {
+  if ($node->revision) {
+    // New revision; treat it as a new record.
+    pi_inquiry_insert($node);
+  }
+  else {
+    db_query("UPDATE {pi_inquiry} SET layout = %d, weight= %d WHERE vid = %d",
+      $node->layout, $node->weight, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function pi_inquiry_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case 'delete revision':
+      // Notice that we're matching a single revision based on the node's vid.
+      db_query('DELETE FROM {pi_inqury} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * DELETE command for an inquiry
+ * @todo this should delete all the associated data with the inquiry too!
+ */
+function pi_inquiry_delete(&$node) {
+	// Delete the related information we were saving for this node.
+	db_query('DELETE FROM {pi_inquiry} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * node loader function for inquiry type called when noad_load() is called
+ */
+function pi_inquiry_load($node) {
+	return db_fetch_object(db_query('SELECT layout, weight FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+}
+
+/**
+ * Builds the view for the inquiry
+ * @todo Add a detailed inquiry view to be used in the whole system
+ */
+function pi_inquiry_view($node, $teaser = FALSE, $page = FALSE) {
+	// If $teaser is FALSE, the entire node is being displayed.
+	if (!$teaser)
+	{
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+	
+		// render the inquiry description using a theme function
+		$node->content['layout'] = array(
+			'#value' => theme('inquiry_layout', $node),
+			'#weight' => 1,
+		);
+		// Add more involved inquiry layout here
+	}
+
+	// If $teaser is true, node is being displayed as a teaser,
+	// in this case, just show the description and none of the rest of the inquiry stuff
+	if ($teaser) 
+	{
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+	}
+	return $node;
+}
+
+/**
+ * Queries the node database to provide a list of nids referring to inquiries
+ * use node_load($nid) to then access the inquiry details
+ * @return array of nids
+ */
+function pi_inquiry_load_nids()
+{
+	$query = "SELECT nid from {node} WHERE type='pi_inquiry'";
+	$result = db_query($query);
+	$inquiry_nodes = array();
+	while($nid=db_result($result))
+	{
+		$inquiry_nodes[] = $nid;
+	}
+	return $inquiry_nodes;
+}
+
+
+
+/**
+ * Declare theme functions for pi_inquiry
+ */
+function pi_inquiry_theme() {
+  return array(
+    'inquiry_layout' => array(
+      'arguments' => array('node'),
+    ),
+  );
+}
+
+
+/**
+ * Theme function to display the inquiry layout
+ * @param drupal node data $node Inquiry node details.
+ */
+function theme_inquiry_layout($node) {
+	$output .= '<div class="inquiry-layout">';
+	$output .= t("Layout: %layout", array('%layout' => check_plain($node->layout)));
+	$output .= '</div>';
+	return $output;
+}
