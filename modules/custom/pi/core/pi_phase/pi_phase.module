@@ -225,23 +225,52 @@ function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
 
 /**
  * Queries the node database to provide a list of nids referring to phases in an
- * inquiry given by $inquiry_nid
+ * inquiry given by $inquiry_nid, ordered by weight
  * Use node_load($nid) to then access the phase details
  * @param int $inquiry_nid the nid of the inquiry to load the phases for
  * @return array of nids referring to pi_phase nodes in the given inquiry
  */
 function pi_phase_load_nids($inquiry_nid)
 {
-	$query = "SELECT node.nid from node INNER JOIN pi_phase ON node.nid = pi_phase.nid ". 
-	 " WHERE node.type='pi_phase' AND pi_phase.inquiry_nid=%d";
+	$query = "SELECT nid from {pi_phase} WHERE inquiry_nid = %d ORDER BY weight";
 	$result = db_query($query, $inquiry_nid);
-	$inquiry_phase_nodes = array();
+	$phase_nodes = array();
 	while($nid=db_result($result))
 	{
-		$inquiry_phase_nodes[] = $nid;
+		$phase_nodes[] = $nid;
 	}
-	return $inquiry_phase_nodes;
+	return $phase_nodes;
 }
+
+/**
+ * Returns an array of phase node ids for the given inquiry
+ * ordered by ascending pi_phase->weight aliased as position.
+ * @param unint $inquiry_id should be a valid inquiry id
+ * @return array of phase nids with additional ordered by weight taken from pi_phase
+ *
+ */
+function get_phases_of_inquiry($inquiry_id) {
+	drupal_set_error('get_phases_of_inquiry($inquiry_id) should be replaced with pi_phase_load_nids($inquiry_id)', 'warning');
+	return pi_phase_load_nids($inquiry_id);
+}
+
+
+
+
+
+/**
+ * Returns an array of phase node ids for the given inquiry
+ * ordered by ascending pi_phase->weight aliased as position.
+ * @param unint $inquiry_id should be a valid inquiry id
+ * @return array of phase nids with additional ordered by weight taken from pi_phase
+ *
+ */
+function get_phases_of_inquiry($inquiry_id) {
+	drupal_set_error('get_phases_of_inquiry($inquiry_id) should be replaced with pi_phase_load_nids($inquiry_id)', 'warning');
+	return pi_phase_load_nids($inquiry_id);
+}
+
+
 
 
 /**
