@@ -218,20 +218,136 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 }
 
 
-function octogon_phase($headings, $rows) {
-	$phases = array();
-	$output = "1";
+function display_phases($headings, $rows, $activity_count, $new_activity_count) {
+	
+	$output = "";
+	
+	$layout = 'octagon';
+
+	if ($layout == 'list') {
+		$background_arrows_image = '<div style="position: absolute; top: 5px; left: 150px;">';
+		$background_arrows_image .= '<img width="150" height="625" src="sites/default/files/images/arrows_loop.png" />';
+		$left_positions = array('200px', '200px', '200px', '200px', '200px', '200px', '200px', '200px');
+		$top_positions = array('35px', '110px', '185px', '260px', '335px', '410px', '485px', '560px');
+		$phase_icons = array('topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
+	}
+	elseif ($layout == 'pentagon') {
+		$background_arrows_image = '<div style="position: absolute; top: 23px; left: 151px;">';
+		$background_arrows_image .= '<img width="300" height="172" src="sites/default/files/images/arrows_pentagon.png" />';
+		$left_positions = array('180px', '345px', '320px', '40px', '15px');
+		$top_positions = array('5px', '85px', '165px', '165px', '85px');
+		$phase_icons = array('question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg');
+	}
+	elseif ($layout == 'octagon') {		
+		$background_arrows_image = '<div style="position: absolute; top: 30px; left: 150px;">';
+		$background_arrows_image .= '<img width="425" height="262" src="sites/default/files/images/octagon.png" />';
+		$left_positions = array('380px', '450px', '450px', '380px', '80px', '40px', '40px', '80px');
+		$top_positions = array('10px', '95px', '180px', '270px', '270px', '180px', '95px', '10px');
+		$phase_icons = array(); //'topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
+	};
+	
+	$output .= '<div style="position: relative; width: 100%; height: 500px;">';
+	$output .= $background_arrows_image;
+	$output .= '</div>';
+
+	$output .= '
+	<style type="text/css">
+		div.phasebox {
+			width: 240px; 
+			height: 40px; 
+			border: 1px solid black; 
+			background-color: #ffffff;
+		}
+		div.imgbox {
+			float:left; 
+			height: 40px;  
+			width: 40px; 
+			background-color: #FFFFFF; 
+			text-align: center;
+		}
+		div.textcont {
+			float:left; 
+			height: 40px; 
+			width: 200px; 
+			background-color: #ffffff
+		}
+		div.titlebox {
+			clear:both; 
+			float:left; 
+			height: 20px;  
+			width: 195px; 
+			background-color: #dee7ea;
+			font-weight:bold; 
+			font-size:1.1em; 
+			generic-family: san-serif; 
+			color: #ffffff; 
+			padding-left: 5px;
+		}
+		div.activitybox {
+			clear:both;
+			float:left; 
+			height: 19px;  
+			width: 90px; 
+			background-color: #edf2f4; 
+			font-size: 1em; 
+			generic-family: san-serif; 
+			color: #777777; 
+			padding:0px 0px 1px 5px;
+		}
+		div.newactbox {
+			float:left; 
+			height: 19px;  
+			width: 70px; 
+			background-color: #edf2f4; 
+			font-size: 1em; 
+			generic-family: san-serif;
+			font-weight:bold; 
+			color: #777777; 
+			padding:0px 0px 1px 5px;
+		}
+		div.iconbox {
+			float:left; 
+			height: 19px;  
+			width: 30px; 
+			background-color: #edf2f4; 
+			font-size: 1em; 
+			generic-family: san-serif; 
+			font-weight: bold; 
+			color: #777777; 
+			padding: 0px 0px 1px 0px;
+		}
+	</style>';
+
+	$count = 0;
 	if(count($rows)) {
 		foreach($rows as $number => $row) {
 			if (isset($row['data'])) {
 				foreach ($row as $key => $value) {
 					if ($key == 'data') {
-						$phase[] = 'x'.$value[0];
+					    $output .= '<div style="position: absolute; top: ' . $top_positions[$count] . '; left: ' . $left_positions[$count] . ';" class="phasebox">';
+						$output .= '<div class="imgbox"><img width="42px" src="sites/default/files/images/' . $phase_icons[$count] . '" /></div>';
+					    $output .= '
+					    	<div class="textcont">
+								<div class="titlebox">' . $value[0] . '</div>
+								<div class="activitybox">' . $activity_count[$count] . ' Activities</div>
+								<div class="newactbox">';
+						if ($new_activity_count[$count] > 0) {
+							$output .= $new_activity_count[$count] . ' new';
+						};
+					    $output .= '</div>';
+					    $output .= '
+					    		<div class="iconbox"> </div>
+							</div>
+						</div>';
 					}
 				}
+				$count = $count + 1;
 			}
 		}
 	}
+	
+	$output .= '</div>';
+
 	return $output;
 }
 
@@ -259,6 +375,8 @@ function pi_inquiry_view() {
     );
   
   $rows = array();
+  $activity_count = array();
+  $new_activity_count = array();
   
   //current phase check
               $current_stage = get_current_stage_of_inquiry_and_user($details->inquiry_id, $user->uid);
@@ -288,11 +406,13 @@ function pi_inquiry_view() {
 		}
 		$row[] = $loaded_phase->description;
 		$rows[] = array('data' => $row);
+		$activity_count[] = count(get_activities_of_stage_phase_and_user ($details->inquiry_id, NULL, $phase->phase_id, $user->uid));
+		$new_activity_count[] = new_activity_list_count($details->inquiry_id, $phase->phase_id, $user->uid);
 
 	}
 	//get_phase_view_preference
-	//$output .= octogon_phase($headings, $rows);
-	$output .= theme('table', $header, $rows);
+	$output .= display_phases($headings, $rows, $activity_count, $new_activity_count);
+	//$output .= theme('table', $header, $rows);
   return $output;
 }	  
 /*
@@ -649,12 +769,22 @@ function pi_phase_view () {
             break;
     	}
       
-      $activity_path = "activity/" . $activity->activity_id . "/" . $loaded_activity_status->visible_status;
+      $activity_path = "activity/" . $activity->activity_id . "/" . $loaded_activity_status->node_function;
       if ($loaded_activity_status->visible_status == 'unavailable') {
       	$activity_link = t($loaded_activity->name);
       }
       else {
-      	$activity_link = l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status), $activity_path, array('html' => TRUE, 'query' => $destination));
+
+    	$image_path =  drupal_get_path( 'module', 'pi' ) . '/images/' ;
+	
+		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
+		    $new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+	    }
+	    else {
+		    $new_icon = "";
+	    };
+	    
+      	$activity_link = l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
  			}
  			
       if (($active_activity_flag == 0) AND $loaded_activity) {
