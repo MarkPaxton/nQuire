@@ -379,12 +379,16 @@ function pi_stage_delete(&$node) {
 function pi_stage_load($node) {
 	$data = db_fetch_object(db_query('SELECT inquiry_nid, weight FROM {pi_stage} WHERE vid = %d', $node->vid));
 	$phase_nids = array();
-	$result = db_query("SELECT phase_id from {pi_stage_phase} WHERE stage_id = %d", $node->nid);
+	$psp_ids = array();
+	$result = db_query("SELECT phase_id, psp_id from {pi_stage_phase} WHERE stage_id = %d", $node->nid);
 	while($row=db_fetch_array($result))
 	{
 		$phase_nids[] = $row['phase_id'];
+		$psp_ids[$row['phase_id']] = $row['psp_id'];
+		
 	}
 	$data->stage_phases = $phase_nids;
+	$data->stage_phase_ids = $psp_ids;
 	return $data;
 }
 
@@ -393,16 +397,27 @@ function pi_stage_load($node) {
 /**
  * Returns array of stage_id, and name values for given inquiry_id
  */
-function get_stages_of_inquiry ($inquiry_id) {
-	$query = "SELECT pi_inquiry_stage.stage_id AS stage_id, pi_stage.name AS name, pi_inquiry_stage.position AS position ";
-	$query .= "FROM pi_inquiry_stage ";
-	$query .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
-	$query .= "WHERE pi_inquiry_stage.inquiry_id = " . $inquiry_id;
-	$query .= " ORDER BY position ASC";
-
-	$result = db_query($query);
-	return $result;
+function pi_stage_load_nids($inquiry_nid) {
+	$query = "SELECT nid FROM pi_stage WHERE inquiry_nid = %d ORDER BY weight ASC";
+	$result = db_query($query, $inquiry_nid);
+	$nids = array();
+	while($row = db_fetch_array($result))
+	{
+		$nids[] = $row['nid'];
+	}
+	return $nids;
 }
+
+/**
+ * Returns array of stage_nids for given inquiry_id, ordered by weight
+ * use pi_phase_load_nids instead!
+ */
+function get_stages_of_inquiry($inquiry_nid) {
+	drupal_set_message('warning', "get_stages_of_inquiry has been used, please use pi_stage_load_nids instead");
+	return pi_stage_load_nids($inquiry_nid);
+}
+
+
 
 
 

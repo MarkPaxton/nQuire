@@ -254,22 +254,30 @@ function pi_authoring_menu() {
      'access arguments' => array('access pi_authoring content'),
 	);
 
-	$items['piauthoring/activities'] = array(
+	$items['piauthoring/activities/'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
      'title' => t('5. Authoring Activities'),
   	 'page callback' => 'pi_authoring_new_activities',
 	 'type' => MENU_NORMAL_ITEM,
      'access arguments' => array('access pi_authoring content'),
 	);
-
+	
 	$items['piauthoring/activities/1'] = array(
-	//'path' => 'piauthoring/newinquiry/stages',
-     'title' => t('5.1. Author Place Holders'),
-  	 'page callback' => 'pi_authoring_new_activities_placeholder',
-	 'type' => MENU_NORMAL_ITEM,
-     'access arguments' => array('access pi_authoring content'),
+		//'path' => 'piauthoring/newinquiry/stages',
+		'title' => t('5.1. Author Place Holders'),
+		'page callback' => 'pi_authoring_new_activities_placeholder',
+		'type' => MENU_NORMAL_ITEM,
+		'access arguments' => array('access pi_authoring content'),
 	);
 
+	$items['piauthoring/activities/1/%node'] = array(
+	//'path' => 'piauthoring/newinquiry/stages',
+  	 'page callback' => 'pi_authoring_new_activities_placeholder',
+	 'page arguments' => array(3),
+  	 'type' => MENU_CALLBACK,
+     'access arguments' => array('access pi_authoring content'),
+	);
+	
 	$items['piauthoring/activities/2'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
      'title' => t('5.2. Install Needed Modules'),
@@ -279,13 +287,24 @@ function pi_authoring_menu() {
 	);
 
 	$items['piauthoring/activities/3'] = array(
+		//'path' => 'piauthoring/newinquiry/stages',
+	    'title' => t('5.3. Author Real Activities'),
+		'page arguments' => array(NULL),
+		'page callback' => 'pi_authoring_new_activities_real',
+		'type' => MENU_NORMAL_ITEM,
+		'access arguments' => array('access pi_authoring content'),
+	);
+	
+	$items['piauthoring/activities/3/%node'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
-     'title' => t('5.3. Author Real Activities'),
-  	 'page callback' => 'pi_authoring_new_activities_real',
-	 'type' => MENU_NORMAL_ITEM,
-     'access arguments' => array('access pi_authoring content'),
+		'title' => t('5.3. Author Real Activities'),
+		'page callback' => 'pi_authoring_new_activities_real',
+		'page arguments' => array(3),
+		'type' => MENU_NORMAL_ITEM,
+		'access arguments' => array('access pi_authoring content'),
 	);
 
+	
 	$items['piauthoring/activities/4'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
      'title' => t('Add Activity'),
@@ -556,10 +575,6 @@ function pi_authoring_order_inquiries_form_submit($form, &$form_state)
 	}
 }
 
-
-
-
-
 /**
  * Draws the grid view for an inquiry showing phases, stages and activities.
  * 
@@ -568,17 +583,6 @@ function pi_authoring_order_inquiries_form_submit($form, &$form_state)
  * @return string html content of the inquiry table view
  */
 function draw_table($inquiry, $view_type){
-
-	$stages_query = "SELECT * FROM pi_stage ";
-	$stages_query .= "LEFT JOIN pi_inquiry_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
-	$stages_query .= "WHERE pi_inquiry_stage.inquiry_id = '" . $inquiry->inquiry_id . "'";
-	$stages_query .= "ORDER BY pi_inquiry_stage.position";
-	//get all phase for this inquiry
-	$phases_query = "SELECT * FROM pi_phase ";
-	$phases_query .= "LEFT JOIN pi_inquiry_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
-	$phases_query .= "WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry->inquiry_id . "'";
-	$phases_query .= "ORDER BY pi_inquiry_phase.position";
-	
 	/*
 	 * to build up the table we need to know the phases and activities and to which stage they belong to.
 	 * for each phase in the inquiry
@@ -589,180 +593,203 @@ function draw_table($inquiry, $view_type){
 	 */
 	 
 	$content = array();
-	$phases = db_query($phases_query);
-	while($phase = db_fetch_object($phases)){
-		$stages = db_query($stages_query);
-		while($stage = db_fetch_object($stages)){
+
+	// Get the nids of all the inquiry phases and stages
+	$phase_nids = pi_phase_load_nids($inquiry->nid);
+	$stage_nids = pi_stage_load_nids($inquiry->nid);
+	
+	// pre-load the stages for the inquiry as they're going to be used on each phase row
+	$stages = array(); 
+	foreach($stage_nids as $stage_nid)
+	{
+		$stages[$stage_nid] = node_load($stage_nid);
+	}
+	
+	// phase->nid is used in this function, so no need to load the node here, but it will be passed on to
+	// get_view, so they are loaded anyway
+	$phases = array();
+	foreach($phase_nids as $phase_nid)
+	{
+		$phases[] = node_load($phase_nid);
+		foreach($stages as $stage)
+		{
 	 		//1. is this phase in this stage?
-	 		$query = "SELECT * FROM pi_stage_phase WHERE ";
-	 		$query .= "phase_id = '" . $phase->phase_id . "'";
-	 		$query .= " AND stage_id = '" . $stage->stage_id . "'";
-	 		$result = db_fetch_object(db_query($query));
-	 		if($result){
-	 			//echo $phase->name . ", " . $stage->name . ", " . $result->psp_id . "; ";
+	 		if(in_array($phase_nid, $stage->stage_phases))
+	 		{
 	 			//2. does this phase in this stage have activites?
 	 			$activities = array();
-	 			$query2 = "SELECT * FROM pi_stage_phase_activity WHERE psp_id = '" . $result->psp_id . "'";
-	 			$query2 .= " ORDER BY position";
-	 			$result2 = db_query($query2);
-	 			while($object = db_fetch_object($result2)){
+	 			$query = "SELECT * FROM pi_stage_phase_activity WHERE psp_id = %d ORDER BY position";
+	 			$result = db_query($query, $stage->stage_phase_ids[$phase_nid]);
+	 			while($object = db_fetch_object($result))
+	 			{
 	 				$activities[] = $object->activity_id;
 	 			}
 	 			//phase is included in this stage
-	 			$content[$stage->stage_id][$phase->phase_id] = $activities;
+	 			$content[$stage_nid][$phase_nid] = $activities;
 	 		}
-	 		else{
+	 		else
+	 		{
 	 			//echo $phase->name . ", " . $stage->name . ", " . "null; ";
 	 			//phase not in this stage
-	 			$content[$stage->stage_id][$phase->phase_id] = 'NULL';
+	 			$content[$stage_nid][$phase_nid] = NULL;
 	 		}
 	 	}
 	 }
-	 
-	 return get_view($inquiry, $content, $stages_query, $phases_query, $view_type);
+	 return get_view($inquiry, $content, $stages, $phases, $view_type);
 }
 
 /**
- * MISSING
+ * Draw the table for inquiry authoring
  * 
- * @param unknown_type $inquiry
- * @param unknown_type $array
- * @param unknown_type $stages_query
- * @param unknown_type $phases_query
- * @param unknown_type $view_type
- * @return string
+ * @param object(inquiry) $inquiry
+ * @param array(uint)(uint) $stage_phase_activities array of [stage_nid][phase_nid] with an array if activity_ids if inlcuded phase is in stage, NULL if not
+ * @param array(uint) $stages array of stages for this inquiry
+ * @param array(uint) $phases array of phases for this inquiry
+ * @param string $view_type
+ * @return string HTML for an inquiry authoring table
  */
-function get_view($inquiry, $array, $stages_query, $phases_query, $view_type){
+function get_view($inquiry, $stage_phase_activities, $stages, $phases, $view_type){
 	//content 
-	$content = '<strong>' . $inquiry->name . '</strong><br>';
+	$content = "<div><strong>" . t($inquiry->title) . "</strong></div>\n";
 	//draw the table of phses, activities and stages
-	$content .= '<table border=1>';
+	$content .= "<table border='1'>\n";
 	
 	//stage name headers
-	$content .= '<tr bgcolor="#eeeeee">';
-	$content .= '<td></td>';
-	$stages_headings = db_query($stages_query);
-	while($stage = db_fetch_object($stages_headings)){
-		$content .= '<td>';
-		$stage_down_link = "piauthoring/activities/8/" . $stage->stage_id . "/" . $inquiry->inquiry_id . "/" .  $_GET['q'];
-		$stage_up_link = "piauthoring/activities/7/" . $stage->stage_id . "/" . $inquiry->inquiry_id . "/" .  $_GET['q'];
-		$content .= $stage->name . "  " . l("(+", $stage_up_link) . "  " . l("-)",$stage_down_link);
-		$content .= '</td>';
+	$content .= "<tr bgcolor='#eeeeee'>\n";
+	$content .= "<td></td>\n";
+	foreach($stages as $stage)
+	{
+		$content .= "<td>\n";
+		$stage_down_link = "piauthoring/activities/8/" . $stage->nid . "/" . $inquiry->nid . "/" .  $_GET['q'];
+		$stage_up_link = "piauthoring/activities/7/" . $stage->nid . "/" . $inquiry->nid . "/" .  $_GET['q'];
+		$content .= t($stage->title) . "  " . l("(+", $stage_up_link) . "  " . l("-)",$stage_down_link);
+		$content .= "</td>\n";
 	}
-	$content .= '</tr>';
+	$content .= "</tr>\n";
 	
 	//phases and activities
-	$phases = db_query($phases_query);
-	while($phase = db_fetch_object($phases)){
-		//phase name
-		$content .= '<tr>';
-		$phase_down_link = "piauthoring/activities/10/" . $phase->phase_id . "/" . $inquiry->inquiry_id . "/" . $_GET['q'];
-		$phase_up_link = "piauthoring/activities/9/" . $phase->phase_id . "/" . $inquiry->inquiry_id . "/" .  $_GET['q'];
-		$content .= '<td bgcolor="#eeeeee">' . $phase->name . "    " . l("(+",$phase_down_link) . "  " . l("-)",$phase_up_link) . '</td>';
+	foreach($phases as $phase)
+	{
+		//Renders
+		// Phase name : stages[]
+		// Phase activities : stages[]
+		
+		// Phase name
+		$content .= "<tr>\n";
+		$phase_down_link = "piauthoring/activities/10/" . $phase->nid . "/" . $inquiry->nid . "/" . $_GET['q'];
+		$phase_up_link = "piauthoring/activities/9/" . $phase->nid . "/" . $inquiry->nid . "/" .  $_GET['q'];
+		$content .= "<td bgcolor='#eeeeee'>\n" . t($phase->title) . "    " . l("(+",$phase_down_link) . "  " . l("-)",$phase_up_link) . "</td>\n";
 		//if the phase is included in a stage then colour the cell green
-		$stages_repeat_1 = db_query($stages_query);
-		while($stage = db_fetch_object($stages_repeat_1)){
-			//is phase included in this stage?
-			$included = $array[$stage->stage_id][$phase->phase_id];
-			if($included == 'NULL'){
-				$content .= '<td bgcolor="#ff0000">';//red cell
-				$content .= '</td>'; 
+		foreach($stages as $stage)
+		{
+			//If this phase is included in this phase, then "array" will be 
+			if(is_array($stage_phase_activities[$stage->nid][$phase->nid]))
+			{
+				$content .= "<td bgcolor='#ff0000'>";//red cell
+				$content .= "</td>\n"; 
 			}
-			else{
-				$content .= '<td bgcolor="#00ff00">'; //green cell
-				$sp_link = get_stage_phase_link($view_type, $inquiry->inquiry_id, $stage->stage_id, $phase->phase_id);
-				if($sp_link != ''){
+			else
+			{
+				$content .= "<td bgcolor='#00ff00'>"; //green cell
+				$sp_link = get_stage_phase_link($view_type, $inquiry->nid, $stage->nid, $phase->nid);
+				if($sp_link != '')
+				{
 					$content .= l("Add Activity", $sp_link);
 				}
-				$content .= '</td>'; 
+				$content .= "</td>\n"; 
 			}
 		}
-		$content .= '</tr>';
+		$content .= "</tr>\n";
+		
+		// Phase activities : stages[]
 		//what activities does this phase include for each stage?
-		$stages_repeat_2 = db_query($stages_query);
 		$already_included = array();
-		while($s = db_fetch_object($stages_repeat_2)){
-			$activity_array = $array[$s->stage_id][$phase->phase_id];
-			if($activity_array != 'NULL' & (count($activity_array)>0)){
-				//foreach
-				foreach($activity_array as $activity){
-					//testing
-					if(in_array($activity,$already_included)){
-						//already shown in the table so don't add a new row
-					}
-					else{
-						$content .= '<tr>';
-						$activity_up_link = "piauthoring/activities/11/" . $activity . "/";
-						$activity_up_link .= $s->stage_id . "/" . $phase->phase_id . "/";
-						$activity_up_link .= $inquiry->inquiry_id . "/" . $_GET['q'];
-						$activity_down_link = "piauthoring/activities/12/" . $activity . "/";
-						$activity_down_link .= $s->stage_id . "/" . $phase->phase_id . "/";
-						$activity_down_link .= $inquiry->inquiry_id . "/" . $_GET['q'];
-						$content .= '<td> -> ' . get_name_of_activity($activity) . '    ' . l("(+",$activity_up_link) . '  ' . l("-)",$activity_down_link) . '</td>';
-						$stages_repeat_3 = db_query($stages_query);
-						while($st = db_fetch_object($stages_repeat_3)){
-							if($st->stage_id == $s->stage_id){
-								$content .= '<td bgcolor="#00ff00">'; //green cell
-								$link = get_activity_link($view_type, $activity, $inquiry->inquiry_id);
-								if($link != ''){
-									$content .= l('edit', $link);
-								}
-								else if($view_type == 'add'){
-									//HERE
-									$delete_link = "piauthoring/activities/13/" . $activity;
-									$content .= l("delete", $delete_link);
-								}
-								$content .= '</td>'; 
-							}
-							else{
-								$temp_array = $array[$st->stage_id][$phase->phase_id];
-								if($temp_array == 'NULL'){
-									// stage is not included in this phase so no activities
-									$content .= '<td bgcolor="#ff0000"></td>'; //red cell
-								}
-								else if((count($temp_array)==0)){
-									// stage is included in phase but has no activties
-									$link = get_to_include_link($view_type,
-																$phase->phase_id, 
-																$st->stage_id, 
-																$activity);
-									$content .= '<td bgcolor="#ff9900">'; //amber cell
+		foreach($stages as $s)
+		{
+			$activity_array = $stage_phase_activities[$s->nid][$phase->nid];
+			if(is_array($activity_array))
+			{
+				if(count($activity_array)>0)
+				{
+					foreach($activity_array as $activity)
+					{
+						// If it's already shown in the table so don't add a new row
+						if(!in_array($activity, $already_included))
+						{
+							$content .= "<tr>\n";
+							$activity_up_link = "piauthoring/activities/11/" . $activity . "/";
+							$activity_up_link .= $s->nid . "/" . $phase->nid . "/";
+							$activity_up_link .= $inquiry->nid . "/" . $_GET['q'];
+							$activity_down_link = "piauthoring/activities/12/" . $activity . "/";
+							$activity_down_link .= $s->nid . "/" . $phase->nid . "/";
+							$activity_down_link .= $inquiry->nid . "/" . $_GET['q'];
+							$content .= '<td> -> ' . get_name_of_activity($activity) . '    ' . l("(+",$activity_up_link) . '  ' . l("-)",$activity_down_link) . "</td>\n";
+							$stages_repeat_3 = db_query($stages_query);
+							foreach($stages as $st)
+							{
+								if($st->nid == $s->nid){
+									$content .= "<td bgcolor='#00ff00'>"; //green cell
+									$link = get_activity_link($view_type, $activity, $inquiry->nid);
 									if($link != ''){
-										$content .= l('include?',$link);
+										$content .= l('edit', $link);
 									}
-									$content .= '</td>'; 
+									else if($view_type == 'add'){
+										//HERE
+										$delete_link = "piauthoring/activities/13/" . $activity;
+										$content .= l("delete", $delete_link);
+									}
+									$content .= "</td>\n";
 								}
 								else{
-									//stage is included in phase and has activities
-									if(in_array($activity, $temp_array)){
-										//activity is in this stage as well
-										$content .= '<td bgcolor="#00ff00">';
-										if($view_type == 'add'){
-											//HERE
-											$uninclude_link = "piauthoring/activities/14/" . $st->stage_id;
-											$uninclude_link .= "/" . $phase->phase_id . "/" . $activity;
-											$uninclude_link .= "/" . $inquiry->inquiry_id;
-											$content .= l("un-include", $uninclude_link);
+									$temp_array = $array[$st->nid][$phase->nid];
+									if($temp_array == 'NULL'){
+										// stage is not included in this phase so no activities
+										$content .= '<td bgcolor="#ff0000"></td>'; //red cell
+									}
+									else if((count($temp_array)==0)){
+										// stage is included in phase but has no activties
+										$link = get_to_include_link($view_type,
+										$phase->nid,
+										$st->nid,
+										$activity);
+										$content .= '<td bgcolor="#ff9900">'; //amber cell
+										if($link != ''){
+											$content .= l('include?',$link);
 										}
-										$content .= '</td>'; //green cell
+										$content .= '</td>';
 									}
 									else{
-										//activity not in this stage
-										$link = get_to_include_link($view_type,
-																	$phase->phase_id, 
-																	$st->stage_id, 
-																	$activity);
-										$content .= '<td bgcolor="#ff9900">';//amber cell
-										if($link != ''){
-											$content .= l('include?',$link); 
+										//stage is included in phase and has activities
+										if(in_array($activity, $temp_array)){
+											//activity is in this stage as well
+											$content .= '<td bgcolor="#00ff00">';
+											if($view_type == 'add'){
+												//HERE
+												$uninclude_link = "piauthoring/activities/14/" . $st->nid;
+												$uninclude_link .= "/" . $phase->nid . "/" . $activity;
+												$uninclude_link .= "/" . $inquiry->nid;
+												$content .= l("un-include", $uninclude_link);
+											}
+											$content .= '</td>'; //green cell
 										}
-										$content .= '</td>'; 
-									}								
+										else{
+											//activity not in this stage
+											$link = get_to_include_link($view_type,
+											$phase->nid,
+											$st->nid,
+											$activity);
+											$content .= '<td bgcolor="#ff9900">';//amber cell
+											if($link != ''){
+												$content .= l('include?',$link);
+											}
+											$content .= '</td>';
+										}
+									}
 								}
 							}
+							$content .= '</tr>';
+							$already_included[] = $activity;
 						}
-						$content .= '</tr>';
-						$already_included[] = $activity;
 					}
 				}
 				//end foreach				
@@ -2451,9 +2478,8 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form_submi
 	 */
 
 /**
- * MISSING
- * 
- * @return string
+ * Theis page is the strting point for adding activities to inquiries
+ * @return string HTML data for page
  */
 function pi_authoring_new_activities(){
 	$content = "<p>Authoring of activities is a 2 part process.</p>";
@@ -2467,16 +2493,17 @@ function pi_authoring_new_activities(){
 	
 	//table of inquiries to choose from; two links one to placeholder and the other to real
 	//if there are activities in placeholder then the text changes
-	$query = "SELECT * FROM pi_inquiry";
-	$inquiries = db_query($query);
+	$inquiry_nids = pi_inquiry_load_nids();
 	
 	$content .= "<table>";
 	$content .= '<tr bgcolor="#EEEEEE"><td>Inquiry Name</td><td>Place Holder</td><td>Real</td></tr>';
-	while($inquiry = db_fetch_object($inquiries)){
+	foreach($inquiry_nids as $inquiry_nid) 
+	{
+		$inquiry = node_load($inquiry_nid);
 		$content .= "<tr>";
-		$content .= "<td>" . $inquiry->name . "</td>";
-		$content .= "<td>" . l("add", "piauthoring/activities/1/" . $inquiry->inquiry_id) . "</td>";
-		$content .= "<td>" . l("update", "piauthoring/activities/3/" . $inquiry->inquiry_id) . "</td>";
+		$content .= "<td>" . $inquiry->title . "</td>";
+		$content .= "<td>" . l("add", "piauthoring/activities/1/" . $inquiry->nid) . "</td>";
+		$content .= "<td>" . l("update", "piauthoring/activities/3/" . $inquiry->nid) . "</td>";
 		$content .= "</tr>";
 	}
 	$content .= "</table>";
@@ -2488,19 +2515,19 @@ function pi_authoring_new_activities(){
  * 
  * @return string
  */
-function pi_authoring_new_activities_placeholder(){
+function pi_authoring_new_activities_placeholder($inquiry=NULL){
 	$content = '';
-	if(arg(3) != NULL){
-		$query = "SELECT * FROM pi_inquiry WHERE inquiry_id = '" . arg(3) . "'";
-		$inquiry = db_fetch_object(db_query($query));
+	if($inquiry != NULL){
 		$content .= draw_table($inquiry, 'add');
 	}
 	else{
-		$query = "SELECT * FROM pi_inquiry";
-		$inquiries = db_query($query);
-		while($inquiry = db_fetch_object($inquiries)){
+		$inquiry_nids = pi_inquiry_load_nids();
+		foreach($inquiry_nids as $inquiry_nid)
+		{
+			$content .= "<div>\n";
+			$inquiry = node_load($inquiry_nid);
 			$content .= draw_table($inquiry, 'add');
-			$content .= '<br>';
+			$content .= "</div>\n\n";
 		}
 	}
 	return $content;
@@ -2520,19 +2547,20 @@ function pi_authoring_new_activities_modules(){
  * 
  * @return string
  */
-function pi_authoring_new_activities_real(){
+function pi_authoring_new_activities_real($inquiry=NULL){
 	$content = '';
-if(arg(3) != NULL){
-		$query = "SELECT * FROM pi_inquiry WHERE inquiry_id = '" . arg(3) . "'";
-		$inquiry = db_fetch_object(db_query($query));
+	if($inquiry != NULL){
 		$content .= draw_table($inquiry, 'edit');
 	}
 	else{
-		$query = "SELECT * FROM pi_inquiry";
-		$inquiries = db_query($query);
-		while($inquiry = db_fetch_object($inquiries)){
+		$inquiry_nids = pi_inquiry_load_nids();
+		foreach($inquiry_nids as $inquiry_nid)
+		{
+			firep($inquiry, "loading inquiry");
+			$content .= "<div>\n";
+			$inquiry = node_load($inquiry_nid);
 			$content .= draw_table($inquiry, 'edit');
-			$content .= '<br>';
+			$content .= "</div>\n\n";
 		}
 	}
 	return $content;
@@ -2543,7 +2571,7 @@ if(arg(3) != NULL){
  * 
  * @return unknown
  */
-function pi_authoring_new_activities_placeholder_add(){
+function pi_authoring_new_activities_placeholder_add($inquiry){
 	$content = "<p>Add a new activity to this phase and stage.<br>";
 	$content .= "(NB this is a place holder activity so you can quickly define";
 	$content .= " the types of activities you want in your inquiry.  Simply put";
