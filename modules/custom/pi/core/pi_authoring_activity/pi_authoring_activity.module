@@ -178,3 +178,32 @@ function theme_pi_authoring_activity($node) {
   
   return $output;
 }
+
+/**
+ * This provides a link to a particular activity
+ * @param $activity_id
+ * @param $status
+ * @param $destination
+ * @return string HTML for link to a particular activity
+ */
+function pi_activity_table_activity_link($activity_id, $status, $destination) {
+	if(in_array($status, array('edit', 'view'))) {
+		return l(ucwords($status), t('activity/' . $activity_id . '/' . $status), array('query' => t('destination=' . $destination)));
+	}
+	else {
+		return t('unavailable');
+	}
+}
+
+/**
+ * This updates the weight of an activity when they have been ordered using a table drag form
+ * @param uint $nid node id for the activity
+ * @param unknown_type $weight new weight
+ * @return null
+ */
+function pi_activity_update_activity_weight_from_node($nid, $weight) {
+	$activity_id = get_activity_id_for_nid($nid);
+	$new_weight =  $weight + 999;
+	db_query("UPDATE pi_stage_phase_activity SET position = '" . $new_weight . "' WHERE activity_id = '" . $activity_id . "' ");
+}
+
