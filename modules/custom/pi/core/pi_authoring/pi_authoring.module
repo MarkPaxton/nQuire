@@ -254,7 +254,7 @@ function pi_authoring_menu() {
      'access arguments' => array('access pi_authoring content'),
 	);
 
-	$items['piauthoring/activities/'] = array(
+	$items['piauthoring/activities'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
      'title' => t('5. Authoring Activities'),
   	 'page callback' => 'pi_authoring_new_activities',
@@ -279,15 +279,13 @@ function pi_authoring_menu() {
 	);
 	
 	$items['piauthoring/activities/2'] = array(
-	//'path' => 'piauthoring/newinquiry/stages',
-     'title' => t('5.2. Install Needed Modules'),
-  	 'page callback' => 'pi_authoring_new_activities_modules',
-	 'type' => MENU_NORMAL_ITEM,
-     'access arguments' => array('access pi_authoring content'),
+		'title' => t('5.2. Install Needed Modules'),
+		'page callback' => 'pi_authoring_new_activities_modules',
+		'type' => MENU_NORMAL_ITEM,
+		'access arguments' => array('access pi_authoring content'),
 	);
-
+	
 	$items['piauthoring/activities/3'] = array(
-		//'path' => 'piauthoring/newinquiry/stages',
 	    'title' => t('5.3. Author Real Activities'),
 		'page arguments' => array(NULL),
 		'page callback' => 'pi_authoring_new_activities_real',
@@ -297,10 +295,9 @@ function pi_authoring_menu() {
 	
 	$items['piauthoring/activities/3/%node'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
-		'title' => t('5.3. Author Real Activities'),
 		'page callback' => 'pi_authoring_new_activities_real',
 		'page arguments' => array(3),
-		'type' => MENU_NORMAL_ITEM,
+		'type' => MENU_CALLBACK,
 		'access arguments' => array('access pi_authoring content'),
 	);
 
@@ -613,7 +610,8 @@ function draw_table($inquiry, $view_type){
 		$phases[] = node_load($phase_nid);
 		foreach($stages as $stage)
 		{
-	 		//1. is this phase in this stage?
+			firep("$stage->nid, $phase_nid");
+			//1. is this phase in this stage?
 	 		if(in_array($phase_nid, $stage->stage_phases))
 	 		{
 	 			//2. does this phase in this stage have activites?
@@ -625,17 +623,18 @@ function draw_table($inquiry, $view_type){
 	 				$activities[] = $object->activity_id;
 	 			}
 	 			//phase is included in this stage
-	 			$content[$stage_nid][$phase_nid] = $activities;
+	 			$content[$stage->nid][$phase_nid] = $activities;
 	 		}
 	 		else
 	 		{
 	 			//echo $phase->name . ", " . $stage->name . ", " . "null; ";
 	 			//phase not in this stage
-	 			$content[$stage_nid][$phase_nid] = NULL;
+	 			$content[$stage->nid][$phase_nid] = NULL;
 	 		}
 	 	}
 	 }
-	 return get_view($inquiry, $content, $stages, $phases, $view_type);
+	firep($content);
+	return get_view($inquiry, $content, $stages, $phases, $view_type);
 }
 
 /**
@@ -706,7 +705,7 @@ function get_view($inquiry, $stage_phase_activities, $stages, $phases, $view_typ
 		$already_included = array();
 		foreach($stages as $s)
 		{
-			$activity_array = $stage_phase_activities[$s->nid][$phase->nid];
+			$activity_array = &$stage_phase_activities[$s->nid][$phase->nid];
 			if(is_array($activity_array))
 			{
 				if(count($activity_array)>0)
@@ -2385,8 +2384,8 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form($form
 /**
  * MISSING
  * 
- * @param unknown_type $form
- * @param unknown_type $form_state
+ * @param array $form Drupal forms API form definition
+ * @param array $form_state Drupal forms API form post data
  * @return unknown_type
  */
 function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form_submit($form, &$form_state){
@@ -2395,9 +2394,8 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form_submi
 
 	//set inquiry actor and default grouping
 	$query = "INSERT INTO pi_inquiry_actor SET ";
-	$query .= "inquiry_id = '" . $inquiry_id . "'";
-	$query .= ", gid = '" . $inquiry_id_group . "'";
-	db_query($query);
+	$query .= "inquiry_id = %d, gid = %d";
+	db_query($query, $inquiry_id, $inquiry_id_group);
 
 	$query2 = "INSERT INTO pi_grouping SET ";
 	$query2 .= "name = 'default', description = 'default'";
@@ -2407,9 +2405,8 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form_submi
 	$query3 = "SELECT MAX(pi_grouping.grouping_id) FROM pi_grouping";
 	$group_id = db_result(db_query($query3));
 
-	$query4 = "INSERT INTO pi_group_hierarchy SET ";
-	$query4 .= "gid = '" . $inquiry_id_group . "'";
-	db_query($query4);
+	$query4 = "INSERT INTO pi_group_hierarchy SET gid = %d";
+	db_query($query4, $inquiry_id_group);
 
 	$query5 = "INSERT INTO pi_grouping_group SET ";
 	$query5 .= "grouping_id = '" . $group_id ."'";
@@ -2422,37 +2419,25 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form_submi
 	db_query($query6);
 
 	//now for the stages and phases
-	//stages
-	$query7 = "SELECT * ";
-	$query7 .= "FROM pi_inquiry_stage ";
-	$query7 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
-	$query7 .= "WHERE pi_inquiry_stage.inquiry_id = '" . $inquiry_id . "' ";
-	$query7 .= "ORDER BY pi_inquiry_stage.position";
-	$stages = db_query($query7);
 
-	while($stage = db_fetch_object($stages)){
-		$selected_group = $form_state['values']['inquiry_id']['stage'][$stage->stage_id];
+	//stages
+	$stage_nids = pi_stage_load_nids($inquiry_id);
+	foreach($stage_nids as $stage_nid)
+	{
+		$selected_group = $form_state['values']['inquiry_id']['stage'][$stage_nid];
 		$query8 = "INSERT INTO pi_stage_actor SET ";
-		$query8 .= "inquiry_id = '" . $inquiry_id . "'";
-		$query8 .= ", stage_id = '" . $stage->stage_id . "'";
-		$query8 .= ", gid = '" . $selected_group ."'";
-		db_query($query8);
+		$query8 .= "inquiry_id = %d, stage_id = %d, gid = %d";
+		db_query($query8, $inquiry_id, $stage_nid, $selected_group);
 	}
 
 	//phases
-	$query9 = "SELECT * ";
-	$query9 .= "FROM pi_inquiry_phase ";
-	$query9 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
-	$query9 .= "WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry_id . "' ";
-	$query9 .= "ORDER BY pi_inquiry_phase.position";
-	$phases = db_query($query9);
-	while($phase = db_fetch_object($phases)){
-		$selected_group = $form_state['values']['inquiry_id']['phase'][$phase->phase_id];
+	$phase_nids = pi_phase_load_nids($inquiry_id);
+	foreach($phase_nids as $phase_nid)
+	{
+		$selected_group = $form_state['values']['inquiry_id']['phase'][$phase_nid];
 		$query10 = "INSERT INTO pi_phase_actor SET ";
-		$query10 .= "inquiry_id = '" . $inquiry_id . "'";
-		$query10 .= ", phase_id = '" . $phase->phase_id . "'";
-		$query10 .= ", gid = '" . $selected_group ."'";
-		db_query($query10);
+		$query10 .= "inquiry_id = %d, phase_id = %d, gid = %d";
+		db_query($query10, $inquiry_id, $phase_nid, $selected_group);
 	}
 
 	$text = "Done";
@@ -2478,7 +2463,7 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form_submi
 	 */
 
 /**
- * Theis page is the strting point for adding activities to inquiries
+ * Theis page is the starting point for adding activities to inquiries
  * @return string HTML data for page
  */
 function pi_authoring_new_activities(){
@@ -2510,17 +2495,21 @@ function pi_authoring_new_activities(){
 	return $content;
 }
 
+
 /**
- * MISSING
- * 
- * @return string
+ * Returns the content for authoring section 5.1, presenting the table of the inquiry and
+ * links to add new placeholder activities.  If an inquiry is not passed as a parameter, a list of all will be shown.
+ * @param $inquiry Inquiry node to show table for: this is loaded via the url menu auto load callback $node
+ * @return string HTML content
  */
 function pi_authoring_new_activities_placeholder($inquiry=NULL){
 	$content = '';
-	if($inquiry != NULL){
+	if(isset($inquiry))
+	{
 		$content .= draw_table($inquiry, 'add');
 	}
-	else{
+	else
+	{
 		$inquiry_nids = pi_inquiry_load_nids();
 		foreach($inquiry_nids as $inquiry_nid)
 		{
@@ -2534,29 +2523,29 @@ function pi_authoring_new_activities_placeholder($inquiry=NULL){
 }
 
 /**
- * MISSING
- * 
- * @return string
+ * This renders the instructions for authoring section 5.2 
+ * @return string  HTML content
  */
 function pi_authoring_new_activities_modules(){
 	return "<p> Now use the Admin pages to install the modules you need for the activies you have added placeholders for</p>";
 }
 
 /**
- * MISSING
- * 
- * @return string
+ * Returns the content for authoring section 5.3, presenting the table of the inquiry and
+ * links to edit placeholder activities.  If an inquiry is not passed as a parameter, a list of all will be shown.
+ * @param $inquiry Inquiry node to show table for: this is loaded via the url menu auto load callback $node
+ * @return string HTML content
  */
 function pi_authoring_new_activities_real($inquiry=NULL){
 	$content = '';
-	if($inquiry != NULL){
+	if(isset($inquiry))
+		{
 		$content .= draw_table($inquiry, 'edit');
 	}
 	else{
 		$inquiry_nids = pi_inquiry_load_nids();
 		foreach($inquiry_nids as $inquiry_nid)
 		{
-			firep($inquiry, "loading inquiry");
 			$content .= "<div>\n";
 			$inquiry = node_load($inquiry_nid);
 			$content .= draw_table($inquiry, 'edit');
@@ -2567,16 +2556,16 @@ function pi_authoring_new_activities_real($inquiry=NULL){
 }
 
 /**
- * MISSING
+ * Constructs the page to show thew new placeholder activity form
  * 
- * @return unknown
+ * @return string HTML content
  */
-function pi_authoring_new_activities_placeholder_add($inquiry){
+function pi_authoring_new_activities_placeholder_add(){
 	$content = "<p>Add a new activity to this phase and stage.<br>";
 	$content .= "(NB this is a place holder activity so you can quickly define";
 	$content .= " the types of activities you want in your inquiry.  Simply put";
 	$content .= "the name of the activity in, something meanlingful and you will";
-	$content .= "go back later and edit it to the real activit)</p><br>";
+	$content .= "go back later and edit it to the real activity)</p><br>";
 	$content .= drupal_get_form('pi_authoring_new_activities_placeholder_add_form', $node);
 	return $content;
 }

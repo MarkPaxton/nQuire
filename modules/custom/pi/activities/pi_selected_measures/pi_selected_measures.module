@@ -10,9 +10,9 @@
  * Implementation of hook_node_info().
  */
 function pi_selected_measures_node_info() {
-  // We return an array since a module can define multiple node types.
-  // We're only defining one node type, type 'pi_selected_measures'.
-  return array(
+	// We return an array since a module can define multiple node types.
+	// We're only defining one node type, type 'pi_selected_measures'.
+	return array(
     'pi_selected_measures' => array(
       'name' => t('Selected measures'), // Required.
       'module' => 'pi_selected_measures',  // Required.
@@ -22,138 +22,136 @@ function pi_selected_measures_node_info() {
       'has_body' => TRUE,
       'body_label' => t('Measures'),
       'locked' => TRUE
-    )
-  );
+	)
+	);
 }
 
 /**
  * Implementation of hook_perm().
  */
 function pi_selected_measures_perm() {
-  return array();
+	return array();
 }
 
 /**
  * Implementation of hook_access().
  */
 function pi_selected_measures_access($op, $node) {
-  global $user;
-  $details = get_inquiry_details_from_current_path();
+	global $user;
+	$details = get_inquiry_details_from_current_path();
 
-  if ($op == 'create') {
-    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
-  }
+	if ($op == 'create') {
+		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+	}
 
-  if ($op == 'update' || $op == 'delete') {
-    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-  }
+	if ($op == 'update' || $op == 'delete') {
+		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+	}
 }
 
 /**
- * Implementation of hook_form().
+ * Implementation of hook_node_form().
  */
-function pi_selected_measures_form(&$node) {
+function pi_selected_measures_node_form(&$node) {
+
+	$details = get_inquiry_details_from_current_path();
+	$current_activity = load_activity($details->activity_id);
+
+	drupal_set_title(t($current_activity->name));
+
+	$type = node_get_types('type', $node);
+
+	global $user;
+	$uid = $user->uid;
+
+	//get pi_key_measure_nid
+	$pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
+	$pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
+
+	//get pi_selected_measure_nid
+	$pi_selected_measures_query = db_query("SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON pi_selected_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_selected_measures.nid = pi_activity_node.nid WHERE og_uid.uid = '" . $uid . "' AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
+	$pi_selected_measures_nid = db_fetch_object($pi_selected_measures_query);
+
+	//change to only get public and og nids
+	/*
+	$required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid LEFT JOIN pi_selected_measures ON pi_key_measures.measure_nid = pi_selected_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' AND  pi_selected_measures.nid = '" . $pi_selected_measures_nid->nid . "' ORDER BY pi_selected_measures.weight ASC");*/
+	$required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
+
+	$compulsory = array();
+	$compulsory_default = array();
+	while ($required_result = db_fetch_array($required_results)) {
+		$compulsory[$required_result['nid']] = $required_result['title'];
+		$compulsory_default[] = $required_result['nid'];
+	}
+
+	//change to only get public and og nids
+	$results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $uid . "') ");
+
+	$options = array();
+	while ($result = db_fetch_array($results))
+	{
+		//include in options if not selected as a key measure
+		if (!in_array($result['nid'], $compulsory_default))
+		{
+			$options[$result['nid']] = $result['title'];
+		}
+	}
+
+	$form['title'] = array(
+	    '#type' => 'hidden',
+	    '#title' => check_plain($type->title_label),
+	    '#required' => FALSE,
+	    '#default_value' => 'Pick measurements',
+	    '#weight' => -5
+	);
 	
-  $details = get_inquiry_details_from_current_path();
-  $current_activity = load_activity($details->activity_id);
-  
-  drupal_set_title(t($current_activity->name));
+	$prefix = "<p>" . t($current_activity->description) . "</p>";
+	$form['#prefix'] = $prefix;
+	
+	
+	$form['body_filter']['body'] = array(
+	    '#type' => 'hidden',
+	    '#title' => check_plain($type->body_label),
+	    '#required' => FALSE,
+	    '#default_value' => NULL,
+	    '#rows' => 5,
+	    '#weight' => -1
+	);
 
-  $type = node_get_types('type', $node);
+	$form['required_measures_display'] = array(
+	    '#type' => 'checkboxes',
+	    '#title' => t('Key measurements'),
+	    '#multiple' => TRUE,
+	    '#default_value' => $compulsory_default,
+	    '#disabled' => TRUE,
+	    '#options' => $compulsory,
+	    '#weight' => 0
+	);
+	$form['required_measures'] = array(
+	    '#type' => 'hidden',
+	    '#value' => implode(",",$compulsory_default)
+	);
 
-  global $user;
-  $uid = $user->uid;
-  
-  $prefix = "<p>" . t($current_activity->description) . "</p>";
-  
-  //get pi_key_measure_nid
-  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
-  $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
-  
-  //get pi_selected_measure_nid
-  $pi_selected_measures_query = db_query("SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON pi_selected_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_selected_measures.nid = pi_activity_node.nid WHERE og_uid.uid = '" . $uid . "' AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
-  $pi_selected_measures_nid = db_fetch_object($pi_selected_measures_query);
-  
-  //change to only get public and og nids
-  /*
-  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid LEFT JOIN pi_selected_measures ON pi_key_measures.measure_nid = pi_selected_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' AND  pi_selected_measures.nid = '" . $pi_selected_measures_nid->nid . "' ORDER BY pi_selected_measures.weight ASC");*/
-  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
-  
-  $compulsory = array();
-  $compulsory_default = array();
-  while ($required_result = db_fetch_array($required_results)) {
-    $compulsory[$required_result['nid']] = $required_result['title'];
-    $compulsory_default[] = $required_result['nid'];
-  }
-    
-  //change to only get public and og nids
-  $results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $uid . "') ");
-
-  
-
-  $options = array();
-  
-  while ($result = db_fetch_array($results)) {
-  	//include in options if not selected as a key measure
-  	if (!in_array($result['nid'], $compulsory_default)) {
-    	$options[$result['nid']] = $result['title'];
-    }
-  }
-  
-  
-
-  $form['title'] = array(
-    '#type' => 'hidden',
-    '#title' => check_plain($type->title_label),
-    '#required' => FALSE,
-    '#default_value' => 'Pick measurements',
-    '#weight' => -5
-  );
-  $form['body_filter']['body'] = array(
-    '#type' => 'hidden',
-    '#title' => check_plain($type->body_label),
-    '#required' => FALSE,
-    '#default_value' => NULL,
-    '#rows' => 5,
-    '#weight' => -1
-  );
-
-  $form['required_measures_display'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Key measurements'),
-    '#multiple' => TRUE,
-    '#default_value' => $compulsory_default,
-    '#disabled' => TRUE,
-    '#options' => $compulsory,
-    '#weight' => 0
-  );
-  $form['required_measures'] = array(
-    '#type' => 'hidden',
-    '#value' => implode(",",$compulsory_default)
-  );
-  
-  $default = $node->optional_measures;
-  if (!$default) {
+	$default = $node->optional_measures;
+	if (!$default) {
 		$default = array();
-  }
-  $form['selected_measures'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Available measurements'),
-    '#required' => TRUE,
-    '#multiple' => TRUE,
-    '#default_value' => $default,
-    '#options' => $options,
-    '#weight' => 5
-  );
+	}
+	$form['selected_measures'] = array(
+	    '#type' => 'checkboxes',
+	    '#title' => t('Available measurements'),
+	    '#required' => TRUE,
+	    '#multiple' => TRUE,
+	    '#default_value' => $default,
+	    '#options' => $options,
+	    '#weight' => 5
+	);
 
-  $form['#prefix'] = $prefix;
-	  
-  return $form;
+	return $form;
 }
 
 /**
  * MISSING
- * 
+ *
  * @param unknown_type $nid
  * @return Ambigous <unknown, multitype:>
  */
@@ -161,55 +159,55 @@ function find_default_measures($nid) {
 	$measure_array = array();
 	$prev_query = "SELECT measure_nid FROM pi_selected_measures WHERE nid = '" . $nid . "' ORDER BY weight ASC";
 	$db_result = db_query($prev_query);
-  	while ($prev_result = db_fetch_object($db_result)) {
-  		$prev_result2 = $prev_result->measure_nid;
-  		$measure_array[] = $prev_result2;
-  	}
-  	return $measure_array;
+	while ($prev_result = db_fetch_object($db_result)) {
+		$prev_result2 = $prev_result->measure_nid;
+		$measure_array[] = $prev_result2;
+	}
+	return $measure_array;
 }
 
 
 /**
  * MISSING
- * 
+ *
  * @param unknown_type $nid
  * @param unknown_type $uid
  * @return Ambigous <unknown, multitype:>
  */
 function find_default_optional_measures($nid, $uid) {
-  $details = get_inquiry_details_from_current_path();
-  //get pi_key_measure_nid
-  $pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
-  $pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
-  
-  $required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
-  
-  $compulsory = array();
-  $compulsory_default = array();
-  while ($required_result = db_fetch_array($required_results)) {
-    $compulsory_default[] = $required_result['nid'];
-  }
-  
-  $measure_array = array();
+	$details = get_inquiry_details_from_current_path();
+	//get pi_key_measure_nid
+	$pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
+	$pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
+
+	$required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
+
+	$compulsory = array();
+	$compulsory_default = array();
+	while ($required_result = db_fetch_array($required_results)) {
+		$compulsory_default[] = $required_result['nid'];
+	}
+
+	$measure_array = array();
 	$prev_query = "SELECT pi_selected_measures.measure_nid FROM pi_selected_measures WHERE pi_selected_measures.nid = '" . $nid . "' ORDER BY pi_selected_measures.weight ASC";
 	$db_result = db_query($prev_query);
-  	while ($prev_result = db_fetch_object($db_result)) {
-  		$prev_result2 = $prev_result->measure_nid;
-  		if (!in_array($prev_result2, $compulsory_default)) {
-  			$measure_array[] = $prev_result2;
-  		}
-  	}
-  	return $measure_array;
+	while ($prev_result = db_fetch_object($db_result)) {
+		$prev_result2 = $prev_result->measure_nid;
+		if (!in_array($prev_result2, $compulsory_default)) {
+			$measure_array[] = $prev_result2;
+		}
+	}
+	return $measure_array;
 }
 
 /**
  * MISSING
- * 
+ *
  * @param $nid
  * @param $inquiry_id
  * @param $activity_id
  * @return unknown_type
- * 
+ *
  * @deprecated no longer used
  */
 function find_default_optional_measures_old($nid , $inquiry_id, $activity_id) {
@@ -219,16 +217,16 @@ function find_default_optional_measures_old($nid , $inquiry_id, $activity_id) {
 	$measure_array = array();
 	$prev_query = "SELECT pi_selected_measures.measure_nid FROM pi_selected_measures, pi_key_measures WHERE pi_selected_measures.nid = '" . $nid . "' AND NOT (pi_key_measures.measure_nid = pi_selected_measures.measure_nid AND pi_key_measures.inquiry_id = '" . $inquiry_id . "')  ORDER BY pi_selected_measures.weight ASC";
 	$db_result = db_query($prev_query);
-  	while ($prev_result = db_fetch_object($db_result)) {
-  		$prev_result2 = $prev_result->measure_nid;
-  		$measure_array[] = $prev_result2;
-  	}
-  	return $measure_array;
+	while ($prev_result = db_fetch_object($db_result)) {
+		$prev_result2 = $prev_result->measure_nid;
+		$measure_array[] = $prev_result2;
+	}
+	return $measure_array;
 }
 
 /**
  * MISSING
- * 
+ *
  * @param unknown_type $nid
  * @return Ambigous <unknown, multitype:>
  */
@@ -236,70 +234,70 @@ function find_default_measure_rows($nid) {
 	$measure_array = array();
 	$prev_query = "SELECT * FROM pi_selected_measures WHERE nid = '" . $nid . "' ORDER BY weight ASC";
 	$db_result = db_query($prev_query);
-  	while ($prev_result = db_fetch_object($db_result)) {
-  		$measure_array[] = $prev_result;
-  	}
-  	return $measure_array;
+	while ($prev_result = db_fetch_object($db_result)) {
+		$measure_array[] = $prev_result;
+	}
+	return $measure_array;
 }
 
 /**
  * Implementation of hook_validate().
  */
 function pi_selected_measures_validate($node) {
-  // Enforce a minimum word length of 3.
-  if (isset($node->selected_measures) && count($node->selected_measures) < 1) {
-    $type = node_get_types('type', $node);
-    form_set_error('selected_measures', t('Your @type is too short. You need at least one measure.', array('@type' => $type->name)));
-  }
+	// Enforce a minimum word length of 3.
+	if (isset($node->selected_measures) && count($node->selected_measures) < 1) {
+		$type = node_get_types('type', $node);
+		form_set_error('selected_measures', t('Your @type is too short. You need at least one measure.', array('@type' => $type->name)));
+	}
 }
 
 /**
  * Implementation of hook_insert().
- * 
+ *
  * @param $node
  * @return unknown_type
  */
 function pi_selected_measures_insert($node) {
-  $new_selected_measures = array();
-  $required_measures = explode(",",$node->required_measures);
-  foreach ($required_measures as $measure) {
-  	if ($measure != 0) {
-  		$measure_node = node_load($measure);
-  		$weight = 0;
-  		db_query("INSERT INTO pi_selected_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
-  	}
-  }
-  foreach ($node->selected_measures as $measure) {
-  	if ($measure != 0) {
-  		$measure_node = node_load($measure);
-		$weight = 1;
-  		db_query("INSERT INTO pi_selected_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
-  	}
-  }
+	$new_selected_measures = array();
+	$required_measures = explode(",",$node->required_measures);
+	foreach ($required_measures as $measure) {
+		if ($measure != 0) {
+			$measure_node = node_load($measure);
+			$weight = 0;
+			db_query("INSERT INTO pi_selected_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
+		}
+	}
+	foreach ($node->selected_measures as $measure) {
+		if ($measure != 0) {
+			$measure_node = node_load($measure);
+			$weight = 1;
+			db_query("INSERT INTO pi_selected_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
+		}
+	}
 }
 
 /**
  * Implementation of hook_update().
  */
 function pi_selected_measures_update($node) {
-  if ($node->revision) {
-    pi_selected_measures_insert($node);
-  }
-  else {
-    db_query('DELETE FROM {pi_selected_measures} WHERE nid = %d', $node->nid);
-    pi_selected_measures_insert($node);
-  }
+	if ($node->revision) {
+		pi_selected_measures_insert($node);
+	}
+	else {
+		db_query('DELETE FROM {pi_selected_measures} WHERE nid = %d', $node->nid);
+		pi_selected_measures_insert($node);
+	}
 }
 
 /**
  * Implementation of hook_delete().
- * 
+ *
  * @param unknown_type $node
  * @return unknown_type
  */
 function pi_selected_measures_delete(&$node) {
 	// Delete the related information we were saving for this node.
-  	db_query('DELETE FROM {pi_selected_measures} WHERE nid = %d', $node->nid);
+	db_query('DELETE FROM {pi_selected_measures} WHERE nid = %d', $node->nid);
 }
 
 
@@ -307,76 +305,76 @@ function pi_selected_measures_delete(&$node) {
  * Implementation of hook_load().
  */
 function pi_selected_measures_load($node) {
-  global $user;
-  $details = get_inquiry_details_from_current_path();
-  $result = new stdClass;
-  //selected measures
-  $result->selected_measures = find_default_measures($node->nid);
-  //optional measures
-  $result->optional_measures = find_default_optional_measures($node->nid , $user->uid);
-  $result->measure_rows = find_default_measure_rows($node->nid);
-  return $result;
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	$result = new stdClass;
+	//selected measures
+	$result->selected_measures = find_default_measures($node->nid);
+	//optional measures
+	$result->optional_measures = find_default_optional_measures($node->nid , $user->uid);
+	$result->measure_rows = find_default_measure_rows($node->nid);
+	return $result;
 }
 
 /**
  * Implementation of hook_view().
- * 
+ *
  * @param $node
  * @param $teaser
  * @param $page
  * @return unknown_type
  */
 function pi_selected_measures_view($node, $teaser = FALSE, $page = FALSE) {
-  if (!$teaser) {
-    // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
+	if (!$teaser) {
+		// Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
 
-    $node->content['pi_selected_measures'] = array(
+		$node->content['pi_selected_measures'] = array(
       '#value' => theme('pi_selected_measures', $node),
       '#weight' => 2
-      );
-  }
+		);
+	}
 
-  if ($teaser) {
-    // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
-  }
+	if ($teaser) {
+		// Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+	}
 
-  return $node;
+	return $node;
 }
 
 /**
  * MISSING
- * 
- * @return multitype:multitype:multitype:string   
+ *
+ * @return multitype:multitype:multitype:string
  */
 function pi_selected_measures_theme() {
-  return array(
+	return array(
     'pi_selected_measures' => array(
       'arguments' => array('node'),
-    ),
-  );
+	),
+	);
 }
 
 /**
  * MISSING
- * 
+ *
  * @param unknown_type $node
  * @return string
  */
 function theme_pi_selected_measures($node) {
 
 	$details = get_inquiry_details_from_current_path();
-  $current_activity = load_activity($details->activity_id);
-  drupal_set_title(t($current_activity->name));
-  $output = "<p>" . $current_activity->description . "</p>";
-  
-  $query = "SELECT node.title FROM node, pi_selected_measures WHERE pi_selected_measures.nid = '" . $node->nid . "' AND pi_selected_measures.measure_nid = node.nid ORDER BY pi_selected_measures.weight";
-  $result = db_query($query);
-  $output .= "<ul>";
-  while($measure = db_fetch_object($result)) {
-  	$output .= "<li>" . $measure->title . "</li>";
-  }
+	$current_activity = load_activity($details->activity_id);
+	drupal_set_title(t($current_activity->name));
+	$output = "<p>" . $current_activity->description . "</p>";
+
+	$query = "SELECT node.title FROM node, pi_selected_measures WHERE pi_selected_measures.nid = '" . $node->nid . "' AND pi_selected_measures.measure_nid = node.nid ORDER BY pi_selected_measures.weight";
+	$result = db_query($query);
+	$output .= "<ul>";
+	while($measure = db_fetch_object($result)) {
+		$output .= "<li>" . $measure->title . "</li>";
+	}
 	$output .= "</ul>";
 	return $output;
 }

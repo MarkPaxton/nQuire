@@ -72,86 +72,83 @@ function pi_data_access($op, $node) {
  * Implementation of pi_data_form().
  */
 function pi_data_form(&$node) {
+	global $user;
 
-// Get metadata for this node type
-// (we use it for labeling title and body fields).
-// We defined this in pi_data_node_info().
+	$node_details = get_inquiry_details_from_current_path();
+	if (is_numeric($node_details->activity_id)) {
+		$current_activity = load_activity($node_details->activity_id);
+	}
+	 
+	if ($current_activity->name) {
+		drupal_set_title(t($current_activity->name));
+	}
 
-    global $user;
-		$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
-  	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
+	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	if ($measures_param) {
+		$measures_node = node_load($measures_param);
+		$measure_rows = $measures_node->categories;
+	}
 
-    $measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
-    //drupal_set_title(t($current_activity->name));
-
-    if ($measures_param) {
-        $measures_node = node_load($measures_param);
-        $measure_rows = $measures_node->categories;
-    }
-
-    $form = array();
-
-    $type = node_get_types('type', $node);
-    $form['title'] = array (
+	// Get metadata for this node type
+	// (we use it for labeling title and body fields).
+	// We defined this in pi_data_node_info().
+	$type = node_get_types('type', $node);
+	
+	$form = array();
+	$form['title'] = array (
         '#type' => 'hidden',
         '#value' => 'Data',//check_plain($type->title),
-    );
+	);
 
-    $form['onepageprofile_categories'] = array(
+	$form['onepageprofile_categories'] = array(
         '#tree'   => TRUE,
-    );
+	);
 
-    $tree = &$form['onepageprofile_categories'];
-		
-		if(is_array($measure_rows)) {
-    foreach ($measure_rows as $measure_nid => $measure_selection) {
+	$tree = &$form['onepageprofile_categories'];
 
-        if($measure_selection['#status'] == 'key' || $measure_selection['#status'] == 'selected') {
-            $key = t($measures_param . "-" . $measure_nid);
+	if(is_array($measure_rows)) {
+		foreach ($measure_rows as $measure_nid => $measure_selection) {
 
-            $measure = node_load($measure_nid);
+			if($measure_selection['#status'] == 'key' || $measure_selection['#status'] == 'selected') {
+				$key = t($measures_param . "-" . $measure_nid);
 
-            //format the measure units
-            if (isset($measure->units_short) AND ($measure->units_short !='')) {
-                $units = " (" . $measure->units_short . ")";
-            }
-            elseif (isset($measure->units) AND ($measure->units !='')) {
-                $units = " (" . $measure->units . ")";
-            }
-            else {
-                $units = "";
-            };
+				$measure = node_load($measure_nid);
 
-            //set as required field if a key measure
-            if ($measure_selection['#status'] == 'key') {
-                $required_value = TRUE;
-            }
-            else {
-                $required_value = FALSE;
-            };
+				//format the measure units
+				if (isset($measure->units_short) AND ($measure->units_short !='')) {
+					$units = " (" . $measure->units_short . ")";
+				}
+				elseif (isset($measure->units) AND ($measure->units !='')) {
+					$units = " (" . $measure->units . ")";
+				}
+				else {
+					$units = "";
+				};
 
-            // field_type = textfield
-            if ($measure->field_type == 'textfield') {
-            //$prefix .= "textfield";
-                $tree[$key]['value'] = array(
+				//set as required field if a key measure
+				if ($measure_selection['#status'] == 'key') {
+					$required_value = TRUE;
+				}
+				else {
+					$required_value = FALSE;
+				};
+
+				// field_type = textfield
+				if ($measure->field_type == 'textfield') {
+					//$prefix .= "textfield";
+					$tree[$key]['value'] = array(
                     '#type' => 'textfield',
                     '#title' => t($measure->title . $units),
                     '#required' => $required_value,
                     '#default_value' => t($node->categories[$key]['#value']),
                     '#size' => t($measure->textfield_size),
                     '#weight' => $measure_selection['#weight']
-                );
-            }
-            elseif ($measure->field_type == 'textarea') {
-            //$prefix .= "textarea";
-                $tree[$key]['value'] = array(
+					);
+				}
+				elseif ($measure->field_type == 'textarea') {
+					//$prefix .= "textarea";
+					$tree[$key]['value'] = array(
                     '#type' => 'textarea',
                     '#title' => t($measure->title . $units),
                     '#required' => $required_value,
@@ -160,71 +157,71 @@ function pi_data_form(&$node) {
                     '#cols' => t($measure->textarea_cols),
                     '#rows' => t($measure->textarea_rows),
                     '#weight' => $measure_selection['#weight']
-                );
-            }
-            // field_type = select or radios
-            elseif ($measure->field_type == 'select' || $measure->field_type == 'radios') {
+					);
+				}
+				// field_type = select or radios
+				elseif ($measure->field_type == 'select' || $measure->field_type == 'radios') {
 
-                if ($measure->list_options) {
-                    $options = array();
-                    foreach (explode("\n",$measure->list_options) as $opt) {
-                    //trim added around item to prevent the following error:
-                    //An illegal choice has been detected. Please contact the site administrator.
-                        $item = trim(substr($opt,0,64));//**now use value as key
-                        $options[$item] = $item;
-                    };
-                }
-                elseif ($measure->content_options) {
-                    $options = array();
-                    $query = "SELECT nid, title FROM node WHERE type = '" . $measure->content_options . "' ";
-                    $results = db_query($query);
-                    while ($result = db_fetch_object($results)) {
-                        $options[$result->title] = $result->title;//now use value as key
-                    }
-                };
+					if ($measure->list_options) {
+						$options = array();
+						foreach (explode("\n",$measure->list_options) as $opt) {
+							//trim added around item to prevent the following error:
+							//An illegal choice has been detected. Please contact the site administrator.
+							$item = trim(substr($opt,0,64));//**now use value as key
+							$options[$item] = $item;
+						};
+					}
+					elseif ($measure->content_options) {
+						$options = array();
+						$query = "SELECT nid, title FROM node WHERE type = '" . $measure->content_options . "' ";
+						$results = db_query($query);
+						while ($result = db_fetch_object($results)) {
+							$options[$result->title] = $result->title;//now use value as key
+						}
+					};
 
-                $tree[$key]['value'] = array(
+					$tree[$key]['value'] = array(
                     '#type' => t($measure->field_type),
                     '#title' => t($measure->title . $units),
                     '#required' => $required_value,
                     '#default_value' => t($node->categories[$key]['#value']),
                     '#options' => $options,
                     '#weight' => $measure_selection['#weight']
-                );
-            }
-            // field_type = checkboxes
-            elseif ($measure->field_type == 'checkboxes') {
+					);
+				}
+				// field_type = checkboxes
+				elseif ($measure->field_type == 'checkboxes') {
 
-                $options = array();
-                if ($measure->list_options) {
-                    foreach (explode("\n",$measure->list_options) as $opt) {
-                        $option_item = substr($opt,0,16);
-                        $options[$option_item] = $option_item;
-                    };
-                };
+					$options = array();
+					if ($measure->list_options) {
+						foreach (explode("\n",$measure->list_options) as $opt) {
+							$option_item = substr($opt,0,16);
+							$options[$option_item] = $option_item;
+						};
+					};
 
-                $select = array();
-                if ($node->$form_key) {
-                    foreach (explode(",",$node->$form_key) as $sel) {
-                        $select[] = substr($sel,0,16);
-                    };
-                };
+					$select = array();
+					if ($node->$form_key) {
+						foreach (explode(",",$node->$form_key) as $sel) {
+							$select[] = substr($sel,0,16);
+						};
+					};
 
-                $tree[$key]['value'] = array(
+					$tree[$key]['value'] = array(
                     '#type' => 'checkboxes',
                     '#title' => t($measure->title . $units),
                     '#required' => $required_value,
                     '#default_value' => t($node->categories[$key]['#value']),
                     '#options' => $options,
                     '#weight' => $measure_selection['#weight']
-                );
-            };
-        };
-    };
-		}
-    $form['#prefix'] = $prefix;
+					);
+				};
+			};
+		};
+	}
+	$form['#prefix'] = $prefix;
 
-    return $form;
+	return $form;
 }
 
 
