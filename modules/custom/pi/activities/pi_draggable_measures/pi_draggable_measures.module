@@ -8,13 +8,11 @@
 function pi_draggable_measures_node_info() {
     return array(
     'pi_draggable_measures' => array(
-    'name' => t('Draggable measures'), // Required.
+    'name' => t('Inquiry measures selection'), // Required.
     'module' => 'pi_draggable_measures',  // Required.
     'description' => t('Draggable measures'), // Required.
-    'has_title' => TRUE,
-    'title_label' => t('Draggable measures'),
-    'has_body' => TRUE,
-    'body_label' => t('Draggable measures'),
+    'has_title' => FALSE,
+    'has_body' => FALSE,
     'locked' => TRUE)
     );
 }
@@ -59,7 +57,7 @@ function pi_draggable_measures_theme() {
 
 
 /**
- * Admin page to change category weights
+ * Admin page to change measure weights
  * @param $node
  * @return unknown_type
  */
@@ -84,38 +82,48 @@ function pi_draggable_measures_form(&$node) {
         '#value' => check_plain($type->title_label),
 	);
 
-	// onepageprofile_categories and tree used for draggable menu items
-	$form['onepageprofile_categories'] = array(
+	// measures_list and tree used for draggable menu items
+	$form['measures_list'] = array(
         '#tree'   => TRUE,
 	);
 
 	// Get the list of currently selected measures if the node has any
-	// they are stored in $node->categories and loaded by pi_draggable_measures_load()
+	// they are stored in $node->measures_list and loaded by pi_draggable_measures_load()
 	if(isset($node->nid)) 
 	{
-		$selected_measures = $node->categories;
+		$selected_measures = $node->measures_list;
 	}
 	else 
 	{
 		$selected_measures = array();
 	}
-
+	firep($selected_measures, '$selected_measures');
 	
-	// Get the list of available categories
+	
+	// Get the list of available measures
 	$all_measures = pi_draggable_measures_get_options();
-	$measures = array();
+	firep($all_measures, '$all_measures');
+	
+	// Update available measures with status from selected measures
 	if (count($selected_measures) > 0) 
 	{
 		foreach($selected_measures as $measure_nid => $measure)
 		{
-			$all_measures[$measure_nid]['#weight'] = $measure['#weight'];
-			$all_measures[$measure_nid]['#status'] = $measure['#status'];
+			// If the selected measure is still available, then update it's weight and status/
+			// If it's no longer available, it will just dissappear from the list. 
+			if(isset($all_measures[$measure_nid]))
+			{
+				$all_measures[$measure_nid]['#weight'] = $measure['#weight'];
+				$all_measures[$measure_nid]['#status'] = $measure['#status'];
+			}
 		}
 	}
+	// Sort the measures in reverse weight order
 	uasort($all_measures, "my_weight_compare");
-
-	// set $tree to point to the above $form['onepageprofile_categories'] object
-	$tree = &$form['onepageprofile_categories'];
+	firep($all_measures, 'selectable measures');
+	
+	// set $tree to point to the above $form['measures_list'] object
+	$tree = &$form['measures_list'];
 
 	foreach ($all_measures as $measure_nid => $measure_element)
 	{
@@ -137,20 +145,20 @@ function pi_draggable_measures_form(&$node) {
 			$units = "";
 		};
 
-		// add $tree entries for current category (i.e. $key)
+		// add $tree entries for current measure (i.e. $measure_nid)
 		$tree[$measure_nid]['title'] = array(
 			'#value' => t($measure->title . " " . $units),
 		);
 
 		$tree[$measure_nid]['weight'] = array(
 			'#type'          => 'weight',
-			'#delta'         => max(10, count($categories)),
-			'#default_value' => $all_measures[$key]['#weight'],
+			'#delta'         => count($all_measures),
+			'#default_value' => $all_measures[$measure_nid]['#weight'],
 		);
 
 		$tree[$measure_nid]['status'] = array(
 			'#type'          => 'select',
-			'#default_value' => $all_measures[$key]['#status'],
+			'#default_value' => $all_measures[$measure_nid]['#status'],
 			'#options' => array('none' => 'none', 'key' => 'key', 'selected' => 'selected'),
 		);
 	}
@@ -164,13 +172,13 @@ function pi_draggable_measures_form(&$node) {
  */
 function pi_draggable_measures_insert($node) {
 	$details  = get_inquiry_details_from_current_path();
-	while ($measure = current($node->onepageprofile_categories))
+	while ($measure = current($node->measures_list))
 	{
-		db_query("INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->onepageprofile_categories) . "', '" . $measure['status'] . "', '" . $measure['weight'] . "')");
-		pi_activity_update_activity_weight_from_node(key($node->onepageprofile_categories), $measure['weight']);
-		next($node->onepageprofile_categories);
+		db_query("INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->measures_list) . "', '" . $measure['status'] . "', '" . $measure['weight'] . "')");
+		pi_activity_update_activity_weight_from_node(key($node->measures_list), $measure['weight']);
+		next($node->measures_list);
 	}
-	reset($node->onepageprofile_categories);
+	reset($node->measures_list);
 }
 
 /**
@@ -205,7 +213,8 @@ function pi_draggable_measures_delete(&$node) {
  */
 function pi_draggable_measures_load($node) {
     $result = new stdClass;
-    $result->categories = pi_draggable_measures_get_choice($node);
+    $result->measures_list = pi_draggable_measures_get_choice($node);
+    $result->categories = &$result->measures_list;
     return $result;
 }
 
@@ -265,10 +274,10 @@ function theme_pi_draggable_measures(&$node) {
 
 	$rows = array();
 
-	if (is_array($node->categories)) {
-		foreach ($node->categories as $key => $category)
+	if (is_array($node->measures_list)) {
+		foreach ($node->measures_list as $measure_nid => $measure)
 		{
-			$measure = node_load($key);
+			$measure = node_load($measure_nid);
 			//format the measure units
 			if (isset($measure->units_short) AND ($measure->units_short !=''))
 			{
@@ -282,14 +291,14 @@ function theme_pi_draggable_measures(&$node) {
 				$units = "";
 			};
 
-			$row_activity_id = get_activity_id_for_nid($key);
+			$row_activity_id = get_activity_id_for_nid($measure_nid);
 			$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
 			$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
 			$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
 
 			$row = array();
-			$row[] = t($category['#title']);
-			$row[] = t($category['#status']);
+			$row[] = t($measure['#title']);
+			$row[] = t($measure['#status']);
 			$row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
 			$rows[] = array('data' => $row);
 		}
@@ -309,7 +318,7 @@ function theme_pi_draggable_measures_node_form($form) {
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
 
-	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
+	drupal_add_tabledrag('measures_list', 'order', 'sibling', 'measures_list-element');
 
 	// Header
 	$header = array(
@@ -322,10 +331,10 @@ function theme_pi_draggable_measures_node_form($form) {
 	// Rows for the tabledrag
 	$rows = array();
 
-	$tree = &$form['onepageprofile_categories'];
+	$tree = &$form['measures_list'];
 	foreach (element_children($tree) as $key)
 	{
-		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
+		$tree[$key]['weight']['#attributes']['class'] = 'measures_list-element';
 
 		$row_activity_id = get_activity_id_for_nid($key);
 		$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
@@ -349,7 +358,7 @@ function theme_pi_draggable_measures_node_form($form) {
 	else {
 		$output  .= '<p>' . t('Order your key questions.') . '</p>';
 	}
-	$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
+	$output .= theme('table', $header, $rows, array('id' => 'measures_list'));
 	$output .= drupal_render($form);
 
 	return $output;
@@ -363,25 +372,23 @@ function theme_pi_draggable_measures_node_form($form) {
 function pi_draggable_measures_get_choice($node) {
 	
     global $user;
-    $categories = array();
+    $measures = array();
 
     $result = db_query("SELECT * FROM pi_selected_measures " .
-    	"WHERE pi_selected_measures.nid = %d AND pi_selected_measures.vid = %d",
+    	"WHERE pi_selected_measures.nid = %d AND pi_selected_measures.vid = %d " .
+    	"ORDER BY weight DESC",
      	$node->nid, $node->vid);
 
     while ($row = db_fetch_object($result))
     {
         $loaded_node = node_load($row->available_measure, NULL, TRUE);
-        $categories[$row->available_measure] = array(
+        $measures[$row->available_measure] = array(
             '#weight' => $row->weight,
             '#title'  => t($loaded_node->title),
             '#status'  => $row->status
         );
     }
-	if(count($categories)  > 0) {
-    	uasort($categories, "my_weight_compare");
-	}
-    return $categories;
+    return $measures;
 }
 
 /**
@@ -403,7 +410,7 @@ function my_weight_compare($x, $y) {
 function pi_draggable_measures_get_options() {
     $details = get_inquiry_details_from_current_path();
     global $user;
-    $categories = array();
+    $measures = array();
     
     $result = db_query("SELECT DISTINCT node.nid FROM node " .
     	"LEFT JOIN node_access ON node.nid = node_access.nid " . 
@@ -417,11 +424,11 @@ function pi_draggable_measures_get_options() {
     while ($row = db_fetch_object($result))
     {
         $title_result = db_result(db_query("SELECT node.title FROM node WHERE node.nid = %d ORDER BY node.vid DESC", $row->nid));
-        $categories[$row->nid] = array(
+        $measures[$row->nid] = array(
             '#weight' => 1,
             '#title'  => t($title_result),
             '#status'  => 'none'
         );
     }
-    return $categories;
+    return $measures;
 }
