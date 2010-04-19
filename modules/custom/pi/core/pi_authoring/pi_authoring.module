@@ -294,7 +294,6 @@ function pi_authoring_menu() {
 	);
 	
 	$items['piauthoring/activities/3/%node'] = array(
-	//'path' => 'piauthoring/newinquiry/stages',
 		'page callback' => 'pi_authoring_new_activities_real',
 		'page arguments' => array(3),
 		'type' => MENU_CALLBACK,
@@ -302,12 +301,12 @@ function pi_authoring_menu() {
 	);
 
 	
-	$items['piauthoring/activities/4'] = array(
-	//'path' => 'piauthoring/newinquiry/stages',
-     'title' => t('Add Activity'),
-  	 'page callback' => 'pi_authoring_new_activities_placeholder_add',
-	 'type' => MENU_CALLBACK,
-     'access arguments' => array('access pi_authoring content'),
+	$items['piauthoring/activities/4/%node'] = array(
+		'title' => t('Add Activity'),
+		'page callback' => 'pi_authoring_new_activities_placeholder_add',
+		'page arguments' => array(3),
+		'type' => MENU_CALLBACK,
+		'access arguments' => array('access pi_authoring content'),
 	);
 	
 	$items['piauthoring/activities/5'] = array(
@@ -589,7 +588,7 @@ function draw_table($inquiry, $view_type){
 	 *  - 2.2 if not then include a link to add the activity to that phase and stage
 	 */
 	 
-	$content = array();
+	$stage_phase_activities = array();
 
 	// Get the nids of all the inquiry phases and stages
 	$phase_nids = pi_phase_load_nids($inquiry->nid);
@@ -610,7 +609,6 @@ function draw_table($inquiry, $view_type){
 		$phases[] = node_load($phase_nid);
 		foreach($stages as $stage)
 		{
-			firep("$stage->nid, $phase_nid");
 			//1. is this phase in this stage?
 	 		if(in_array($phase_nid, $stage->stage_phases))
 	 		{
@@ -623,18 +621,18 @@ function draw_table($inquiry, $view_type){
 	 				$activities[] = $object->activity_id;
 	 			}
 	 			//phase is included in this stage
-	 			$content[$stage->nid][$phase_nid] = $activities;
+	 			$stage_phase_activities[$stage->nid][$phase_nid] = $activities;
 	 		}
 	 		else
 	 		{
 	 			//echo $phase->name . ", " . $stage->name . ", " . "null; ";
 	 			//phase not in this stage
-	 			$content[$stage->nid][$phase_nid] = NULL;
+	 			$stage_phase_activities[$stage->nid][$phase_nid] = NULL;
 	 		}
 	 	}
 	 }
-	firep($content);
-	return get_view($inquiry, $content, $stages, $phases, $view_type);
+	 firep($stage_phase_activities, "stage_phase_activities");
+	return get_view($inquiry, $stage_phase_activities, $stages, $phases, $view_type);
 }
 
 /**
@@ -681,20 +679,22 @@ function get_view($inquiry, $stage_phase_activities, $stages, $phases, $view_typ
 		//if the phase is included in a stage then colour the cell green
 		foreach($stages as $stage)
 		{
-			//If this phase is included in this phase, then "array" will be 
+			//If this phase is included in this phase, then "array" will be set
+			// otherwise it will be null, so display a red cell 
 			if(is_array($stage_phase_activities[$stage->nid][$phase->nid]))
-			{
-				$content .= "<td bgcolor='#ff0000'>";//red cell
-				$content .= "</td>\n"; 
-			}
-			else
 			{
 				$content .= "<td bgcolor='#00ff00'>"; //green cell
 				$sp_link = get_stage_phase_link($view_type, $inquiry->nid, $stage->nid, $phase->nid);
+				firep($sp_link, "Found activities in this stage for $phase->nid");
 				if($sp_link != '')
 				{
 					$content .= l("Add Activity", $sp_link);
 				}
+				$content .= "</td>\n"; 
+			}
+			else
+			{
+				$content .= "<td bgcolor='#ff0000'>";//red cell
 				$content .= "</td>\n"; 
 			}
 		}
@@ -830,22 +830,28 @@ function get_to_include_link($view_type, $phase, $stage, $activity){
 }
 
 /**
- * MISSING
- * 
- * @param unknown_type $view_type
- * @param unknown_type $inquiry
- * @param unknown_type $stage
- * @param unknown_type $phase
- * @return string
+ * Return the end of the url to link to pi authoring for the given stage_nid and phase_nid in an inquiry
+ * @param $view_type
+ * @param $inquiry_nid
+ * @param $stage_nid
+ * @param $phase_nid
+ * @return unknown_type
  */
-function get_stage_phase_link($view_type, $inquiry, $stage, $phase){
+function get_stage_phase_link($view_type, $inquiry_nid, $stage_nid, $phase_nid){
 	$link = '';
 	if($view_type != 'view' & $view_type != 'edit'){
-		$query = "SELECT * FROM pi_stage_phase WHERE ";
-		$query .= "phase_id = '" . $phase . "'";
-		$query .= " AND stage_id = '" . $stage . "'";
-		$result = db_fetch_object(db_query($query));
-		$link .= "piauthoring/activities/4/" . $inquiry . "/" . $result->psp_id;
+		$query = "SELECT * FROM pi_stage_phase WHERE phase_id = %d AND stage_id = %d"; 
+		$result = db_query($query, $phase_nid, $stage_nid);
+		$row = db_fetch_object($result);
+		firep($row);
+		if($row)
+		{
+			$link .= "piauthoring/activities/4/" . $inquiry_nid . "/" . $row->psp_id;
+		}
+		else
+		{
+			drupal_set_message("Couldn't find stage a match for stage '$stage_nid' and phase '$phase_nid'", 'warning');
+		}
 	}
 	return $link;
 }
@@ -2560,13 +2566,13 @@ function pi_authoring_new_activities_real($inquiry=NULL){
  * 
  * @return string HTML content
  */
-function pi_authoring_new_activities_placeholder_add(){
+function pi_authoring_new_activities_placeholder_add($inquiry){
 	$content = "<p>Add a new activity to this phase and stage.<br>";
 	$content .= "(NB this is a place holder activity so you can quickly define";
 	$content .= " the types of activities you want in your inquiry.  Simply put";
 	$content .= "the name of the activity in, something meanlingful and you will";
 	$content .= "go back later and edit it to the real activity)</p><br>";
-	$content .= drupal_get_form('pi_authoring_new_activities_placeholder_add_form', $node);
+	$content .= drupal_get_form('pi_authoring_new_activities_placeholder_add_form', $inquiry);
 	return $content;
 }
 
@@ -2576,7 +2582,7 @@ function pi_authoring_new_activities_placeholder_add(){
  * @param unknown_type $form_state
  * @return multitype:string NULL 
  */
-function pi_authoring_new_activities_placeholder_add_form($form_state){
+function pi_authoring_new_activities_placeholder_add_form($form_state, $inquiry){
 	$form['add'] = array(
 		'#type' => 'fieldset',
 		'#title' => t('Add A New Stage'),

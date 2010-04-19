@@ -40,11 +40,38 @@ function pi_datalogger_access($op, $node) {
 /**
  * pi_datalogger_form() - The form for entering the data, with java applet embedded
  */
-function pi_datalogger_form($node) {
+function pi_datalogger_form(&$node, $form_state) {
 	$form = drupal_retrieve_form('pi_data_form', $node);
-    $form['title'] = array ( '#value' => 'Datalogger Data' );
+	$measures_for_applet = array();
+	firep(element_children($form['onepageprofile_categories']));
+	foreach(element_children($form['onepageprofile_categories']) as $element_key)
+	{
+		firep($form['onepageprofile_categories'][$element_key]);
+		$measures_for_applet[] = array(
+    		"id" => $element_key,
+    		"title" => $form['onepageprofile_categories'][$element_key]['value']['#title'],
+/*    		"units" => $form['onepageprofile_categories'][$element_key]['units'],
+    		"units_short" => $form['onepageprofile_categories'][$element_key]['unit_short'],
+    		"field_type" => $form['onepageprofile_categories'][$element_key]['field_type'],
+    		"data_type" => $form['onepageprofile_categories'][$element_key]['data_type']*/
+		);
+		//$form['onepageprofile_categories'][$element_key]['#type'] = 'hidden';
+	}
+	firep($measures_for_applet, "Measures for applet");
+
+	// Add ahah stuff to make the form submit automatically
+	ahah_helper_register($form, $form_state);
+	$form['buttons']['submit'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Save reading'),
+	    '#submit' => array('ahah_helper_generic_submit'),
+	    '#attributes' => array('class' => 'no-js'),
+	);
+
+	$form['#prefix'] = "Insert applet here...";
 	return $form;
 }
+
 
 /**
  * Implementation of hook_validate()
@@ -53,12 +80,36 @@ function pi_datalogger_validate($node) {
 	pi_data_validate($node);
 }
 
+/**
+ * hook_nodeapi() - needed to change the type of node to pi_data before saving.
+ * @param &object(node) $node 
+ * @param string $op
+ * @param string $teaser
+ * @param string $page
+ */
+function pi_datalogger_nodeapi(&$node, $op, $teaser, $page) {
+	//The node it needs to be changed to type 'pi_data' to trigger rules and to
+    // appear correctly in the system.    
+	switch ($op)
+	{
+		case 'presave':
+			$pi_data_info = pi_data_node_info();
+			$node->type = $pi_data_info['pi_data']['module'];
+			break;
+		break;
+	}
+}
 
 /**
  * Implementation of hook_insert()
  */
 function pi_datalogger_insert($node) {
     pi_data_insert($node);
+    $nid = db_last_insert_id("pi_data", "nid");
+    $data_node = node_load($nid);
+    $pi_data_info = pi_data_node_info();
+    $data_node->type = $pi_data_info['module'];
+    node_save($data_node);
 }
 
 /**
