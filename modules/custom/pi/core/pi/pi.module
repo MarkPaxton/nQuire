@@ -2398,6 +2398,7 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
     };
 
     //sort $result by up to first three columns
+    /***
     if (isset($result[2]) AND $result[2] != NULL AND $result[1] != NULL AND $result[0] != NULL) {
 		array_multisort(
 			$result[0], SORT_ASC, SORT_STRING,
@@ -2416,6 +2417,7 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 			$result[0], SORT_ASC, SORT_STRING
 		);
     };
+    */
     
     // Now rotate the values table so that each measure's data 
     // is in a column (rather than a row)
@@ -2450,13 +2452,14 @@ function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) 
 
     $query = "SELECT DISTINCT(pi_collected_data.nid), pi_collected_data.value AS value ";
     $query .= "FROM pi_collected_data ";
+    $query .= "LEFT JOIN pi_sort_data ON pi_collected_data.nid = pi_sort_data.data ";
     $query .= "LEFT JOIN node ON pi_collected_data.nid = node.nid ";
     $query .= "LEFT JOIN node_access ON node.nid = node_access.nid ";
     $query .= "LEFT JOIN og_uid ON node_access.gid = og_uid.nid ";
     $query .= "WHERE (pi_collected_data.available_measure_nid = '" . $measure_id . "') ";
     $query .= "AND (node.uid = '" . $uid . "' ";
     $query .= "OR og_uid.uid = '" . $uid . "') ";
-    $query .= "ORDER BY node.nid ASC, node.vid DESC";
+    $query .= "ORDER BY pi_sort_data.weight ASC";
 
 	// print $query;
     $db_result = db_query($query);
