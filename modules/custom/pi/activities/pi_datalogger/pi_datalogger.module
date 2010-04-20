@@ -12,13 +12,23 @@
  * This means the structure will always be copied, as it needs to be compatible with pi_data apart from the form
  */
 function pi_datalogger_node_info() {
-	$pi_data_type=pi_data_node_info();
+/*	$pi_data_type=pi_data_node_info();
 	$type=array();
 	$type['pi_datalogger'] = $pi_data_type['pi_data'];
 	$type['pi_datalogger']['name'] = t('Datalogger Data');
 	$type['pi_datalogger']['module'] = 'pi_datalogger';
-	$type['pi_datalogger']['description'] = 'Add data from a ScienceScope Datalogger';
-	return $type;
+	$type['pi_datalogger']['description'] = 'Add data from a ScienceScope Datalogger';*/
+	return array(
+		'pi_datalogger' => array(
+		    'name' => t('Datalogger Data'), // Required.
+		    'module' => 'pi_datalogger',  // Required.
+		    'description' => t('Upload data from a datalogger.'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t('Datalogger data'),
+		    'has_body' => FALSE,
+		    'locked' => TRUE)
+		);
+//	return $type;
 }
 
 /**
@@ -37,11 +47,21 @@ function pi_datalogger_access($op, $node) {
 	return pi_data_access($op, $node);
 }
 
+
+/**
+ * This is executed before every page request and provides the functionality to include particular files,
+ * e.g. custom css and javascript files. 
+ */
+function pi_datalogger_init() {
+    drupal_add_css(drupal_get_path('module', 'pi_datalogger') .'/lib/datalogger.js');
+}
+
+
 /**
  * pi_datalogger_form() - The form for entering the data, with java applet embedded
  */
 function pi_datalogger_form(&$node, $form_state) {
-	$form = drupal_retrieve_form('pi_data_form', $node);
+/*	$form = drupal_retrieve_form('pi_data_form', $node);
 	$measures_for_applet = array();
 	firep(element_children($form['onepageprofile_categories']));
 	foreach(element_children($form['onepageprofile_categories']) as $element_key)
@@ -50,10 +70,10 @@ function pi_datalogger_form(&$node, $form_state) {
 		$measures_for_applet[] = array(
     		"id" => $element_key,
     		"title" => $form['onepageprofile_categories'][$element_key]['value']['#title'],
-/*    		"units" => $form['onepageprofile_categories'][$element_key]['units'],
+    		"units" => $form['onepageprofile_categories'][$element_key]['units'],
     		"units_short" => $form['onepageprofile_categories'][$element_key]['unit_short'],
     		"field_type" => $form['onepageprofile_categories'][$element_key]['field_type'],
-    		"data_type" => $form['onepageprofile_categories'][$element_key]['data_type']*/
+    		"data_type" => $form['onepageprofile_categories'][$element_key]['data_type']
 		);
 		//$form['onepageprofile_categories'][$element_key]['#type'] = 'hidden';
 	}
@@ -69,14 +89,36 @@ function pi_datalogger_form(&$node, $form_state) {
 	);
 
 	$form['#prefix'] = "Insert applet here...";
+	return $form;*/
+	  // Get metadata for the node type which is defined in pi_inquiry_info()
+	$type = node_get_types('type', $node);
+
+	if ($type->has_title)
+	{
+		$form['title'] = array(
+			'#type' => 'textfield',
+			'#title' => check_plain($type->title_label),
+			'#required' => TRUE,
+			'#default_value' => $node->title,
+		);
+	}
+
+	if ($type->has_body)
+	{
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+		$form['body_field']['body']['#rows'] = 6;
+		$form['body_field']['teaser_include']['#access'] = FALSE;
+	}
+
 	return $form;
+	
 }
 
 
 /**
  * Implementation of hook_validate()
  */
-function pi_datalogger_validate($node) {
+function pi_datalogger_validate_XXXX($node) {
 	pi_data_validate($node);
 }
 
@@ -87,7 +129,7 @@ function pi_datalogger_validate($node) {
  * @param string $teaser
  * @param string $page
  */
-function pi_datalogger_nodeapi(&$node, $op, $teaser, $page) {
+function pi_datalogger_nodeapi_XXXX(&$node, $op, $teaser, $page) {
 	//The node it needs to be changed to type 'pi_data' to trigger rules and to
     // appear correctly in the system.    
 	switch ($op)
@@ -103,7 +145,7 @@ function pi_datalogger_nodeapi(&$node, $op, $teaser, $page) {
 /**
  * Implementation of hook_insert()
  */
-function pi_datalogger_insert($node) {
+function pi_datalogger_insert_XXXX($node) {
     pi_data_insert($node);
     $nid = db_last_insert_id("pi_data", "nid");
     $data_node = node_load($nid);
@@ -115,21 +157,21 @@ function pi_datalogger_insert($node) {
 /**
  * Implementation of hook_update()
  */
-function pi_datalogger_update($node) {
+function pi_datalogger_update_XXXX($node) {
 	pi_data_update($node);
 }
 
 /**
  * Implementation of pi_datalogger_delete()
  */
-function pi_datalogger_delete(&$node) {
+function pi_datalogger_delete_XXXX(&$node) {
 	pi_data_delete(&$node);
 }
 
 /**
  * Implementation of hook_load()
  */
-function pi_datalogger_load($node) {
+function pi_datalogger_load_XXXX($node) {
     return pi_data_load($node);
 }
 
@@ -137,7 +179,39 @@ function pi_datalogger_load($node) {
  * Implementation of hook_view()
  */
 function pi_datalogger_view($node, $teaser = FALSE, $page = FALSE) {
-	return pi_data_view($node, $teaser, $page);
+	global $base_url;
+	$path_to_applet =  $base_url . '/' . drupal_get_path('module', 'pi_datalogger') . '/lib/DataLogger.jar';
+	
+	global $user;
+	$data_node = array('uid' =>  $user->uid, 'name' => $user->name, 'type' => 'pi_data');
+	$form_state=array();
+	$form = drupal_retrieve_form('pi_data_form', $form_state, $data_node);
+	drupal_prepare_form('pi_data_form', $form, $form_state);
+	
+	$measures_for_applet = array();
+	foreach(element_children($form['onepageprofile_categories']) as $element_key)
+	{
+		$measures_for_applet[] = array(
+    		"id" => $element_key,
+    		"title" => $form['onepageprofile_categories'][$element_key]['value']['#title'],
+/*    		"units" => $form['onepageprofile_categories'][$element_key]['units'],
+    		"units_short" => $form['onepageprofile_categories'][$element_key]['unit_short'],
+    		"field_type" => $form['onepageprofile_categories'][$element_key]['field_type'],
+    		"data_type" => $form['onepageprofile_categories'][$element_key]['data_type']*/
+		);
+		//$form['onepageprofile_categories'][$element_key]['#type'] = 'hidden';
+	}
+
+	//Use Drupal's default node view.
+	$node = node_prepare($node, $teaser);
+	
+	$node->content['applet']['#value'] = theme('pi_datalogger_applet', $path_to_applet, $measures_for_applet);
+	$node->content['applet']['#weight'] = -5;
+	
+	//$node->content['data_form']['#value'] = drupal_render($form);
+	//$node->content['data_form']['#weight'] = 5;
+	
+	return $node;
 }
 
 /**
@@ -145,15 +219,19 @@ function pi_datalogger_view($node, $teaser = FALSE, $page = FALSE) {
  */
 function pi_datalogger_theme() {
 	return array(
-    'pi_datalogger_node_form' => array(
-    'arguments' => array('form'),
-	),
-    'pi_datalogger' => array(
-    'arguments' => array('node'),
-	),
+	    'pi_datalogger_node_form' => array(
+			'arguments' => array('form'),
+		),
+	    'pi_datalogger_applet' => array(
+	    	'arguments' => array('applet_location', 'applet_params'),
+		),
 	);
 }
 
+/**
+ * 
+ * @param unknown_type $form
+ */
 function theme_pi_datalogger_node_form($form) {
 	$details = get_inquiry_details_from_current_path();
 	$activity = load_activity($details->activity_id);
@@ -161,14 +239,18 @@ function theme_pi_datalogger_node_form($form) {
 		$output  .= '<p>' . t($activity->description) . '</p>';
 	}
 	else {
-		$output  .= '<p>' . t('Order your key questions.') . '</p>';
+		$output  .= '<p>' . t('Datalogger data.') . '</p>';
 	}
 
 	$output .= drupal_render($form);
 	return $output;
 }
 
-function theme_pi_datalogger($node) {
+/**
+ * 
+ * @param unknown_type $node
+ */
+function theme_pi_datalogger_XXX($node) {
 	$details = get_inquiry_details_from_current_path();
 	if (is_numeric($details->activity_id)) {
 		$current_activity = load_activity($details->activity_id);
@@ -214,3 +296,23 @@ function theme_pi_datalogger($node) {
 }
 
 
+/**
+ *  this function provides the themes layout for the datalogger applet
+ * @param $applet_location the full url to applet on the server
+ * @param $applet_params array('title'=>x,'id'=>y) of measures to provide as parameters to the applet 
+ * @todo escape commas in parmeter names
+ */
+function theme_pi_datalogger_applet($applet_location, $applet_params)
+{
+	$output = '';
+	$output .= "<APPLET CODE='uk.org.nquire.applet.LogbookReaderApplet' ARCHIVE='$applet_location' WIDTH=450 HEIGHT=400>\n";
+	$param_names = array();
+	foreach($applet_params as $param)
+	{
+		$param_names[] = htmlspecialchars($param['title']);
+		$output .= "<param name='" . htmlspecialchars($param['id']) . "' value='dataField" . count($param_names) ."'/>\n";
+	}
+	$output .= "<param name='dataFields' value='" . implode(',', $param_names) ."'/>\n";
+	$output .= '</APPLET>';
+	return $output;
+}
