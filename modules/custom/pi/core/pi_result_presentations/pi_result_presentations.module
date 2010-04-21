@@ -41,15 +41,11 @@ function pi_result_presentations_access($op, $node) {
     $details = get_inquiry_details_from_current_path();
 
     if ($op == 'create') {
-        return TRUE;
-    //return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
-    //return (user_access('create pi_result_presentations'));
+    	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
     }
 
     if ($op == 'update' || $op == 'delete') {
-        return TRUE;
-        // return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-    	//return (user_access('edit own pi_result_presentations'));
+        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
     }
 }
 
@@ -68,11 +64,11 @@ function pi_result_presentations_form(&$node) {
     // drupal_set_title(t(''));
 
     $key_question_options = array();
-    $key_question_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'Add key question', $user->uid);
+    $key_question_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'pi_key_questions', $user->uid);
 
     while ($key_question_node_nid = db_fetch_object($key_question_node_nids)) {
         $key_question_node = node_load($key_question_node_nid->nid);
-        $key_question_options[$key_question_node_nid->nid] = $key_question_node->title . '-' . $key_question_node_nid->nid;
+        $key_question_options[$key_question_node_nid->nid] = $key_question_node->title;
     };
 
 
@@ -85,7 +81,7 @@ function pi_result_presentations_form(&$node) {
         $measure_array = $measures_node->measure_rows;
     };
 
-    if ($measure_array) {
+    if (isset($measure_array)) {
         foreach ($measure_array as $measure_row) {
             $measure = node_load($measure_row->measure_nid);
             $measure_options[$measure_row->measure_nid] = $measure->title;
@@ -291,8 +287,8 @@ function pi_result_presentations_theme() {
  */
 function theme_pi_result_presentations($node) {
 
-    
     global $user;
+	$details = get_inquiry_details_from_current_path();
 
     drupal_set_title(t($node->title));
     
@@ -320,6 +316,24 @@ function theme_pi_result_presentations($node) {
     $rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
         
     $output .= theme('table', $header, $rows);
+    
+    /*
+	// now make the chart
+	$chart_1 = array(
+		'#chart_id' => t($node->title),
+		'#title' => chart_title(t($node->title), 'cc0000', 15),
+		'#type' => CHART_TYPE_BAR_V_GROUPED,
+		'#size' => chart_size(940, 250),
+		'#adjust_resolution' => TRUE,
+		'#bar_size' => chart_bar_size(8, 2),
+	);
+	
+	// render chart
+	$output .= chart_render($chart_1);
+    */
+    
+    $output  .= '<p>' . l('Download (csv) data file', 'export/' . $details->activity_id . '/csv') . '</p>';
+    
     return $output;
     
 }
@@ -357,7 +371,7 @@ function theme_pi_result_presentations_node_form($form) {
     $output  = '<p>' . t('Select and order the measures for your presentation.') . '</p>';
     $output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
     $output .= drupal_render($form);
-
+    
     return $output;
 }
 
@@ -419,3 +433,70 @@ function pi_result_presentations_get_options() {
     
     return $categories;
 }
+
+
+
+
+
+
+function pi_data_export_csv () {
+
+    global $user;
+	$details = get_inquiry_details_from_current_path();
+	
+    $nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $user->uid);
+    $node = node_load($nid);
+    
+    $selected_measures = "";
+    $delim = "";
+    
+    $measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid . 
+    								"' AND vid = '" . $node->vid . 
+    								"' AND status = '1' ORDER BY weight ASC");
+    					
+    while ($measure = db_fetch_object($measures)) {
+    	$selected_measures .= $delim . $measure->available_measure;
+    	if ($delim == "") {
+    		$delim = ", ";
+    	};
+    };
+    
+    $header = get_selected_measures_headings_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
+    $rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
+
+	$name = str_replace (' ', '_', $node->title);
+	$filename = 'csv_data-' . $name . '.csv';
+
+	header('Content-type: text/csv');
+	header('Content-Disposition: attachment; filename=' . $filename); 
+
+	echo create_csv_from_table ($header, $rows);
+
+	module_invoke_all('exit');
+	exit();
+  
+}
+
+//
+function create_csv_from_table ($header, $rows) {
+
+  $output = "";
+  
+  // print out headers
+  $output .= "\"" . implode ("\",\"", $header) . "\"\r\n";
+  
+  // now the data
+  $count = 1;
+  foreach ($rows as $row) {
+    $elements = array();
+    foreach ($row as $item) {
+      $elements[] = $item;       
+    }
+    $output .= "\"" . implode ("\",\"", $elements) . "\"\r\n";
+    $count++;
+  }
+
+  return $output;
+
+}
+
