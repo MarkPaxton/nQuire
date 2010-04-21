@@ -124,7 +124,7 @@ function pi_stage_selector_form(&$node) {
     '#default_value' => check_plain($type->title_label),
 
     '#weight' => -5
-    
+
   );
 
   
@@ -246,7 +246,18 @@ function pi_update_stage($node) {
   //activities in the selected status
   $query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND pi_stage_phase.stage_id = " . $selected_stage . " ";
   
+  //add this to the previous status table
   $status_list = db_query($query);
+  
+  $del_query = "DELETE FROM pi_previous_activity_status WHERE inquiry_id = '" . $details->inquiry_id . "' ";
+  db_query($del_query);
+  
+  $prev_query = "INSERT INTO pi_previous_activity_status (pas_id, inquiry_id, activity_id, uid, gid, node_function, visible_status) 
+  SELECT pas_id, pi_activity_status.inquiry_id, pi_activity_status.activity_id, pi_activity_status.uid, pi_activity_status.gid, pi_activity_status.node_function, pi_activity_status.visible_status 
+  FROM pi_activity_status 
+  LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND pi_stage_phase.stage_id = " . $selected_stage . " ";
+  db_query($prev_query);
+
   while($status_item = db_fetch_object($status_list)) {
   	$loaded_activity = load_activity($status_item->activity_id);
   	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_enter_focus");
@@ -257,7 +268,6 @@ function pi_update_stage($node) {
   }
   
 }
-
 
 function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
 	
