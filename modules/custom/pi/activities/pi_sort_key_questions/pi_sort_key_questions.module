@@ -89,7 +89,10 @@ function pi_sort_key_questions_form(&$node) {
 			$categories[$key]['#title'] = $category['#title'];
 			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
 		}
-		uasort($categories, "my_weight_compare");
+
+		if (count($categories) > 1) {
+			uasort($categories, "my_weight_compare");
+		}
 		
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
@@ -213,8 +216,15 @@ function theme_pi_sort_key_questions(&$node) {
             $rows[] = array('data' => $row);
         }
     }
-
-    $output .= theme('table', $header, $rows);
+		
+		//only display form and submit button if there are some entries
+    if (count($rows) > 0) {
+    	$output .= theme('table', $header, $rows);
+    }
+   	else {
+   		$output .= "<p>No key questions are available.</p>";
+   	}
+   	
     return $output;
 }
 
@@ -265,9 +275,15 @@ function theme_pi_sort_key_questions_node_form($form) {
     else {
     	$output  = '<p>' . t('Order your key questions.') . '</p>';
     }
-    $output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
-    $output .= drupal_render($form);
-
+    
+    //only display form and submit button if there are some entries
+    if (count($rows) > 0) {
+    	$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
+    	$output .= drupal_render($form);
+    }
+   	else {
+   		$output .= "<p>No key questions are available.</p>";
+   	}
     return $output;
 }
 

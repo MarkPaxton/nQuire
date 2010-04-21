@@ -612,6 +612,14 @@ function workflow_for_created_node($node, $user, $node_function, $visible_status
     add_new_pi_activity_node($node, $user, $node_function, $visible_status, $details);
 }
 
+
+//this funciton needs to move to pi module
+function get_type_of_group($gid) {
+	$query = "SELECT type FROM pi_group_type WHERE gid = '" . $gid . "' ";
+	$result = db_result(db_query($query));
+	return $result;
+}
+
 function add_new_pi_activity_node($node, $user, $node_function, $visible_status, $details) {
     $uid = $user->uid;
     //set the PI activity node
@@ -635,17 +643,61 @@ function add_new_pi_activity_node($node, $user, $node_function, $visible_status,
         $users_group = get_group_of_type($uid, $activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
         $context['group'] = $users_group;
         og_add_group_action($node, $context);
-
+				
         if ($users_group != $activity_status->gid) {
+        	
+        		//if the audience is bigger than the actor of the activity then set two statuses
+        		//one status for the actor
+        		//and a view status for the audience
+        		
+        		//if the audience is a class and the actor is a group or individual
+        		//or if the audience is a group and the actor an individual
+        		
+        		//then set one status for the actor
+        		//and another for the audience
+        		
+        
+        		//default - just set a new activity status for the audience
             $activity_status->gid = $users_group;
             unset($activity_status->pas_id);
             unset($activity_status->uid);
         }
     }
-
-    $activity_status->node_function = $node_function;
-    $activity_status->visible_status = $visible_status;
-    save_activity_status($activity_status);
+    
+    $loaded_activity_actor  = load_activity_actor ($details->inquiry_id, $details->activity_id);
+    $actor_gid = $loaded_activity_actor[0]["gid"];
+    $actor_uid = $loaded_activity_actor[0]["uid"];
+    $actor_group_type = get_type_of_group($actor_gid);
+    
+    $audience_gid = $users_group;
+    $audience_group_type = $activity->audience;
+    
+    
+    //find out if the audience is wider than the actor for the activity
+    //if so, set the status for the audience to view
+		if(($audience_group_type == 'class' && $actor_group_type != 'class' && $actor_group_type != 'multiclass' ) || ($audience_group_type == 'group' && !$actor_group_type)) {
+			$activity_status->node_function = 'view';
+			$activity_status->visible_status = 'view';
+			save_activity_status($activity_status);
+			
+			//extend activity actor to size of audience
+			$loaded_activity_actor[0]["gid"] = $audience_gid;
+			update_activity_actor($loaded_activity_actor[0]);
+			
+			//add extra status for the original actor
+			$actor_activity_status = $activity_status;
+			unset($activity_status->pas_id);
+			$activity_status->gid = $actor_gid;
+			$activity_status->uid = $actor_uid;
+    	$activity_status->node_function = $node_function;
+    	$activity_status->visible_status = $visible_status;
+    	save_activity_status($activity_status);			
+		}
+		else {
+    	$activity_status->node_function = $node_function;
+    	$activity_status->visible_status = $visible_status;
+    	save_activity_status($activity_status);
+    }
 }
 
 

@@ -88,7 +88,9 @@ function pi_sort_key_answers_form(&$node) {
 			$categories[$key]['#title'] = $category['#title'];
 			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
 		}
-		uasort($categories, "my_weight_compare");
+		if (count($categories) > 1) {
+			uasort($categories, "my_weight_compare");
+		}
 		
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
@@ -223,14 +225,16 @@ function theme_pi_sort_key_answers_node_form($form) {
 	$header = array();
 	$rows = array();
 	
-  $key_question_options = array();
-  foreach ($categories as $key => $category) {
-    //Make a table for each key question
-  	drupal_add_tabledrag(t('onepageprofile-categories'.$key), 'order', 'sibling', 'onepageprofile-element');
-  	$rows[$key] = array();
-    $key_question = node_load($key);
-    $key_question_options[$key] = $key_question->title;
-    $header[$key] = array(t($key_question->title), t('Weight'), t('Action'));
+  $key_question_options = array();///****
+  if (count($categories) > 0) {
+  	foreach ($categories as $key => $category) {
+  	  //Make a table for each key question
+  		drupal_add_tabledrag(t('onepageprofile-categories'.$key), 'order', 'sibling', 'onepageprofile-element');
+  		$rows[$key] = array();
+   	 $key_question = node_load($key);
+   	 $key_question_options[$key] = $key_question->title;
+   	 $header[$key] = array(t($key_question->title), t('Weight'), t('Action'));
+   	}
   }
 
 	$tree = &$form['onepageprofile_categories'];
@@ -263,17 +267,22 @@ function theme_pi_sort_key_answers_node_form($form) {
     else {
     	$output  .= '<p>' . t('Order your key questions.') . '</p>';
     }
-	foreach ($categories as $key => $category) {
-		if (count($rows[$key]) > 0) {
-			$output .= theme('table', $header[$key], $rows[$key], array('id' => t('onepageprofile-categories'.$key)));
+  if (count($categories) > 0) {
+		foreach ($categories as $key => $category) {//*****
+			if (count($rows[$key]) > 0) {
+				$output .= theme('table', $header[$key], $rows[$key], array('id' => t('onepageprofile-categories'.$key)));
+			}
+			else {
+				reset($header[$key]);
+				$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
+			}
 		}
-		else {
-			reset($header[$key]);
-			$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
-		}
+	
+		$output .= drupal_render($form);
 	}
-	$output .= drupal_render($form);
-
+	else {
+		$output .= "<p>No key answers are available.</p>";
+	}
 	return $output;
 }
 

@@ -187,6 +187,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
 						$show_activities = show_activites($user->uid);
 						$show_phases = show_phases($user->uid);
+						$hidden_created_activity_types = array('pi_data');
 						
             $image_path = "images/";
             $node_details = get_inquiry_details_from_current_path();
@@ -234,7 +235,16 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
                     $activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->phase_id, $user->uid);
 
                     foreach($activities as $activity) {
-                        $activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+                    
+                    		$loaded_activity = load_activity($activity->activity_id);
+                    		$loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
+                    		
+                    		//do not show activity if created and on the hidden list
+                    		//this applies to e.g. created measures or data that you 
+                    		//do not want to show
+                    		if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types) && $loaded_activity_nid)) {
+                        	$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+                        }
                     };
 
                 };
@@ -272,7 +282,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
             if(arg(0) == 'phase' && $show_phases || arg(0) == 'activity' && ($show_phases || $show_activities)) {
             	$loaded_inquiry = load_inquiry($node_details->inquiry_id);
 							$block['subject'] = t('Navigation');
-							            	$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
+							$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
 						}
             return $block;
     };

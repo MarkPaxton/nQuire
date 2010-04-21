@@ -737,7 +737,7 @@ function compare_status($a, $b) {
 function pi_phase_view () {
  
   global $user;
-  
+  $hidden_created_activity_types = array('pi_data');
   $details = get_inquiry_details_from_current_path();
   $phase = load_phase($details->phase_id);
   
@@ -763,41 +763,46 @@ function pi_phase_view () {
  
       $loaded_activity = load_activity($activity->activity_id);
       $loaded_activity_status = load_activity_status ($details->inquiry_id, $activity->activity_id, $user->uid);
+      $loaded_activity_nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity->activity_id, $user->uid);
       
-      switch ($loaded_activity->destination) {
-        case "self":
-            $destination = "";
-            break;
-        case "phase":
-            $destination = t("destination=" . t("phase/" . $details->phase_id));
-            break;
-        default:
+      if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types) && $loaded_activity_nid)) {
+      
+     	 switch ($loaded_activity->destination) {
+       	case "self":
+           $destination = "";
+           break;
+       	 case "phase":
+           $destination = t("destination=" . t("phase/" . $details->phase_id));
+         		break;
+       	default:
             $destination = t("destination=" . t("inquiry/" . $details->inquiry_id));
             break;
-    	}
+    		}
       
-      $activity_path = "activity/" . $activity->activity_id . "/" . $loaded_activity_status->node_function;
-      if ($loaded_activity_status->visible_status == 'unavailable') {
-      	$activity_link = t($loaded_activity->name);
-      }
-      else {
-    	$image_path = "images/";
-		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
-		    $new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
-	    }
-	    else {
-		    $new_icon = "";
-	    };
+     	 $activity_path = "activity/" . $activity->activity_id . "/" . $loaded_activity_status->node_function;
+     	 if ($loaded_activity_status->visible_status == 'unavailable') {
+      		$activity_link = t($loaded_activity->name);
+     	 }
+     	 else {
+
+    		$image_path = "images/";
+				if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, 		$details->phase_id, $user->uid))) {
+		   	 $new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+	   	 }
+	   	 else {
+
+		   	 $new_icon = "";
+	   	 };
 	    
-      	$activity_link = l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
- 			}
+      		$activity_link = l(t($loaded_activity->name) . ' ' . 	add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, 		$activity_path, array('html' => TRUE, 'query' => $destination));
+ 				}
  			
-      if (($active_activity_flag == 0) AND $loaded_activity) {
-        $active_activity_flag = 1;
-      };
+      	if (($active_activity_flag == 0) AND $loaded_activity) {
+       	 $active_activity_flag = 1;
+      	};
  			
-      $table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
-                        
+      	$table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
+      }                  
     };
  		
     $output .= theme('table', $headings, $table);
@@ -964,7 +969,6 @@ function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
   $query .= "AND pi_activity.activity_type =  '" . $activity_type. "' ";
   $query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
 
-	// print $query;
     $result = db_query($query);
     return $result;
 
@@ -1412,7 +1416,7 @@ function insert_activity_actor ($activity_actor_array) {
 
 }
 
-function update_activity_actor ($paac_id, $activity_actor_array) {
+function update_activity_actor ($activity_actor_array) {
 
 /**
  * This will update. 
@@ -1427,7 +1431,7 @@ function update_activity_actor ($paac_id, $activity_actor_array) {
 	$query .= ", activity_id = '" . $activity_actor_array["activity_id"] . "' ";
 	$query .= ", uid = '" . $activity_actor_array["uid"] . "' ";
 	$query .= ", gid = '" . $activity_actor_array["gid"] . "' ";
-	$query .= "WHERE paac_id = '" . $activity_actor_array["paac_id"] . "'"; 
+	$query .= "WHERE paa_id = '" . $activity_actor_array["paa_id"] . "'"; 
 	
 	db_query($query);
 
@@ -2347,8 +2351,7 @@ function get_selected_measures_headings_for_inquiry_and_user ($inquiry_id, $sele
 
         if ($measure_id != 0) {
             
-            $query = "SELECT node.title AS title, pi_available_measures.symbol AS symbol, ";
-            $query .= "pi_available_measures.units AS units, pi_available_measures.units_short AS units_short ";
+            $query = "SELECT node.title AS title, pi_available_measures.symbol AS symbol, pi_available_measures.units AS units, pi_available_measures.units_short AS units_short ";
             $query .= "FROM pi_available_measures ";
             $query .= "LEFT JOIN node ON node.nid = pi_available_measures.nid ";
             $query .= "WHERE (pi_available_measures.nid = '" . $measure_id . "') ";
@@ -2398,7 +2401,6 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
     };
 
     //sort $result by up to first three columns
-    /***
     if (isset($result[2]) AND $result[2] != NULL AND $result[1] != NULL AND $result[0] != NULL) {
 		array_multisort(
 			$result[0], SORT_ASC, SORT_STRING,
@@ -2417,7 +2419,6 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 			$result[0], SORT_ASC, SORT_STRING
 		);
     };
-    */
     
     // Now rotate the values table so that each measure's data 
     // is in a column (rather than a row)
@@ -2450,18 +2451,16 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 
 function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) {
 
-    $query = "SELECT DISTINCT(pi_collected_data.nid), pi_collected_data.value AS value ";
+    $query = "SELECT pi_collected_data.value AS value ";
     $query .= "FROM pi_collected_data ";
-    $query .= "LEFT JOIN pi_sort_data ON pi_collected_data.nid = pi_sort_data.data ";
     $query .= "LEFT JOIN node ON pi_collected_data.nid = node.nid ";
     $query .= "LEFT JOIN node_access ON node.nid = node_access.nid ";
     $query .= "LEFT JOIN og_uid ON node_access.gid = og_uid.nid ";
     $query .= "WHERE (pi_collected_data.available_measure_nid = '" . $measure_id . "') ";
     $query .= "AND (node.uid = '" . $uid . "' ";
     $query .= "OR og_uid.uid = '" . $uid . "') ";
-    $query .= "ORDER BY pi_sort_data.weight ASC";
+    $query .= "ORDER BY node.nid ASC";
 
-	// print $query;
     $db_result = db_query($query);
 	
     $values = array();
