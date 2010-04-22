@@ -83,6 +83,34 @@ function pi_key_answers_form(&$node) {
   	drupal_set_title(t($current_activity->name));
   }
   
+    // Add the categories of existing nodes and the options list for new nodes
+    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
+    if(isset($key_questions_nid)) {
+    		$key_questions_node = node_load(key_questions_nid);
+    		$node_categories = $key_questions_node->categories;
+    }
+    else {
+        $node_categories = array();
+    }
+    
+		$option_categories = pi_sort_key_questions_get_options();
+		$categories = array();
+		
+		foreach ($option_categories as $key => $category) {
+			$categories[$key]['#title'] = $category['#title'];
+			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+		}
+
+		if (count($categories) > 1) {
+			uasort($categories, "my_weight_compare");
+		}
+  	$key_question_categories = array();
+  	foreach($categories as $key => $category) {
+  		print $key.$category['#title'];
+  		$key_question_categories[$key] = $category['#title'];
+  	}
+  		
+  /*
   $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
   //**should look for the key questions not the sort nid*********
   
@@ -91,17 +119,17 @@ function pi_key_answers_form(&$node) {
     $key_questions_node = node_load($key_questions_nid);
     $categories = $key_questions_node->categories;
   }
-  
-  if(count($categories) > 0) {
     
   $key_question_options = array();
-  
+  if(count($categories) > 0) {
   foreach ($categories as $key => $category) {
     $key_question = node_load($key);
     $key_question_options[$key] = $key_question->title;
   }
+  }
+  */
   
- // if (count($key_question_options) > 0) {
+  if (count($key_question_categories) > 0) {
   
 	$form['key_question_id'] = array(
 		'#type' => 'select',
@@ -109,7 +137,7 @@ function pi_key_answers_form(&$node) {
 		'#required' => TRUE,
 		'#default_value' => $node->key_question_id,
 		'#description' => t('Select a key question to answer'),
-		'#options' => $key_question_options,
+		'#options' => $key_question_categories,
 		'#weight' => -6
 	);
 
@@ -133,7 +161,7 @@ function pi_key_answers_form(&$node) {
 		'#cols' => 40,
 		'#weight' => -2
 	);
-  
+  /*
   if($current_activity->description) {
   	$prefix = "<p>" . $current_activity->description . "</p>";
   }
@@ -141,7 +169,7 @@ function pi_key_answers_form(&$node) {
 		$prefix = "<p>Use your findings to answer a key question.</p>";
 	}
 
-	$form['#prefix'] = $prefix;
+	$form['#prefix'] = $prefix;*/
 	}
 	return $form;
 }
@@ -229,17 +257,17 @@ function theme_pi_key_answers_node_form($form) {
     else {
     	$output  .= '<p>' . t('Add a key answer.') . '</p>';
     }
-    
+/*    
     $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
-  //**should look for the key questions not the sort nid*********
   
   // Add the categories of existing nodes and the options list for new nodes
   if(isset($key_questions_nid)) {
     $key_questions_node = node_load($key_questions_nid);
     $categories = $key_questions_node->categories;
-  }
+  }*/
+  $option_categories = pi_sort_key_questions_get_options();
   
-  if(count($categories) > 0) {
+  if(count($option_categories) > 0) {
     $output .= drupal_render($form);
   }
   else {
