@@ -57,19 +57,48 @@ function pi_result_presentations_form(&$node) {
     global $user;
 
     $node_details = get_inquiry_details_from_current_path();
-    $current_activity = load_activity($node_details->activity_id);
+    if (is_numeric($node_details->activity_id)) {
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name) {
+  		drupal_set_title(t($current_activity->name));
+  	}
 
-    $measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+    // Add the categories of existing nodes and the options list for new nodes
+    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
+    if(isset($key_questions_nid)) {
+    		$key_questions_node = node_load(key_questions_nid);
+    		$node_categories = $key_questions_node->categories;
+    }
+    else {
+        $node_categories = array();
+    }
+    
+		$option_categories = pi_sort_key_questions_get_options();
+		$categories = array();
+		
+		foreach ($option_categories as $key => $category) {
+			$categories[$key]['#title'] = $category['#title'];
+			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+		}
 
-    // drupal_set_title(t(''));
+		if (count($categories) > 1) {
+			uasort($categories, "my_weight_compare");
+		}
+  	$key_question_options = array();
+  	foreach($categories as $key => $category) {
+  		$key_question_options[$key] = $category['#title'];
+  	}
 
+/*
     $key_question_options = array();
     $key_question_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'pi_key_questions', $user->uid);
 
     while ($key_question_node_nid = db_fetch_object($key_question_node_nids)) {
         $key_question_node = node_load($key_question_node_nid->nid);
         $key_question_options[$key_question_node_nid->nid] = $key_question_node->title;
-    };
+    };*/
 
 
     $measure_options = array();
@@ -142,6 +171,7 @@ function pi_result_presentations_form(&$node) {
 
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
+
     foreach ($categories as $key => $category) {
 
         $measure = node_load($key);
@@ -203,7 +233,7 @@ function pi_result_presentations_insert($node) {
         db_query("INSERT INTO pi_result_presentations 
         (nid, vid, key_question_id, available_measure, status, weight) 
         VALUES ('" . $node->nid . "', '" . $node->vid . "', 
-        '" . $measure['key_question_id'] . "', 
+        '" . $node->key_question_id . "', 
         '" . key($node->onepageprofile_categories) . "', 
         '" . $measure['status'] . "', 
         '" . $measure['weight'] . "')");
@@ -239,6 +269,8 @@ function pi_result_presentations_delete(&$node) {
  */
 function pi_result_presentations_load($node) {
     $result = new stdClass;
+    $result->key_question_id = db_result(db_query('SELECT key_question_id FROM {pi_result_presentations} WHERE vid = %d',
+    $node->vid));
     $result->categories = pi_result_presentations_get_choice($node);
     return $result;
 }
@@ -295,7 +327,8 @@ function theme_pi_result_presentations($node) {
     $output = "";
         
     if (isset($node->key_question_id) AND ($node->key_question_id > 0)) {
-        $output .= "<p><strong>Key question id:</strong> " . $node->key_question_id . "</p>";
+    		$loaded_key_question = node_load($node->key_question_id);
+        $output .= "<p><strong>Key question:</strong> " . $loaded_key_question->title . "</p>";
     };
     			
     $selected_measures = "";
@@ -381,6 +414,7 @@ function spin_array ($data_array) {
       $row++;
     };
     return $spin_array;
+
 }
 
 /**
@@ -401,6 +435,7 @@ function theme_pi_result_presentations_node_form($form) {
     $rows = array();
 
     $tree = &$form['onepageprofile_categories'];
+   
     foreach (element_children($tree) as $key) {
         $tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
 
@@ -413,10 +448,15 @@ function theme_pi_result_presentations_node_form($form) {
     }
 
     // Build the output
-    $output  = '<p>' . t('Select and order the measures for your presentation.') . '</p>';
-    $output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
-    $output .= drupal_render($form);
     
+    if(count($rows) > 0) {
+    	$output  = '<p>' . t('Select and order the measures for your presentation.') . '</p>';
+    	$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
+    	$output .= drupal_render($form);
+    }
+    else {
+    	 $output  = '<p>' . t('No chosen measures are available.') . '</p>';
+    }
     return $output;
 }
 
@@ -465,19 +505,23 @@ function pi_result_presentations_get_options() {
     $categories = array();
 
     $measures = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-	$measures_obj = node_load($measures);
-	
-    foreach($measures_obj->categories as $key => $measure) {
-    	$measure_node = node_load($key);
-    	$categories[$key] = array (
+		$measures_obj = node_load($measures);
+		
+		if(count($measures_obj->categories) > 0) {
+    	foreach($measures_obj->categories as $key => $measure) {
+    		$measure_node = node_load($key);
+    		$categories[$key] = array (
             '#weight' => 1,
             '#title'  => t($measure_node->title),
             '#status'  => 'none'
-    	);
-    };
+    		);
+    	};
+    }
     
     return $categories;
 }
+
+
 
 
 
@@ -522,7 +566,10 @@ function pi_data_export_csv () {
   
 }
 
-//
+
+    
+    
+    //
 function create_csv_from_table ($header, $rows) {
 
   $output = "";
@@ -545,3 +592,5 @@ function create_csv_from_table ($header, $rows) {
 
 }
 
+    
+   
