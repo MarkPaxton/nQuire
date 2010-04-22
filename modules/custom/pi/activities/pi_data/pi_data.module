@@ -258,7 +258,8 @@ function get_measure_array($psm_id) {
  * Implementation of hook_validate().
  */
 function pi_data_validate($node) {
-	while ($measure = current($node->onepageprofile_categories)) {
+	foreach($node->onepageprofile_categories as $key => $measure)
+	{
 		$key = key($node->onepageprofile_categories);
 		$hyphen_pos = strrpos($key, "-");
 		$selected_measure_nid = substr($key, 0, $hyphen_pos);
@@ -273,28 +274,24 @@ function pi_data_validate($node) {
 				form_set_error($key, t('This should be a number.'));
 			}
 		}
-		next($node->onepageprofile_categories);
 	}
-	reset($node->onepageprofile_categories);
 }
 
 
 /**
- * Implementation of pi_data_insert().
+ * hook_insert() - add the additional data for a pi_data node to the pi_collected_data table
+ * @param $node the node to be inerted
  */
 function pi_data_insert($node) {
-	while ($measure = current($node->onepageprofile_categories)) {
-		$key = key($node->onepageprofile_categories);
+	foreach($node->onepageprofile_categories as $key => $measure)
+	{
 		$hyphen_pos = strrpos($key, "-");
 		$selected_measure_nid = substr($key, 0, $hyphen_pos);
 		$available_measure_nid = substr($key, $hyphen_pos + 1);
-		//print  "node" . substr($key, 0, $hyphen_pos) . "measure" . substr($key, $hyphen_pos + 1) . "value" . $measure['value'];
-
-		db_query("INSERT INTO pi_collected_data (nid, vid, selected_measures_nid, available_measure_nid, value) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . $selected_measure_nid . "', '" . $available_measure_nid . "', '" . $measure['value'] . "') ");
-
-		next($node->onepageprofile_categories);
+		db_query("INSERT INTO pi_collected_data (nid, vid, selected_measures_nid, available_measure_nid, value) " .
+			"VALUES ( %d, %d, %d, %d, %s)",
+			$node->nid, $node->vid, $selected_measure_nid, $available_measure_nid, $measure['value']);
 	}
-	reset($node->onepageprofile_categories);
 }
 
 /**
