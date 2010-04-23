@@ -2519,3 +2519,46 @@ function show_phases($uid) {
   	return TRUE;
   }
 }
+
+
+function activity_suffix() {
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	if ($details->activity_id && $details->inquiry_id) {
+		$loaded_activity = load_activity($details->activity_id);
+		$audience = $loaded_activity->audience;
+		$loaded_activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id);
+		$activity_uid = $activity_actor[0]["uid"];
+  	$activity_gid = $activity_actor[0]["gid"];
+  	$activity_gid_type = get_type_of_group($gid);
+  	
+  	$seen_by = $audience;
+  	if (($activity_uid && !$activity_gid) || $audience == 'individual') {
+  		$done_by = 'individual';
+  	}
+  	elseif ($activity_gid_type == 'class' && $audience == 'class') {
+  		$done_by = 'class';
+  	}
+  	else {
+  		$done_by = 'group';
+  	}
+  	
+  	$output = '<p>Done by ' . suffix_translate($done_by) . '. Seen by ' . suffix_translate($seen_by) . '.</p>';
+  	return $output;
+	}	
+}
+
+function suffix_translate ($actor) {
+	if($actor == 'individual') {
+		return 'me';
+	}
+	elseif($actor == 'group') {
+		return 'my group';
+	}
+	elseif($actor == 'class') {
+		return 'my class';
+	}
+}
+
+
+
