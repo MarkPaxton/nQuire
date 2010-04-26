@@ -31,7 +31,9 @@
  */
  
  
+
 function pi_init() {
+
     drupal_add_css(drupal_get_path('module', 'pi') .'/pi.css');
 }
     
@@ -87,6 +89,20 @@ function pi_menu() {
 		'type' => MENU_CALLBACK,
 	);
 
+	$items['export/%/csv'] = array(
+		'title' => t('CSV'),
+		'access callback' => TRUE,
+		'page callback' => 'pi_data_export_csv',
+		'type' => MENU_CALLBACK,
+	);
+
+	$items['export/%/kml'] = array(
+		'title' => t('KML'),
+		'access callback' => 'activity_view',
+		'page callback' => 'pi_data_export_kml',
+		'type' => MENU_CALLBACK,
+	);
+
 	$items['set_stage'] = array(
 		'title' => t('Stage selector'),
 		'page callback' => 'pi_stage_selector_view',
@@ -100,7 +116,9 @@ function pi_menu() {
 
 function activity_access($op) {
 
+
     global $user;
+
     $details = get_inquiry_details_from_current_path();
 
 	return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, $op);
@@ -109,17 +127,20 @@ function activity_access($op) {
 
 function activity_add() {
 
+
     return activity_access('add');
 
 }
 
 function activity_edit() {
 
+
     return activity_access('edit');
 
 }
 
 function activity_view() {
+
 
     return activity_access('view') || activity_access('edit');
 
@@ -178,6 +199,7 @@ function save_inquiry_phase($inquiry_phase)
 	{
 		// pip_id is specified so try an UPDATE only if it exists in db already
 		$query = "SELECT COUNT(`pip_id`) from pi_inquiry_phase WHERE pip_id=%d";
+		firep($query. "save_inquiry_phase");
 		$result = db_query($query, array($inquiry_phase['pip_id']));
 		if(db_result($result)==1)
 		{
@@ -199,6 +221,8 @@ function save_inquiry_phase($inquiry_phase)
 			$fields .= "`$field`='" . db_escape_string($value) . "'";
 		}
 	}
+	firep($query);
+	firep($fields);
 	$result = db_query(str_replace('%s', $fields, $query));
 	return $result;
 }
@@ -219,7 +243,7 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count) 
 	
 	$output = "";
 	
-	$layout = 'octagon';
+	$layout = 'octogon';
 
 	if ($layout == 'list') {
 		$background_arrows_image = '<div style="position: absolute; top: 5px; left: 150px;">';
@@ -235,12 +259,12 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count) 
 		$top_positions = array('5px', '85px', '165px', '165px', '85px');
 		$phase_icons = array('question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg');
 	}
-	elseif ($layout == 'octagon') {		
-		$background_arrows_image = '<div style="position: absolute; top: 30px; left: 150px;">';
-		$background_arrows_image .= '<img width="425" height="262" src="sites/default/files/images/octagon.png" />';
+	elseif ($layout == 'octogon') {		
+		$background_arrows_image = '<div style="position: absolute; top: 23px; left: 160px;">';
+		$background_arrows_image .= '<img width="426" height="278" src="sites/default/files/images/arrows_octogon.png" />';
 		$left_positions = array('380px', '450px', '450px', '380px', '80px', '40px', '40px', '80px');
 		$top_positions = array('10px', '95px', '180px', '270px', '270px', '180px', '95px', '10px');
-		$phase_icons = array(); //'topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
+		$phase_icons = array('topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
 	};
 	
 	$output .= '<div style="position: relative; width: 100%; height: 500px;">';
@@ -329,7 +353,7 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count) 
 								<div class="activitybox">' . $activity_count[$count] . ' Activities</div>
 								<div class="newactbox">';
 						if ($new_activity_count[$count] > 0) {
-							$output .= $new_activity_count[$count] . ' new';
+							$output .= $new_activity_count[$count] . ' new!';
 						};
 					    $output .= '</div>';
 					    $output .= '
@@ -346,6 +370,7 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count) 
 	$output .= '</div>';
 
 	return $output;
+
 }
 
 
@@ -390,7 +415,6 @@ function pi_inquiry_view() {
             while ($phase_of_current_stage = db_fetch_object($current_stage_phases)) {
                 $phases_of_current_stage[] =  $phase_of_current_stage->phase_id;
             };
-            
             
 	while($phase = db_fetch_object($phases)) {
 		$loaded_phase = load_phase($phase->phase_id);
@@ -772,12 +796,12 @@ function pi_phase_view () {
       }
       else {
 
-    	$image_path =  drupal_get_path( 'module', 'pi' ) . '/images/' ;
-	
+    	$image_path = "images/";
 		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
 		    $new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
 	    }
 	    else {
+
 		    $new_icon = "";
 	    };
 	    
@@ -852,7 +876,7 @@ function get_inquiry_details_from_current_path() {
 		
 		//activity is not set
 	}
-	elseif (arg(0) == 'activity') {
+	elseif ((arg(0) == 'activity') || (arg(0) == 'export')) {
 		//get inquiry from the database
 		$sid = get_current_session_id();
 		$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
@@ -956,6 +980,7 @@ function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
   $query .= "AND pi_activity.activity_type =  '" . $activity_type. "' ";
   $query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
 
+	// print $query;
     $result = db_query($query);
     return $result;
 
@@ -1403,7 +1428,7 @@ function insert_activity_actor ($activity_actor_array) {
 
 }
 
-function update_activity_actor ($paac_id, $activity_actor_array) {
+function update_activity_actor ($activity_actor_array) {
 
 /**
  * This will update. 
@@ -1418,7 +1443,7 @@ function update_activity_actor ($paac_id, $activity_actor_array) {
 	$query .= ", activity_id = '" . $activity_actor_array["activity_id"] . "' ";
 	$query .= ", uid = '" . $activity_actor_array["uid"] . "' ";
 	$query .= ", gid = '" . $activity_actor_array["gid"] . "' ";
-	$query .= "WHERE paac_id = '" . $activity_actor_array["paac_id"] . "'"; 
+	$query .= "WHERE paa_id = '" . $activity_actor_array["paa_id"] . "'"; 
 	
 	db_query($query);
 
@@ -2338,7 +2363,8 @@ function get_selected_measures_headings_for_inquiry_and_user ($inquiry_id, $sele
 
         if ($measure_id != 0) {
             
-            $query = "SELECT node.title AS title, pi_available_measures.symbol AS symbol, pi_available_measures.units AS units, pi_available_measures.units_short AS units_short ";
+            $query = "SELECT node.title AS title, pi_available_measures.symbol AS symbol, ";
+            $query .= "pi_available_measures.units AS units, pi_available_measures.units_short AS units_short ";
             $query .= "FROM pi_available_measures ";
             $query .= "LEFT JOIN node ON node.nid = pi_available_measures.nid ";
             $query .= "WHERE (pi_available_measures.nid = '" . $measure_id . "') ";
@@ -2388,6 +2414,7 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
     };
 
     //sort $result by up to first three columns
+    /***
     if (isset($result[2]) AND $result[2] != NULL AND $result[1] != NULL AND $result[0] != NULL) {
 		array_multisort(
 			$result[0], SORT_ASC, SORT_STRING,
@@ -2406,6 +2433,7 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 			$result[0], SORT_ASC, SORT_STRING
 		);
     };
+    */
     
     // Now rotate the values table so that each measure's data 
     // is in a column (rather than a row)
@@ -2438,16 +2466,18 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 
 function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) {
 
-    $query = "SELECT pi_collected_data.value AS value ";
+    $query = "SELECT DISTINCT(pi_collected_data.nid), pi_collected_data.value AS value ";
     $query .= "FROM pi_collected_data ";
+    $query .= "LEFT JOIN pi_sort_data ON pi_collected_data.nid = pi_sort_data.data ";
     $query .= "LEFT JOIN node ON pi_collected_data.nid = node.nid ";
     $query .= "LEFT JOIN node_access ON node.nid = node_access.nid ";
     $query .= "LEFT JOIN og_uid ON node_access.gid = og_uid.nid ";
     $query .= "WHERE (pi_collected_data.available_measure_nid = '" . $measure_id . "') ";
     $query .= "AND (node.uid = '" . $uid . "' ";
     $query .= "OR og_uid.uid = '" . $uid . "') ";
-    $query .= "ORDER BY node.nid ASC";
+    $query .= "ORDER BY pi_sort_data.weight ASC";
 
+	// print $query;
     $db_result = db_query($query);
 	
     $values = array();
@@ -2489,3 +2519,46 @@ function show_phases($uid) {
   	return TRUE;
   }
 }
+
+
+function activity_suffix() {
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	if ($details->activity_id && $details->inquiry_id) {
+		$loaded_activity = load_activity($details->activity_id);
+		$audience = $loaded_activity->audience;
+		$loaded_activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id);
+		$activity_uid = $activity_actor[0]["uid"];
+  	$activity_gid = $activity_actor[0]["gid"];
+  	$activity_gid_type = get_type_of_group($gid);
+  	
+  	$seen_by = $audience;
+  	if (($activity_uid && !$activity_gid) || $audience == 'individual') {
+  		$done_by = 'individual';
+  	}
+  	elseif ($activity_gid_type == 'class' && $audience == 'class') {
+  		$done_by = 'class';
+  	}
+  	else {
+  		$done_by = 'group';
+  	}
+  	
+  	$output = '<p>Done by ' . suffix_translate($done_by) . '. Seen by ' . suffix_translate($seen_by) . '.</p>';
+  	return $output;
+	}	
+}
+
+function suffix_translate ($actor) {
+	if($actor == 'individual') {
+		return 'me';
+	}
+	elseif($actor == 'group') {
+		return 'my group';
+	}
+	elseif($actor == 'class') {
+		return 'my class';
+	}
+}
+
+
+

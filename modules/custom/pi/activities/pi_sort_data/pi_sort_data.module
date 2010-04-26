@@ -88,10 +88,18 @@ function pi_sort_data_form(&$node) {
 			$categories[$key]['#title'] = $category['#title'];
 			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
 		}
-		uasort($categories, "my_weight_compare");
+		
+		if(count($categories) > 2) {
+			uasort($categories, "my_weight_compare");
+		}
 		
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
+    
+    if (count($categories) < 1) {
+    	return;
+    }
+    
     foreach ($categories as $key => $category) {
 
         $measure = node_load($key);
@@ -113,7 +121,7 @@ function pi_sort_data_form(&$node) {
         );
 
     }
-
+		$form['#suffix'] = t(activity_suffix());
     return $form;
 }
 
@@ -269,9 +277,14 @@ function theme_pi_sort_data_node_form($form) {
     else {
     	$output  .= '<p>' . t('Order your data.') . '</p>';
     }
-    $output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
-    $output .= drupal_render($form);
-
+    
+    if (count($rows) > 0) {
+    	$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
+   		$output .= drupal_render($form);
+		}
+		else {
+   		$output .= "<p>No data is available.</p>";
+   	}
     return $output;
 }
 

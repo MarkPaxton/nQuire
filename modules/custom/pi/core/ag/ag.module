@@ -23,8 +23,8 @@ function ag_init() {
  */
 
 function add_activity_icon($visible_status) {
-	$image_path = "images/";
-//	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+//	$image_path = "images/";
+	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
 	$status_image = array();
 	$status_image["start"] = "creatable.png";
 	$status_image["edit"] = "editable.png";
@@ -154,11 +154,12 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
         		$label_icon = 'view';
         		break;
         }*/
-        
+
         if ($node_details->activity_id == $activity_id) {
         	$activity_name_link = t($activity_name_text . ' ' . $label_icon);
         }
         else {
+        	$activity_name_link = l(t($activity_name_text . ' ' . $label_icon), $link,  array('html' => true, 'query' => $destination));
 
 		$image_path_ = drupal_get_path( 'module', 'pi' ) . '/images/';
 
@@ -170,7 +171,6 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 		    };
         	$activity_name_link = l(t($activity_name_text . ' ' . $label_icon . ' ' . $new_icon), $link,  array('html' => true, 'query' => $destination));
         }
-        
         $output = array('data' =>  t($activity_name_link), 'class' => $display_class);
     }
 
@@ -191,6 +191,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
 						$show_activities = show_activites($user->uid);
 						$show_phases = show_phases($user->uid);
+						$hidden_created_activity_types = array();
 						
             $image_path = "images/";
             $node_details = get_inquiry_details_from_current_path();
@@ -238,7 +239,16 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
                     $activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->phase_id, $user->uid);
 
                     foreach($activities as $activity) {
-                        $activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+                    
+                    		$loaded_activity = load_activity($activity->activity_id);
+                    		
+                    		//do not show activity if created and on the hidden list
+                    		//this applies to e.g. created measures or data that you 
+                    		//do not want to show
+                    		$loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
+                    		if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types) && $loaded_activity_nid)) {
+                        	$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+                        }
                     };
 
                 };
@@ -276,7 +286,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
             if(arg(0) == 'phase' && $show_phases || arg(0) == 'activity' && ($show_phases || $show_activities)) {
             	$loaded_inquiry = load_inquiry($node_details->inquiry_id);
 							$block['subject'] = t('Navigation');
-							            	$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
+							$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
 						}
             return $block;
     };

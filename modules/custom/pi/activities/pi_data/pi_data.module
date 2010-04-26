@@ -144,7 +144,7 @@ function pi_data_form(&$node) {
                     '#type' => 'textfield',
                     '#title' => t($measure->title . $units),
                     '#required' => $required_value,
-                    '#default_value' => t($node->categories[$key]['#value']),
+                    '#default_value' => check_plain(t($node->categories[$key]['#value'])),
                     '#size' => t($measure->textfield_size),
                     '#weight' => $measure_selection['#weight']
                 );
@@ -155,7 +155,7 @@ function pi_data_form(&$node) {
                     '#type' => 'textarea',
                     '#title' => t($measure->title . $units),
                     '#required' => $required_value,
-                    '#default_value' => t($node->categories[$key]['#value']),
+                    '#default_value' => check_plain(t($node->categories[$key]['#value'])),
                     '#resizable' => TRUE,
                     '#cols' => t($measure->textarea_cols),
                     '#rows' => t($measure->textarea_rows),
@@ -223,7 +223,7 @@ function pi_data_form(&$node) {
     };
 		}
     $form['#prefix'] = $prefix;
-
+		$form['#suffix'] = t(activity_suffix());
     return $form;
 }
 
@@ -407,7 +407,7 @@ function pi_data_theme() {
 }
 
 function theme_pi_data_node_form($form) {
-	$details = get_inquiry_details_from_current_path();
+		$details = get_inquiry_details_from_current_path();
     $activity = load_activity($details->activity_id);
     if ($activity->description) {
     	$output  .= '<p>' . t($activity->description) . '</p>';
@@ -415,10 +415,15 @@ function theme_pi_data_node_form($form) {
     else {
     	$output  .= '<p>' . t('Order your key questions.') . '</p>';
     }
-
-    //  $output .= drupal_render($form);
-
-    $output .= drupal_render($form);
+    
+    global $user;
+    $measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+    if ($measures_param) {
+			$output .= drupal_render($form);
+		}
+		else {
+   		$output .= "<p>No measures are available.</p>";
+   	}
     return $output;
 }
 
