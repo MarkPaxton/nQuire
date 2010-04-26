@@ -54,7 +54,7 @@ function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) {
 
 function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
 
-    $image_path = "images/";
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
     $status_image = array();
     $status_image["start"] = "creatable.png";
     $status_image["edit"] = "editable.png";
@@ -107,7 +107,7 @@ function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id
 
 function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
 
-    $image_path = "images/";
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
     $status_image = array();
     $status_image["start"] = "creatable.png";
     $status_image["edit"] = "editable.png";
@@ -161,10 +161,8 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
         else {
         	$activity_name_link = l(t($activity_name_text . ' ' . $label_icon), $link,  array('html' => true, 'query' => $destination));
 
-		$image_path_ = drupal_get_path( 'module', 'pi' ) . '/images/';
-
 			if (in_array($activity_id, new_activity_list($inquiry_id, $phase_id, $uid))) {
-			    $new_icon = "<img width='12' src='" . $image_path_ . "new_activity.png'/>";
+			    $new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
 		    }
 		    else {
 			    $new_icon = "";
@@ -193,7 +191,8 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 						$show_phases = show_phases($user->uid);
 						$hidden_created_activity_types = array();
 						
-            $image_path = "images/";
+            $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+            
             $node_details = get_inquiry_details_from_current_path();
             
 						if(arg(0) == 'phase' || arg(0) == 'activity') {
@@ -260,10 +259,10 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 									$phase_class = 'collapsed';
 								}
                 if (in_array($phase->phase_id, $phases_of_current_stage) && $phase->phase_id == $node_details->phase_id) {
-                    $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='images/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
+                    $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='" . $image_path . "folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
                 }
                 elseif (in_array($phase->phase_id, $phases_of_current_stage) && $show_phases) {
-                    $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='images/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
+                    $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='" . $image_path . "folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
                 }
                	elseif ($phase->phase_id == $node_details->phase_id && $show_activities) {
                     $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
@@ -328,7 +327,8 @@ function get_ag_content() {
 
     $node_details = get_inquiry_details_from_current_path();
     $home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+    
     // get list of inquiries for current user
     global $user;
     $inquiries = get_inquiries_of_user($user->uid);
@@ -368,7 +368,7 @@ function get_ag_content() {
     };
     $content .= "
                 <div class='ag_top'>
-                    <img src='images/inquiry-navigator-up.png' />
+                    <img src='" . $image_path . "inquiry-navigator-up.png' />
                 </div>";
     if ($inquiry_count - 1 > 1) {
         $content .= "</a>";
@@ -378,7 +378,7 @@ function get_ag_content() {
     };
     $content .= "
                 <div class='ag_bottom'>
-                    <img src='images/inquiry-navigator-down.png' />
+                    <img src='" . $image_path . "inquiry-navigator-down.png' />
                 </div>";
     if ($inquiry_count - 1 > 1) {
         $content .= "</a>";
@@ -458,7 +458,7 @@ function get_ag_content() {
       <a class='ag-link' href='#' id='inquiry-toggle'>
           <div id='ag_pullouthandle'>
             <div class='ag_middle_arrow'>
-              <img id='ag_handle' src='images/unit-navigator-open.png' />
+              <img id='ag_handle' src='" . $image_path . "unit-navigator-open.png' />
             </div>
           </div>
       </a>

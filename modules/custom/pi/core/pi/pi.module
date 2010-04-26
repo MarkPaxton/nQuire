@@ -242,26 +242,27 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 function display_phases($headings, $rows, $activity_count, $new_activity_count) {
 	
 	$output = "";
+	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
 	
-	$layout = 'octogon';
+	$layout = 'octagon';
 
 	if ($layout == 'list') {
 		$background_arrows_image = '<div style="position: absolute; top: 5px; left: 150px;">';
-		$background_arrows_image .= '<img width="150" height="625" src="sites/default/files/images/arrows_loop.png" />';
+		$background_arrows_image .= '<img width="150" height="625" src="' . $image_path . 'arrows_loop.png" />';
 		$left_positions = array('200px', '200px', '200px', '200px', '200px', '200px', '200px', '200px');
 		$top_positions = array('35px', '110px', '185px', '260px', '335px', '410px', '485px', '560px');
 		$phase_icons = array('topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
 	}
 	elseif ($layout == 'pentagon') {
 		$background_arrows_image = '<div style="position: absolute; top: 23px; left: 151px;">';
-		$background_arrows_image .= '<img width="300" height="172" src="sites/default/files/images/arrows_pentagon.png" />';
+		$background_arrows_image .= '<img width="300" height="172" src="' . $image_path . 'arrows_pentagon.png" />';
 		$left_positions = array('180px', '345px', '320px', '40px', '15px');
 		$top_positions = array('5px', '85px', '165px', '165px', '85px');
 		$phase_icons = array('question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg');
 	}
-	elseif ($layout == 'octogon') {		
+	elseif ($layout == 'octagon') {		
 		$background_arrows_image = '<div style="position: absolute; top: 23px; left: 160px;">';
-		$background_arrows_image .= '<img width="426" height="278" src="sites/default/files/images/arrows_octogon.png" />';
+		$background_arrows_image .= '<img width="426" height="278" src="' . $image_path . 'arrows_octagon.png" />';
 		$left_positions = array('380px', '450px', '450px', '380px', '80px', '40px', '40px', '80px');
 		$top_positions = array('10px', '95px', '180px', '270px', '270px', '180px', '95px', '10px');
 		$phase_icons = array('topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
@@ -346,7 +347,7 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count) 
 				foreach ($row as $key => $value) {
 					if ($key == 'data') {
 					    $output .= '<div style="position: absolute; top: ' . $top_positions[$count] . '; left: ' . $left_positions[$count] . ';" class="phasebox">';
-						$output .= '<div class="imgbox"><img width="42px" src="sites/default/files/images/' . $phase_icons[$count] . '" /></div>';
+						$output .= '<div class="imgbox"><img width="42px" src="' . $image_path . $phase_icons[$count] . '" /></div>';
 					    $output .= '
 					    	<div class="textcont">
 								<div class="titlebox">' . $value[0] . '</div>
@@ -378,7 +379,8 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count) 
 function pi_inquiry_view() {
 	global $user;
 	$uid = $user->uid;
-
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+	
 	$details = get_inquiry_details_from_current_path();
 	
 	//set current inquiry
@@ -420,7 +422,7 @@ function pi_inquiry_view() {
 		$loaded_phase = load_phase($phase->phase_id);
 		$row = array();
 		if (in_array($phase->phase_id, $phases_of_current_stage)) {
-			$row[] = l(t($loaded_phase->name . " <img width='12' src='images/folder_empty_current.png'/>"), t("phase/" . $phase->phase_id), array('html' => TRUE));
+			$row[] = l(t($loaded_phase->name . " <img width='12' src='" . $image_path . "folder_empty_current.png'/>"), t("phase/" . $phase->phase_id), array('html' => TRUE));
 		}
 		else {
 			$row[] = l($loaded_phase->name, t("phase/" . $phase->phase_id));
@@ -796,7 +798,7 @@ function pi_phase_view () {
       }
       else {
 
-    	$image_path = "images/";
+    	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
 		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
 		    $new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
 	    }
