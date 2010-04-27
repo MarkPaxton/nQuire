@@ -53,6 +53,7 @@ function pi_datalogger_access($op, $node) {
  * e.g. custom css and javascript files. 
  */
 function pi_datalogger_init() {
+    drupal_add_js(drupal_get_path('module', 'pi') .'/lib/jquery.json.js');
     drupal_add_js(drupal_get_path('module', 'pi_datalogger') .'/lib/datalogger.js');
 }
 
@@ -85,29 +86,38 @@ function pi_datalogger_view($node, $teaser = FALSE, $page = FALSE) {
 	
 	
 	$measures_for_applet = array();
-	foreach(element_children($form['onepageprofile_categories']) as $element_key)
+	$measures = array();
+	$measure_weights = array();
+	
+	// First get the pi_data form and copy the measures fields from it
+	$pi_data_form_state = array();
+	$pi_data_form = drupal_retrieve_form('pi_data_form', $pi_data_form_state);
+		
+	// Now copy the fields to the measures array: 
+	// Collect a list of [id]=>[weight], [id=>[item]
+	// Sort [id]=>[weight] by [weight] and assemble ordered list of [item] from [id]=>[item]
+	foreach(element_children($pi_data_form['onepageprofile_categories']) as $element_key)
 	{
-		$measures_for_applet[] = array(
+		$measure_weights[$element_key] = $pi_data_form['onepageprofile_categories'][$element_key]['value']['#weight'];
+		$measures[$element_key] = array(
     		"id" => $element_key,
-    		"title" => $form['onepageprofile_categories'][$element_key]['value']['#title'],
-/*    		"units" => $form['onepageprofile_categories'][$element_key]['units'],
-    		"units_short" => $form['onepageprofile_categories'][$element_key]['unit_short'],
-    		"field_type" => $form['onepageprofile_categories'][$element_key]['field_type'],
-    		"data_type" => $form['onepageprofile_categories'][$element_key]['data_type']*/
-		);
+    		"title" => $pi_data_form['onepageprofile_categories'][$element_key]['value']['#title'],
+		); 
 	}
-
+	asort($measure_weights);  // Sort measures so that MAX(weight) is last.
+	foreach($measure_weights as $measure_id => $weight)
+	{
+		$measures_for_applet[] = $measures[$measure_id];
+	} 
+	
 	//Use Drupal's default node view.
 	$node = node_prepare($node, $teaser);
 	
 	$node->content['applet']['#value'] = theme('pi_datalogger_applet', $path_to_applet, $measures_for_applet);
 	$node->content['applet']['#weight'] = -5;
 	
-	//$form_state = array();
-	//$form = drupal_retrieve_form('pi_datalogger_data_form', $form_state);
-	//drupal_redirect_form($form, request_uri());
-	//$node->content['data_form']['#value'] = drupal_render_form('pi_datalogger_data_form', $form);
-	//$node->content['data_form']['#weight'] = 5;
+	$node->content['data_form']['#value'] = drupal_get_form('pi_datalogger_data_form', array(NULL, array()));
+	$node->content['data_form']['#weight'] = 5;
 	
 	return $node;
 }
@@ -116,39 +126,121 @@ function pi_datalogger_view($node, $teaser = FALSE, $page = FALSE) {
 /**
  * pi_datalogger_data_form() - The form for entering the data, with java applet embedded
  */
-function pi_datalogger_data_form() {
+function pi_datalogger_data_form($form_state) {
+	//Since this is going to be an add-only form, junk the node data.
 	
-	// First get the pi_data form and copy the measures fields from it
-	$pi_data_form = drupal_retrieve_form('pi_data_form', $node);
-	
-	$measures_for_applet = array();
-	foreach(element_children($pi_data_form['onepageprofile_categories']) as $element_key)
-	{
-		$measures_for_applet[$element_key] = $pi_data_form['onepageprofile_categories'][$element_key]['value'];
-	}
-
 	//Now create a new form to submit the measures.
 	$form=array();
 	
+	ahah_helper_register($form, $form_state); 
+	
 	$form['#theme'] = 'pi_datalogger_data_form';
 	$form['#title'] = 'Add datalogger data';
-	
+
 	$form['datalogger_data'] = array(
-		'#tree' => TRUE
+		'#tree' => TRUE,
+		'#prefix' => "<div id='datalogger-data-wrapper'>",
+		'#suffix' => "</div>\n"
 	);
-	foreach($measures_for_applet as $id => $measure_field){
+	
+	/** Get the measures for the form.  This is is done in two ways: when the form is initially built they
+	 * can be coped from the original pi_data form.  When the form is submitted via ahah this can't be done
+	 * as get_inquiry_details_from_current_path() fails, so they are stored in a hidden field in the form
+	 * and retrieved this way. 
+	 */ 
+	$measures_for_form = array();
+	if($form_state['submitted'] != true)
+	{
+		// If the first time the form is accessed, so get the measures from a pi_data form
+
+		// First get the pi_data form and copy the measures fields from it
+		$pi_data_form_state = array();
+		$pi_data_form = drupal_retrieve_form('pi_data_form', $pi_data_form_state);
+			
+		// Now copy the fields to the measues array.
+		foreach(element_children($pi_data_form['onepageprofile_categories']) as $element_key)
+		{
+			$measures_for_form[$element_key] = $pi_data_form['onepageprofile_categories'][$element_key]['value'];
+		}
+	}
+	else
+	{
+		//The form has been submitted via ahah, so get measures from the form data instead.
+		$measures_for_form = unserialize($form_state['values']['datalogger_data']['datalogger_fields']);
+		// Check this has produced something sensible and try ['storage'] if it hasn't
+		if(!is_array($measures_for_applet))
+		{
+			$measures_for_form = unserialize($form_state['storage']['datalogger_data']['datalogger_fields']);
+		}
+		if(!is_array($measures_for_form))
+		{
+			$form['datalogger_data']['error_message'] = array(
+				'#type' => 'hidden',
+				'#value' => 'There was a problem accessing the selected measures for this inquiry.'
+			);
+		}	
+	}
+	
+	// Now add the measures to the form at last!
+	foreach($measures_for_form as $id => $measure_field)
+	{
 		$form['datalogger_data'][$id] = $measure_field;
 	}
 	
-	$form['submit'] = array(
-		'#type' => 'submit',
-		'#value' => t('Save'),
+	/**
+	 * Since the form uses the ahah helper the nQuire functions can't tell where this activity belongs
+	 * when the form is submitted in the background, so the field items can't be dynamically generated.
+	 * To work round this they are stored as a hidden field in the form and read back later.
+	 * These need to be reset if the form is submitted, as when the form is rebuilt with ahah_helper
+	 * the value is not stored.  (Not quite sure why!)  Hence they are part of the ['datalogger_data'] fieldset
+	 * which ahah_helper replaces.
+	 */
+	$form['datalogger_data']['datalogger_fields'] = array(
+		'#type' => 'hidden',
+		'#value' => serialize($measures_for_form)
 	);
+		
+
+	// Make the form submit and re-render via javascript with ahah_helper
+	$form['submit_button'] = array(
+		'#type' => 'button',
+		'#value' => t('Save data'),
+		'#submit' => array('ahah_helper_submit'),
+		'#ahah' => array(
+			'event' => 'click',
+			'progress' => array('type'=>''),
+			'path' => ahah_helper_path(array('datalogger_data')),
+			'wrapper' => 'datalogger-data-wrapper'
+		),
+	);
+
+	/** If the form is submitted using ahah_helper then $form_state['submitted'] is set.
+	 * In this case there is submitted data and it needs to be saved by calling the form_submit hook.
+	 * Default values are always blank, so the data doesn't come back on the form, leaving it clear for new
+	 * entries.
+	 */
+	if($form_state['submitted'])
+	{
+		// This prevents the form elements from being nested when the form item is rebuilt by ahah_helper.
+		$form['datalogger_data']['#prefix'] = "";
+		$form['datalogger_data']['#suffix'] = "";
+
+		/*ob_start();
+		var_dump($form_state);
+		$form_data = ob_get_clean();
+		$form['datalogger_data']['data'] = array(
+				'#type' => 'hidden',
+				'#value' => $form_data
+		);*/
+		pi_datalogger_data_form_submit($form, $form_state);
+	}
 	return $form;
 }
 
 /**
- * handles the data submitted to the datalogger_data form, this should be done in the background and returns nothing
+ * handles the data submitted to the datalogger_data form, this should be done in the background 
+ * and returns nothing.  It takes the submitted field from the form and loads then into a new 
+ * pi_data node object
  * at the moment, as this is submitted via an ajax request.
  */
 function pi_datalogger_data_form_submit($form, &$form_state) {
@@ -162,12 +254,15 @@ function pi_datalogger_data_form_submit($form, &$form_state) {
 	$data->status = 1;
 	$data->promote = 0;
 
-	foreach($form_state['values']['datalogger_data'] as $id => $value)
+	foreach(element_children($form_state['values']['datalogger_data']) as $id)
 	{
-		$data->onepageprofile_categories[$id] = $value;
+		// Ignore the special fields inserted for the ahah stuff in the form
+		if( !in_array($id, array('error_message', 'datalogger_fields')) )
+		{
+			$data->onepageprofile_categories[$id]['value'] = $form_state['values']['datalogger_data'][$id];
+		}
 	}
 	node_save($data);
-	firep($data, "Saved");
 }
 
 /**
@@ -194,7 +289,7 @@ function theme_pi_datalogger_applet($applet_location, $applet_params)
 	foreach($applet_params as $param)
 	{
 		$param_names[] = htmlspecialchars($param['title']);
-		$output .= "<param name='" . htmlspecialchars($param['id']) . "' value='dataField" . count($param_names) ."'/>\n";
+		$output .= "<param value='" . htmlspecialchars($param['id']) . "' name='dataField" . count($param_names) ."'/>\n";
 	}
 	$output .= "<param name='dataFields' value='" . implode(',', $param_names) ."'/>\n";
 	$output .= "<param name='useDummyLogger' value='true'/>\n";

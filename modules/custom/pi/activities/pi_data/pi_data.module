@@ -19,9 +19,8 @@ function pi_data_node_info() {
 		    'module' => 'pi_data',  // Required.
 		    'description' => t('What is your data?'), // Required.
 		    'has_title' => FALSE,
-		    'title_label' => t('Data'),
-		    'has_body' => TRUE,
-		    'body_label' => t('Data'),
+		    'title_label' => t('Collected Data'),
+		    'has_body' => FALSE,
 		    'locked' => TRUE
 		)
 	);
@@ -289,7 +288,7 @@ function pi_data_insert($node) {
 		$selected_measure_nid = substr($key, 0, $hyphen_pos);
 		$available_measure_nid = substr($key, $hyphen_pos + 1);
 		db_query("INSERT INTO pi_collected_data (nid, vid, selected_measures_nid, available_measure_nid, value) " .
-			"VALUES ( %d, %d, %d, %d, %s)",
+			"VALUES ( %d, %d, %d, %d, '%s')",
 			$node->nid, $node->vid, $selected_measure_nid, $available_measure_nid, $measure['value']);
 	}
 }
@@ -348,7 +347,7 @@ function is_checkboxes_measure($id) {
 
 
 /**
- * Implementation of pi_data_load().
+ * Implementation of hook_load() - gets the pi_data time and also associated pi_collected_data rows
  */
 function pi_data_load($node) {
 	$result = new stdClass;

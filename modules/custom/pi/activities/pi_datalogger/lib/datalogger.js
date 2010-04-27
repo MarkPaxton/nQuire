@@ -1,14 +1,17 @@
 function saveData(data)
 {
 	//var myObject = eval('(' + data + ')');
-	var myObject = null;
+	var dataToSave = null;
 	try {
-		myObject = jQuery.parseJSON(data);
-		alert( "Saving data..." );
+		dataToSave = eval('(' + data + ')');
+		for(item in dataToSave)
+		{
+			alert(item[0].datafield + " = " + item[1].value); 
+		}
 	}
 	catch(error)
 	{ 
 		alert("Error receiving data:\n" + error.message);
 	}
-	return myObject;
+	return dataToSave;
 }
