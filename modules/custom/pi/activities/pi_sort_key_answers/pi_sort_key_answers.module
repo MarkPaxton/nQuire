@@ -88,7 +88,9 @@ function pi_sort_key_answers_form(&$node) {
 			$categories[$key]['#title'] = $category['#title'];
 			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
 		}
-		uasort($categories, "my_weight_compare");
+		if (count($categories) > 1) {
+			uasort($categories, "my_weight_compare");
+		}
 		
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
@@ -107,7 +109,7 @@ function pi_sort_key_answers_form(&$node) {
             '#default_value' => $node_categories[$key]['#weight'],
         );
     }
-
+		$form['#suffix'] = t(activity_suffix());
     return $form;
 }
 
@@ -211,26 +213,54 @@ function theme_pi_sort_key_answers_node_form($form) {
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
+	
+	/*
 	//Get the key questions. One table will be made for each.
 	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
+  //**should look for the key questions not the sort nid*********
   
   // Add the categories of existing nodes and the options list for new nodes
   if(isset($key_questions_nid)) {
     $key_questions_node = node_load($key_questions_nid);
     $categories = $key_questions_node->categories;
-  }
+  }*/
+    // Add the categories of existing nodes and the options list for new nodes
+    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
+    if(isset($key_questions_nid)) {
+    		$key_questions_node = node_load(key_questions_nid);
+    		$node_categories = $key_questions_node->categories;
+    }
+    else {
+        $node_categories = array();
+    }
+    
+		$option_categories = pi_sort_key_questions_get_options();
+		$categories = array();
+		
+		foreach ($option_categories as $key => $category) {
+			$categories[$key]['#title'] = $category['#title'];
+			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+		}
+
+		if (count($categories) > 1) {
+			uasort($categories, "my_weight_compare");
+		}  
+  
+  
   
 	$header = array();
 	$rows = array();
 	
   $key_question_options = array();
-  foreach ($categories as $key => $category) {
-    //Make a table for each key question
-  	drupal_add_tabledrag(t('onepageprofile-categories'.$key), 'order', 'sibling', 'onepageprofile-element');
-  	$rows[$key] = array();
-    $key_question = node_load($key);
-    $key_question_options[$key] = $key_question->title;
-    $header[$key] = array(t($key_question->title), t('Weight'), t('Action'));
+  if (count($categories) > 0) {
+  	foreach ($categories as $key => $category) {
+  	  //Make a table for each key question
+  		drupal_add_tabledrag(t('onepageprofile-categories'.$key), 'order', 'sibling', 'onepageprofile-element');
+  		$rows[$key] = array();
+   	 $key_question = node_load($key);
+   	 $key_question_options[$key] = $key_question->title;
+   	 $header[$key] = array(t($key_question->title), t('Weight'), t('Action'));
+   	}
   }
 
 	$tree = &$form['onepageprofile_categories'];
@@ -263,16 +293,26 @@ function theme_pi_sort_key_answers_node_form($form) {
     else {
     	$output  .= '<p>' . t('Order your key questions.') . '</p>';
     }
-	foreach ($categories as $key => $category) {
-		if (count($rows[$key]) > 0) {
-			$output .= theme('table', $header[$key], $rows[$key], array('id' => t('onepageprofile-categories'.$key)));
-		}
-		else {
-			reset($header[$key]);
-			$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
+  $answer_flag = 0;
+  if (count($categories) > 0) {
+		foreach ($categories as $key => $category) {//*****
+			if (count($rows[$key]) > 0) {
+				$answer_flag = 1;
+				$output .= theme('table', $header[$key], $rows[$key], array('id' => t('onepageprofile-categories'.$key)));
+			}
+			else {
+				reset($header[$key]);
+				$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
+			}
 		}
 	}
-	$output .= drupal_render($form);
+	else {
+		$output .= "<p>No key questions are available.</p>";
+	}
+	
+	if($answer_flag == 1) {
+		$output .= drupal_render($form);
+	}
 
 	return $output;
 }

@@ -23,7 +23,8 @@ function ag_init() {
  */
 
 function add_activity_icon($visible_status) {
-	$image_path = drupal_get_path('module', 'ag') . '/images/';
+//	$image_path = "images/";
+	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
     $status_image = array();
 	$status_image["start"] = "creatable.png";
 	$status_image["edit"] = "editable.png";
@@ -53,7 +54,7 @@ function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) {
 
 function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
 
-    $image_path = drupal_get_path('module', 'ag') . '/images/';
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
     $status_image = array();
     $status_image["start"] = "creatable.png";
     $status_image["edit"] = "editable.png";
@@ -106,7 +107,7 @@ function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id
 
 function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
 
-    $image_path = drupal_get_path('module', 'ag') . '/images/';
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
     $status_image = array();
     $status_image["start"] = "creatable.png";
     $status_image["edit"] = "editable.png";
@@ -153,7 +154,7 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
         		$label_icon = 'view';
         		break;
         }*/
-        
+
         if ($node_details->activity_id == $activity_id) {
         	$activity_name_link = t($activity_name_text . ' ' . $label_icon);
         }
@@ -166,7 +167,6 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 		    };
         	$activity_name_link = l(t($activity_name_text . ' ' . $label_icon . ' ' . $new_icon), $link,  array('html' => true, 'query' => $destination));
         }
-        
         $output = array('data' =>  t($activity_name_link), 'class' => $display_class);
     }
 
@@ -187,8 +187,10 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
         	$show_activities = show_activites($user->uid);
         	$show_phases = show_phases($user->uid);
-
-        	$image_path = drupal_get_path('module', 'ag') . '/images/';
+						$hidden_created_activity_types = array();
+						
+            $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+            
     		$node_details = get_inquiry_details_from_current_path();
 
         	if(arg(0) == 'phase' || arg(0) == 'activity')
@@ -230,7 +232,16 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
         				$activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->nid, $user->uid);
 
         				foreach($activities as $activity) {
-        					$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->nid, $activity->activity_id, $user->uid);
+                    
+                    		$loaded_activity = load_activity($activity->activity_id);
+                    		
+                    		//do not show activity if created and on the hidden list
+                    		//this applies to e.g. created measures or data that you 
+                    		//do not want to show
+                    		$loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
+                    		if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types) && $loaded_activity_nid)) {
+                        	$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+                        }
         				};
 
         			};
@@ -307,10 +318,8 @@ function new_activity_list_count($inquiry_id, $phase_id, $uid) {
 }
 
 function get_ag_content() {
-    // get list of inquiries for current user
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';    // get list of inquiries for current user
     global $user;
-    $image_path = drupal_get_path('module', 'ag') . '/images/';
-	
     $inquiries = get_inquiries_of_user($user->uid);
     $node_details = get_inquiry_details_from_current_path();
 

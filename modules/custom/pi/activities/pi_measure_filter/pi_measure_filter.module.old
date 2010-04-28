@@ -18,7 +18,9 @@ function pi_measure_filter_node_info() {
 	 'description' => t('Which available measures fields should be shown for the inquiry?'), 
 	 // Required.
 	 'has_title' => FALSE,
+	 'title_label' => t('Title'),
 	 'has_body' => FALSE,
+	 'body_label' => t('Measure fields'),
 	 'locked' => TRUE
 	)
    );
@@ -48,7 +50,7 @@ function pi_measure_filter_access($op, $node) {
 }
 
 /**
- * Implementation of hook_node_form().
+ * Implementation of hook_form().
  */
 function pi_measure_filter_form(&$node) {
 		$node_details = get_inquiry_details_from_current_path();
@@ -312,7 +314,7 @@ function pi_measure_filter_form(&$node) {
 	}
  
   $form['#prefix'] = $prefix;
-  $form['#suffix'] = t(activity_suffix());
+  
   return $form;
 
 }
@@ -405,6 +407,8 @@ function theme_pi_measure_filter($node) {
   		drupal_set_title(t($current_activity->name));
   	}
 
+	$output = "";
+	
   if ($current_activity->description) {
 		$output  .= '<p>' . t($current_activity->description) . '</p>';
 	}
@@ -412,53 +416,75 @@ function theme_pi_measure_filter($node) {
 		$output  .= '<p>' . "For the inquiry specify which fields will be shown when a measure is added and default values for any field." . '</p>';
 	}
 	
-	$output = "";
 
-  $header = array(
-    t('Measure attribute'),
-    t('Shown?'),
-    t('Default value'),
-    );
-  
-  $rows = array();
-	
-	$row = array();
-	$row[] = t('Symbol');
-	$row[] = t(output_binary($node->symbol_test));
-	$row[] = t($node->symbol_value);
-	$rows[] = array('data' => $row);
-	
-	$row = array();
-	$row[] = t('Units');
-	$row[] = t(output_binary($node->units_test));
-	$row[] = t($node->units_value);
-	$rows[] = array('data' => $row);
-	
-	$row = array();
-	$row[] = t('Units short name');
-	$row[] = t(output_binary($node->units_short_test));
-	$row[] = t($node->units_short_value);
-	$rows[] = array('data' => $row);
-	
-	$row = array();
-	$row[] = t('Data type');
-	$row[] = t(output_binary($node->data_type_test));
-	$row[] = t($node->data_type_value);
-	$rows[] = array('data' => $row);
+	$output .= "<p><strong>Symbol shown: </strong>";
+	$output .= output_binary($node->symbol_test) . "</p>";
+	$output .= "<p><strong>Symbol default value:</strong></p>";
+	$output .= $node->symbol_value;
 
-	$row = array();
-	$row[] = t('Measurement device name');
-	$row[] = t(output_binary($node->measurement_device_name_test));
-	$row[] = t($node->measurement_device_name_value);
-	$rows[] = array('data' => $row);
+	$output .= "<p><strong>Units shown: </strong>";
+	$output .= output_binary($node->units_test) . "</p>";
+	$output .= "<p><strong>Units default value:</strong></p>";
+	$output .= $node->units_value;
 	
-	$row = array();
-	$row[] = t('Measurement device description');
-	$row[] = t(output_binary($node->measurement_device_description_test));
-	$row[] = t($node->measurement_device_description_value);
-	$rows[] = array('data' => $row);
+	$output .= "<p><strong>Units short shown: </strong>";
+	$output .= output_binary($node->units_short_test) . "</p>";
+	$output .= "<p><strong>Units short default value:</strong></p>";
+	$output .= $node->units_short_value;
 	
-	$output .= theme('table', $header, $rows);
+	$output .= "<p><strong>Field type shown: </strong>";
+	$output .= output_binary($node->field_type_test) . "</p>";
+	$output .= "<p><strong>Field type default value:</strong></p>";
+	$output .= $node->field_type_value;
+	
+	$output .= "<p><strong>Data type shown: </strong>";
+	$output .= output_binary($node->data_type_test) . "</p>";
+	$output .= "<p><strong>Data type default value:</strong></p>";
+	$output .= $node->data_type_value;
+	
+	$output .= "<p><strong>List options shown: </strong>";
+	$output .= output_binary($node->list_options_test) . "</p>";
+	$output .= "<p><strong>List options default value:</strong></p>";
+	$output .= $node->list_options_value;
+	
+	$output .= "<p><strong>Content options shown: </strong>";
+	$output .= output_binary($node->content_options_test) . "</p>";
+	$output .= "<p><strong>Content options default value:</strong></p>";
+	$output .= $node->content_options_value;
+
+	$output .= "<p><strong>Textfield size shown: </strong>";
+	$output .= output_binary($node->textfield_size_test) . "</p>";
+	$output .= "<p><strong>Textfield size default value:</strong></p>";
+	$output .= $node->textfield_size_value;
+	
+	$output .= "<p><strong>Textarea cols shown: </strong>";
+	$output .= output_binary($node->textarea_cols_test) . "</p>";
+	$output .= "<p><strong>Textarea cols default value:</strong></p>";
+	$output .= $node->textarea_cols_value;
+	
+	$output .= "<p><strong>Textarea rows shown: </strong>";
+	$output .= output_binary($node->textarea_rows_test) . "</p>";
+	$output .= "<p><strong>Textarea rows default value:</strong></p>";
+	$output .= $node->textarea_rows_value;
+	
+	$output .= "<p><strong>Measurement device name shown: </strong>";
+	$output .= output_binary($node->measurement_device_name_test) . "</p>";
+	$output .= "<p><strong>Measurement device name default value:</strong></p>";
+	$output .= $node->measurement_device_name_value;
+	
+	$output .= "<p><strong>Measurement device description shown: </strong>";
+	$output .= output_binary($node->measurement_device_description_test) . "</p>";
+	$output .= "<p><strong>Measurement device description default value:</strong></p>";
+	$output .= $node->measurement_device_description_value;
+
+	$output .= "<p><strong>Image filename shown: </strong>";
+	$output .= output_binary($node->image_filename_test) . "</p>";
+	$output .= "<p><strong>Image filename default value:</strong></p>";
+	$output .= $node->image_filename_value;
+	
+	// $output .= "<h3>" . $node->short_title . "</h3>";
+ // $output .= "<p><strong>Key question:</strong> " . $node->key_question . "</p>";
+ // $output .= "<p><strong>Weight:</strong> " . $node->weight . "</p>";
   
   return $output;
 }
