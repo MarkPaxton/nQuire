@@ -160,7 +160,10 @@ function pi_datalogger_data_form($form_state) {
 		// Now copy the fields to the measues array.
 		foreach(element_children($pi_data_form['onepageprofile_categories']) as $element_key)
 		{
+			// Copy the form element
 			$measures_for_form[$element_key] = $pi_data_form['onepageprofile_categories'][$element_key]['value'];
+			// Then change it to a hidden element
+			$measures_for_form[$element_key]['#type'] = 'hidden';
 		}
 	}
 	else
@@ -181,30 +184,31 @@ function pi_datalogger_data_form($form_state) {
 		}	
 	}
 	
-	// Now add the measures to the form at last!
-	foreach($measures_for_form as $id => $measure_field)
-	{
-		$form['datalogger_data'][$id] = $measure_field;
-	}
+	// This is a hidden field where the measures data is added via the javascript, in json format
+	// array of data items, each containing an array of measure objects, 
+	//measure objects have attributes for "dataField"=>id and "value"=>reading value 
+	$form['datalogger_data']['datalogger_values'] = array(
+		'#type' => 'hidden',
+	);
 	
 	/**
 	 * Since the form uses the ahah helper the nQuire functions can't tell where this activity belongs
 	 * when the form is submitted in the background, so the field items can't be dynamically generated.
 	 * To work round this they are stored as a hidden field in the form and read back later.
 	 * These need to be reset if the form is submitted, as when the form is rebuilt with ahah_helper
-	 * the value is not stored.  (Not quite sure why!)  Hence they are part of the ['datalogger_data'] fieldset
-	 * which ahah_helper replaces.
+	 * the value is not stored.  (Not quite sure why!)  Hence they are part of the ['datalogger_data'] 
+	 * fieldset which ahah_helper replaces.
 	 */
 	$form['datalogger_data']['datalogger_fields'] = array(
 		'#type' => 'hidden',
 		'#value' => serialize($measures_for_form)
 	);
-		
 
 	// Make the form submit and re-render via javascript with ahah_helper
 	$form['submit_button'] = array(
 		'#type' => 'button',
 		'#value' => t('Save data'),
+		'#attributes' => array('style' => 'display:none;'),
 		'#submit' => array('ahah_helper_submit'),
 		'#ahah' => array(
 			'event' => 'click',
@@ -218,6 +222,8 @@ function pi_datalogger_data_form($form_state) {
 	 * In this case there is submitted data and it needs to be saved by calling the form_submit hook.
 	 * Default values are always blank, so the data doesn't come back on the form, leaving it clear for new
 	 * entries.
+	 * 
+	 * Here a javascript section is also included to call the next datapoint to be submit  
 	 */
 	if($form_state['submitted'])
 	{
@@ -246,23 +252,53 @@ function pi_datalogger_data_form($form_state) {
 function pi_datalogger_data_form_submit($form, &$form_state) {
 	global $user;
 	
-	$data = new stdClass();
-	$data->title = 'Inquiry data item';
-	$data->body = '';;
-	$data->uid = $user->uid;
-	$data->type = 'pi_data';
-	$data->status = 1;
-	$data->promote = 0;
+	$json_datalogger_values = $form_state['values']['datalogger_data']['datalogger_values'];
+	$datalogger_values = json_decode($json_datalogger_values);
+	$serialized_datalogger_fields = $form_state['values']['datalogger_data']['datalogger_fields'];
+	$datalogger_fields = unserialize($serialized_datalogger_fields);
 
-	foreach(element_children($form_state['values']['datalogger_data']) as $id)
+	/*ob_start();
+	var_dump($datalogger_fields);
+	$form_data = ob_get_clean();
+	drupal_set_message(htmlspecialchars($form_data));*/
+
+	$saved_count = 0;
+	/* datalogger data will be an array of data items, so take each and save them
+	 */
+	if(is_array($datalogger_values))
 	{
-		// Ignore the special fields inserted for the ahah stuff in the form
-		if( !in_array($id, array('error_message', 'datalogger_fields')) )
+		foreach($datalogger_values as $reading)
 		{
-			$data->onepageprofile_categories[$id]['value'] = $form_state['values']['datalogger_data'][$id];
+			if(is_array($reading))
+			{
+				//Each reading is a new pi_data node.
+				$data = new stdClass();
+				$data->title = 'Inquiry data from datalogger';
+				$data->body = '';;
+				$data->uid = $user->uid;
+				$data->type = 'pi_data';
+				$data->status = 1;
+				$data->promote = 0;
+				foreach($reading as $measure)
+				{
+					$id = $measure->datafield;
+					if(array_key_exists($id, $datalogger_fields))
+					{
+						$value = $measure->value;
+						$data->onepageprofile_categories[$id]['value'] = $value;
+					}
+					else
+					{
+						drupal_set_message("There was a problem saving data item '$id' with value $value.", 'error');
+					}
+				}
+				node_save($data);
+				$saved_count++;
+			}
 		}
+		drupal_set_message("Saved $saved_count items of data.", 'information');
+		
 	}
-	node_save($data);
 }
 
 /**
