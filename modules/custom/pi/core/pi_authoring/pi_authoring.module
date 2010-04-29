@@ -143,13 +143,12 @@ function pi_authoring_menu() {
 	);
 
 	$items['piauthoring/newinquiry'] = array(
-	//'path' => 'piauthoring/newinquiry',
-      'title' => t('1. Define the basics'),
-  	  'page callback' => 'pi_authoring_new_inquiry',
+	  'title' => t('1. Create a new Inquiry'),
+  	  'page callback' => 'pi_authoring_new_inquiry_inquiry',
   	  'type' => MENU_NORMAL_ITEM,
       'access arguments' => array('access pi_authoring content'),
 	);
-	
+/* Deleting an inquiry now done via standard node delete function	
 	$items['piauthoring/newinquiry/1'] = array(
 	//'path' => 'piauthoring/newinquiry/stages',
      'title' => t('Remove'),
@@ -157,7 +156,7 @@ function pi_authoring_menu() {
 	 'type' => MENU_CALLBACK,
      'access arguments' => array('access pi_authoring content'),
 	);
-
+*/
 	$items['piauthoring/newinquiry/inquiry'] = array(
 	//'path' => 'piauthoring/newinquiry/inquiry',
       'title' => t('1.1. Inquiry'),
@@ -625,7 +624,7 @@ function draw_table($inquiry, $view_type){
 	 		}
 	 		else
 	 		{
-	 			//echo $phase->name . ", " . $stage->name . ", " . "null; ";
+	 			//echo $phase->title . ", " . $stage->title . ", " . "null; ";
 	 			//phase not in this stage
 	 			$stage_phase_activities[$stage->nid][$phase_nid] = NULL;
 	 		}
@@ -1392,7 +1391,7 @@ function pi_authoring_inquiry_add_phase_form(&$form_state, $inquiry){
 	
 	$form['add']['inquiry_id'] = array(
 		'#type' => 'hidden',
-		'#value' => $inquiry->inquiry_id,
+		'#value' => $inquiry->nid,
 	);
 
 	$form['add']['name'] = array(
@@ -1418,59 +1417,6 @@ function pi_authoring_inquiry_add_phase_form(&$form_state, $inquiry){
 	return $form;
 }
 
-
-
-
-
-
-/**
- * This generates the page to allow the adding of phases and stages to an inquiry
- */
-function pi_authoring_new_inquiry() {
-	$content = "<p>For each new inquiry you need to give it a name and to define the phases and stages.";
-	$content .= "  Each new inquiry needs to include a new set of phases and stages.</p>";
-	$content .= "<p><strong>Phase:</strong>  A phase is a part of the inquiry model.  For example, ";
-	$content .= " Find My Topic, Data Collection and Reflect.</p>";
-	$content .= "<p><strong>Stage:</strong> A stage is a temporal element.  This could be a lesson or ";
-	$content .= "homework or just a group of phases and activities that should be done before another set.";  
-	$content .= "Location is another aspect of a stage as where the activities are to be carried out should"; 
-	$content .= "influence the grouping of phases and activities in the stage.  For example, data collection";
-	$content .= " activities in the Data Collection phase should take into account whether it is taking place ";
-	$content .= "in the classroom, home or on a field trip.</p>";
-	
-	//warning about the remove links
-	$content .= "<p><strong>The remove links below remove entries from pi_stage and pi_phase along with the";
-	$content .= " corresponding entries in _actor, _stage_phase and _stage_phase_activity</strong></p>";
-	
-	//table of stages and phases
-	$stages = db_query("SELECT * FROM pi_stage");
-	$phases = db_query("SELECT * FROM pi_phase");
-	//table of stages
-	$content .= "<table>";
-	$content .= "<tr><td><strong>Stages</strong></td><td></td></tr>";
-	while($object = db_fetch_object($stages)){
-		$content .= "<tr>";
-		$content .= "<td width=100>" . $object->name . "</td>";
-		$link = "piauthoring/newinquiry/1/stage/" . $object->stage_id;
-		$content .= "<td>" . l("remove", $link) . "</td>";
-		$content .= "</tr>";
-	}
-	$content .= "</table>";
-	//table of phases
-	$content .= "<table>";
-	$content .= "<tr><td><strong>Phases</strong></td><td></td></tr>";
-	while($object = db_fetch_object($phases)){
-		$content .= "<tr>";
-		$content .= "<td width=100>" . $object->name . "</td>";
-		$link = "piauthoring/newinquiry/1/phase/" . $object->phase_id;
-		$content .= "<td>" . l("remove", $link) . "</td>";
-		$content .= "</tr>";
-	}
-	$content .= "</table>";
-	
-	return t($content);
-}
-
 /** 
  * Provides the confirmation page to delete an inquiry
  * @param $inquiry_id the id of the inquiry to be deleted
@@ -1484,7 +1430,7 @@ function pi_authoring_delete_inquiry_confirm(&$form_state, $inquiry) {
 		'#value' => $inquiry,
 	);
 	$return_data = confirm_form($form,
-	   	t('Are you sure you want to delete ' . t($inquiry->name) . '?'),
+	   	t('Are you sure you want to delete ' . t($inquiry->title) . '?'),
     	isset($_GET['destination']) ? $_GET['destination'] : 'piauthoring',
     	t('This action cannot be undone.'),
     	t('Delete'),
@@ -1510,7 +1456,7 @@ function pi_authoring_delete_inquiry_confirm_submit($form, &$form_state)
 	if ($form_state['values']['confirm'])
 	{
 		$inquiry_id = $form_state['values']['_inquiry_id'];
- 		pi_inquiry_delete($form_state['values'], $inquiry->inquiry_id);			
+ 		pi_inquiry_delete($form_state['values'], $inquiry->nid);			
  
 		drupal_set_message(t('Inquiry has been deleted.'));
   	}
@@ -1593,9 +1539,7 @@ function pi_authoring_new_inquiry_remove(){
  * pi_authoring_new_inquiry_inquiry: define new inquiry
  */
 function pi_authoring_new_inquiry_inquiry(){
-	$page_content = '<p>Create A New Inquiry</p>';
-	$page_content .= drupal_get_form('pi_authoring_new_inquiry_inquiry_form', $node);
-	return $page_content;
+	drupal_goto("node/add/pi-inquiry");
 }
 
 /**
@@ -1614,7 +1558,7 @@ function pi_authoring_new_inquiry_inquiry_form(&$node, $inquiry){
 	$form['name'] = array(
 		'#type' => 'textfield',
 		'#title' => t('Inquiry Name'),
-		'#default_value' => $inquiry->name,
+		'#default_value' => $inquiry->title,
 	);
 
 	$form['description'] = array(
@@ -1861,26 +1805,24 @@ function pi_authoring_new_inquiry_stages_form_submit($form, &$form_state){
 function pi_authoring_new_inquiry_first_organisation(){
 	$content = '<p>First Organisation of Content:  You now need to specify which phases belong to which stages</p>';
 	$query = "SELECT * FROM pi_inquiry";
-	$inquiries = db_query($query);
-	while($inquiry = db_fetch_object($inquiries)){
+	$inquiries = pi_inquiry_load_nids();
+	foreach($inquiries as $inquiry_nid)
+	{
+		$inquiry = node_load($inquiry_nid);
 		//name of inquiry
-		$content .= "<strong>" . $inquiry->name . "</strong><br>";
+		$content .= "<strong>" . $inquiry->title . "</strong><br>";
 		$content .= "<strong>!!remove will delete entry for pi_stage_phase as well as from pi_stage_phase_activity!!</strong><br><br>";
-		$query2 = "SELECT * FROM pi_inquiry_stage ";
-		$query2 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
-		$query2 .= "WHERE inquiry_id = '" . $inquiry->inquiry_id . "'";
-		$query2 .= "ORDER BY pi_inquiry_stage.stage_id";
-		$stages = db_query($query2);
-		while($stage = db_fetch_object($stages)){
-			$content .= "<strong>" . $stage->stage_id . " : " . $stage->name . "</strong>";
-			$query3 = "SELECT * FROM pi_stage_phase ";
-			$query3 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_stage_phase.phase_id ";
-			$query3 .= "WHERE stage_id = '" . $stage->stage_id ."'";
-			$stagephases = db_query($query3);
+		$stages= pi_stage_load_nids($inquiry->nid);
+		foreach($stages as $stage_nid)
+		{
+			$stage = node_load($stage_nid);
+			$content .= "<strong>" . $stage->nid . " : " . $stage->title . "</strong>";			
 			$content .= "<table>";
-			while($stagephase = db_fetch_object($stagephases)){
-				$content .= "<tr><td width=100>" . $stagephase->name . "</td>";
-				$remove_link = 'piauthoring/firstorganisation/1/' . $stagephase->psp_id;
+			foreach($stage->stage_phases as $phase_nid)
+			{				
+				$phase = node_load($phase_nid);
+				$content .= "<tr><td width=100>" . $phase->title . "</td>";
+				$remove_link = 'piauthoring/firstorganisation/1/' . $stage->stage_phase_ids[$phase_nid];
 				$content .= "<td width=100>" . l("remove",$remove_link) . "</td></tr>";
 			}
 			$content .= "</table>";
@@ -1937,12 +1879,13 @@ function pi_authoring_new_inquiry_first_organisation_stagesphases_form($form_sta
 		$usage_default_value =  $form_state['storage']['inquiry_id']['which'];
 	}
 	//ahah form
-	$query = "SELECT * FROM pi_inquiry";
-	$inquiries = db_query($query);
+	$inquiries = pi_inquiry_load_nids();
 	$options = array();
 	$options['none'] = 'none';
-	while($inquiry = db_fetch_object($inquiries)){
-		$options[$inquiry->inquiry_id] = $inquiry->inquiry_id . " : " . $inquiry->name;
+	foreach($inquiries as $inquiry_nid)
+	{
+		$inquiry = node_load($inquiry_nid);
+		$options[$inquiry->nid] = $inquiry->nid . " : " . $inquiry->title;
 	}
 	$form['inquiry_id'] = array(
 	    '#type'   => 'fieldset',
@@ -1978,32 +1921,27 @@ function pi_authoring_new_inquiry_first_organisation_stagesphases_form($form_sta
 	
 	if($usage_default_value != 'none'){
 		//main form bits that use the inquiry_id in the above ahah helper bit
-		$query2 = "SELECT * FROM pi_inquiry_stage ";
-		$query2 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
-		$query2 .= "WHERE pi_inquiry_stage.inquiry_id = '" . $usage_default_value . "'";
-		$query2 .= " ORDER BY pi_inquiry_stage.position";
-		$all_stages = db_query($query2);
-	
-		$query3 = "SELECT * FROM pi_inquiry_phase ";
-		$query3 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
-		$query3 .= "WHERE pi_inquiry_phase.inquiry_id = '"  . $usage_default_value . "'";
-		$query3 .= " ORDER BY pi_inquiry_phase.position";
-		$all_phases = db_query($query3);
+		$stages = pi_stage_load_nids($usage_default_value);		
+		$phases = pi_phase_load_nids($usage_default_value);
+		
 		$options2 = array();
-		while($phase = db_fetch_object($all_phases)){
-			//echo $phase->name;
-			$options2[$phase->phase_id] = $phase->phase_id . " : " . $phase->name;
+		foreach($phases as $phase_nid)
+		{
+			$phase = node_load($phase_nid);
+			$options2[$phase->nid] = $phase->nid . " : " . $phase->title;
 		}
 		$collapsed = FALSE;
-		while($stage = db_fetch_object($all_stages)){
-			$form['inquiry_id']['include'][$stage->stage_id] = array(
+		foreach($stages as $stage_nid)
+		{
+			$stage = node_load($stage_nid);
+			$form['inquiry_id']['include'][$stage->nid] = array(
 				'#type' => 'fieldset',
-				'#title' => t($stage->name),
+				'#title' => t($stage->title),
 				'#tree' => TRUE,
 				'#collapsible' => FALSE,
 	    		//'#collapsed' => $collapsed,
 			);
-			$form['inquiry_id']['include'][$stage->stage_id]['what'] = array(
+			$form['inquiry_id']['include'][$stage->nid]['what'] = array(
 				'#type' => 'checkboxes',
 				'#title' => t('Select Phase To Include In This Stage'),
 				'#options' => $options2,
@@ -2032,12 +1970,12 @@ function pi_authoring_new_inquiry_first_organisation_stagesphases_form_submit($f
 	$all_stages = db_query($query);
 
 	while($stage = db_fetch_object($all_stages)){
-		$array = $form_state['values']['inquiry_id']['include'][$stage->stage_id]['what'];
+		$array = $form_state['values']['inquiry_id']['include'][$stage->nid]['what'];
 		if($array != NULL & $array != 0){
 			$content = array_filter($array);
 			foreach($content as $c){
 				$query2 = "INSERT INTO pi_stage_phase SET ";
-				$query2 .= "stage_id = '" . $stage->stage_id . "' ";
+				$query2 .= "stage_id = '" . $stage->nid . "' ";
 				$query2 .= ", phase_id = '" . $c . "'";
 				db_query($query2);
 			}
@@ -2278,12 +2216,14 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form($form
 		$usage_default_value =  $form_state['storage']['inquiry_id']['which'];
 	}
 	//ahah form
-	$query = "SELECT * FROM pi_inquiry";
-	$inquiries = db_query($query);
+	
+	$inquiries = pi_inquiry_load_nids();
 	$options = array();
 	$options['none'] = 'none';
-	while($inquiry = db_fetch_object($inquiries)){
-		$options[$inquiry->inquiry_id] = $inquiry->inquiry_id . " : " . $inquiry->name;
+	foreach($inquiries as $inquiry_nid)
+	{
+		$inquiry = node_load($inquiry_nid);
+		$options[$inquiry->nid] = $inquiry->nid . " : " . $inquiry->title;
 	}
 	$form['inquiry_id'] = array(
 	    '#type'   => 'fieldset',
@@ -2335,44 +2275,38 @@ function pi_authoring_new_inquiry_define_inquiry_phases_stages_actors_form($form
 		);
 
 		//stages and phases
-		$query2 = "SELECT * ";
-		$query2 .= "FROM pi_inquiry_phase ";
-		$query2 .= "LEFT JOIN pi_phase ON pi_phase.phase_id = pi_inquiry_phase.phase_id ";
-		$query2 .= "WHERE pi_inquiry_phase.inquiry_id = '" . $usage_default_value . "' ";
-		$query2 .= "ORDER BY pi_inquiry_phase.position";
-		$phases = db_query($query2);
-
+		$phases = pi_phase_load_nids($usage_default_value);
+		
 		$form['inquiry_id']['phase'] = array(
 			'#type' => 'fieldset',
 			'#title' => t('Select Actors for Each Phase Listed Below'),
 			'#collapsible' => TRUE,
 			'#tree' => TRUE,
 		);
-		while($phase = db_fetch_object($phases)){
-			$form['inquiry_id']['phase'][$phase->phase_id] = array(
+		foreach($phases as $phase_nid)
+		{
+			$phase = node_load($phase_nid);
+			$form['inquiry_id']['phase'][$phase->nid] = array(
 				'#type' => 'select',
-				'#title' => t('Select Actor For This Phase: ' . $phase->name),
+				'#title' => t('Select Actor For This Phase: ' . $phase->title),
 				'#options' => $group_options,
 			);
 		}
 
-		$query3 = "SELECT * ";
-		$query3 .= "FROM pi_inquiry_stage ";
-		$query3 .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_inquiry_stage.stage_id ";
-		$query3 .= "WHERE pi_inquiry_stage.inquiry_id = '" . $usage_default_value . "' ";
-		$query3 .= "ORDER BY pi_inquiry_stage.position";
-		$stages = db_query($query3);
-
+		$stages = pi_stage_load_nids($usage_default_value);
+		
 		$form['inquiry_id']['stage'] = array(
 			'#type' => 'fieldset',
 			'#title' => t('Select Actors for Each Stage Listed Below'),
 			'#collapsible' => TRUE,
 			'#tree' => TRUE,
 		);
-		while($stage = db_fetch_object($stages)){
-			$form['inquiry_id']['stage'][$stage->stage_id] = array(
+		foreach($stages as $stage_nid)
+		{
+			$stage = node_load($stage_nid);
+			$form['inquiry_id']['stage'][$stage->nid] = array(
 				'#type' => 'select',
-				'#title' => t('Select Actor For This Stage: ' . $stage->name),
+				'#title' => t('Select Actor For This Stage: ' . $stage->title),
 				'#options' => $group_options,
 			);
 		}
@@ -3138,7 +3072,7 @@ function pi_authoring_advanced_groups_create_form($form_state){
 	$inquiry_options = array();
 	$inquiry_options['none'] = 'none';
 	while($inquiry = db_fetch_object($inquiries)){
-		$inquiry_options[$inquiry->inquiry_id] = $inquiry->inquiry_id . " : " . $inquiry->name;
+		$inquiry_options[$inquiry->nid] = $inquiry->nid . " : " . $inquiry->title;
 	}
 	
 	$form['add']['inquiry']['which'] = array(
@@ -3174,7 +3108,7 @@ function pi_authoring_advanced_groups_create_form($form_state){
 	$stage_options = array();
 	$stage_options['none'] = 'none';
 	while($stage = db_fetch_object($stages)){
-		$stage_options[$stage->stage_id] = $stage->stage_id . " : " . $stage->name;
+		$stage_options[$stage->nid] = $stage->nid . " : " . $stage->title;
 	}
 	
 	$form['add']['stage']['which'] = array(
@@ -3210,7 +3144,7 @@ function pi_authoring_advanced_groups_create_form($form_state){
 	$phase_options = array();
 	$phase_options['none'] = 'none';
 	while($phase = db_fetch_object($phases)){
-		$phase_options[$phase->phase_id] = $phase->phase_id . " : " . $phase->name;
+		$phase_options[$phase->nid] = $phase->nid . " : " . $phase->title;
 	}
 	
 	$form['add']['phase']['which'] = array(
