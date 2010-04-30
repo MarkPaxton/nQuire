@@ -460,6 +460,7 @@ function pi_activity_view($activity_id, $arg_node_function=NULL) {
 	elseif ($arg_node_function == 'view'  && ($node_function ==  'view' || $node_function ==  'edit')) {
 		//get nid
 		$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
+		print 'x'.$nid.'x';
 		//build page
 		$loaded_node = node_load($nid);
 		$output = node_view($loaded_node, FALSE, TRUE, TRUE);
@@ -1285,7 +1286,7 @@ function insert_activity_actor($activity_actor_array) {
  * $activity_actor_array ->uid
  * $activity_actor_array ->gid
  */
-function update_activity_actor ($paac_id, $activity_actor_array) {
+function update_activity_actor ($activity_actor_array) {
 	$query = "UPDATE pi_activity_actor SET ";
 	$query .= "inquiry_id = '" . $activity_actor_array["inquiry_id"] . "' ";
 	$query .= ", activity_id = '" . $activity_actor_array["activity_id"] . "' ";
@@ -1956,6 +1957,7 @@ function get_inquiries_of_user($uid = 0) {
 	}
 
 	$query .= " ORDER BY pi_inquiry.weight ASC";
+
 	$result = db_query($query);
 
 	$inquiries = array();
@@ -2017,6 +2019,7 @@ function get_current_stage_of_inquiry_and_user($inquiry_id, $uid) {
 	$query .= "FROM pi_current_stage ";
 	$query .= "WHERE pi_current_stage.inquiry_id = '" . $inquiry_id . "' ";
 	$query .= "AND pi_current_stage.uid =  " . $uid. " ";
+	
 
 	$result = db_fetch_object(db_query($query));
 
