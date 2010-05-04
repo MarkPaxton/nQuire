@@ -268,8 +268,10 @@ function pi_stage_form_validate($node, &$form)
  * hook_insert() - INSERT command for a new inquiry stage, also creates links to phases
  */
 function pi_stage_insert($node) {
-	// The default value for order will always be the number of nodes (since ordering starts at 0).
-	$initial_weight = db_result(db_query("SELECT COUNT(nid) from pi_stage WHERE inquiry_nid=%d", $node->inquiry_nid));
+	// Query the database first to set the weight to place the item at the end of lists.
+	// If the query result is NULL then the the field will to default=0 since the weight
+	// column is defined with NOT NULL DEFAULT 0   
+	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 from pi_stage WHERE inquiry_nid=%d", $node->inquiry_nid));
 
 	db_query("INSERT INTO {pi_stage} (nid, vid, inquiry_nid, weight) VALUES (%d, %d, %d, %d)",
 		$node->nid, $node->vid, $node->inquiry_nid, $initial_weight);
