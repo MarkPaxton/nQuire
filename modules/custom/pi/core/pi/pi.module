@@ -475,6 +475,7 @@ function pi_activity_view($activity_id, $arg_node_function=NULL) {
 		//build page
 		$loaded_node = node_load($nid);
 		$output = node_view($loaded_node, FALSE, TRUE, TRUE);
+		$output .= t(next_button());
 	}
 	else {
 		$output = t("Permission denied");
@@ -2390,5 +2391,100 @@ function suffix_translate ($actor) {
 	}
 }
 
+function next_button() {
 
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	
+	$activities = get_viewable_activity_ids ($details->inquiry_id, $user->uid);
+	
+	$next_activity = $activities[0];
+    foreach($activities as $activity) {
+		if ($prev_activity == $details->activity_id) {
+			$next_activity = $activity;
+		}
+		$prev_activity = $activity;
+	};
+	
+	
+	$loaded_activity = load_activity($next_activity);
+	$loaded_activity_status = load_activity_status($details->inquiry_id, $next_activity, $user->uid);
+	
+	switch ($loaded_activity->destination) {
+		case "self":
+			$destination = "";
+			break;
+		case "phase":
+			$destination = t("destination=" . t("phase/" . $phase->nid));
+			break;
+		default:
+			$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
+			break;
+	};
 
+	// so that (by default) always open an exitsing node in view
+	// if node_function for link is edit or view then set node function to view
+	$link_node_function = $loaded_activity_status->node_function;
+	if (($link_node_function == 'edit') OR ($link_node_function == 'view')) {
+		$link_node_function = 'view';
+	};
+
+	$activity_path = "activity/" . $next_activity . "/" . $link_node_function;
+	if ($loaded_activity_status->visible_status == 'unavailable') {
+		$activity_link = t($loaded_activity->name);
+	}
+	else {
+		$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
+			$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+		}
+		else {
+			$new_icon = "";
+		};
+		
+		// $activity_link = l(t('Next'), $activity_path, array('html' => TRUE, 'query' => $destination));
+		$activity_link = t('<strong>Next: </strong>') . l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
+		
+	};
+				
+	$output = "";
+	
+	if ($next_activity) {
+		$output .= "<p>";
+		$output .=  $activity_link;
+		$output .= "</p>";
+	};
+	
+	return $output;
+
+}
+
+function get_viewable_activity_ids ($inquiry_id, $uid) {
+	
+	$query = "SELECT DISTINCT(pi_activity_status.activity_id),pi_phase.weight,pi_stage_phase_activity.position FROM pi_activity_status ";
+	$query .= "LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id ";
+	$query .= "LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id ";
+	$query .= "LEFT JOIN pi_phase ON pi_stage_phase.phase_id = pi_phase.nid ";
+	$query .= "LEFT JOIN pi_activity_actor ON pi_activity_status.activity_id = pi_activity_actor.activity_id ";
+	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
+	$query .= "WHERE (pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
+	$query .= "AND (pi_activity_status.visible_status = 'view' OR pi_activity_status.visible_status = 'edit')) ";
+	$query .= "AND (og_uid.uid = '" . $uid . "' OR pi_activity_actor.uid = '" . $uid . "') ";
+	$query .= "ORDER BY pi_phase.weight,pi_stage_phase_activity.position";
+
+	// print $query;
+	$results = db_query($query);
+	$activity_ids = array();
+	
+	$hidden_created_activity_types = array('pi_measure_filter');
+	
+	while ($item = db_fetch_object($results)) {
+		$loaded_activity = load_activity($item->activity_id);
+        if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
+			$activity_ids[] = $item->activity_id;
+		};
+	};
+	
+	return $activity_ids;
+	
+}
