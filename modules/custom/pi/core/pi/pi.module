@@ -455,6 +455,7 @@ function pi_activity_view($activity_id, $arg_node_function=NULL) {
 			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 		}
 		$output = node_add($node_type);
+		$output .= t(activity_suffix());
 	}
 	elseif ($node_function == 'edit' && $arg_node_function ==  'edit') {
 		//get nid
@@ -465,11 +466,12 @@ function pi_activity_view($activity_id, $arg_node_function=NULL) {
 			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 		}
 		$output = node_page_edit($loaded_node);
+		$output .= t(activity_suffix());
 	}
 	elseif ($arg_node_function == 'view'  && ($node_function ==  'view' || $node_function ==  'edit')) {
 		//get nid
 		$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
-		print 'x'.$nid.'x';
+		
 		//build page
 		$loaded_node = node_load($nid);
 		$output = node_view($loaded_node, FALSE, TRUE, TRUE);
@@ -625,10 +627,9 @@ function compare_status($a, $b) {
  * @return sting HTMl output of the phase
  */
 function pi_inquiry_phase_view($phase) {
+
 	global $user;
-
 	$details = get_inquiry_details_from_current_path();
-
 	drupal_set_title($phase->title);
 
 	//stage is set to NULL to show all activities of the phase
@@ -638,67 +639,76 @@ function pi_inquiry_phase_view($phase) {
 	$output .= "<div style='display: block; clear: both;'>";
 	$output .= t("<p>" . $phase->body . "</p>");
 	$output .= "</div>";
+	
+	$hidden_created_activity_types = array('pi_measure_filter');
 
-	if ($activities)
-	{
-		$headings = array('Activity', 'You can...', 'Description');
+	if ($activities) {
+	
+		// $headings = array('Activity', 'You can...', 'Description');
+		$headings = array('Activity', 'Description');
 		$table = array();
 
 		$active_activity_flag = 0;
 
-		foreach ($activities as $activity)
-		{
+		foreach ($activities as $activity) {
+		
 			$loaded_activity = load_activity($activity->activity_id);
 			$loaded_activity_status = load_activity_status($phase->inquiry_nid, $activity->activity_id, $user->uid);
+			
+			// only display activities that are not in the hidden list
+			if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
+				switch ($loaded_activity->destination) {
+					case "self":
+						$destination = "";
+						break;
+					case "phase":
+						$destination = t("destination=" . t("phase/" . $phase->nid));
+						break;
+					default:
+						$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
+						break;
+				};
+			
+				// so that (by default) always open an exitsing node in view
+				// if node_function for link is edit or view then set node function to view
+				$link_node_function = $loaded_activity_status->node_function;
+				if (($link_node_function == 'edit') OR ($link_node_function == 'view')) {
+					$link_node_function = 'view';
+				};
+			
+	  			$activity_path = "activity/" . $activity->activity_id . "/" . $link_node_function;
+	  			if ($loaded_activity_status->visible_status == 'unavailable') {
+	  				$activity_link = t($loaded_activity->name);
+	  			}
+				else {
+					$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+					if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
+	  					$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+	  				}
+	  				else {
+	  					$new_icon = "";
+	  				};
+  					$activity_link = l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
+				};
 
-			switch ($loaded_activity->destination)
-			{
-				case "self":
-					$destination = "";
-					break;
-				case "phase":
-					$destination = t("destination=" . t("phase/" . $phase->nid));
-					break;
-				default:
-					$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
-					break;
-			}
+	  			if (($active_activity_flag == 0) AND $loaded_activity) {
+	  				$active_activity_flag = 1;
+	  			};
 
-  			$activity_path = "activity/" . $activity->activity_id . "/" . $loaded_activity_status->node_function;
-  			if ($loaded_activity_status->visible_status == 'unavailable') {
-  				$activity_link = t($loaded_activity->name);
-  			}
-      else {
-
-    	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
-  					$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
-  				}
-  				else
-  				{
-
-  					$new_icon = "";
-  				};
-  				$activity_link = l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
-  			}
-
-  			if (($active_activity_flag == 0) AND $loaded_activity) {
-  				$active_activity_flag = 1;
-  			};
-
-  			$table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
+	  			// $table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
+	  			$table[] = array($activity_link , t($loaded_activity->description));
+			};
 		};
+		
 		$output .= theme('table', $headings, $table);
-
-		if ($active_activity_flag == 0)
-		{
+		
+		if ($active_activity_flag == 0) {
 			$output .= "<div class='status'><div class='messages'><ul><li>None of the above activities can be accessed at this stage.</li></ul></div></div>";
 		};
 	}
-	else
-	{
+	else {
 		$output .= "<div class='status'><div class='messages'><ul><li>No activities are available in this phase at this stage.</li></ul></div></div>";
-	}
+	};
 	return $output;
 }
 

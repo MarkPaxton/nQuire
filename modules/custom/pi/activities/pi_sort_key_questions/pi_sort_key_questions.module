@@ -52,7 +52,7 @@ function pi_sort_key_questions_theme() {
  * Admin page to change category weights
  */
 function pi_sort_key_questions_form(&$node) {
-		$node_details = get_inquiry_details_from_current_path();
+	$node_details = get_inquiry_details_from_current_path();
   	if (is_numeric($node_details->activity_id)) {
   		$current_activity = load_activity($node_details->activity_id);
   	}
@@ -111,7 +111,7 @@ function pi_sort_key_questions_form(&$node) {
 						'#default_value' => $category['#weight'],
         );
     }
-		$form['#suffix'] = t(activity_suffix());
+    
     return $form;
 }
 
@@ -174,6 +174,7 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 }
 
 function theme_pi_sort_key_questions(&$node) {
+
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
@@ -191,29 +192,23 @@ function theme_pi_sort_key_questions(&$node) {
     	$output  .= '<p>' . t($current_activity->description) . '</p>';
     }
     else {
-    	$output  .= '<p>' . t('Order your key questions.') . '</p>';
+    	$output  .= '<p>' . t('Your key questions.') . '</p>';
     }
 
     $header = array(
-        t("Key question"),
-        t('Action')
+        t("Key question")
     );
 
     $rows = array();
 
     if (is_array($node->categories)) {
         foreach($node->categories as $key => $category) {
-            $measure = node_load($key);
-            
             $row_activity_id = get_activity_id_for_nid($key);
-						$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
-						$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-						$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
-				
-            $row = array();
-            $row[] = t($category['#title']);
-            $row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
-            $rows[] = array('data' => $row);
+			if ($row_activity_id) {
+		        $row = array();
+		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+		        $rows[] = array('data' => $row);
+            };
         }
     }
 		
@@ -243,8 +238,7 @@ function theme_pi_sort_key_questions_node_form($form) {
     // Header
     $header = array(
         t('Key question'),
-        t('Weight'),
-        t('Action')
+        t('Weight')
     );
 
     // Rows for the tabledrag
@@ -254,15 +248,9 @@ function theme_pi_sort_key_questions_node_form($form) {
     foreach (element_children($tree) as $key) {
         $tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
         
-				$row_activity_id = get_activity_id_for_nid($key);
-				$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
-				$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-				$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
-				
         $row = array();
         $row[] = drupal_render($tree[$key]['title']);
         $row[] = drupal_render($tree[$key]['weight']);
-        $row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
 
         $rows[] = array('data' => $row, 'class' => 'draggable');
     }

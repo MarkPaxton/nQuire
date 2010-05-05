@@ -121,7 +121,7 @@ function pi_sort_data_form(&$node) {
         );
 
     }
-		$form['#suffix'] = t(activity_suffix());
+    
     return $form;
 }
 
@@ -198,25 +198,19 @@ function theme_pi_sort_data(&$node) {
     }
 
     $header = array(
-        t("Data"),
-        t('Action')
+        t("Data")
     );
 
     $rows = array();
 
     if (is_array($node->categories)) {
     	foreach($node->categories as $key => $category) {
-            $measure = node_load($key);
-
             $row_activity_id = get_activity_id_for_nid($key);
-						$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
-						$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-						$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
-						
-            $row = array();
-            $row[] = t($category['#title']);
-            $row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
-            $rows[] = array('data' => $row);
+			if ($row_activity_id) {
+		        $row = array();
+		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+		        $rows[] = array('data' => $row);
+            };
         }
     }
 
@@ -246,8 +240,7 @@ function theme_pi_sort_data_node_form($form) {
     // Header
     $header = array(
         t('Data'),
-        t('Weight'),
-    		t('Action')
+        t('Weight')
     );
 
     // Rows for the tabledrag
@@ -256,16 +249,10 @@ function theme_pi_sort_data_node_form($form) {
     $tree = &$form['onepageprofile_categories'];
     foreach (element_children($tree) as $key) {
         $tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
-
-				$row_activity_id = get_activity_id_for_nid($key);
-				$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
-				$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-				$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
 				
         $row = array();
         $row[] = drupal_render($tree[$key]['title']);
         $row[] = drupal_render($tree[$key]['weight']);
-        $row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
 
         $rows[] = array('data' => $row, 'class' => 'draggable');
     }
