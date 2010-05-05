@@ -110,7 +110,10 @@ function pi_inquiry_form_alter(&$form, $form_state, $form_id) {
  * INSERT command for a new inquiry
  */
 function pi_inquiry_insert($node) {
-	$initial_weight = db_result(db_query("SELECT COUNT(nid) from pi_inquiry"));
+	// Query the database first to set the weight to place the item at the end of lists.
+	// If the query result is NULL then the the field will to default=0 since the weight
+	// column is defined with NOT NULL DEFAULT 0   
+	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 from pi_inquiry"));
 	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight) VALUES (%d, %d, %d, %d)",
 		$node->nid, $node->vid, $node->layout, $initial_weight);
 }
