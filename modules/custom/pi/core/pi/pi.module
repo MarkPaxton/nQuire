@@ -492,7 +492,7 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 	$query1 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
 	$query1 .= " AND pi_activity_node.activity_id = " . $activity_id;
 	$query1 .= " AND node.nid = pi_activity_node.nid";
-	$query1 .= " AND node.uid = " . $uid;
+	$query1 .= " AND node.uid = '" . $uid . "' ";
 	$query1 .= " ORDER BY pan_id DESC";
 	$result = db_fetch_object(db_query($query1));
 
@@ -502,12 +502,13 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 
 	//find if uid is member of a group for the node
 	$query2 = "SELECT pi_activity_node.nid FROM pi_activity_node, node_access, og_uid";
-	$query2 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
-	$query2 .= " AND pi_activity_node.activity_id = " . $activity_id;
+	$query2 .= " WHERE  pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+	$query2 .= " AND pi_activity_node.activity_id = '" . $activity_id . "' ";
 	$query2 .= " AND node_access.nid = pi_activity_node.nid";
-	$query2 .= " AND node_access.gid = gid";
+	$query2 .= " AND ((node_access.gid = gid";
 	$query2 .= " AND node_access.gid = og_uid.nid";
-	$query2 .= " AND og_uid.uid = " . $uid;
+	$query2 .= " AND og_uid.uid = '" . $uid . "') ";
+	$query2 .= " OR node_access.realm = 'all') ";
 
 	$result = db_fetch_object(db_query($query2));
 	return $result->nid;
@@ -641,6 +642,7 @@ function pi_inquiry_phase_view($phase) {
 	$output .= t("<p>" . $phase->body . "</p>");
 	$output .= "</div>";
 	
+
 	$hidden_created_activity_types = array('pi_measure_filter');
 
 	if ($activities) {
@@ -758,6 +760,7 @@ function get_inquiry_details_from_current_path() {
 	elseif ((arg(0) == 'activity') || (arg(0) == 'export')) {
 		//get inquiry from the database
 		$sid = get_current_session_id();
+		
 		$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
 		$result->inquiry_id = $inquiry->inquiry_id;
 
@@ -1994,6 +1997,7 @@ function get_current_session_id() {
 	return $session;
 }
 
+
 /**
  * Returns current inquiry_id for session and uid
  */
@@ -2399,6 +2403,7 @@ function next_button() {
 	$activities = get_viewable_activity_ids ($details->inquiry_id, $user->uid);
 	
 	$next_activity = $activities[0];
+
     foreach($activities as $activity) {
 		if ($prev_activity == $details->activity_id) {
 			$next_activity = $activity;
@@ -2480,6 +2485,7 @@ function get_viewable_activity_ids ($inquiry_id, $uid) {
 	
 	while ($item = db_fetch_object($results)) {
 		$loaded_activity = load_activity($item->activity_id);
+
         if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
 			$activity_ids[] = $item->activity_id;
 		};

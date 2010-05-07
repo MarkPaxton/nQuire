@@ -502,97 +502,19 @@ function add_activity_when_add_measure_created($node, $user, $node_function, $vi
 function add_data_activity_from_data_logger($node, $user, $node_function, $visible_status) {
 	//As this is coming in from ahah_helper the args are different
 	//Therefore standard way of getting details from path does not work
-	$details = new stdClass;
-	$details->inquiry_id = arg(2);
-	$details->stage_id = arg(3);
-	$details->phase_id = arg(4);
-	$details->activity_id = arg(5);
-
-	$loaded_activity =  load_activity($details->activity_id);
+	global $user;
+	$uid = $user->uid;
+	$inquiry_id = arg(2);
 	
-	///Get values of key measures and use these to name the new activity
-	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-
-	if ($measures_param) {
-		$measures_node = node_load($measures_param);
-		$measure_rows = $measures_node->categories;
-	}
-	
-	$title_array = array();
-	
-	foreach ($measure_rows as $measure_nid => $measure_selection) {
-  	if($measure_selection['#status'] == 'key') {
-  		$key = t($measures_param . "-" . $measure_nid);
-  		$title_array[] = t($node->onepageprofile_categories[$key]['value']);
-  	}
-  }
-	
-	//values of key measures becomes the activity name
-	$activity_name = implode("-",$title_array);
-	
-	//if empty give a placeholder name
-	if (strlen($activity_name) < 2) {
-        $activity_name = "Data";
-  }
-  	
-  //the new activity
-	$activity_array = array();
-	// $activity_array["name"] = t("D: " . $activity_name);
-	$activity_array["name"] = t($activity_name);
-	$activity_array["description"] = $loaded_activity->description;
-	$activity_array["activity_type"] = $loaded_activity->activity_type;
-	$activity_array["node_type"] = $loaded_activity->node_type;
-	$activity_array["parameters"] = $loaded_activity->parameters;
-	$activity_array["destination"] = $loaded_activity->destination;
-	$activity_array["audience"] = $loaded_activity->audience;
-
-	//create the new activity
-	save_activity($activity_array);
-	$query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
-	$new_activity_id = db_result(db_query($query2));
-
-	//****new details object
-	$new_details = new stdClass;
-	$new_details->inquiry_id = $details->inquiry_id;
-	$new_details->stage_id = $details->stage_id;
-	$new_details->phase_id = $details->phase_id;
-	$new_details->activity_id = $new_activity_id;
-
-	//set status for the new activity
-	$activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
-	$new_activity_status = new stdClass;
-	$new_activity_status->inquiry_id = $activity_status->inquiry_id;
-	$new_activity_status->activity_id = $new_activity_id;
-	$new_activity_status->uid = $activity_status->uid;
-	$new_activity_status->gid = $activity_status->gid;
-	$new_activity_status->node_function = $activity_status->node_function;
-	$new_activity_status->visible_status = $activity_status->visible_status;
-	save_activity_status($new_activity_status);
-
-	//set actor for the new activity
-	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
-	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
-	$new_activity_actor["activity_id"] = $new_activity_id;
-  $new_activity_actor["uid"] = $activity_actor[0]["uid"];
-  $new_activity_actor["gid"] = $activity_actor[0]["gid"];
-	insert_activity_actor($new_activity_actor);
-	
-	//set the stage phase activity
-	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
-	if(!$psp_id) {
-		$psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
-	}
-
-	$query = "SELECT position FROM pi_stage_phase_activity WHERE psp_id = " . $psp_id . " ORDER BY position DESC";
-	$current_pos = db_result(db_query($query));
-	$new_pos = $current_pos + 1;
-	insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
-
-	//set pi activity node
-	add_new_pi_activity_node($node, $user, $node_function, $visible_status, $new_details);
-	
-
+	drupal_set_message('from datalogger');
+	drupal_set_message('0'.arg(0));
+	drupal_set_message('1'.arg(1));
+	drupal_set_message('2'.arg(2));
+	drupal_set_message('3'.arg(3));
+	drupal_set_message('4'.arg(4));
+	drupal_set_message('5'.arg(5));
 }
+
 
 /*
  * PI add data used. Create another activity containing the entered data.
@@ -600,22 +522,23 @@ function add_data_activity_from_data_logger($node, $user, $node_function, $visib
 function workflow_for_created_node_adder_activity($node, $user, $node_function, $visible_status) {
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
+
 	$loaded_activity =  load_activity($details->activity_id);
 		
 	/*Get values of key measures and use these to name the new activity*/
-	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-
+	
 	if ($measures_param) {
 		$measures_node = node_load($measures_param);
 		$measure_rows = $measures_node->categories;
 	}
 	
 	$title_array = array();
-	
-	foreach ($measure_rows as $measure_nid => $measure_selection) {
-  	if($measure_selection['#status'] == 'key') {
-  		$key = t($measures_param . "-" . $measure_nid);
-  		$title_array[] = t($node->onepageprofile_categories[$key]['value']);
+	if($measure_rows) {
+		foreach ($measure_rows as $measure_nid => $measure_selection) {
+  		if($measure_selection['#status'] == 'key') {
+  			$key = t($measures_param . "-" . $measure_nid);
+  			$title_array[] = t($node->onepageprofile_categories[$key]['value']);
+  		}
   	}
   }
 	
@@ -705,8 +628,6 @@ function add_new_pi_activity_node($node, $user, $node_function, $visible_status,
     set_pi_activity_node_for_activity($details->inquiry_id, $details->activity_id, $node->nid);
     $activity = load_activity($details->activity_id);
 
-    $activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
-
 
     //if the status was not set specifically for this user and it is an individual activity
     if ($activity->audience == "individual") {
@@ -716,7 +637,7 @@ function add_new_pi_activity_node($node, $user, $node_function, $visible_status,
             unset($activity_status->pas_id);
         }
     }
-
+		
     //set the correct group
     else {
         $users_group = get_group_of_type($uid, $activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
