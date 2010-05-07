@@ -109,7 +109,6 @@ function pi_sort_key_answers_form(&$node) {
             '#default_value' => $node_categories[$key]['#weight'],
         );
     }
-		$form['#suffix'] = t(activity_suffix());
     return $form;
 }
 
@@ -177,30 +176,39 @@ function theme_pi_sort_key_answers(&$node) {
   	}
   	
     $output = "";
+    
+    if ($current_activity->description) {
+    	$output  .= '<p>' . t($current_activity->description) . '</p>';
+    }
+    else {
+    	$output  .= '<p>' . t('Your key answers.') . '</p>';
+    };
 
     $header = array(
-        t("Key answer"),
-        t('Action')
+        t("Key answer")
     );
 
     $rows = array();
 
     if (is_array($node->categories)) {
-    	foreach($node->categories as $key => $category) {
-    	
+        foreach($node->categories as $key => $category) {
             $row_activity_id = get_activity_id_for_nid($key);
-						$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
-						$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-						$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
-						
-						$row = array();
-            $row[] = t($category['#title']);
-            $row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
-            $rows[] = array('data' => $row);
+			if ($row_activity_id) {
+		        $row = array();
+		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+		        $rows[] = array('data' => $row);
+            };
         }
     }
 
-    $output .= theme('table', $header, $rows);
+	//only display form and submit button if there are some entries
+    if (count($rows) > 0) {
+    	$output .= theme('table', $header, $rows);
+    }
+   	else {
+   		$output .= "<p>No key answers are available.</p>";
+   	}
+   	
     return $output;
 }
 
@@ -259,23 +267,17 @@ function theme_pi_sort_key_answers_node_form($form) {
   		$rows[$key] = array();
    	 $key_question = node_load($key);
    	 $key_question_options[$key] = $key_question->title;
-   	 $header[$key] = array(t($key_question->title), t('Weight'), t('Action'));
+   	 $header[$key] = array(t($key_question->title), t('Weight'));
    	}
   }
 
 	$tree = &$form['onepageprofile_categories'];
 	foreach (element_children($tree) as $key) {
 		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
-
-		$row_activity_id = get_activity_id_for_nid($key);
-		$row_visible_status = get_visible_status_of_activity ($details->inquiry_id, $row_activity_id, $uid);
-		$table_visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-		$destination = t('activity/' . $details->activity_id . '/' . $table_visible_status);
 				
 		$row = array();
 		$row[] = drupal_render($tree[$key]['title']);
 		$row[] = drupal_render($tree[$key]['weight']);
-		$row[] = table_activity_link($row_activity_id, $row_visible_status, $destination);
 		
 		$key_answer_node = node_load($key);
 		$key_question = $key_answer_node->key_question_id;
