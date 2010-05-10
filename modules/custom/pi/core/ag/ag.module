@@ -192,8 +192,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
         	$show_activities = show_activites($user->uid);
         	$show_phases = show_phases($user->uid);
-			// $hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
-			$hidden_created_activity_types = array('pi_measure_filter');
+			 $hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
 						
             $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
             
@@ -235,17 +234,19 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
         			if ($phase->nid == $node_details->phase_id && $show_activities) {
 
         				//$activities = get_activities_of_stage_phase_and_user(1, NULL, NULL, 1);
+        				 
         				$activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->nid, $user->uid);
 
         				foreach($activities as $activity) {
-                    
-                    		$loaded_activity = load_activity($activity->activity_id);
+                    		                  		$loaded_activity = load_activity($activity->activity_id);
                     		
                     		//do not show activity if created and on the hidden list
                     		//this applies to e.g. created measures or data that you 
                     		//do not want to show
                     		$loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
-                    		if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types) && $loaded_activity_nid)) {
+                    		$visible_status = get_visible_status_of_activity($node_details->inquiry_id, $activity->activity_id, $user->uid);
+                    	
+                    		if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) || $visible_status == 'start') {
                         	$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
                         }
         				};
