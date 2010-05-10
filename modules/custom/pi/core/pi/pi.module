@@ -275,10 +275,9 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count, 
 		$background_arrows_image .= '<img width="426" height="278" src="' . $image_path . 'arrows_octagon.png" />';
 		$left_positions = array('380px', '450px', '450px', '380px', '80px', '10px', '10px', '80px');
 		$top_positions = array('10px', '95px', '180px', '270px', '270px', '180px', '95px', '10px');
-		
 		$phase_icons = array('topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', '', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
 	};
-
+	
 	$output .= '<div style="position: relative; width: 100%; height: 500px;">';
 	$output .= $background_arrows_image;
 	$output .= '</div>';
@@ -440,24 +439,19 @@ function pi_view($node) {
 	{
 		$phase = node_load($phase_nid);
 		$row = array();
-		
-		if ( in_array($phase->nid, $phases_of_current_stage)) 
-		{
-			//$row[] = l(t($phase->title . " <img width='12' src='" . $image_path . "folder_empty_current.png'/>"), t("phase/" . $phase->nid), array('html' => TRUE));
-			$row[] = l(t($phase->title), t("phase/" . $phase->nid), array('html' => TRUE));
+		if (in_array($phase->nid, $phases_of_current_stage)) {
+			$row[] = l(t($phase->title . " <img width='12' src=' . $image_path . folder_empty_current.png'/>"), t("phase/" . $phase->nid), array('html' => TRUE));
 		}
 		else {
 			$row[] = l($phase->title, t("phase/" . $phase->nid));
-			//$row[] = "HELLO WORLD";
 		}
-		
 		$row[] = $phase->body;
 		$rows[] = array('data' => $row);
 		$activity_count[] = count(get_activities_of_stage_phase_and_user($phase->inquiry_id, NULL, $phase->nid, $user->uid));
 		$new_activity_count[] = new_activity_list_count($phase->inquiry_id, $phase->nid, $user->uid);
 	}
 	//get_phase_view_preference
-	$output .= display_phases($headings, $rows, $activity_count, $new_activity_count, $node->layout);
+	$output .= display_phases($headings, $rows, $activity_count, $new_activity_count);
 	//$output .= theme('table', $header, $rows);
 	return $output;
 }
@@ -486,6 +480,7 @@ function pi_activity_view($activity_id, $arg_node_function=NULL) {
 			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 		}
 		$output = node_add($node_type);
+		$output .= t(activity_suffix());
 	}
 	elseif ($node_function == 'edit' && $arg_node_function ==  'edit') {
 		//get nid
@@ -496,14 +491,16 @@ function pi_activity_view($activity_id, $arg_node_function=NULL) {
 			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 		}
 		$output = node_page_edit($loaded_node);
+		$output .= t(activity_suffix());
 	}
 	elseif ($arg_node_function == 'view'  && ($node_function ==  'view' || $node_function ==  'edit')) {
 		//get nid
 		$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
-		print 'x'.$nid.'x';
+		
 		//build page
 		$loaded_node = node_load($nid);
 		$output = node_view($loaded_node, FALSE, TRUE, TRUE);
+		$output .= t(next_button());
 	}
 	else {
 		$output = t("Permission denied");
@@ -520,7 +517,7 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 	$query1 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
 	$query1 .= " AND pi_activity_node.activity_id = " . $activity_id;
 	$query1 .= " AND node.nid = pi_activity_node.nid";
-	$query1 .= " AND node.uid = " . $uid;
+	$query1 .= " AND node.uid = '" . $uid . "' ";
 	$query1 .= " ORDER BY pan_id DESC";
 	$result = db_fetch_object(db_query($query1));
 
@@ -530,12 +527,13 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 
 	//find if uid is member of a group for the node
 	$query2 = "SELECT pi_activity_node.nid FROM pi_activity_node, node_access, og_uid";
-	$query2 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
-	$query2 .= " AND pi_activity_node.activity_id = " . $activity_id;
+	$query2 .= " WHERE  pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+	$query2 .= " AND pi_activity_node.activity_id = '" . $activity_id . "' ";
 	$query2 .= " AND node_access.nid = pi_activity_node.nid";
-	$query2 .= " AND node_access.gid = gid";
+	$query2 .= " AND ((node_access.gid = gid";
 	$query2 .= " AND node_access.gid = og_uid.nid";
-	$query2 .= " AND og_uid.uid = " . $uid;
+	$query2 .= " AND og_uid.uid = '" . $uid . "') ";
+	$query2 .= " OR node_access.realm = 'all') ";
 
 	$result = db_fetch_object(db_query($query2));
 	return $result->nid;
@@ -686,7 +684,7 @@ function pi_inquiry_phase_view($phase) {
 			$loaded_activity_status = load_activity_status($phase->inquiry_nid, $activity->activity_id, $user->uid);
 			
 			// only display activities that are not in the hidden list
-			if (!((in_array($loaded_activity->node_type, $hidden_created_activity_types)) && $loaded_activity_status->visible_status != 'start')) {
+			if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) || $loaded_activity_status->visible_status == 'start') {
 				switch ($loaded_activity->destination) {
 					case "self":
 						$destination = "";
@@ -787,6 +785,7 @@ function get_inquiry_details_from_current_path() {
 	elseif ((arg(0) == 'activity') || (arg(0) == 'export')) {
 		//get inquiry from the database
 		$sid = get_current_session_id();
+		
 		$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
 		$result->inquiry_id = $inquiry->inquiry_id;
 
@@ -2023,6 +2022,7 @@ function get_current_session_id() {
 	return $session;
 }
 
+
 /**
  * Returns current inquiry_id for session and uid
  */
@@ -2420,5 +2420,102 @@ function suffix_translate ($actor) {
 	}
 }
 
+function next_button() {
 
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	
+	$activities = get_viewable_activity_ids ($details->inquiry_id, $user->uid);
+	
+	$next_activity = $activities[0];
 
+    foreach($activities as $activity) {
+		if ($prev_activity == $details->activity_id) {
+			$next_activity = $activity;
+		}
+		$prev_activity = $activity;
+	};
+	
+	
+	$loaded_activity = load_activity($next_activity);
+	$loaded_activity_status = load_activity_status($details->inquiry_id, $next_activity, $user->uid);
+	
+	switch ($loaded_activity->destination) {
+		case "self":
+			$destination = "";
+			break;
+		case "phase":
+			$destination = t("destination=" . t("phase/" . $phase->nid));
+			break;
+		default:
+			$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
+			break;
+	};
+
+	// so that (by default) always open an exitsing node in view
+	// if node_function for link is edit or view then set node function to view
+	$link_node_function = $loaded_activity_status->node_function;
+	if (($link_node_function == 'edit') OR ($link_node_function == 'view')) {
+		$link_node_function = 'view';
+	};
+
+	$activity_path = "activity/" . $next_activity . "/" . $link_node_function;
+	if ($loaded_activity_status->visible_status == 'unavailable') {
+		$activity_link = t($loaded_activity->name);
+	}
+	else {
+		$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
+			$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+		}
+		else {
+			$new_icon = "";
+		};
+		
+		// $activity_link = l(t('Next'), $activity_path, array('html' => TRUE, 'query' => $destination));
+		$activity_link = t('<strong>Next: </strong>') . l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
+		
+	};
+				
+	$output = "";
+	
+	if ($next_activity) {
+		$output .= "<p>";
+		$output .=  $activity_link;
+		$output .= "</p>";
+	};
+	
+	return $output;
+
+}
+
+function get_viewable_activity_ids ($inquiry_id, $uid) {
+	
+	$query = "SELECT DISTINCT(pi_activity_status.activity_id),pi_phase.weight,pi_stage_phase_activity.position FROM pi_activity_status ";
+	$query .= "LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id ";
+	$query .= "LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id ";
+	$query .= "LEFT JOIN pi_phase ON pi_stage_phase.phase_id = pi_phase.nid ";
+	$query .= "LEFT JOIN pi_activity_actor ON pi_activity_status.activity_id = pi_activity_actor.activity_id ";
+	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
+	$query .= "WHERE (pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
+	$query .= "AND (pi_activity_status.visible_status = 'view' OR pi_activity_status.visible_status = 'edit')) ";
+	$query .= "AND (og_uid.uid = '" . $uid . "' OR pi_activity_actor.uid = '" . $uid . "') ";
+	$query .= "ORDER BY pi_phase.weight,pi_stage_phase_activity.position";
+
+	// print $query;
+	$results = db_query($query);
+	$activity_ids = array();
+	
+	$hidden_created_activity_types = array('pi_measure_filter');
+	$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
+	while ($item = db_fetch_object($results)) {
+		$loaded_activity = load_activity($item->activity_id);
+
+        //if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
+			$activity_ids[] = $item->activity_id;
+		//};
+	};
+	
+	return $activity_ids;
+	
+}
