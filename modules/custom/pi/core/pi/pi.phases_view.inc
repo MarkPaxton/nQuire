@@ -63,11 +63,11 @@ function display_phases($headings, $rows, $activity_count, $new_activity_count, 
 				}
 				
 				$title = $data[ 0 ];
-				$activity_count = $activity_count[ $number ];
-				$new_activity_count = $new_activity_count[ $number ];
+				$activitys = $activity_count[ $number ];
+				$new_activitys = $new_activity_count[ $number ];
 					    						
 				$output .= '<div style="position: absolute; top: ' . $top_positions[ $number ] . '; left: ' . $left_positions[ $number ] . ';" class="phasebox">';
-				$output .= display_phases_box( $icon_url, $title, $activity_count, $new_activity_count, $show_phase_icons , $show_activities );					
+				$output .= display_phases_box( $icon_url, $title, $activitys, $new_activitys, $show_phase_icons , $show_activities );					
 				$output .= '</div></div>';
 								
 				//$count = $count + 1;
