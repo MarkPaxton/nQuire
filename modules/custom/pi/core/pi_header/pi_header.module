@@ -1,6 +1,7 @@
 <?php
 // $Id: pi_header.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
 
+define( 'GIT_CHECKOUT_DATE', 'GIT checkout 2010-05-11 15:20' );
 
 function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
 
@@ -13,21 +14,35 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
         case 'view':
 
             global $user;
-            $image_path = drupal_get_path('module', 'pi') . '/images/';
+            
+            $path = drupal_get_path('module', 'pi_header');
+            $image_path = $path . '/images';
+            
+            drupal_add_css( $path .'/pi_header.css' );
             $details = get_inquiry_details_from_current_path();
 
             //$block['subject'] = "nQuire";
-            if(arg(0) == 'phase' || arg(0) == 'activity') {  
-            	$home_icon = l(t("<h1 style='color: white; margin-left: 0.7em;'>home</h1>"), t("inquiry/" . $details->inquiry_id), array('html' => TRUE));
+            if( arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' ) {
+            	
+            	//$home_icon = l(t("<h1 class=\"nquire_home\">home</h1>"), t("inquiry/" . $details->inquiry_id), array('html' => TRUE));
+                $home_icon = l( '<img src="' . $image_path . '/octagon.png" height="50px" >', 'http://www.nquire.org.uk', array('html' => TRUE) ) ;
             }
             else {
-            	$home_icon = "&nbsp;";
+                $home_icon = l( '<img src="' . $image_path . '/logo.png" height="50px" >', 'http://www.nquire.org.uk', array('html' => TRUE) ) ;
             }
+            
             $output = "";
-            $output .= "<div style='float:left;width:209px'>" . $home_icon . "</div>";
-            $output .= "<div style='float:left'><h1>nQuire</h1></div>";
+            $output .= "<div class=\"nquire_home\">" . $home_icon . "</div>";
+            $output .= "<div class=\"nquire\"><h1 class=\"nquire\">nQuire</h1></div>";
+
+    		if(GIT_CHECKOUT_DATE)
+            {
+            	$output .= "<div style='float:left;'>" . GIT_CHECKOUT_DATE . "</div>";
+            }
+            
             if ($user->uid) {
-            	$output .= "<div style='float:left, width:100%'><div style='float:right'><div style='float:right'>" . t($user->name) . "</div><div style='clear:both, float:right'>" . l("logout","logout") . "</div></div>";
+                $link_att = array( 'attributes' => array( 'class' => 'logout' ) );
+                $output .= "<div style='float:left, width:100%'><div style='float:right'><div class=\"logout\">" . t($user->name) . "</div><div style='clear:both; float:right;'>" . l("logout","logout", $link_att ) . "</div></div>";
             }
 
             $block['content'] = $output;
