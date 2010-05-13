@@ -39,16 +39,20 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
             $output .= "<div class=\"nquire\">";
             
             if ($inquiry->title) {
-            	$output .= "<h1 class=\"nquire\">" . t($inquiry->title) . "</h1>";
+            	$output .= "<div style='float: left;'><h1 class=\"nquire\">" . t($inquiry->title) . "</h1></div>";
 			};
 			
-    		if(NQUIRE_VERSION)
-            {
-            	$output .= "<p>" . NQUIRE_VERSION . "</p>";
+            if(arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {  
+            	$output .= "<div style='clear: both;'>" . pi_stage_bar($details) . "</div>";
             }
-          
+            
             $output .= "</div>";
-          	  
+          	
+          	if(NQUIRE_VERSION)
+            {
+            	$output .= "<div style='float: left; margin-top: 0.6em;'>" . NQUIRE_VERSION . "</div>";
+            }
+            
             if ($user->uid) {
                 $link_att = array( 'attributes' => array( 'class' => 'logout' ) );
                 $output .= "<div style='float:left, width:100%'><div style='float:right'><div class=\"logout\">" . t($user->name) . "</div><div style='clear:both; float:right;'>" . l("logout","logout", $link_att ) . "</div></div>";
@@ -59,4 +63,28 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
             return $block;
     };
 }
+
+
+function pi_stage_bar($details) {
+	global $user;
+	$uid = $user->uid;
+	$stage_list = array();
+	$count = 1;
+	$stages = get_stages_of_inquiry_and_user($details->inquiry_id, $uid);
+	$stage_list = array();
+	foreach($stages as $stage_nid)
+	{
+		$stage = node_load($stage_nid);
+		if ($stage->nid == $details->stage_id) {
+			$stage_list[] = t('<b>' . $count++ . '</b>');
+		}
+		else
+		{
+			$stage_list[] = t($count++);
+		}
+	}
+	$output = '<p><b>My progress:</b> ' . implode(' &rarr; ', $stage_list) . '</p>';
+	return $output;
+}
+
 
