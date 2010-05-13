@@ -21,6 +21,8 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
             drupal_add_css( $path .'/pi_header.css' );
             $details = get_inquiry_details_from_current_path();
 
+            $inquiry = node_load($details->inquiry_id);
+
             //$block['subject'] = "nQuire";
             if( arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' ) {
             	
@@ -33,13 +35,20 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
             
             $output = "";
             $output .= "<div class=\"nquire_home\">" . $home_icon . "</div>";
-            $output .= "<div class=\"nquire\"><h1 class=\"nquire\">nQuire</h1></div>";
-
+            
+            $output .= "<div class=\"nquire\">";
+            
+            if ($inquiry->title) {
+            	$output .= "<h1 class=\"nquire\">" . t($inquiry->title) . "</h1>";
+			};
+			
     		if(NQUIRE_VERSION)
             {
-            	$output .= "<div style='float:left;'>" . NQUIRE_VERSION . "</div>";
+            	$output .= "<p>" . NQUIRE_VERSION . "</p>";
             }
-            
+          
+            $output .= "</div>";
+          	  
             if ($user->uid) {
                 $link_att = array( 'attributes' => array( 'class' => 'logout' ) );
                 $output .= "<div style='float:left, width:100%'><div style='float:right'><div class=\"logout\">" . t($user->name) . "</div><div style='clear:both; float:right;'>" . l("logout","logout", $link_att ) . "</div></div>";
