@@ -90,7 +90,12 @@ function zen_menu_item_link($link) {
     $link['title'] = '<span class="tab">' . check_plain($link['title']) . '</span>';
     $link['localized_options']['html'] = TRUE;
   }
-
+  
+  // Add destination to tabs - TDC5 13th May 2010
+  if (isset($_REQUEST['destination'])) {
+  	$link['localized_options']['query'] = drupal_get_destination();
+  }
+  
   return l($link['title'], $link['href'], $link['localized_options']);
 }
 
