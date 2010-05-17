@@ -45,14 +45,14 @@ function pi_menu() {
 	// Do not cache this menu item during the development of this module.
 
 	$items['home'] = array(
-		'title' => t('Home'),
+		'title' => 'Home',
 		'page callback' => 'pi_home_view',
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
 	);
 
 	$items['inquiry'] = array(
-		'title' => t('Inquiry'),
+		'title' => 'Inquiry',
 		'page callback' => 'pi_home_view',
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK
@@ -77,60 +77,73 @@ function pi_menu() {
 	);
 	
 	$items['phase/%node'] = array(
-		'title' => t('Phase'),
+		'title' => 'Phase',
 		'page callback' => 'pi_inquiry_phase_view',
 	    'page arguments' => array(1),
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
 	);
+	
+	
 	$items['activity/%'] = array(
-		'title' => t('<none>'),
-		'access callback' => 'activity_view',
 		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1),
-		'type' => MENU_CALLBACK,
+	    'page arguments' => array(1, 'view'),
+		'file' => 'pi.activity.inc',
+		'access callback' => 'pi_activity_access',
+		'access arguments' => array(1, 'view'),
+	    'type' => MENU_CALLBACK
 	);
+	
+	
 	$items['activity/%/view'] = array(
-		'title' => t('View'),
-		'access callback' => 'activity_view',
+		'title' => 'View',
 		'page callback' => 'pi_activity_view',
 		'page arguments' => array(1, 2),
-		'type' => MENU_LOCAL_TASK,
+		'file' => 'pi.activity.inc', 
+		'access callback' => 'pi_activity_access',
+		'access arguments' => array(1, 2),
+		'type' => MENU_DEFAULT_LOCAL_TASK,
 		'weight' => 0,
 	);
+	
 	$items['activity/%/edit'] = array(
-		'title' => t('Edit'),
-		'access callback' => 'activity_edit',
+		'title' => 'Edit',
 		'page callback' => 'pi_activity_view',
 		'page arguments' => array(1, 2),
+		'file' => 'pi.activity.inc', 
+		'access callback' => 'pi_activity_access',
+		'access arguments' => array(1, 2),
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 1,
 	);
-
+	
 	$items['activity/%/add'] = array(
-		'title' => t('Add'),
-		'access callback' => 'activity_add',
+		'title' => 'Add',
 		'page callback' => 'pi_activity_view',
 		'page arguments' => array(1, 2),
+		'file' => 'pi.activity.inc', 
+		'access callback' => 'pi_activity_access',
+		'access arguments' => array(1, 2),
 		'type' => MENU_CALLBACK,
 	);
 
+
 	$items['export/%/csv'] = array(
-		'title' => t('CSV'),
+		'title' => 'CSV',
 		'access callback' => TRUE,
 		'page callback' => 'pi_data_export_csv',
 		'type' => MENU_CALLBACK,
 	);
 
 	$items['export/%/kml'] = array(
-		'title' => t('KML'),
-		'access callback' => 'activity_view',
+		'title' => 'KML',
+		'access callback' => 'pi_activity_view',
 		'page callback' => 'pi_data_export_kml',
 		'type' => MENU_CALLBACK,
 	);
 
 	$items['set_stage'] = array(
-		'title' => t('Stage selector'),
+		'title' => 'Stage selector',
 		'page callback' => 'pi_stage_selector_view',
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
@@ -139,20 +152,21 @@ function pi_menu() {
 }
 
 
-function activity_access($op) {
+/**
+ * Access callback for pi_activities under the url activity/%
+ * @param uint $activity_id the id of the activity being accessed
+ * @param uint $op the function to perform on the activity (view/add/edit)
+ * @return TRUE or FALSE to indicate whether access is allowed for that function
+ */
+function pi_activity_access($activity_id, $op) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-	return check_node_function_of_activity($details->inquiry_id, $details->activity_id, $user->uid, $op);
-}
-
-function activity_add() {
-	return activity_access('add');}
-
-function activity_edit() {
-	return activity_access('edit');}
-
-function activity_view() {
-	return activity_access('view') || activity_access('edit');
+	$return_value = check_node_function_of_activity($details->inquiry_id, $activity_id, $user->uid, $op);
+	if(($return_value===false) && ($op='view'))
+	{
+		$return_value = $return_value || pi_activity_access($activity_id, 'edit');
+	}
+	return $return_value;
 }
 
 
@@ -300,57 +314,7 @@ function pi_inquiry_inquiry_view($node) {
 	return $output;
 }
 
-/*
- * Used to display an activity
- */
-function pi_activity_view($activity_id, $arg_node_function=NULL) {
-	global $user;
-	$uid = $user->uid;
-	drupal_set_title('');
-	$details = get_inquiry_details_from_current_path();
 
-	//get the visible status
-	//$arg_node_function = arg(2);
-
-	//get Drupal node function
-	$node_function = get_node_function_of_activity($details->inquiry_id, $activity_id, $uid);
-
-	if($node_function == 'add' && $arg_node_function ==  'add') {
-		//get node type
-		$loaded_activity = load_activity($activity_id);
-		$node_type = $loaded_activity->node_type;
-
-		if( ! function_exists("node_add")) {
-			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-		}
-		$output = node_add($node_type);
-		$output .= t(activity_suffix());
-	}
-	elseif ($node_function == 'edit' && $arg_node_function ==  'edit') {
-		//get nid
-		$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
-		//build form
-		$loaded_node = node_load($nid);
-		if( !function_exists("node_page_edit")) {
-			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-		}
-		$output = node_page_edit($loaded_node);
-		$output .= t(activity_suffix());
-	}
-	elseif ($arg_node_function == 'view'  && ($node_function ==  'view' || $node_function ==  'edit')) {
-		//get nid
-		$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
-		
-		//build page
-		$loaded_node = node_load($nid);
-		$output = node_view($loaded_node, FALSE, TRUE, TRUE);
-		$output .= t(next_button());
-	}
-	else {
-		$output = t("Permission denied");
-	}
-	return $output;
-}
 
 /**
  * get_nid_for_inquiry_activity_and_user
@@ -934,19 +898,16 @@ function get_node_function_of_activity($inquiry_id, $activity_id, $uid) {
 }
 
 /**
- * * $function can be either add, edit or view.
- * Returns FALSE if that node function for that activity and user is not the specified $function, otherwise it returns TRUE.
+ * Returns FALSE if that node function for that activity and user is not the specified 
+ * function, otherwise it returns TRUE.
  * @param $inquiry_id
- * @param $activity_id
- * @param $uid
- * @param $function
+ * @param uint $activity_id ID of pi_acitvity to check node function with 
+ * @param uint $uid ID of user to check node function with 
+ * @param string $function can Either 'add', 'edit' or 'view'.
  * @return unknown_type
  */
 function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $function) {
-
-
 	$node_function = get_node_function_of_activity ($inquiry_id, $activity_id, $uid);
-
 	if ($node_function == $function) {
 		$result = TRUE;
 	}
@@ -955,7 +916,6 @@ function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $funct
 	};
 
 	return $result;
-
 }
 
 /**
@@ -2222,46 +2182,6 @@ function show_phases($uid) {
 	}
 	else {
 		return TRUE;
-	}
-}
-
-
-function activity_suffix() {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
-	if ($details->activity_id && $details->inquiry_id) {
-		$loaded_activity = load_activity($details->activity_id);
-		$audience = $loaded_activity->audience;
-		$loaded_activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id);
-		$activity_uid = $activity_actor[0]["uid"];
-  	$activity_gid = $activity_actor[0]["gid"];
-  	$activity_gid_type = get_type_of_group($gid);
-  	
-  	$seen_by = $audience;
-  	if (($activity_uid && !$activity_gid) || $audience == 'individual') {
-  		$done_by = 'individual';
-  	}
-  	elseif ($activity_gid_type == 'class' && $audience == 'class') {
-  		$done_by = 'class';
-  	}
-  	else {
-  		$done_by = 'group';
-  	}
-  	
-  	$output = '<p>Done by ' . suffix_translate($done_by) . '. Seen by ' . suffix_translate($seen_by) . '.</p>';
-  	return $output;
-	}	
-}
-
-function suffix_translate ($actor) {
-	if($actor == 'individual') {
-		return 'me';
-	}
-	elseif($actor == 'group') {
-		return 'my group';
-	}
-	elseif($actor == 'class') {
-		return 'my class';
 	}
 }
 
