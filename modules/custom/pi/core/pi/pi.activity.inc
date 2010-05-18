@@ -34,7 +34,9 @@ function pi_activity_view($activity_id, $arg_node_function) {
 			//build page
 			$loaded_node = node_load($nid);
 			$output .= node_view($loaded_node, FALSE, TRUE, TRUE);
-			$output .= t(next_button());
+			$output .= previous_next_buttons($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id, $uid);
+			//$output .= previous_next_buttons($details->inquiry_id, $activity_id, $uid);
+			//$output .= t(next_button());
 			break;
 		case 'add': 
 			//get node type

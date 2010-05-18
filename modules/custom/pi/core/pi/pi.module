@@ -2185,59 +2185,136 @@ function show_phases($uid) {
 	}
 }
 
+function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
+	$hidden_activity_types = array('pi_measure_filter');
+	$position = 1;
+	$activity_position = array();
+	$position_activity = array();
+	$phases = get_phases_of_inquiry_and_user($inquiry_id, $uid);
+	foreach($phases as $phase_nid) {
+		$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase_nid, $uid);
+		foreach($activities as $activity) {
+			$loaded_activity = load_activity($activity->activity_id);
+			if (!(in_array($loaded_activity->node_type, $hidden_activity_types))) {
+				$activity_position[$activity->activity_id] = $position;
+				$position_activity[$position] = $activity->activity_id;
+				$activity_phase[$activity->activity_id] = $phase_nid;
+				$position = $position + 1;
+			}
+		}
+	}
+	$current_position = $activity_position[$activity_id];
+	if ($current_position) {
+		$previous_position = $current_position - 1;
+		$next_position = $current_position + 1;
+		$previous_activity = $position_activity[$previous_position];
+		$next_activity = $position_activity[$next_position];
+		$output = "";
+		if ($previous_activity) {
+			$output .= t('<strong>Previous:</strong> ');
+			$prev_link = build_activity_link($inquiry_id, $stage_id, $activity_phase[$previous_activity], $previous_activity, $uid);
+			$output .= $prev_link["data"];
+		}
+		$output .= "<br/>";
+		if ($next_activity) {
+			$output .= t('<strong>Next:</strong> ');
+			$next_link = build_activity_link($inquiry_id, $stage_id, $activity_phase[$next_activity], $next_activity, $uid);
+			$output .= $next_link["data"];
+		}
+	}
+	return $output;
+}
+
 function next_button() {
 
 	global $user;
+	
 	$details = get_inquiry_details_from_current_path();
+	
 	
 	$activities = get_viewable_activity_ids ($details->inquiry_id, $user->uid);
 	
 	$next_activity = $activities[0];
 
     foreach($activities as $activity) {
+    
 		if ($prev_activity == $details->activity_id) {
+    
 			$next_activity = $activity;
+    
 		}
 		$prev_activity = $activity;
 	};
+    
 	
 	
 	$loaded_activity = load_activity($next_activity);
+    
 	$loaded_activity_status = load_activity_status($details->inquiry_id, $next_activity, $user->uid);
+    
 	
 	switch ($loaded_activity->destination) {
+    
 		case "self":
 			$destination = "";
+    
 			break;
-		case "phase":
-			$destination = t("destination=" . t("phase/" . $phase->nid));
+		
+    case "phase":
+			
+    $destination = t("destination=" . t("phase/" . $phase->nid));
+    
 			break;
+    
 		default:
+    
 			$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
+    
 			break;
+    
 	};
+    
 
 	// so that (by default) always open an exitsing node in view
+    
 	// if node_function for link is edit or view then set node function to view
-	$link_node_function = $loaded_activity_status->node_function;
+
+    $link_node_function = $loaded_activity_status->node_function;
+    
 	if (($link_node_function == 'edit') OR ($link_node_function == 'view')) {
+    
 		$link_node_function = 'view';
 	};
+    
 
 	$activity_path = "activity/" . $next_activity . "/" . $link_node_function;
+    
 	if ($loaded_activity_status->visible_status == 'unavailable') {
+    
 		$activity_link = t($loaded_activity->name);
+    
 	}
+    
 	else {
+    
 		$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+    
 		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
+    
 			$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+    
 		}
+    
 		else {
+    
 			$new_icon = "";
+    
 		};
+    
 		
-		// $activity_link = l(t('Next'), $activity_path, array('html' => TRUE, 'query' => $destination));
+		
+    // $activity_link = l(t('Next'), $activity_path, array('html' => TRUE, 'query' => $destination));
+    
 		$activity_link = t('<strong>Next: </strong>') . l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
 		
 	};
@@ -2251,10 +2328,12 @@ function next_button() {
 	};
 	
 	return $output;
+    
 
 }
-
+    
 function get_viewable_activity_ids ($inquiry_id, $uid) {
+
 	
 	$query = "SELECT DISTINCT(pi_activity_status.activity_id),pi_phase.weight,pi_stage_phase_activity.position FROM pi_activity_status ";
 	$query .= "LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id ";
@@ -2267,20 +2346,31 @@ function get_viewable_activity_ids ($inquiry_id, $uid) {
 	$query .= "AND (og_uid.uid = '" . $uid . "' OR pi_activity_actor.uid = '" . $uid . "') ";
 	$query .= "ORDER BY pi_phase.weight,pi_stage_phase_activity.position";
 
+
 	// print $query;
 	$results = db_query($query);
 	$activity_ids = array();
 	
+
 	$hidden_created_activity_types = array('pi_measure_filter');
+	
 	$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
+	
 	while ($item = db_fetch_object($results)) {
+	
 		$loaded_activity = load_activity($item->activity_id);
+	
 
         //if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
+	
 			$activity_ids[] = $item->activity_id;
-		//};
+		
+	//};
+	
 	};
 	
+	
 	return $activity_ids;
+	
 	
 }
