@@ -28,6 +28,14 @@ function pi_activity_view($activity_id, $arg_node_function) {
 	
 	switch($arg_node_function)
 	{
+		case 'view':
+			//get nid
+			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
+			//build page
+			$loaded_node = node_load($nid);
+			$output .= node_view($loaded_node, FALSE, TRUE, TRUE);
+			$output .= t(next_button());
+			break;
 		case 'add': 
 			//get node type
 			$loaded_activity = load_activity($activity_id);
@@ -50,13 +58,7 @@ function pi_activity_view($activity_id, $arg_node_function) {
 			}
 			$output .= pi_activity_actor_audience_info($details->inquiry_id, $activity_id);
 			$output .= node_page_edit($loaded_node);
-		case 'view':
-			//get nid
-			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
-			//build page
-			$loaded_node = node_load($nid);
-			$output .= node_view($loaded_node, FALSE, TRUE, TRUE);
-			$output .= t(next_button());
+			break;
 	}
 	return $output;
 }
