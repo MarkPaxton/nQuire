@@ -163,18 +163,12 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
       else {
         $node_details_inquiry_id = '';
       }
-  		$content = "";
-  		$content .= t("Dashboard");
-  		//$content .= l(t("Dashboard"), build_teacher_tool_link("dashboard", $node_details_inquiry_id, NULL), array());
-    	$content .= "&nbsp;&nbsp;";
-    	$content .= t("Events");
-    	//$content .= l(t("Events"), build_teacher_tool_link("events", $node_details_inquiry_id, NULL), array());
-    	$content .= "&nbsp;&nbsp;";
-    	$content .= l(t("Set stage"), t('set_stage/' . $node_details->inquiry_id), array('query'=> t('destination=inquiry/'. $node_details->inquiry_id)));
-    	//$content .= l(t("Set stage"), t(stage_selector_link($node_details_inquiry_id, $user->uid), array('query'=>build_teacher_tool_link("destination=home", $node_details_inquiry_id, NULL)));
-    	$content .= "<br/><br/>";
-    	
-    	
+      
+      $teacher_tools = array();
+      $teacher_tools[] = l(t("Change stage"), t('set_stage/' . $node_details->inquiry_id), array('query'=> t('destination=inquiry/'. $node_details->inquiry_id)));
+      $teacher_tools[] = t("Dashboard");
+      $teacher_tools[] = t("Events");
+	   	$content = t(theme('item_list', $teacher_tools, NULL, 'ul', array('class' => 'menu')));
 
     	if (is_numeric($node_details->activity_id)) {
 
@@ -186,7 +180,7 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
 			/*get the status for each actual audience*/
 			//use activity status
 			
-			$content .= "<b>" . $activity_name . "</b>";
+			$content .= "<strong>" . $activity_name . ":</strong>";
 			
 			$content .= generate_status_table($activity_participants, $node_details, $audience);
 			
@@ -208,11 +202,13 @@ function generate_status_table($activity_participants, $node_details, $audience)
 		$status_image["view"] = "viewable.png";
 		$status_image["unavailable"] = "unavailable.png";
 		
-		$content = "<table><tr><td>" . $audience . "</td><td>status</td></tr>";
+		$headings = array(ucwords($audience), "Status");
+		$table = array();
+
 			if ($audience == "individual") {
 				foreach ($activity_participants as $activity_participant) {
 					if ($activity_participant != 1) {
-						$content .= "<tr><td>" . get_user_name($activity_participant) . "</td><td>" . "<img src=\"" . $image_path. $status_image[get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $activity_participant)] . "\"/>" . "</td></tr>";
+						$table[] = array(t(get_user_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $activity_participant)] . "\"/>"));
 					}
 				}
 			}
@@ -226,11 +222,10 @@ function generate_status_table($activity_participants, $node_details, $audience)
 					if ($group_member->uid == 1) {
 						$group_member = $group_member = db_fetch_object($members_of_group);
 					}
-					$content .= "<tr><td>" . get_group_name($activity_participant) . "</td><td>" .  "<img src=\"" . $image_path. $status_image[get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $group_member->uid)] . "\"/>" . "</td></tr>";
+					$table[] = array(t(get_group_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $group_member->uid)] . "\"/>"));
 				}
 			}
-		$content .= "</table>";
-			
+		$content .= theme('table', $headings, $table);
 		return $content;
 }
 
