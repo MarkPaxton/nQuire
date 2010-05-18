@@ -2,8 +2,7 @@
 // $Id: pi_hypothesis.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
- * @file
- * Module for creating "[pi_hypothesis" node type
+ * @file Module for "pi_hypothesis" node type, works with pi_hypothesis_conclusion
  */
 
 
@@ -76,13 +75,10 @@ function pi_hypothesis_access($op, $node) {
  */
 function pi_hypothesis_form(&$node) {
 
-// Get metadata for this node type
-// (we use it for labeling title and body fields).
-// We defined this in pi_hypothesis_node_info().
+	global $user;
     $type = node_get_types('type', $node);
-  	global $user;
-  
   	$node_details = get_inquiry_details_from_current_path();
+
   	if (is_numeric($node_details->activity_id)) {
   		$current_activity = load_activity($node_details->activity_id);
   	}
@@ -111,7 +107,7 @@ function pi_hypothesis_form(&$node) {
         '#weight' => -2
     );
 
-    $prefix = "";
+    $prefix = '';
     if ($current_activity->description) {
     	$prefix .= "<p>" . t($current_activity->description) . "</p>";
     }
@@ -157,8 +153,7 @@ function pi_hypothesis_delete(&$node) {
  * Implementation of hook_load().
  */
 function pi_hypothesis_load($node) {
-    return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis} WHERE vid = %d',
-    $node->vid));
+    return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis} WHERE vid = %d', $node->vid));
 }
 
 /**
@@ -168,9 +163,23 @@ function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
     if (!$teaser) {
     // Use Drupal's default node view.
         $node = node_prepare($node, $teaser);
-
-        $node->content['pi_hypothesis'] = array(
-            '#value' => theme('pi_hypothesis', $node),
+		$activity_id = get_activity_id_for_nid($node->nid);
+		if(!is_numeric($activity_id))
+		{
+			$details = get_inquiry_details_from_current_path();
+			$activity_id = $details->activity_id;
+		}
+		if(!is_numeric($activity_id))
+		{
+			$activity_id = NULL;
+		}
+        	else
+    	{
+    		$activity = load_activity($activity_id);
+    	}
+    	
+		$node->content['pi_hypothesis'] = array(
+            '#value' => theme('pi_hypothesis', $node, $activity),
             '#weight' => 2
         );
 
@@ -185,45 +194,44 @@ function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
 }
 
 /**
- * MISSING
- * 
- * @return multitype:multitype:multitype:string   
+ * Implementation of hook_theme() to define the available theme functions fot pi_hypothesis
+ * Currently defines 1 theme, to show the hypothesis view.
+ * @return array of theme data   
  */
 function pi_hypothesis_theme() {
     return array(
-    'pi_hypothesis' => array(
-    'arguments' => array('node'),
-    ),
+	    'pi_hypothesis' => array(
+		    'arguments' => array('node', 'current_activity'),
+	    ),
     );
 }
 
 
 /**
- * MISSING
- * 
- * @param unknown_type $node
- * @return string
+ * Theme function to display the pi_hypothesis view page (uses drupal theme_hook()) 
+ * @param object(node) $node Drupal node of type pi_hypothesis
+ * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
+ * @return string HTML for the page content added for hypothesis data
  */
-function theme_pi_hypothesis($node) {
-	$output = "";
-		$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
+function theme_pi_hypothesis($node, $current_activity=NULL) {
+	$output='';
+	if(isset($current_activity))
+  	{
+	  	if(isset($current_activity->name)) {
+	  		drupal_set_title(t($current_activity->name));
+	  	}
+	  	if(isset($current_activity->description))
+	  	{
+	    	$output .= "<p>" . check_plain($current_activity->description) . "</p>";
+	    }
   	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
-  	
-  	if ($current_activity->description) {
-    	$output .= "<p>" . t($current_activity->description) . "</p>";
-    }
-    else {
+    else
+    {
     	$output .= "<p>A hypothesis is a prediction that you can test.</p>";
     }
     
-    $output .= '<p><strong>Your hypothesis is:</strong> ' . check_plain($node->hypothesis). '</p>';
+    $output .= "<div style='font-weight:bold;'>My hypothesis is:</div>\n";
+    $output .= '<p style="border-width: 2px;border-style: sold;border-color: black;">' . check_plain($node->hypothesis). '</p>';
 
     return $output;
 }
-
