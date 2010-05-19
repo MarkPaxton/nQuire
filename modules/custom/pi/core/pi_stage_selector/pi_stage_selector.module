@@ -47,9 +47,9 @@ function pi_stage_selector_access($op, $node) {
 
   global $user;
 
-  //$inquiry = get_inquiry_details_from_current_path()
+  //$details = get_inquiry_details_from_current_path()
 
- //$node_function = get_node_function_of_activity ($inquiry->inquiry_id, $inquiry->activity_id, $user->uid)
+ //$node_function = get_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid)
 
   if ($op == 'create') {
 
@@ -89,95 +89,79 @@ function pi_stage_selector_form(&$node) {
 
   $type = node_get_types('type', $node);
 
-  
-
   global $user;
+  $uid = $user->uid;
 
-  $inquiry = get_inquiry_details_from_current_path();
+  $details = get_inquiry_details_from_current_path();
   drupal_set_title("Change stage");
-  $query = "SELECT stage_id FROM pi_inquiry_stage WHERE inquiry_id = '" . $inquiry->inquiry_id . "' ORDER BY position ASC";
-  $stage_results = db_query($query);
+  $stage_nids = get_stages_of_inquiry_and_user($details->inquiry_id, $uid);
   $stages = array();
   $stages_count = 1;
-  $stage_display_numbers = array();
   
-  while ($stage_result = db_fetch_object($stage_results)) {
-    $loaded_stage = node_load($stage_result->stage_id);
-  	$stages[$stage_result->stage_id] = t($stages_count . ": " . $loaded_stage->title);
-  	$stages_count++;
+  foreach($stage_nids as $stage_nid) {
+    $loaded_stage = node_load($stage_nid);
+  	$stages[$stage_nid] = t($stages_count . ": " . $loaded_stage->title);
+  	$stages_count++;  
   }
   
+	$form['open_stages'] = array(
+		'#type' => 'checkboxes',
+  	'#title' => check_plain('Available stages'),
+  	'#required' => FALSE,
+  	'#description' => t('These are the stages whose activities will be actively available to the student to e.g. edit as well as view. You might use this if you have students catching up from a previous stage or moving ahead to a further stage. The selected \"New stage\" will be automatically available whether or not selected in these checkboxes.'),
+  	'#weight' => -2,
+  	'#options' => $stages
+  );
 
   $form['title'] = array(
-
     '#type' => 'hidden',
-
     '#title' => check_plain($type->title_label),
-
     '#required' => FALSE,
-
     '#default_value' => check_plain($type->title_label),
-
     '#weight' => -5
-
   );
 
-  
 
   $form['stage_options'] = array(
-
-	'#type' => 'value',
-
-	'#value' => $stages
-
+		'#type' => 'value',
+		'#value' => $stages
   );
 
-  
 
-  $current_stage = get_current_stage_of_inquiry_and_user ($inquiry->inquiry_id, $user->uid);
-
+  $current_stage = get_current_stage_of_inquiry_and_user ($details->inquiry_id, $user->uid);
   $current_stage_id = $current_stage->stage_id;
 
 
   $form['selected_stage'] = array(
-	'#title' => t('Selected stage'),
+	'#title' => t('New stage'),
 	'#type' => 'select',
-	'#description' => t('Select the inquiry stage'),
+	'#description' => t('Select the inquiry stage that you now want to be highlighted.'),
 	'#default_value' =>  array($current_stage_id),
+	'#weight' => -3,
 	'#options' => $form['stage_options']['#value']
   );
   
+  
+  /*
     $form['transition_type'] = array(
 	'#title' => t('Required change'),
 	'#type' => 'select',
 	'#description' => t('Select how you want to alter access to activities'),
 	'#options' => array("Restrict access to activities of this stage", "Add access to activities of this stage")
   );
-
+*/
 
 
    $form['pcs_id'] = array(
-
-	'#type' => 'hidden',
-
-	'#value' => t($current_stage->pcs_id)
-
+		'#type' => 'hidden',
+		'#value' => t($current_stage->pcs_id)
 	);
 
-  
 
-  $prefix .= "<p>This allows you to change the current stage and determine how this change effects access to activities.</p>";
-
- 
-
+  $prefix .= "<p>This allows you to change the current stage and determine which other stages are still open for the students.</p>";
   $form['#prefix'] = $prefix;
 
-  
-
   return $form;
-
-
-
 }
 
 
@@ -186,11 +170,6 @@ function pi_stage_selector_form(&$node) {
  * Implementation of pi_stage_selector_insert().
 
  */
-
-
-
- 
-
 function pi_stage_selector_insert($node) {
 	pi_update_stage($node);
 }
@@ -209,21 +188,58 @@ function pi_stage_selector_update($node) {
 function pi_update_stage($node) {
 
   $details = get_inquiry_details_from_current_path();
-  
-/*  //get stages of current inquiry in order
-  
-  $query = "SELECT stage_id FROM pi_inquiry_stage WHERE inquiry_id = " . $details->inquiry_id . " ORDER BY position ASC";
-  $stage_results = db_query($query);
-  $stages = array();
-  
-  while ($stage_result = db_fetch_object($stage_results)) {
-  	$stages[] = $stage_result->stage_id;
-  }*/
 
   $selected_stage = $node->selected_stage;//$stages[$node->selected_stage];
 
   db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
   
+  $included_stages = array($selected_stage);
+  
+  foreach($node->open_stages as $choice) {
+  	if($choice) {
+  		$included_stages[] = $choice;
+  	}
+  }
+  $included_stages = array_unique($included_stages);
+  
+  $included_stages_strings = array();
+  foreach($included_stages as $included_stage) {
+  	$included_stages_strings[] = t("pi_stage_phase.stage_id = '" . $included_stage . "' ");
+  }
+  
+  $included_stages_output = implode(" OR ", $included_stages_strings);
+  
+  $ouside_focus_query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = '" . $details->inquiry_id . "' AND NOT (" . $included_stages_output . ") ";
+
+  $inside_focus_query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND (" . $included_stages_output . ") ";
+  
+  //update outside focus activity status
+  $outside_status_list = db_query($ouside_focus_query);
+  while($status_item = db_fetch_object($outside_status_list)) {
+  	$loaded_activity = load_activity($status_item->activity_id);
+  	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_leave_focus");
+  	if ($new_status->node_function && $new_status->visible_status) {
+  		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
+  		db_query($query);
+  	}
+  }
+  
+  //update inside focus activity status
+  $inside_status_list = db_query($inside_focus_query);
+  while($status_item = db_fetch_object($inside_status_list)) {
+  	$loaded_activity = load_activity($status_item->activity_id);
+  	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_enter_focus");
+  	if ($new_status->node_function && $new_status->visible_status) {
+  		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
+  	}
+  	db_query($query);
+  }
+}
+	
+
+	
+	
+/*
   //activities outside the selected status
   if ($node->transition_type == 0) {
   $query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND NOT (pi_stage_phase.stage_id = " . $selected_stage . ") ";
@@ -263,7 +279,7 @@ function pi_update_stage($node) {
   }
   
 }
-
+*/
 function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
 	
 	$query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND (prior_nf = \"" . $node_function . "\" OR prior_nf IS NULL) AND (prior_vs = \"" . $visible_status . "\" OR prior_vs IS NULL) ";
