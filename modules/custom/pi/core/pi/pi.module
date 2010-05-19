@@ -477,6 +477,7 @@ function pi_inquiry_phase_view($phase) {
 	
 
 	// $hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
+	
 	$hidden_created_activity_types = array('pi_measure_filter');
 
 	if ($activities) {
@@ -493,7 +494,7 @@ function pi_inquiry_phase_view($phase) {
 			$loaded_activity_status = load_activity_status($phase->inquiry_nid, $activity->activity_id, $user->uid);
 			
 			// only display activities that are not in the hidden list
-			if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) || $loaded_activity_status->visible_status == 'start') {
+			if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) || $loaded_activity_status->visible_status == 'start' || $loaded_activity_status->visible_status == 'unavailable') {
 				switch ($loaded_activity->destination) {
 					case "self":
 						$destination = "";
@@ -515,16 +516,21 @@ function pi_inquiry_phase_view($phase) {
 			
 	  			$activity_path = "activity/" . $activity->activity_id . "/" . $link_node_function;
 	  			if ($loaded_activity_status->visible_status == 'unavailable') {
-	  				$activity_link = t($loaded_activity->name);
+	  				
+	  				$activity_link = t($loaded_activity->name. ' ' . add_activity_icon($loaded_activity_status->visible_status));
 	  			}
 				else {
 					$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+					
+					/*
+					//new activity lightbulb
 					if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
 	  					$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
 	  				}
 	  				else {
 	  					$new_icon = "";
 	  				};
+	  			*/
   					$activity_link = l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
 				};
 
@@ -2195,7 +2201,8 @@ function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, 
 		$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase_nid, $uid);
 		foreach($activities as $activity) {
 			$loaded_activity = load_activity($activity->activity_id);
-			if (!(in_array($loaded_activity->node_type, $hidden_activity_types))) {
+			$loaded_activity_status = load_activity_status($inquiry_id, $activity->activity_id, $uid);
+			if (!(in_array($loaded_activity->node_type, $hidden_activity_types) || $loaded_activity_status->visible_status == 'unavailable')) {
 				$activity_position[$activity->activity_id] = $position;
 				$position_activity[$position] = $activity->activity_id;
 				$activity_phase[$activity->activity_id] = $phase_nid;

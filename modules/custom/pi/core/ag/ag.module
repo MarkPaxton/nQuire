@@ -141,7 +141,8 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 	}
 	
     if ($visible_status == "unavailable") {
-        $output = array('data' =>  t($activity_name_text));//, 'class' => 'ag-activity-unavailable');
+    		$label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
+        $output = array('data' =>  t($activity_name_text . ' ' . $label_icon));//, 'class' => 'ag-activity-unavailable');
     }
     else {
         $link = t("activity/" . $activity_id . "/" . $node_function);
@@ -160,24 +161,28 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
         		break;
         }*/
 
-        if ($node_details->activity_id == $activity_id) {
-        	$activity_name_link = t($activity_name_text . ' ' . $label_icon);
-        }
-        else {
-			if (in_array($activity_id, new_activity_list($inquiry_id, $phase_id, $uid))) {
-			    $new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
-		    }
-		    else {
-			    $new_icon = "";
-		    };
+        
+        //if ($node_details->activity_id == $activity_id) {
+      //  	$activity_name_link = t($activity_name_text . ' ' . $label_icon);
+      //  }
+      //  else {
+        /*
+        	//new activity lightbulb
+        	if (in_array($activity_id, new_activity_list($inquiry_id, $phase_id, $uid))) {
+			    	$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+			    }
+			    else {
+			    	$new_icon = "";
+			    };
+			    */
+			    
         	$activity_name_link = l(t($activity_name_text . ' ' . $label_icon . ' ' . $new_icon), $link,  array('html' => true, 'query' => $destination));
-        }
+     //   }
         $output = array('data' =>  t($activity_name_link), 'class' => $display_class);
     }
 
     return $output;
 }
-
 
 function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
@@ -192,7 +197,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
         	$show_activities = show_activites($user->uid);
         	$show_phases = show_phases($user->uid);
-			 $hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
+			 		$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
 						
             $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
             
@@ -246,8 +251,8 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
                     		$loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
                     		$visible_status = get_visible_status_of_activity($node_details->inquiry_id, $activity->activity_id, $user->uid);
                     	
-                    		if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) || $visible_status == 'start') {
-                        	$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->phase_id, $activity->activity_id, $user->uid);
+                    		if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) || $visible_status == 'start' || $visible_status == 'unavailable') {
+                        	$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->nid, $activity->activity_id, $user->uid);
                         }
         				};
 
@@ -260,10 +265,11 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
         				$phase_class = 'collapsed';
         			}
         			if (in_array($phase->nid, $phases_of_current_stage) && $phase->nid == $node_details->phase_id) {
+        				//icon changed from folder_empty_current.png
         				$phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
         			}
         			elseif (in_array($phase->nid, $phases_of_current_stage) && $show_phases) {
-        				$phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
+        				$phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
         			}
         			elseif ($phase->nid == $node_details->phase_id && $show_activities) {
         				$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
