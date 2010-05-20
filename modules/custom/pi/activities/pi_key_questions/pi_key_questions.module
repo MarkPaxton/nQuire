@@ -178,6 +178,26 @@ function pi_key_questions_form(&$node) {
         $prefix .= "<p><strong>Your hypothesis is</strong>: " . $hypothesis_node->hypothesis . "</p>";
     };*/
 
+	$prefix = "";
+
+	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+
+	if ($hypothesis_param)
+	{
+		$hypothesis_node = node_load($hypothesis_param);
+		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
+		$hypothesis_activity = load_activity($hypothesis_activity_id);
+		if ($hypothesis_activity->description)
+		{
+			$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";
+		}
+		else
+		{
+			$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
+		}
+		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
+	}
+	
 	$form['#prefix'] = $prefix;
 	
 	return $form;
@@ -187,39 +207,14 @@ function pi_key_questions_form(&$node) {
 /**
  * Implementation of hook_insert().
  */
-function pi_key_questions_insert($node) {
-	$length = 100;
-	if(strlen($node->body) > $length) {
-		$short_body = substr(check_plain($node->body), 0, $length);
-		$last_space = strrpos($short_body, " ");
-		$short_body = substr($short_body, 0, $last_space);
-		$node->title = $short_body;
-	}
-	else {
-		$node->title = $node->body;
-	}
-} 
+//function pi_key_questions_insert($node) {
+//} 
 
 /**
  * Implementation of hook_update().
  */
-function pi_key_questions_update($node) {
-    if ($node->revision) {
-        pi_key_questions_insert($node);
-    }
-    else {
-			$length = 100;
-			if(strlen($node->body) > $length) {
-				$short_body = substr(check_plain($node->body), 0, $length);
-				$last_space = strrpos($short_body, " ");
-				$short_body = substr($short_body, 0, $last_space);
-				$node->title = $short_body;
-			}
-			else {
-				$node->title = $node->body;
-			}
-    };
-} 
+//function pi_key_questions_update($node) {
+//} 
 
 /**
  * Implementation of hook_delete().
@@ -282,6 +277,8 @@ function pi_key_questions_theme() {
  * @return string
  */
 function theme_pi_key_questions($node) {
+	global $user;
+	
 		$node_details = get_inquiry_details_from_current_path();
   	if (is_numeric($node_details->activity_id)) {
   		$current_activity = load_activity($node_details->activity_id);
@@ -290,9 +287,31 @@ function theme_pi_key_questions($node) {
   	if ($current_activity->name) {
   		drupal_set_title(t($current_activity->name));
   	}
+  
+  $prefix = "";
 
+	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+
+	if ($hypothesis_param)
+	{
+		$hypothesis_node = node_load($hypothesis_param);
+		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
+		$hypothesis_activity = load_activity($hypothesis_activity_id);
+		if ($hypothesis_activity->description)
+		{
+			$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";
+		}
+		else
+		{
+			$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
+		}
+		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
+	}
+  	
+	$output = $prefix;
+	$output .= "<strong>Key question:</strong>";
     
-    return $output;
+  return $output;
 
 }
 

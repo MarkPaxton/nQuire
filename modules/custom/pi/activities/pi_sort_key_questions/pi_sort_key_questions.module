@@ -86,8 +86,13 @@ function pi_sort_key_questions_form(&$node) {
 		$categories = array();
 		
 		foreach ($option_categories as $key => $category) {
-			$categories[$key]['#title'] = $category['#title'];
-			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+			$categories[$key]['#title'] = t($category['#title']);
+			$kq_activity_id = get_activity_id_for_nid($key);
+			$kq_phase_id = get_phase_id_for_activity_id($kq_activity_id);
+			
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $kq_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $kq_activity_id . "' LIMIT 1"));
+
+			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
 		}
 
 		if (count($categories) > 1) {
@@ -111,7 +116,7 @@ function pi_sort_key_questions_form(&$node) {
 						'#default_value' => $category['#weight'],
         );
     }
-    
+
     return $form;
 }
 
@@ -187,13 +192,13 @@ function theme_pi_sort_key_questions(&$node) {
   	}
   	
     $output = "";
-    
+/*    
     if ($current_activity->description) {
     	$output  .= '<p>' . t($current_activity->description) . '</p>';
     }
     else {
     	$output  .= '<p>' . t('Your key questions.') . '</p>';
-    }
+    }*/
 
     $header = array(
         t("Key question")
@@ -201,8 +206,34 @@ function theme_pi_sort_key_questions(&$node) {
 
     $rows = array();
 
-    if (is_array($node->categories)) {
-        foreach($node->categories as $key => $category) {
+    // Add the categories of existing nodes and the options list for new nodes
+    if(isset($node->nid)) {
+        $node_categories = $node->categories;
+    }
+    else {
+        $node_categories = array();
+    }
+    
+		$option_categories = pi_sort_key_questions_get_options();
+		$categories = array();
+		
+		foreach ($option_categories as $key => $category) {
+			$categories[$key]['#title'] = t($category['#title']);
+			$kq_activity_id = get_activity_id_for_nid($key);
+			$kq_phase_id = get_phase_id_for_activity_id($kq_activity_id);
+			
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $kq_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $kq_activity_id . "' LIMIT 1"));
+
+			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
+		}
+
+		if (count($categories) > 1) {
+			uasort($categories, "my_weight_compare");
+		}
+		
+
+    if (is_array($categories)) {
+        foreach($categories as $key => $category) {
             $row_activity_id = get_activity_id_for_nid($key);
 			if ($row_activity_id) {
 		        $row = array();
