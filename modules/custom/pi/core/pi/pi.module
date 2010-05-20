@@ -261,10 +261,18 @@ function pi_inquiry_inquiry_view($node) {
     $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
 	
 	$details = get_inquiry_details_from_current_path();
-
+	
+	/*
+	 * We are now assuming a 1-1 mapping of both activities and phases to inquiries
+	 * This means we no longer need session ids
+	 * to find the inquiry when on the phase or activity level
+	*/
+	
+	
 	//set current inquiry
-	$sid = get_current_session_id();
-	set_current_inquiry_for_session_and_user_id($details->inquiry_id, $sid, $uid);
+	//$sid = get_current_session_id();
+	//set_current_inquiry_for_session_and_user_id($details->inquiry_id, $sid, $uid);
+	
 
 	$loaded_stage = node_load($details->stage_id);
 	drupal_set_title($loaded_stage->title);
@@ -581,10 +589,10 @@ function get_inquiry_details_from_current_path() {
 	}
 	elseif (arg(0) == 'phase') {
 		//get inquiry from the database
-		$sid = get_current_session_id();
-		$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
+		//get direct from the phase id rather than session id
+		//$sid = get_current_session_id();
+		//$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
 
-		$result->inquiry_id = $inquiry->inquiry_id;
 
 		//get the current stage for the inquiry and user
 		$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
@@ -593,16 +601,16 @@ function get_inquiry_details_from_current_path() {
 		//get phase from the arg
 		if (arg(1)) {
 			$result->phase_id = (int) arg(1);
+			$result->inquiry_id = get_inquiry_id_for_phase_id($result->phase_id);
 		}
 
 		//activity is not set
 	}
 	elseif ((arg(0) == 'activity') || (arg(0) == 'export')) {
 		//get inquiry from the database
-		$sid = get_current_session_id();
-		
-		$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
-		$result->inquiry_id = $inquiry->inquiry_id;
+		//get direct from the activity id rather than session id
+		//$sid = get_current_session_id();
+		//$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
 
 		//get the current stage for the inquiry and user
 		$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
@@ -611,6 +619,7 @@ function get_inquiry_details_from_current_path() {
 		//get activity from the arg
 		if (arg(1)) {
 			$result->activity_id = (int) arg(1);
+			$result->inquiry_id = get_inquiry_id_for_activity_id($result->activity_id);
 		}
 		//get phase of the activity
 		$phase = get_phase_of_inquiry_and_activity($result->inquiry_id, $result->activity_id, $uid);
@@ -664,6 +673,36 @@ function get_inquiry_details_of_node_path($path) {
 
 	return $result;
 
+}
+
+function get_inquiry_id_for_phase_id($phase_id) {
+	/**
+	 * Returns the inquiry id.
+	 * Assumes 1-1 mapping of phases to inquiries
+	 * If more than one returns the one with the highest unique key in pi_inquiry_phase
+	 */
+	 $result = db_fetch_object(db_query("SELECT inquiry_id FROM pi_inquiry_phase WHERE phase_id = '" . $phase_id . "' ORDER BY pip_id DESC LIMIT 1;"));
+	 return $result->inquiry_id;
+}
+
+function get_phase_id_for_activity_id($activity_id) {
+	/**
+	 * Returns the phase id.
+	 * Assumes 1-1 mapping of phases to activities
+	 * If more than one returns the one with the highest unique key in pi_stage_phase
+	 */
+	$result = db_fetch_object(db_query("SELECT pi_stage_phase.phase_id FROM pi_stage_phase, pi_stage_phase_activity WHERE pi_stage_phase_activity.activity_id = '" . $activity_id . "' AND pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
+	return $result->phase_id; 
+}
+
+function get_inquiry_id_for_activity_id($activity_id) {
+	/**
+	 * Returns the inquiry id.
+	 * Assumes 1-1 mapping of activities to phases
+	 */
+	$phase_id = get_phase_id_for_activity_id($activity_id);
+	$inquiry_id = get_inquiry_id_for_phase_id ($phase_id);
+	return $inquiry_id;
 }
 
 function get_activity_ids_for_activity_type($inquiry_id, $activity_type, $uid) {
@@ -1827,16 +1866,22 @@ function get_inquiries_of_user($uid = 0) {
 }
 
 
+/**
+ * Deprecated function
+ */
+ /*
 function get_current_session_id() {
 	global $cookie_domain;
 	$session = $_COOKIE[session_name()];
 	return $session;
-}
+}*/
 
 
 /**
  * Returns current inquiry_id for session and uid
+ * Deprecated function
  */
+ /*
 function get_current_inquiry_for_session_and_user_id($sid, $uid) {
 	// user's current inquiry
 	$query = "SELECT pi_current_inquiry.inquiry_id, pi_current_inquiry.pci_id ";
@@ -1846,23 +1891,29 @@ function get_current_inquiry_for_session_and_user_id($sid, $uid) {
 
 	$result = db_fetch_object(db_query($query));
 	return $result;
-}
+}*/
 
 /**
  * Sets inquiry_id for session and uid
+ * Deprecated function
  */
+ /*
 function set_current_inquiry_for_session_and_user_id($inquiry_id, $sid, $uid) {
 	$query = "DELETE FROM pi_current_inquiry WHERE sid = '" . $sid . "' ";
 	db_query($query);
 	$query = "INSERT INTO pi_current_inquiry (sid, uid, inquiry_id) VALUES ('" . $sid . "', '" . $uid . "', '" . $inquiry_id . "') ";
 	db_query($query);
 	clear_expired_sessions();
-}
+}*/
 
+/**
+ * Deprecated function
+ */
+ /*
 function clear_expired_sessions() {
 	$query = "DELETE FROM pi_current_inquiry WHERE NOT EXISTS (select * FROM sessions WHERE sessions.sid = pi_current_inquiry.sid)";
 	db_query($query);
-}
+}*/
 
 
 /**
