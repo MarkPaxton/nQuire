@@ -605,36 +605,60 @@ function theme_pi_available_measures($node) {
       $output .= '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
     };
   };
+  
+  $types = array(t('Type a number'), t('Type text'), t('Select menu option'));
 
-	if ($filter_node->symbol_test && $node->symbol) {
-		$output .= t('<p><strong>Symbol / short-name: </strong>' . $node->symbol . '</p>');
-	}
+
+  $header = array(
+    t('Measure attribute'),
+    t('Value'),
+    );
+  
+  $rows = array();
 	
-	if ($filter_node->units_test && $node->units) {
-		$output .= t('<p><strong>Units: </strong>' . $node->units . '</p>');
+	if ($filter_node->symbol_test) {
+		$row = array();
+		$row[] = t('Symbol');
+		$row[] = t($node->symbol);
+		$rows[] = array('data' => $row);
 	}
 
-	if ($filter_node->units_short_test && $node->units_short) {
-		$output .= t('<p><strong>Units symbol / short name: </strong>' . $node->units_short . '</p>');
+	if ($filter_node->units_test) {
+		$row = array();
+		$row[] = t('Units');
+		$row[] = t($node->units);
+		$rows[] = array('data' => $row);
+	}
+
+	if ($filter_node->units_short_test) {
+		$row = array();
+		$row[] = t('Units short name');
+		$row[] = t($node->units_short);
+		$rows[] = array('data' => $row);
+	}
+
+	if ($filter_node->data_type_test) {
+		$row = array();
+		$row[] = t('Data type');
+		$row[] = t($node->data_type);
+		$rows[] = array('data' => $row);
 	}
 	
-	if ($filter_node->data_type_test && $node->data_type) {
-		$output .= t('<p><strong>Data type: </strong>' . ucwords($node->data_type) . '</p>');
+	if ($filter_node->measurement_device_name_test) {
+		$row = array();
+		$row[] = t('Device name');
+		$row[] = t($node->measurement_device_name);
+		$rows[] = array('data' => $row);
 	}
 	
-	if ($filter_node->list_options_test && $node->list_options) {
-		$output .= t('<p><strong>Menu options: </strong>' . implode(", ", explode("\n",$node->list_options)) . '</p>');
+	if ($filter_node->measurement_device_description_test) {
+		$row = array();
+		$row[] = t('Device description');
+		$row[] = t($node->measurement_device_description);
+		$rows[] = array('data' => $row);
 	}
 	
-	if ($filter_node->measurement_device_name_test && $node->measurement_device_name) {
-		$output .= t('<p><strong>Device name: </strong>' . $node->measurement_device_name . '</p>');
-	}
-	
-	if ($filter_node->measurement_device_description_test && $node->measurement_device_description) {
-		$output .= t('<p><strong>Device description: </strong><br/>' . $node->measurement_device_description . '</p>');
-	}
-	
-	//$output .= theme('table', $header, $rows);*/
+	$output .= theme('table', $header, $rows);
   
   return $output;
 }
