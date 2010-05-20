@@ -13,8 +13,24 @@
  */
 function display_phases($phases, $activity_count, $new_activity_count, $layout) {
 	
-	$show_phase_icons = true;
-	$show_activities = true;
+	$show_phase_icons = FALSE;
+	$show_activities = FALSE;
+
+	if( strpos($layout, 'icon') !== FALSE )
+	{
+		$show_phase_icons = TRUE;
+	}
+
+	if( strpos($layout, 'activity') !== FALSE )
+        {
+                $show_activities = TRUE;
+        }
+
+	if( strpos($layout, 'octagon') !== FALSE )
+	{
+		$layout = 'octagon';
+	}
+
 	
 	if( is_array( $phases ) )
 	{
