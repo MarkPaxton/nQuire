@@ -50,10 +50,8 @@ function pi_key_questions_access($op, $node) {
 		if (arg(0) == 'node' && arg(2) == 'delete') {
 		//get inquiry for session id and activity
 			$nid = arg(1);
-			$sid = get_current_session_id();
-			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
-			$inquiry_id = $inquiry_id->inquiry_id;
 			$activity_id = get_activity_id_for_nid($nid);
+			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id) {
 				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
 			}
@@ -117,12 +115,8 @@ function pi_key_questions_form(&$node) {
 	$type = node_get_types('type', $node);
 
 	$form['title'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Short title'),
-		'#required' => TRUE,
-		'#default_value' => check_plain($node->title),
-		'#description' => t('Enter a short label for your key question'),
-		'#weight' => -2
+        '#type' => 'hidden',
+        '#value' => t('Key question')
 	);
 
 	$form['body_filter']['body'] = array(
@@ -130,7 +124,7 @@ function pi_key_questions_form(&$node) {
 		'#title' => t('Key question'),
 		'#required' => TRUE,
 		'#default_value' => check_plain($node->body),
-		'#description' => t('Enter a key question that addresses part of your hypothesis'),
+		'#description' => t('Enter your key question'),
 		'#resizable' => FALSE,
 		'#rows' => 4,
 		'#cols' => 40,
@@ -192,23 +186,40 @@ function pi_key_questions_form(&$node) {
 
 /**
  * Implementation of hook_insert().
-
+ */
 function pi_key_questions_insert($node) {
-    db_query("INSERT INTO {pi_key_questions} (nid, vid, inquiry_id, weight) VALUES (%d, %d, %d, %d)",
-        $node->nid, $node->vid, $node->inquiry_id, $node->weight);
-} */
+	$length = 100;
+	if(strlen($node->body) > $length) {
+		$short_body = substr(check_plain($node->body), 0, $length);
+		$last_space = strrpos($short_body, " ");
+		$short_body = substr($short_body, 0, $last_space);
+		$node->title = $short_body;
+	}
+	else {
+		$node->title = $node->body;
+	}
+} 
 
 /**
  * Implementation of hook_update().
-
+ */
 function pi_key_questions_update($node) {
     if ($node->revision) {
-        pi_key_question_insert($node);
+        pi_key_questions_insert($node);
     }
     else {
-        db_query("UPDATE {pi_key_questions} SET inquiry_id = '%d', weight = '%d' WHERE vid = '%d'", $node->inquiry_id, $node->weight, $node->vid);
+			$length = 100;
+			if(strlen($node->body) > $length) {
+				$short_body = substr(check_plain($node->body), 0, $length);
+				$last_space = strrpos($short_body, " ");
+				$short_body = substr($short_body, 0, $last_space);
+				$node->title = $short_body;
+			}
+			else {
+				$node->title = $node->body;
+			}
     };
-} */
+} 
 
 /**
  * Implementation of hook_delete().
@@ -279,13 +290,7 @@ function theme_pi_key_questions($node) {
   	if ($current_activity->name) {
   		drupal_set_title(t($current_activity->name));
   	}
-  	
-  	if ($current_activity->description) {
-    	$output .= "<p>" . t($current_activity->description) . "</p>";
-    }
-    else {
-    	$output .= "<p>Key question for my inquiry.</p>";
-    }
+
     
     return $output;
 
