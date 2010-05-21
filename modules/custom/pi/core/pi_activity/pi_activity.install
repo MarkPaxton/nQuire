@@ -1,0 +1,189 @@
+<?php
+// $Id: pi_activity.install 2010/05/21 MCP $
+
+/**
+ * @file pi_activity module installer
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function pi_activity_install() {
+  // Create tables.
+  drupal_install_schema('pi_activity');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function pi_activity_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pi_activity');
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function pi_activity_schema() {
+	$schema = array();
+  $schema['pi_activity'] = array(
+    'description' => 'PI Activity.',
+    'fields' => array(
+      'activity_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'name' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Phase name.',
+      ),
+      'description' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Phase description.',
+      ),
+      'activity_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Activity type - category of activity e.g. data collection.',
+      ),
+      'node_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Node type - content type of a node created/used in an activity.',
+      ),
+      'parameters' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Parameters needed to create/use a node in an activity (optional).',
+      ),
+      'destination' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'destination - form destination page after submission e.g. phase, self.',
+      ),
+      'audience' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.',
+      ),
+    ),
+    'primary key' => array('activity_id'),
+  );
+  $schema['pi_activity_node'] = array(
+    'description' => 'PI Activity node.',
+    'fields' => array(
+      'pan_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'PI Inquiry id.',
+      ),
+      'activity_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Activity id.',
+      ),
+      'nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        length => 10,
+        'description' => 'Node id.',
+      ),
+    ),
+    'primary key' => array('pan_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'activity_id' => array('activity_id'),
+    ),
+  );
+ 
+  $schema['pi_activity_status'] = array(
+    'description' => 'PI Activity status.',
+    'fields' => array(
+      'pas_id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique category ID.',
+      ),
+      'inquiry_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'Inquiry id.',
+      ),
+      'activity_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        length => 10,
+        'description' => 'Activity id.',
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        length => 10,
+        'description' => 'User id.',
+      ),
+      'gid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => NULL,
+        'length' => 10,
+        'description' => 'Group id.',
+      ),
+      'node_function' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'node_function - type of drupal node function i.e. add, edit, view.',
+      ),
+      'visible_status' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => '',
+        'description' => 'visible_status - type of icon used for an activity link i.e. start, in_progress, view, unavailable.',
+      ),
+    ),
+    'primary key' => array('pas_id'),
+    'indexes' => array(
+      'inquiry_id' => array('inquiry_id'),
+      'activity_id' => array('activity_id'),
+      'uid' => array('uid'),
+      'gid' => array('gid'),
+    ),
+  );
+  return $schema;
+}
