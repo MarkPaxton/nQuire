@@ -62,14 +62,11 @@ function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, 
 	
 	$hidden_activity_types = array('pi_measure_filter');
 	
-	//Generate links to previous and next phases for use if needed
-	$phase_links = pi_previous_next_phase_links($phase_id, $stage_id, $uid);
-	
 	//Get activities for stage, phase and user in order of position
 	$activities = pi_activity_get_activities_of_stage_phase_user($inquiry_id, $stage_id, $phase_id, $uid);
 
 	//Find the position of current activity 
-	$current_position = NULL;
+	$current_position = FALSE;
 	foreach($activities as $activity)
 	{
 		if($activity->activity_id == $activity_id)
@@ -79,7 +76,7 @@ function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, 
 	}
 
 	//If the current activity is in this stage then generate links
-	if ($current_position!=NULL)
+	if (!($current_position===FALSE))
 	{
 		$previous_position = $current_position - 1;
 		$next_position = $current_position + 1;
@@ -100,7 +97,7 @@ function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, 
 		//if position >= count of activities in phase then point to next phase
 		if($next_position>=count($activities))
 		{
-			$output['next']= $phase_links['next'];
+			$output['next']= pi_previous_next_next_phase_link($inquiry_id, $phase_id, $uid);
 		}
 		else
 		{
@@ -215,19 +212,7 @@ function pi_previous_next_phase_links($current_phase_nid, $current_stage_nid, $u
 		else
 		{
 			// if there are no activities, then work out next phase
-
-			// check that next item will exist or link to inquiry view if not
-			if($next_phase_index >= count($inquiry_phases))
-			{
-				// It doesn't exist so create a link back to the inquiry view
-				$next_link = l($inquiry->title, "inquiry/$phase_node->inquiry_nid");
-			}
-			else
-			{
-				// it should exist, so load it and create link
-				$next_phase = node_load($inquiry_phases[$next_phase_index]);
-				$next_link = l($next_phase->title, "phase/$next_phase->nid");
-			}
+			$next_link = pi_previous_next_next_phase_link($inquiry->nid, $current_phase_nid, $uid);
 		}
 			
 		// do previous link pointing to previous phase, or inquiry view if not
@@ -250,4 +235,35 @@ function pi_previous_next_phase_links($current_phase_nid, $current_stage_nid, $u
 }
 
 
+/**
+ * Generate html link for next phase in the inquiry or link to inquiry view if last phase
+ * @param $inquiry_nid
+ * @param $phase_nid
+ * @param $uid
+ */
+function pi_previous_next_next_phase_link($inquiry_nid, $phase_nid, $uid)
+{
+	$phase_link = '';
+	
+	$inquiry_phases = get_phases_of_inquiry_and_user($inquiry_nid, $uid);
+	$inquiry = node_load($inquiry_nid);
+	//get the item with position+1 and position-1
+	$current_phase_index = array_search($phase_nid, $inquiry_phases);
+	$next_phase_index = $current_phase_index+1;
+	
+	// check that next item will exist or link to inquiry view if not
+	if($next_phase_index >= count($inquiry_phases))
+	{
+		// It doesn't exist so create a link back to the inquiry view
+		$phase_link = l($inquiry->title, "inquiry/$inquiry_nid");
+	}
+	else
+	{
+		// it should exist, so load it and create link
+		$next_phase = node_load($inquiry_phases[$next_phase_index]);
+		$phase_link = l($next_phase->title, "phase/$next_phase->nid");
+	}
+	
+	return $phase_link;	
+}
 
