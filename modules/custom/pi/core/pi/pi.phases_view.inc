@@ -124,8 +124,26 @@ function display_phases_box( $icon_url, $title, $activity_count, $new_activity_c
 	
 	if( $show_icon !== true && $show_activities !== true )
 	{
+		$title_length = strlen($title);
+
+		if(strpos($title, '<img') !== FALSE)
+		{
+			$title_length = strpos($title, '<img');
+		}
+
+		//The title is a link! Therefore contains a "<a href" + URL, so the first ~ 30 characters are for this link.
+		//The correct way to do this would be to remove (for the lengh calculation) the link + image.
+		//Maybe regex would be a solution....
+		if($title_length>=70)
+		{
+			$span_style = 'position: absolute; top: 50%; height: 30px; margin: -15px 0px -15px 0px; width: 100%; text-align: center';
+		}
+		else
+		{
+			$span_style = 'position: absolute; top: 50%; height: 20px; margin: -10px 0px -10px 0px; width: 100%; text-align: center';
+		}
 		$output .= '<div class="textcontnoicon">
-						<div class="titleboxnoiconnoact"><span style="position: absolute; top: 50%; height: 20px; margin: -10px 0px -10px 0px; width: 100%; text-align: center">' . $title . '</span></div>';
+						<div class="titleboxnoiconnoact"><span style="' . $span_style. '">' . $title . '</span></div>';
 	}
 	else if( $show_icon !== true && $show_activities === true )
 	{
