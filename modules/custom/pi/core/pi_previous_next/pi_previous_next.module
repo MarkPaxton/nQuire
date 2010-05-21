@@ -1,40 +1,38 @@
 <?php
 // $Id: pi_previous_next.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
 
-define( 'NQUIRE_VERSION', 'BETA1 2010-05-12 23:39' );
-
 function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
 
-    switch ($op) {
+    switch($op)
+    {
+    	case 'list':
+    		$blocks[0]['info'] = t('Previous - Next browser');
+    		return $blocks;
+    	case 'view':
+    		global $user;
+    		$details = get_inquiry_details_from_current_path();
+    		$block['content'] ='';
 
-        case 'list':
-            $blocks[0]['info'] = t('Previous - Next browser');
-            return $blocks;
+    		$path = drupal_get_path('module', 'pi_header');
+    		$image_path = $path . '/images';
 
-        case 'view':
-
-            global $user;
-            $details = get_inquiry_details_from_current_path();
-            
-            $path = drupal_get_path('module', 'pi_header');
-            $image_path = $path . '/images';
-            
-            drupal_add_css( $path .'/pi_header.css' );
-            $details = get_inquiry_details_from_current_path();
-            if(arg(0) == 'activity' && (arg(2) == 'view' || !arg(2))) {
-            	$headings = array(array(data => "Previous", width => '50%'), array(data => "Next", width => '50%'));
-            	
-            	//array('data' => 'Cell 2', 'colspan' => 2
-            	
-            	
-            	$prev_next = previous_next_buttons($details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id, $user->uid);
-            	$previous_activity = $prev_next->previous;
-            	$next_activity = $prev_next->next;
-							$table = array(array(array(data => $previous_activity, valign => 'top'), array(data => $next_activity, valign => 'top')));
-							
-            	$block['content'] = theme('table', $headings, $table);
-						}
-            return $block;
+    		drupal_add_css( $path .'/pi_header.css' );
+    		$details = get_inquiry_details_from_current_path();
+    		if(arg(0) == 'activity' && (arg(2) == 'view' || !arg(2)))
+    		{
+    			$prev_next = previous_next_buttons($details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id, $user->uid);
+    			$previous_activity = $prev_next->previous;
+    			$next_activity = $prev_next->next;
+    			$block['content'] .= '<div>';
+    			if(strlen($previous_activity>0))
+    			{
+    				$block['content'] .= "<div style='float:left'><strong>" . t("Previous") . ":&nbsp;</strong>$previous_activity</div>";
+    			}
+    			$block['content'] .= "<div style='float:right'><strong>" . t("Next") . ":&nbsp;</strong>$next_activity</div>";
+	    		$block['content'] .= '</div>';
+    		}
+    			
+    		return $block;
     };
 }
 
