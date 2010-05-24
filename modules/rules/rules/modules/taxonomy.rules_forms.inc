@@ -1,5 +1,5 @@
 <?php
-// $Id: taxonomy.rules_forms.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: taxonomy.rules_forms.inc,v 1.1.2.10 2009/09/10 10:57:54 fago Exp $
 
 
 /**
@@ -47,8 +47,8 @@ function rules_action_taxonomy_load_term_form($settings, &$form, $form_state) {
     }
     $form['settings']['term'] = array(
       '#type' => 'fieldset',
-      '#title' => t("!vocab's terms", array('!vocab' => $vocabulary->name)),
-      '#description' => empty($options) ? t('There are no terms in the vocabulary, you should <a href="@add-url">add</a> one.', array('@add-url' => url('admin/content/taxonomy/'. $vocabulary->vid .'/add/term'))) : t('Select an existing term or manually enter the name of the term that should be added or removed from the content.'),
+      '#title' => t("Select a term"),
+      '#description' => empty($options) ? t('There are no terms in the vocabulary, you should <a href="@add-url">add</a> one.', array('@add-url' => url('admin/content/taxonomy/'. $vocabulary->vid .'/add/term'))) : t('Select an existing term from vocabulary !vocab or manually enter the name of the term that should be added or removed from the content.', array('!vocab' => $vocabulary->name)),
     );
     $form['settings']['term']['term_select'] = rules_taxonomy_form($vocabulary->vid, !empty($settings['term']['term_select']) ? $settings['term']['term_select'] : 0);
 
@@ -76,6 +76,36 @@ function rules_taxonomy_form($vid, $value = 0, $help = NULL, $name = 'taxonomy')
 }
 
 /**
+ * Action: Add a new term to vocabulary configuration form.
+ *
+ * As we allow adding terms to vocabularies that are created on the fly, we
+ * can't present the term's advanced settings.
+ */
+function rules_action_taxonomy_add_term_form($settings, &$form, $form_state) {
+  // Fields definition taken from taxonomy_form_term().
+  $form['settings']['term'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Term Identification'),
+    '#collapsible' => TRUE,
+  );
+  $form['settings']['term']['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Term name'),
+    '#default_value' => !empty($settings['term']['name']) ? $settings['term']['name'] : '',
+    '#maxlength' => 255,
+    '#description' => t('The name of this term.'),
+    '#required' => TRUE,
+  );
+
+  $form['settings']['term']['description'] = array(
+    '#type' => 'textarea',
+    '#title' => t('Description'),
+    '#default_value' => !empty($settings['term']['description']) ? $settings['term']['description'] : '',
+    '#description' => t('A description of the term. To be displayed on taxonomy/term pages and RSS feeds.'),
+  );
+}
+
+/**
  * Action: Load a vocabulary configuration form.
  */
 function rules_action_taxonomy_load_vocab_form($settings, &$form, $form_state) {
@@ -95,10 +125,10 @@ function rules_action_taxonomy_load_vocab_form($settings, &$form, $form_state) {
   );
   $form['settings']['vocabulary']['vocab_text'] = array(
     '#type' => 'textarea',
-    '#title' => t('Select by term id'),
+    '#title' => t('Select by vocabulary id'),
     '#default_value' => !empty($settings['vocabulary']['vocab_text']) ? $settings['vocabulary']['vocab_text'] : '',
     '#disabled' => empty($options),
-    '#description' => t('Optional: Enter the vocabulary id (<em>not the vocabulary name</em>) that should be loaded . If this field is used, the "Select a vocabulary" field will be ignored.'),
+    '#description' => t('Optional: Enter the vocabulary id (<em>not the vocabulary name</em>) that should be loaded. If this field is used, the "Select a vocabulary" field will be ignored.'),
   );
 }
 

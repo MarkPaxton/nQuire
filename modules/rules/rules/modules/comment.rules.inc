@@ -1,5 +1,5 @@
 <?php
-// $Id: comment.rules.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: comment.rules.inc,v 1.1.2.8 2009/08/19 14:58:41 fago Exp $
 
 
 /**
@@ -78,7 +78,18 @@ function rules_events_hook_comment_arguments($comment_label) {
  * Gets the author of the comment
  */
 function rules_events_argument_comment_author($comment) {
-  return user_load(array('uid' => $comment->uid));
+  // if comment author is anonymous user get basic info from comment
+  if (!$comment->uid) {
+    $account = new stdClass();
+    $account->uid = 0;
+    $account->name = $comment->name;
+    $account->mail = $comment->mail;
+    $account->roles = array(DRUPAL_ANONYMOUS_RID => 'anonymous user');
+  }
+  else {
+    $account = user_load(array('uid' => $comment->uid));
+  }
+  return $account;
 }
 
 /**

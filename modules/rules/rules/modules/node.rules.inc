@@ -1,6 +1,5 @@
 <?php
-// $Id: node.rules.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
-
+// $Id: node.rules.inc,v 1.1.2.40 2010/03/26 13:56:01 fago Exp $
 
 /**
  * @file rules integration for the node module
@@ -126,6 +125,10 @@ function node_rules_condition_info() {
   $items['rules_condition_content_is_promoted'] = $defaults + array(
     'label' => t('Content is promoted to frontpage'),
   );
+  $items['rules_condition_content_is_new'] = $defaults + array(
+    'label' => t('Content is new'),
+    'help' => t('Evaluates to TRUE, if the given content has not been saved yet.'),
+  );
   return $items;
 }
 
@@ -155,6 +158,13 @@ function rules_condition_content_is_sticky(&$node, $settings) {
  */
 function rules_condition_content_is_promoted(&$node, $settings) {
   return $node->promote == 1;
+}
+
+/**
+ * Condition: Check if the node is new
+ */
+function rules_condition_content_is_new($node, $settings = array()) {
+  return empty($node->nid) || !empty($node->is_new);
 }
 
 /**
@@ -232,6 +242,13 @@ function node_rules_action_info() {
       ),
       'module' => 'Node',
     ),
+    'rules_action_delete_node' => array(
+      'label' => t('Delete content'),
+      'arguments' => array(
+        'node' => array('type' => 'node', 'label' => t('Content')),
+      ),
+      'module' => 'Node',
+    ),
   );
 }
 
@@ -285,6 +302,30 @@ function rules_action_load_node($nid, $vid = NULL) {
 }
 
 /**
+ * Action "Delete a node".
+ *
+ * We cannot use node_delete() because it does access checks and output.
+ * @see node_delete()
+ */
+function rules_action_delete_node($node) {
+  db_query('DELETE FROM {node} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {node_revisions} WHERE nid = %d', $node->nid);
+
+  // Call the node-specific callback (if any):
+  node_invoke($node, 'delete');
+  node_invoke_nodeapi($node, 'delete');
+
+  // Clear the page and block caches.
+  cache_clear_all();
+
+  // Remove this node from the search index if needed.
+  if (function_exists('search_wipe')) {
+    search_wipe($node->nid, 'node');
+  }
+  watchdog('content', '@type: deleted %title.', array('@type' => $node->type, '%title' => $node->title));
+}
+
+/**
  * Implementation of hook_rules_action_info_alter().
  *
  * Adapts the action info of the core actions to better fit for rules.
@@ -322,6 +363,9 @@ function node_rules_data_type_info() {
 class rules_data_type_node extends rules_data_type {
   function save() {
     $node = &$this->get();
+    // Bug fix: Make sure we don't create another revision when we react on the
+    // creation of an revision.
+    unset($node->revision);
     node_save($node);
     return TRUE;
   }

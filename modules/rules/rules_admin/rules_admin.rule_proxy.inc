@@ -1,5 +1,5 @@
 <?php
-// $Id: rules_admin.rule_proxy.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: rules_admin.rule_proxy.inc,v 1.1.2.2 2009/04/19 15:03:43 fago Exp $
 
 
 /**

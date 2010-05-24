@@ -1,10 +1,11 @@
 <?php
-// $Id: rules.module,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: rules.module,v 1.1.2.72 2010/03/08 18:22:32 fago Exp $
 
 /**
  * @file Rules engine module
  */
 
+define('RULES_DATE_REGEX_LOOSE', '/^(\d{4})-?(\d{2})-?(\d{2})([T\s]?(\d{2}):?(\d{2}):?(\d{2})?)?$/');
 
 // We don't use hook_init() to include this as this
 // causes problems invoking rules_nodeapi.
@@ -55,7 +56,9 @@ function rules_get_item_defaults($item_type = 'rules') {
   $defaults = rules_gather_data('rules_defaults', 'all', FALSE);
   if ($item_type == 'rules' && isset($defaults[$item_type])) {
     // Apply the rule format upgrade to each rule if necessary.
-    return array_map('rules_rule_format_upgrade', $defaults[$item_type]);
+    $items = array_map('rules_rule_format_upgrade', $defaults[$item_type]);
+    $items = array_map('rules_import_hook', $items);
+    return $items;
   }
   return isset($defaults[$item_type]) ? $defaults[$item_type] : array();
 }
@@ -266,7 +269,7 @@ function rules_invoke_rule_set() {
     _rules_initialize_variables($state, $args);
 
     rules_evaluate_rule_set($set_name, $set, $state);
-    
+
     //only show the log, if this is no nested evaluation
     if (rules_log_evaluation_finished()) {
       rules_show_log();
@@ -287,7 +290,7 @@ function rules_invoke_rule_set() {
  *     be skipped.
  */
 function rules_evaluate_rule_set($set_name, $set, &$state, $skip_save = array()) {
-  _rules_log_set_invocation(t('%label has been invoked.', array('%label' => $state['set_info']['label'])), TRUE);
+  _rules_log_set_invocation(t('"@label" has been invoked.', array('@label' => $state['set_info']['label'])), TRUE);
 
   rules_evaluate_elements($set['rules'], $state);
 
@@ -298,7 +301,7 @@ function rules_evaluate_rule_set($set_name, $set, &$state, $skip_save = array())
   }
 
   rules_log_evaluation_clear($set_name);
-  _rules_log_set_invocation(t('Evaluation of %label has been finished.', array('%label' => $state['set_info']['label'])), FALSE);
+  _rules_log_set_invocation(t('Evaluation of "@label" has been finished.', array('@label' => $state['set_info']['label'])), FALSE);
 }
 
 /**
@@ -396,12 +399,12 @@ function rules_execute_element(&$element, &$state) {
  */
 function rules_execute_rule(&$element, &$state) {
   if ($element['#active'] && !$element['#recursion'] && rules_log_rule_is_evaluated($element)) {
-    rules_log(t('Not executing the rule %name on rule set %set to prevent recursion.', array('%name' => $element['#label'], '%set' => $state['set_info']['label'])));
+    rules_log(t('Not executing the rule "@name" on rule set "@set" to prevent recursion.', array('@name' => $element['#label'], '@set' => $state['set_info']['label'])));
     // Remember this, so the recursion count is still positive after this evaluation.
     rules_log_evaluated_rule($element);
   }
   else if ($element['#active']) {
-    rules_log(t('Executing the rule %name on rule set %set', array('%name' => $element['#label'], '%set' => $state['set_info']['label'])));
+    rules_log(t('Executing the rule "@name" on rule set "@set"', array('@name' => $element['#label'], '@set' => $state['set_info']['label'])));
     // Remember that we are processing this rule to prevent recursion
     rules_log_evaluated_rule($element);
     $result = rules_evaluate_elements($element['#conditions'], $state);
@@ -452,7 +455,7 @@ function rules_execute_and(&$elements, &$state) {
 function rules_execute_action($element, &$state) {
   $exec_args = rules_get_execution_arguments($element, $state);
   if ($exec_args !== FALSE) {
-    rules_log(t('Action execution: @name', array('@name' => rules_get_element_label($element))));
+    rules_log(t('Action execution: "@name"', array('@name' => rules_get_element_label($element))));
 
     $result = rules_element_invoke($element, '', $exec_args);
     //An action may return altered variables, which are saved automatically
@@ -477,7 +480,7 @@ function rules_execute_condition($element, &$state) {
   if ($exec_args !== FALSE) {
     $result = rules_element_invoke($element, '', $exec_args);
 
-    rules_log(t('Condition %name evaluated to @bool.', array('%name' => rules_get_element_label($element), '@bool' => $result !== FALSE ? 'TRUE' : 'FALSE')));
+    rules_log(t('Condition "@name" evaluated to @bool.', array('@name' => rules_get_element_label($element), '@bool' => $result !== FALSE ? 'TRUE' : 'FALSE')));
     return $result;
   }
   return FALSE;
@@ -487,11 +490,12 @@ function rules_execute_condition($element, &$state) {
  * Writes the message into the log
  */
 function rules_log($message, $error = FALSE) {
-  global $_rules_log;
+  global $_rules_log, $_rules_log_error;
 
   if (isset($_rules_log)) {
     list($usec, $sec) = explode(" ", microtime());
     $_rules_log[] = array('time' => array('sec' => $sec, 'usec' => $usec), 'msg' => $message, 'error' => $error);
+    $_rules_log_error = !empty($_rules_log_error) || $error;
   }
 }
 
@@ -517,7 +521,7 @@ function _rules_log_set_invocation($message, $start = TRUE) {
  */
 function rules_elements() {
   $types              = array();
-  $types['rule']      = array('#name' => '', '#set' => '', '#status' => 'default', '#categories' => array(), '#recursion' => FALSE, '#active' => TRUE, '#execute' => 'rules_execute_rule');
+  $types['rule']      = array('#name' => '', '#set' => '', '#status' => 'default', '#categories' => array(), '#recursion' => FALSE, '#active' => TRUE, '#execute' => 'rules_execute_rule', '#conditions' => array(), '#actions' => array());
   $types['condition'] = array('#name' => '', '#info' => array(), '#negate' => FALSE, '#settings' => array('#argument map' => array()), '#execute' => 'rules_execute_condition', '#suffix' => '<br clear="all" />');
   $types['action']    = array('#name' => '', '#info' => array(), '#settings' => array('#argument map' => array()), '#execute' => 'rules_execute_action', '#suffix' => '<br clear="all" />');
   $types['OR']        = array('#execute' => 'rules_execute_or', '#logical_op' => TRUE, '#negate' => FALSE, '#theme' => 'rules_operation', '#label' => t('OR'));
@@ -676,20 +680,20 @@ function rules_use_element($type, $params = array()) {
  * Shows the log and clears it afterwards
  */
 function rules_show_log() {
-  global $_rules_log;
+  global $_rules_log, $_rules_log_error;
 
-  if (is_array($_rules_log) && count($_rules_log)) {
+  if (!empty($_rules_log) && (!empty($_rules_log_error) || variable_get('rules_debug', FALSE))) {
     $i = 0;
-    $error = FALSE;
     $msg = _rules_show_log($i, $_rules_log, $error);
-    $_rules_log = NULL;
 
-    if ($error) {
+    if ($_rules_log_error) {
       rules_handle_error_msg('An error occured during rule evaluation. It follows the evaluation log: !log', array('!log' => $msg));
     }
-    else if (variable_get('rules_debug', FALSE)) {
+    else {
       drupal_set_message($msg);
     }
+    $_rules_log = NULL;
+    $_rules_log_error = NULL;
   }
 }
 
@@ -702,7 +706,7 @@ function _rules_show_log(&$i, $data, &$error) {
       $output[] = _rules_show_log($i, $data, $error);
     }
     else {
-      $diff = ($data[$i]['time']['sec'] - $start['sec']) * 1000000 + $data[$i]['time']['usec'] - $start['usec'];
+      $diff = ($data[$i]['time']['sec'] - $start['sec']) + $data[$i]['time']['usec'] - $start['usec'];
       $formatted_diff = round($diff * 1000, 3) .' ms';
       $msg = $formatted_diff .' '. $data[$i]['msg'];
 
@@ -873,10 +877,10 @@ function rules_rules_item_info() {
  */
 function rules_error_missing_implementation($element) {
   if (isset($element['#info']) && $element['#info']) {
-    $msg = t('Unable to find %type of name %name with the label %label. Perhaps the according module has been deactivated.', array('%type' => $element['#type'], '%name' => $element['#name'], '%label' => rules_get_element_label($element)));
+    $msg = t('Unable to find "@type" of name "@name" with the label "@label". Perhaps the according module has been deactivated.', array('@type' => $element['#type'], '@name' => $element['#name'], '@label' => rules_get_element_label($element)));
   }
   else {
-    $msg = t('Unable to find %type of name %name. Perhaps the according module has been deactivated.', array('%type' => $element['#type'], '%name' => $element['#name']));
+    $msg = t('Unable to find "@type" of name "@name". Perhaps the according module has been deactivated.', array('@type' => $element['#type'], '@name' => $element['#name']));
   }
   rules_log($msg, TRUE);
 }
@@ -1018,3 +1022,71 @@ function rules_rule_format_upgrade($rule) {
   return $rule;
 }
 
+/**
+ * Implementation of hook_token_list()
+ *
+ * We expose some simple types to token so that our simple rules variables can
+ * also be used by others when doing token replacement, this is actually more
+ * useful than the rules variables in themselves.
+ */
+function rules_token_list($type = 'all') {
+  if ($type == 'string' || $type == 'all') {
+    $tokens['string']['string']          = t("The string, passed through check_plain");
+    $tokens['string']['string-raw']      = t("The string, raw and unfiltered");
+    return $tokens;
+  }
+}
+
+/**
+ * Implementation of hook_token_values().
+ *
+ * @see rules_token_list().
+ */
+function rules_token_values($type, $object = NULL, $options = array()) {
+  if ($type == 'string') {
+    $string = $object;
+    $tokens['string']      = check_plain($string);
+    $tokens['string-raw']  = $string;
+    return $tokens;
+  }
+}
+
+/**
+ * Convert a time string to a GMT (UTC) unix timestamp
+ */
+function rules_gmstrtotime($time) {
+  if (preg_match(RULES_DATE_REGEX_LOOSE, $time)) {
+    // Append 'UTC' to indicate that the time string is in GMT/UTC.
+    return strtotime($time .' UTC');
+  }
+  // If the time string is not in plain old date format (e.g. 'now', '+1 day'
+  // etc.), we need to convert it first.
+  $value = strtotime($time);
+  $date = gmdate('Y-m-d H:i:s', $value);
+  return strtotime($date .' UTC');
+}
+
+/**
+ * Implementation of hook_features_api().
+ */
+function rules_features_api() {
+  return array(
+    'rules_categories' => array(
+      'name' => t('Rule configurations by category'),
+      'feature_source' => TRUE,
+      'default_hook' => 'rules_defaults',
+      'file' => drupal_get_path('module', 'rules') .'/rules.export.inc',
+    ),
+  );
+}
+
+/**
+ * Calls the import hook to allow modules to react on the import.
+ */
+function rules_import_hook($rule) {
+  foreach (module_implements('rules_import') as $module) {
+    $function = $module . '_rules_import';
+    $function($rule);
+  }
+  return $rule;
+}

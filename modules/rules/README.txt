@@ -1,4 +1,4 @@
-$Id: README.txt,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+$Id: README.txt,v 1.1.2.11 2009/12/10 11:58:31 fago Exp $
 
 Rules Module
 ------------
@@ -34,8 +34,7 @@ Notes:
 
  * If you install the token module, you can make use of token replacements in your rules.
    Get the module from http://drupal.org/project/token. Make sure you have a recent version,
-   a development snapshot which stems from >27.08.08 or once released version 6.12. Then
-   just activate the module - that's it.
+   6.12 or later. Then just activate the module - that's it.
 
    You don't need to enable the token actions module as rules provides already equivalent
    actions, which are better integrated into the rules module. 
@@ -52,7 +51,17 @@ Rules Scheduler
    schedule the execution of rule sets.
  * Make sure that you have configured cron for your drupal installation as cron
    is used for scheduling the rule sets. For help see http://drupal.org/cron
+ * If the views module (http://drupal.org/project/views) is installed, the module displays
+   the list of scheduled tasks in the UI. 
 
+
+Rules Forms
+-----------
+
+ * If you want to manipulate or customize forms on your site, you can use the rules
+   forms module. It provides events, conditions and actions for rule-based form customization.
+ * Take a look at the README.txt file in rules forms module subfolder.
+ 
 
 Rules Simpletest
 ----------------

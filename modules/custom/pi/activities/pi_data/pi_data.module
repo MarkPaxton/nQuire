@@ -142,98 +142,107 @@ function pi_data_form(&$node) {
 					$required_value = FALSE;
 				};
 
-				// field_type = textfield
-				if ($measure->field_type == 'textfield') 
+				switch($measure->field_type)
 				{
-					//$prefix .= "textfield";
-					$tree[$key]['value'] = array(
-	                    '#type' => 'textfield',
-	                    '#title' => t($measure->title . $units),
-	                    '#required' => $required_value,
-                    '#default_value' => check_plain(t($node->categories[$key]['#value'])),
-	                    '#size' => t($measure->textfield_size),
-	                    '#weight' => $measure_selection['#weight']
-					);
-				}
-				elseif ($measure->field_type == 'textarea')
-				{
-					//$prefix .= "textarea";
-					$tree[$key]['value'] = array(
-	                    '#type' => 'textarea',
-	                    '#title' => t($measure->title . $units),
-	                    '#required' => $required_value,
-                    	'#default_value' => check_plain(t($node->categories[$key]['#value'])),
-	                    '#resizable' => TRUE,
-	                    '#cols' => t($measure->textarea_cols),
-	                    '#rows' => t($measure->textarea_rows),
-	                    '#weight' => $measure_selection['#weight']
-					);
-				}
-				// field_type = select or radios
-				elseif ($measure->field_type == 'select' || $measure->field_type == 'radios')
-				{
-					if ($measure->list_options)
-					{
-						$options = array();
-						foreach (explode("\n",$measure->list_options) as $opt)
+					// field_type = textfield
+					case 'textfield': 
+						//$prefix .= "textfield";
+						$tree[$key]['value'] = array(
+		                    '#type' => 'textfield',
+		                    '#title' => t($measure->title . $units),
+		                    '#required' => $required_value,
+	                    '#default_value' => check_plain(t($node->categories[$key]['#value'])),
+		                    '#size' => t($measure->textfield_size),
+		                    '#weight' => $measure_selection['#weight']
+						);
+					break;
+					case 'textarea':
+						//$prefix .= "textarea";
+						$tree[$key]['value'] = array(
+		                    '#type' => 'textarea',
+		                    '#title' => t($measure->title . $units),
+		                    '#required' => $required_value,
+	                    	'#default_value' => check_plain(t($node->categories[$key]['#value'])),
+		                    '#resizable' => TRUE,
+		                    '#cols' => t($measure->textarea_cols),
+		                    '#rows' => t($measure->textarea_rows),
+		                    '#weight' => $measure_selection['#weight']
+						);
+					break;
+					// field_type = select or radios
+					case 'select': 
+					case 'radios':
+						if ($measure->list_options)
 						{
-							//trim added around item to prevent the following error:
-							//An illegal choice has been detected. Please contact the site administrator.
-							$item = trim(substr($opt,0,64));//**now use value as key
-							$options[$item] = $item;
-						};
-					}
-					elseif ($measure->content_options)
-					{
-						$options = array();
-						$query = "SELECT nid, title FROM node WHERE type = '" . $measure->content_options . "' ";
-						$results = db_query($query);
-						while ($result = db_fetch_object($results)) {
-							$options[$result->title] = $result->title;//now use value as key
+							$options = array();
+							foreach (explode("\n",$measure->list_options) as $opt)
+							{
+								//trim added around item to prevent the following error:
+								//An illegal choice has been detected. Please contact the site administrator.
+								$item = trim(substr($opt,0,64));//**now use value as key
+								$options[$item] = $item;
+							};
 						}
-					};
-
-					$tree[$key]['value'] = array(
-	                    '#type' => t($measure->field_type),
-	                    '#title' => t($measure->title . $units),
-	                    '#required' => $required_value,
-	                    '#default_value' => t($node->categories[$key]['#value']),
-	                    '#options' => $options,
-	                    '#weight' => $measure_selection['#weight']
-					);
+						elseif ($measure->content_options)
+						{
+							$options = array();
+							$query = "SELECT nid, title FROM node WHERE type = '" . $measure->content_options . "' ";
+							$results = db_query($query);
+							while ($result = db_fetch_object($results)) {
+								$options[$result->title] = $result->title;//now use value as key
+							}
+						};
+	
+						$tree[$key]['value'] = array(
+		                    '#type' => t($measure->field_type),
+		                    '#title' => t($measure->title . $units),
+		                    '#required' => $required_value,
+		                    '#default_value' => t($node->categories[$key]['#value']),
+		                    '#options' => $options,
+		                    '#weight' => $measure_selection['#weight']
+						);
+					break;
+					// field_type = checkboxes
+					case 'checkboxes':
+						$options = array();
+						if ($measure->list_options)
+						{
+							foreach (explode("\n",$measure->list_options) as $opt)
+							{
+								$option_item = substr($opt,0,16);
+								$options[$option_item] = $option_item;
+							};
+						};
+	
+						$select = array();
+						if ($node->$form_key)
+						{
+							foreach (explode(",",$node->$form_key) as $sel)
+							{
+								$select[] = substr($sel,0,16);
+							};
+						};
+	
+						$tree[$key]['value'] = array(
+		                    '#type' => 'checkboxes',
+		                    '#title' => t($measure->title . $units),
+		                    '#required' => $required_value,
+		                    '#default_value' => t($node->categories[$key]['#value']),
+		                    '#options' => $options,
+		                    '#weight' => $measure_selection['#weight']
+						);
+					break;
+					case 'upload-file':
+					case 'upload-image':
+						$form['#attributes'] = array('enctype' => "multipart/form-data");
+						$tree[$key]['value'] = array(
+		                    '#type' => 'file',
+		                    '#title' => t($measure->title),
+		                    '#options' => $options,
+		                    '#weight' => $measure_selection['#weight']
+						);
+					break;
 				}
-				// field_type = checkboxes
-				elseif ($measure->field_type == 'checkboxes')
-				{
-
-					$options = array();
-					if ($measure->list_options)
-					{
-						foreach (explode("\n",$measure->list_options) as $opt)
-						{
-							$option_item = substr($opt,0,16);
-							$options[$option_item] = $option_item;
-						};
-					};
-
-					$select = array();
-					if ($node->$form_key)
-					{
-						foreach (explode(",",$node->$form_key) as $sel)
-						{
-							$select[] = substr($sel,0,16);
-						};
-					};
-
-					$tree[$key]['value'] = array(
-	                    '#type' => 'checkboxes',
-	                    '#title' => t($measure->title . $units),
-	                    '#required' => $required_value,
-	                    '#default_value' => t($node->categories[$key]['#value']),
-	                    '#options' => $options,
-	                    '#weight' => $measure_selection['#weight']
-					);
-				};
 			};
 		};
 	}

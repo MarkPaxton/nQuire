@@ -1,5 +1,5 @@
 <?php
-// $Id: rules.api.php,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: rules.api.php,v 1.1.2.10 2010/03/08 18:22:24 fago Exp $
 
 /**
  * @file
@@ -53,9 +53,11 @@
  *         variable has to be described by a sub-array with possible
  *         attributes as described afterwards.
  *   - 'eval input'
- *         An array containg form element names of elements contained in the
+ *         Optional; An array containing form element names of elements contained in the
  *         actions settings form ($form['settings']) to which input evaluators
- *         should be attached. Optional.
+ *         should be attached.
+ *         For settings in a nested array the array keys may be separated by '|'
+ *         in the name.
  *   - 'label callback'
  *         A callback to improve the action's label once it has been configured.
  *         Optional (Defaults to {ACTION_NAME}_label).
@@ -254,9 +256,19 @@ function rules_action_callback_help() {
   return t('This help text is going to be displayed during action configuration.');
 }
 
-
-
-
+/**
+ * Features module integration callback.
+ *
+ * It should be placed into the file MODULENAME.rules_forms.inc or into
+ * MODULENAME.rules.inc.
+ *
+ * Allows actions or conditions to add further needed feature components.
+ *
+ * @see hook_rules_action_info()
+ */
+function rules_action_callback_features_export(&$export, &$pipe, $settings) {
+  
+}
 
 
 /**
@@ -411,6 +423,9 @@ function hook_rules_event_info() {
  *    - 'eval input'
  *         If the data type uses an input form, this can be used to enable input
  *         evaluation for it. Optional (defaults to FALSE).
+ *    - 'token type'
+ *         The type name as used by the token module. Defaults to the type name
+ *         as used by rules. Use FALSE to let token ignore this type. Optional.
  *    - 'hidden'
  *         Whether the data type should be hidden from the UI. Optional
  *         (defaults to FALSE).
@@ -610,6 +625,68 @@ function hook_rules_action_type_map() {
       ),
     ),
   );
+}
+
+/**
+ * React on an import of a rule.
+ *
+ * This hook is called if a rule is imported through the import/export admin
+ * interface or if a default rule is provided by a module via
+ * hook_rules_defaults().
+ *
+ * @param $rule
+ *   An array representing the rule with its properties.
+ */
+function hook_rules_import(&$rule) {
+  // Examine the rule, e.g. check if it is event-triggered.
+  if ($rule['#set'] === 'event_my_module') {
+    // Initiate post-processing that is needed to make to rule work.
+  }
+}
+
+/**
+ * Provides a default rule.
+ *
+ * Modules that implement this hook have to provide a configuration array that
+ * contains rules and/or rule sets. You can use the output from the export
+ * functionality, but you have to change rules and rule sets names and you need
+ * to set the status property to 'default' or 'fixed'.
+ *
+ * @return
+ *   An array containing the configuration.
+ * 
+ * @see http://drupal.org/node/298634
+ */
+function hook_rules_defaults() {
+  $config = array (
+    'rules' =>
+    array (
+       // A default rule.
+      'yourmodule_default_rule_1' => array(
+        '#status' => 'default',
+        // Your other rule properties here.
+      ),
+      // A fixed rule (hidden from the Rules admin user interface).
+      'yourmodule_default_rule_2' => array(
+        '#status' => 'fixed',
+        // Your other rule properties here.
+      ),
+    ),
+    'rule_sets' =>
+    array(
+      // A default rule set.
+      'yourmodule_default_set_1' => array(
+        'status' => 'default',
+        // Your other rule set properties here.
+      ),
+      // A fixed rule set (hidden from the Rules admin user interface).
+      'yourmodule_default_set_2' => array(
+        'status' => 'fixed',
+        // Your other rule properties here.
+      ),
+    ),
+  );
+  return $config;
 }
 
 /**

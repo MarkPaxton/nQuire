@@ -1,5 +1,5 @@
 <?php
-// $Id: rules_admin.export.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: rules_admin.export.inc,v 1.1.2.9 2009/08/25 13:01:03 fago Exp $
 
 
 /**
@@ -7,6 +7,8 @@
  */
 
 rules_include('rules_admin');
+module_load_include('inc', 'rules', 'rules.export');
+
 
 /**
  * Imports a configuration of rules, rule sets, ..
@@ -66,6 +68,7 @@ function rules_item_rule_import(&$name, &$rule) {
     }
     $rule['#status'] = 'custom';
   }
+  rules_import_hook($rule);
 }
 
 /**
@@ -118,14 +121,21 @@ function rules_admin_import_workflow_ng($import) {
 }
 
 /**
- * Exports one ore more configurations
+ * Exports one or more configurations
  */
 function rules_admin_form_export($form_state) {
   $form = array();
   if (!isset($form_state['export'])) {
     $form['export'] = array('#tree' => TRUE);
     foreach (rules_get_items() as $name => $info) {
-      $items = rules_admin_get_grouped_labels(rules_get_configured_items($name));
+      $items = rules_get_configured_items($name);
+      if ($name === 'rules') {
+        // Filter out rules within rule sets, we only want event-triggered,
+        // standalone rules.
+        $items = array_filter($items, 'rules_admin_is_event_rule');
+        $info['label'] = t('Triggered rules');
+      }
+      $items = rules_admin_get_grouped_labels($items);
       if (count($items)) {
         $form['export'][$name] = array(
           '#type' => 'select',
@@ -158,8 +168,7 @@ function rules_admin_form_export($form_state) {
       '#type' => 'textarea',
       '#title' => t('Exported rule configurations'),
       '#description' => t('Copy these data and paste them into the import page, to import.'),
-      '#rows' => 15,
-      '#attributes' => array('readonly' => 'readonly'),
+      '#rows' => 30,
       '#default_value' => var_export($form_state['export'], TRUE),
     );
   }
@@ -173,25 +182,10 @@ function rules_admin_form_export_submit($form, &$form_state) {
     $export[$item_type] = array_intersect_key($items, array_filter($item_names));
   }
   if (isset($form_state['values']['export_by_tag']) && $tags_to_export = array_filter($form_state['values']['export_by_tag'])) {
-    // Search all items for the given tag.
-    foreach (rules_get_items() as $item_type => $info) {
-      $items = array_filter(rules_get_configured_items($item_type), 'rules_admin_element_filter');
-      foreach ($items as $name => $item) {
-        $categories = isset($item['categories']) ? $item['categories'] : (isset($item['#categories']) ? $item['#categories'] : array());
-        if (array_intersect($tags_to_export, $categories)) {
-          $export[$item_type][$name] = $item;
-        }
-      }
-    }
+    rules_admin_export_by_category($export, $tags_to_export);
   }
-  if (array_filter($export)) {
-    foreach (array_keys($export) as $item_type) {
-      // Allow item specific adaption before exporting
-      foreach ($export[$item_type] as $item_name => $item) {
-        rules_item_type_invoke($item_type, 'export', array($item_name, &$export[$item_type][$item_name], &$export));
-      }
-    }
-    $form_state['export'] = $export;
+  if ($export = array_filter($export)) {
+    $form_state['export'] = rules_export_items($export);
   }
   else {
     drupal_set_message(t('Please select the items to export.'), 'error');
@@ -200,14 +194,17 @@ function rules_admin_form_export_submit($form, &$form_state) {
 }
 
 /**
- * Item type callback: When exporting a rule set, add its rules to the export.
+ * Adds in the rule items for the given tags.
  */
-function rules_item_rule_set_export($set_name, &$rule_set, &$export) {
-  $rules = rules_get_configured_items('rules');
-  foreach ($rules as $name => $rule) {
-    if ($rule['#set'] == $set_name) {
-      $export['rules'][$name] = $rule;
+function rules_admin_export_by_category(&$export, $tags_to_export = array()) {
+  // Search all items for the given tag.
+  foreach (rules_get_items() as $item_type => $info) {
+    $items = array_filter(rules_get_configured_items($item_type), 'rules_admin_element_filter');
+    foreach ($items as $name => $item) {
+      $categories = isset($item['categories']) ? $item['categories'] : (isset($item['#categories']) ? $item['#categories'] : array());
+      if (array_intersect($tags_to_export, $categories)) {
+        $export[$item_type][$name] = $item;
+      }
     }
   }
 }
-
