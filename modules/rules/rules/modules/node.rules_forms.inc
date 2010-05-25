@@ -1,5 +1,5 @@
 <?php
-// $Id: node.rules_forms.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: node.rules_forms.inc,v 1.1.2.20 2009/08/25 17:28:58 fago Exp $
 
 
 /**
@@ -41,6 +41,10 @@ function rules_condition_content_is_sticky_label($settings, $argument_labels) {
 
 function rules_condition_content_is_promoted_label($settings, $argument_labels) {
   return t('@node is promoted to frontpage', $argument_labels);
+}
+
+function rules_condition_content_is_new_label($settings, $argument_labels) {
+  return t('@node is new', $argument_labels);
 }
 
 /**
@@ -109,6 +113,13 @@ function rules_core_node_label_callback($settings, $argument_labels, &$element) 
     $element['#info']['label_skeleton'] = str_replace(t('content'), '@node', $element['#info']['label']);
   }
   return t($element['#info']['label_skeleton'], $argument_labels);
+}
+
+/**
+ * Action "Delete content" - Label callback
+ */
+function rules_action_delete_node_label($settings, $argument_labels) {
+  return t('Delete @node', $argument_labels);
 }
 
 /**

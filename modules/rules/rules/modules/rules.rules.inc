@@ -1,5 +1,5 @@
 <?php
-// $Id: rules.rules.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: rules.rules.inc,v 1.1.2.42 2010/03/08 18:22:32 fago Exp $
 
 
 /**
@@ -8,8 +8,6 @@
  * @addtogroup rules
  * @{
  */
-
-define('RULES_DATE_REGEX_LOOSE', '/^(\d{4})-?(\d{2})-?(\d{2})([T\s]?(\d{2}):?(\d{2}):?(\d{2})?)?$/');
 
 /**
  * Implementation of hook_rules_data_type_info().
@@ -21,24 +19,28 @@ function rules_rules_data_type_info() {
       'class' => 'rules_data_type_string',
       'identifiable' => FALSE,
       'eval input' => TRUE,
+      'token type' => 'string',
     ),
     'number' => array(
       'label' => t('number'),
       'class' => 'rules_data_type_number',
       'identifiable' => FALSE,
       'eval input' => TRUE,
+      'token type' => FALSE,
     ),
     'date' => array(
       'label' => t('date'),
       'class' => 'rules_data_type_date',
       'identifiable' => FALSE,
       'eval input' => TRUE,
+      'token type' => FALSE,
     ),
     'boolean' => array(
       'label' => t('truth value'),
       'class' => 'rules_data_type_boolean',
       'identifiable' => FALSE,
       'eval input' => TRUE,
+      'token type' => FALSE,
     ),
     'value' => array(
       'label' => t('a fixed value'),
@@ -85,8 +87,8 @@ class rules_data_type_number extends rules_data_type_string {
 class rules_data_type_date extends rules_data_type_string {
   function get_default_input_form($info, $value) {
     $info += array('long' => FALSE, 'required' => TRUE, 'description' => '');
-    $value = isset($value) ? $value : date('Y-m-d H:i:s', time() + 86400);
-    $info['description'] = $info['description'] .' '. t('Format: %format or other values known by the PHP !strtotime function like "+1 day". ', array('%format' => date('Y-m-d H:i:s', time() + 86400), '!strtotime' => l('strtotime()', 'http://php.net/strtotime')));
+    $value = isset($value) ? $value : gmdate('Y-m-d H:i:s', time());
+    $info['description'] = $info['description'] .' '. t('Format: %format or other values in GMT known by the PHP !strtotime function like "+1 day". ', array('%format' => gmdate('Y-m-d H:i:s', time() + 86400), '!strtotime' => l('strtotime()', 'http://php.net/strtotime')));
     $info['description'] .= '<br />'. t('You may also enter a timestamp in GMT. E.g. use !code together with the PHP input evalutor to specify a date one day after the evaluation time. ', array('!code' => '<pre>'. check_plain('<?php echo time() + 86400 * 1; ?>') .'</pre>'));
     return array(
       '#type' => $info['long'] ? 'textarea' : 'textfield',
@@ -102,7 +104,7 @@ class rules_data_type_date extends rules_data_type_string {
       $value = gmdate('Y-m-d H:i:s', $value);
     }
     else if (is_string($value)) {
-      $value = gmdate('Y-m-d H:i:s', strtotime($value));
+      $value = gmdate('Y-m-d H:i:s', rules_gmstrtotime($value));
     }
     if (is_string($value) && preg_match(RULES_DATE_REGEX_LOOSE, $value)) {
       return $value;
@@ -216,9 +218,10 @@ function rules_rules_action_info() {
   }
   $items = array_filter($items);
 
-  // Add an action to add a new variable for all not identifiable data types
+  // Add an action to add a new variable for all data types that use an input form.
   foreach (rules_get_data_types() as $name => $type_info) {
-    if (isset($type_info['identifiable']) && !$type_info['identifiable'] && (!isset($type_info['hidden']) || !$type_info['hidden'])) {
+    $type_info += array('use_input_form' => empty($type_info['identifiable']));
+    if (!empty($type_info['use_input_form']) && empty($type_info['hidden'])) {
       $items['rules_add_var_'. $name] = array(
         'module' => 'Rules',
         'base' => 'rules_action_save_variable',
@@ -268,6 +271,11 @@ function rules_action_invoke_set() {
   $settings = array_pop($args);
   $set_name = $element['#info']['set'];
   $set      = rules_get_rule_set($set_name);
+
+  if (!$set) {
+    rules_log(t("The configured rule set %set doesn't exist any more.", array('%set' => $set_name)), TRUE);
+    return;
+  }
 
   // We create a new evaluation state, that maps the variables to the outer
   // state whenever possible. If necessary, we initialize new variables. So

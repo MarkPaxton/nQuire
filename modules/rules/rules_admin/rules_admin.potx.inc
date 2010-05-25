@@ -1,5 +1,5 @@
 <?php
-// $Id: rules_admin.potx.inc,v 1.1 2009/06/24 09:17:48 ou_pm Exp $
+// $Id: rules_admin.potx.inc,v 1.1.2.1 2009/04/19 18:19:06 fago Exp $
 
 
 /**
