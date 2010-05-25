@@ -51,7 +51,7 @@ function pi_draggable_measures_theme() {
 	    	'arguments' => array('form'),
 	    ),
 	    'pi_draggable_measures' => array(
-	    	'arguments' => array('node'),
+	    	'arguments' => array('node','teaser'),
 	    ),
     );
 }
@@ -234,7 +234,7 @@ function pi_draggable_measures_view($node, $teaser, $page = FALSE) {
         $node = node_prepare($node, $teaser);
 
         $node->content['pi_draggable_measures'] = array(
-            '#value' => theme('pi_draggable_measures', $node),
+            '#value' => theme('pi_draggable_measures', $node, $teaser),
             '#weight' => 2
         );
 
@@ -246,7 +246,7 @@ function pi_draggable_measures_view($node, $teaser, $page = FALSE) {
  * @param unknown_type $node
  * @return unknown_type
  */
-function theme_pi_draggable_measures($node) {
+function theme_pi_draggable_measures($node, $teaser) {
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
@@ -285,7 +285,13 @@ function theme_pi_draggable_measures($node) {
             };
         }
     }
-	$output .= theme('table', $header, $rows);
+  
+  if($teaser) {
+  	$output .= "Vew and organise your measures";
+  }
+  else {
+		$output .= theme('table', $header, $rows);
+	}
 	return $output;
 }
 
