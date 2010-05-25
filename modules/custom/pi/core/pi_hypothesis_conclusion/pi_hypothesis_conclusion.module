@@ -167,8 +167,7 @@ function pi_hypothesis_conclusion_load($node) {
 function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
     global $user;
 	$details = get_inquiry_details_from_current_path();
-	if (!$teaser)
-    {
+		if(!$teaser) {
     	$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
     	if ($hypothesis_nid)
     	{
@@ -179,7 +178,7 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
 	            '#weight' => 1
    			);
     	}
-    	
+    	}
     	$activity_id = get_activity_id_for_nid($node->nid);
 		if(!is_numeric($activity_id))
 		{
@@ -198,16 +197,9 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
 	    // Use Drupal's default node view.
         $node = node_prepare($node, $teaser);
         $node->content['pi_hypothesis_conclusion'] = array(
-            '#value' => theme('pi_hypothesis_conclusion', $node, $activity),
+            '#value' => theme('pi_hypothesis_conclusion', $node, $activity,$teaser),
             '#weight' => 2
         );
-    }
-
-    if ($teaser)
-    {
-    // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
-    }
 
     return $node;
 }
@@ -220,7 +212,7 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
 function pi_hypothesis_conclusion_theme() {
 	return array(
 	    'pi_hypothesis_conclusion' => array(
-		    'arguments' => array('node', 'current_activity'),
+		    'arguments' => array('node', 'current_activity','teaser'),
 		),
 	);
 }
@@ -232,7 +224,7 @@ function pi_hypothesis_conclusion_theme() {
  * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
  * @return string HTML for the page content added for hypothesis conclusion data
  */
-function theme_pi_hypothesis_conclusion($node, $current_activity=NULL) {
+function theme_pi_hypothesis_conclusion($node, $current_activity=NULL,$teaser) {
 	$output='';
 
 	if(isset($current_activity))
@@ -242,10 +234,12 @@ function theme_pi_hypothesis_conclusion($node, $current_activity=NULL) {
 			drupal_set_title(t($current_activity->name));
 		}
 	}
-	
-    $output .= '<div style="font-weight:bold">My conclusion is:</div>' . "\n";
-    $output .= '<p>' . check_plain($node->conclusion). '</p>';
+		if(!$teaser) {
+    	$output .= '<div style="font-weight:bold">My conclusion is:</div>' . "\n";
+    }
+    	$output .= '<p>' . check_plain($node->conclusion). '</p>';
 
+	
     return $output;
 }
 

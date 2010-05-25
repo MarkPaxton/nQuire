@@ -280,21 +280,14 @@ function pi_result_presentations_load($node) {
  * Implementation of hook_view().
  */
 function pi_result_presentations_view($node, $teaser = FALSE, $page = FALSE) {
-    if (!$teaser) {
+
     // Use Drupal's default node view.
         $node = node_prepare($node, $teaser);
 
         $node->content['pi_result_presentations'] = array(
-            '#value' => theme('pi_result_presentations', $node),
+            '#value' => theme('pi_result_presentations', $node,$teaser),
             '#weight' => 2
         );
-
-    }
-
-    if ($teaser) {
-    // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
-    }
 
     return $node;
 }
@@ -309,7 +302,7 @@ function pi_result_presentations_theme() {
     'arguments' => array('form'),
     ),
     'pi_result_presentations' => array(
-    'arguments' => array('node'),
+    'arguments' => array('node','teaser'),
     ),
     );
 }
@@ -317,7 +310,7 @@ function pi_result_presentations_theme() {
 /**
  * implementation of theme_hook().   
  */
-function theme_pi_result_presentations($node) {
+function theme_pi_result_presentations($node,$teaser) {
 
     global $user;
 	$details = get_inquiry_details_from_current_path();
@@ -325,12 +318,13 @@ function theme_pi_result_presentations($node) {
     drupal_set_title(t($node->title));
     
     $output = "";
-        
+    
+    if(!$teaser) {
     if (isset($node->key_question_id) AND ($node->key_question_id > 0)) {
     		$loaded_key_question = node_load($node->key_question_id);
         $output .= "<p><strong>Key question:</strong> " . $loaded_key_question->title . "</p>";
     };
-    			
+    }			
     $selected_measures = "";
     $delim = "";
     
@@ -347,8 +341,11 @@ function theme_pi_result_presentations($node) {
         
     $header = get_selected_measures_headings_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
     $rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
-        
-    $output .= theme('table', $header, $rows);
+    
+    if(!$teaser) {
+    	$output .= theme('table', $header, $rows);
+    }
+    
 
 	$data = spin_array($rows);
 	
@@ -501,7 +498,9 @@ function theme_pi_result_presentations($node) {
 		
 	};
     
-    $output  .= '<p>' . l('Download (csv) data file', 'export/' . $details->activity_id . '/csv') . '</p>';
+    if(!$teaser) {
+    	$output  .= '<p>' . l('Download (csv) data file', 'export/' . $details->activity_id . '/csv') . '</p>';
+    }
     
     return $output;
     
