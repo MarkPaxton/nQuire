@@ -47,27 +47,21 @@ function pi_data_access($op, $node) {
 	{
 		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
 	}
-	if ($op == 'delete')
-	{
-		if (arg(0) == 'node' && arg(2) == 'delete')
-		{
-			//get inquiry for session id and activity
+	if ($op == 'delete') {
+		if (arg(0) == 'node' && arg(2) == 'delete') {
+		//get inquiry for session id and activity
 			$nid = arg(1);
-			$sid = get_current_session_id();
-			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
-			$inquiry_id = $inquiry_id->inquiry_id;
 			$activity_id = get_activity_id_for_nid($nid);
+			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id) {
 				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
 			}
-			else
-			{
+			else {
 				return FALSE;
 			}
 		}
-		else 
-		{
-			return check_node_function_of_activity($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		else {
+			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
 		}
 	}
 }
