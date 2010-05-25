@@ -164,21 +164,18 @@ function pi_sort_key_questions_load($node) {
 
 
 function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
-    if (!$teaser) {
+
         $node = node_prepare($node, $teaser);
 
         $node->content['pi_sort_key_questions'] = array(
-            '#value' => theme('pi_sort_key_questions', $node),
+            '#value' => theme('pi_sort_key_questions', $node, $teaser),
             '#weight' => 2
         );
-    }
-    if ($teaser) {
-        $node = node_prepare($node, $teaser);
-    }
+
     return $node;
 }
 
-function theme_pi_sort_key_questions($node) {
+function theme_pi_sort_key_questions($node, $teaser) {
 
 	global $user;
 	$uid = $user->uid;
@@ -245,7 +242,12 @@ function theme_pi_sort_key_questions($node) {
 		
 		//only display form and submit button if there are some entries
     if (count($rows) > 0) {
-    	$output .= theme('table', $header, $rows);
+    	if($teaser) {
+    		$output .= "You have " . count($rows) . " key questions";
+    	}
+    	else {
+    		$output .= theme('table', $header, $rows);
+    	}
     }
    	else {
    		$output .= "<p>No key questions are available.</p>";

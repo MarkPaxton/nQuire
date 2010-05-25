@@ -548,6 +548,179 @@ function Gradient($HexFrom, $HexTo, $ColorSteps) {
 }
 
 
+
+function result_presentations_teaser_view($node) {
+
+    global $user;
+	$details = get_inquiry_details_from_current_path();
+
+    drupal_set_title(t($node->title));
+    
+    $output = "";
+    			
+    $selected_measures = "";
+    $delim = "";
+    
+    $measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid . 
+    								"' AND vid = '" . $node->vid . 
+    								"' AND status = '1' ORDER BY weight ASC");
+    					
+    while ($measure = db_fetch_object($measures)) {
+    	$selected_measures .= $delim . $measure->available_measure;
+    	if ($delim == "") {
+    		$delim = ", ";
+    	};
+    };
+        
+    $header = get_selected_measures_headings_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
+    $rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
+        
+    $data = spin_array($rows);
+	
+	$x_axis_labels_heading = array_shift($header);
+	$x_axis_labels = array_shift($data);
+	
+	$counter = 0;
+	$min_y_value = 99999;
+	$max_y_value = -99999;
+	$colour_array = Gradient("FF0000", "0000FF", count($x_axis_labels)-1);
+	
+	$scatter_graph_check = 0;
+	foreach ($x_axis_labels as $x_axis_label) {
+		if (is_numeric($x_axis_label)) {
+			$scatter_graph_check = 1;
+		};
+	};
+	
+	// now make the chart
+	if ($scatter_graph_check) {
+		
+		foreach($data as $data_row) {
+		
+			unset($chart);
+			
+			$chart = array(
+				'#chart_id' => t($node->title . '-' . $counter),
+				'#title' => chart_title(t($header[$counter] . ' versus ' . $x_axis_labels_heading), '444444', 14),
+				'#type' => CHART_TYPE_SCATTER,
+				'#size' => chart_size(700, 200),
+				'#adjust_resolution' => TRUE,
+			);
+		
+			// $chart['#shape_markers'][] = array('o',$colour_array[$counter],0,0,8);
+			$chart['#data'][] = $x_axis_labels;
+		
+			$text_data = 0;
+			foreach ($data_row as $data_item) {
+				if (!(is_numeric($data_item))) {
+					$text_data = 1;
+				};
+			};
+			
+			if ($text_data == 0) {
+			
+				// add data sets to chart
+				$chart['#data'][] = $data_row;
+	
+				// add chart legend for each data set
+				// $chart['#legends'][] = $header[$counter];
+				
+				// colour each data set differently
+				$chart['#data_colors'][] = $colour_array[$counter];
+			
+				// record minimum data value
+				if (min($data_row) < $min_y_value) {
+					$min_y_value = min($data_row);
+				};
+				// record maximum data value
+				if (max($data_row) > $max_y_value) {
+					$max_y_value = max($data_row);
+				};
+
+				// y axis - heading and max value
+			  	$chart['#mixed_axis_labels'][CHART_AXIS_Y_LEFT][0][] = chart_mixed_axis_range_label(0, $max_y_value);
+			  	$chart['#mixed_axis_labels'][CHART_AXIS_Y_LEFT][1][] = chart_mixed_axis_label(t('  '));
+			  	$chart['#mixed_axis_labels'][CHART_AXIS_Y_LEFT][2][] = chart_mixed_axis_label(t($header[$counter]), 95);
+	
+				// x axis - heading and values
+				$chart['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][0][] = chart_mixed_axis_range_label(0, max($x_axis_labels));
+				$chart['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][1][] = chart_mixed_axis_label(t($x_axis_labels_heading), 50);
+			
+				// render chart
+				$output .= chart_render($chart);
+				$output .= t('<p> </p>');
+		
+				$counter++;
+		
+			};
+
+		};
+		
+	}
+	else {
+		$chart_1 = array(
+			'#chart_id' => t($node->title),
+			'#title' => chart_title(t($node->title), '444444', 14),
+			'#type' => CHART_TYPE_BAR_V_GROUPED,
+			'#size' => chart_size(700, 200),
+			'#adjust_resolution' => TRUE,
+		);	
+	
+		foreach($data as $data_row) {
+
+			$text_data = 0;
+			foreach ($data_row as $data_item) {
+				if (!(is_numeric($data_item))) {
+					$text_data = 1;
+				};
+			};
+			
+			if ($text_data == 0) {
+			
+				// add data sets to chart
+				$chart_1['#data'][] = $data_row;
+	
+				// add chart legend for each data set
+				$chart_1['#legends'][] = $header[$counter];
+	
+				// colour each data set differently
+				$chart_1['#data_colors'][] = $colour_array[$counter];
+			
+				// record minimum data value
+				if (min($data_row) < $min_y_value) {
+					$min_y_value = min($data_row);
+				};
+				// record maximum data value
+				if (max($data_row) > $max_y_value) {
+					$max_y_value = max($data_row);
+				};
+		
+				$counter++;
+		
+			};
+
+		};
+	
+		// y axis - heading and max value
+	  	$chart_1['#mixed_axis_labels'][CHART_AXIS_Y_LEFT][1][] = chart_mixed_axis_label(t('Value'), 95);
+	  	$chart_1['#mixed_axis_labels'][CHART_AXIS_Y_LEFT][0][] = chart_mixed_axis_range_label($min_y_value, $max_y_value);
+	
+		// x axis - heading and values
+		$chart_1['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][2][] = chart_mixed_axis_label(t($x_axis_labels_heading), 50);
+		foreach ($x_axis_labels as $x_axis_label) {
+			$chart_1['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][1][] = chart_mixed_axis_label(t(substr($x_axis_label, 0, 3)));
+		};
+	
+		// render chart
+		$output .= chart_render($chart_1);
+		
+	};
+       
+    return $output;
+    
+}
+
+
 /**
  * Theme pi_results_presentations form
  */

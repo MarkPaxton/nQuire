@@ -160,9 +160,8 @@ function pi_hypothesis_load($node) {
  * Implementation of hook_view().
  */
 function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
-    if (!$teaser) {
     // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
+    $node = node_prepare($node, $teaser);
 		$activity_id = get_activity_id_for_nid($node->nid);
 		if(!is_numeric($activity_id))
 		{
@@ -179,16 +178,9 @@ function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
     	}
     	
 		$node->content['pi_hypothesis'] = array(
-            '#value' => theme('pi_hypothesis', $node, $activity),
+            '#value' => theme('pi_hypothesis', $node, $activity, $teaser),
             '#weight' => 2
         );
-
-    }
-
-    if ($teaser) {
-    // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
-    }
 
     return $node;
 }
@@ -201,11 +193,19 @@ function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
 function pi_hypothesis_theme() {
     return array(
 	    'pi_hypothesis' => array(
-		    'arguments' => array('node', 'current_activity'),
+		    'arguments' => array('node', 'current_activity', 'teaser'),
 	    ),
     );
 }
 
+function pi_hypothesis_teaser_theme() {
+	print "yyy";
+    return array(
+	    'pi_hypothesis_teaser' => array(
+		    'arguments' => array('node', 'current_activity', 'teaser'),
+	    ),
+    );
+}
 
 /**
  * Theme function to display the pi_hypothesis view page (uses drupal theme_hook()) 
@@ -213,8 +213,7 @@ function pi_hypothesis_theme() {
  * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
  * @return string HTML for the page content added for hypothesis data
  */
-function theme_pi_hypothesis($node, $current_activity=NULL) {
-	$output='';
+function theme_pi_hypothesis($node, $current_activity=NULL, $teaser) {
 	if(isset($current_activity))
   	{
 	  	if(isset($current_activity->name)) {
@@ -230,7 +229,9 @@ function theme_pi_hypothesis($node, $current_activity=NULL) {
     	$output .= "<p>A hypothesis is a prediction that you can test.</p>";
     }
     
-    $output .= "<div style='font-weight:bold;'>My hypothesis is:</div>\n";
+    if(!$teaser) {
+    	$output .= "<div style='font-weight:bold;'>My hypothesis is:</div>\n";
+    }
     $output .= '<p style="border-width: 2px;border-style: sold;border-color: black;">' . check_plain($node->hypothesis). '</p>';
 
     return $output;
