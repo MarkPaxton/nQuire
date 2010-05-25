@@ -287,10 +287,15 @@ function theme_pi_draggable_measures($node, $teaser) {
     }
   
   if($teaser) {
-  	$output .= "Vew and organise your measures";
+  	$output .= "View and organise your measures";
   }
   else {
-		$output .= theme('table', $header, $rows);
+  	if(count($rows) > 0) {
+			$output .= theme('table', $header, $rows);
+		}
+		else {
+			$output .= "No measures have been selected";
+		}
 	}
 	return $output;
 }
@@ -338,9 +343,14 @@ function theme_pi_draggable_measures_node_form($form) {
 	else {
 		$output  .= '<p>' . t('Order your key questions.') . '</p>';
 	}
-
-	$output .= theme('table', $header, $rows, array('id' => 'measures_list'));
-	$output .= drupal_render($form);
+	
+	if(count($rows) > 0) {
+		$output .= theme('table', $header, $rows, array('id' => 'measures_list'));
+		$output .= drupal_render($form);
+	}
+	else {
+		$output .= "No measures available";
+	}
 
 	return $output;
 }

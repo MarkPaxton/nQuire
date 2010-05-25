@@ -173,9 +173,7 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 }
 
 function theme_pi_sort_data($node,$teaser) {
-	if($teaser) {
-		return "View and organise your data entries";
-	}
+
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
@@ -189,6 +187,27 @@ function theme_pi_sort_data($node,$teaser) {
   	
     $output = "";
     
+    
+    // Add the categories of existing nodes and the options list for new nodes
+    if(isset($node->nid)) {
+        $node_categories = $node->categories;
+    }
+    else {
+        $node_categories = array();
+    }
+		
+		$option_categories = pi_sort_data_get_options();
+
+		foreach ($option_categories as $key => $category) {
+			$categories[$key]['#title'] = $category['#title'];
+			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+		}
+		
+		if(count($categories) > 2) {
+			uasort($categories, "my_weight_compare");
+		}
+
+
 /*    if ($current_activity->description) {
     	$output  .= '<p>' . t($current_activity->description) . '</p>';
     }
@@ -201,9 +220,11 @@ function theme_pi_sort_data($node,$teaser) {
     );
 
     $rows = array();
+    
+    
 
-    if (is_array($node->categories)) {
-    	foreach($node->categories as $key => $category) {
+    if (is_array($categories)) {
+    	foreach($categories as $key => $category) {
             $row_activity_id = get_activity_id_for_nid($key);
 			if ($row_activity_id) {
 		        $row = array();
@@ -212,8 +233,18 @@ function theme_pi_sort_data($node,$teaser) {
             };
         }
     }
-
-    $output .= theme('table', $header, $rows);
+		
+		if(count($rows) > 0) {
+				if($teaser) {
+					$output .= "View and organise your data entries";
+				}
+				else {
+					$output .= theme('table', $header, $rows);
+				}
+		}
+		else {
+			$output .= 'No data entries are available';
+		}
     return $output;
 }
 
