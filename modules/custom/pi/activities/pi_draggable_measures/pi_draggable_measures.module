@@ -51,7 +51,7 @@ function pi_draggable_measures_theme() {
 	    	'arguments' => array('form'),
 	    ),
 	    'pi_draggable_measures' => array(
-	    	'arguments' => array('node'),
+	    	'arguments' => array('node','teaser'),
 	    ),
     );
 }
@@ -230,17 +230,14 @@ function pi_draggable_measures_load($node) {
  * @return unknown_type
  */
 function pi_draggable_measures_view($node, $teaser, $page = FALSE) {
-    if (!$teaser) {
+
         $node = node_prepare($node, $teaser);
 
         $node->content['pi_draggable_measures'] = array(
-            '#value' => theme('pi_draggable_measures', $node),
+            '#value' => theme('pi_draggable_measures', $node, $teaser),
             '#weight' => 2
         );
-    }
-    if ($teaser) {
-        $node = node_prepare($node, $teaser);
-    }
+
     return $node;
 }
 
@@ -249,7 +246,7 @@ function pi_draggable_measures_view($node, $teaser, $page = FALSE) {
  * @param unknown_type $node
  * @return unknown_type
  */
-function theme_pi_draggable_measures($node) {
+function theme_pi_draggable_measures($node, $teaser) {
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
@@ -288,7 +285,18 @@ function theme_pi_draggable_measures($node) {
             };
         }
     }
-	$output .= theme('table', $header, $rows);
+  
+  if($teaser) {
+  	$output .= "View and organise your measures";
+  }
+  else {
+  	if(count($rows) > 0) {
+			$output .= theme('table', $header, $rows);
+		}
+		else {
+			$output .= "No measures have been selected";
+		}
+	}
 	return $output;
 }
 
@@ -335,8 +343,14 @@ function theme_pi_draggable_measures_node_form($form) {
 	else {
 		$output  .= '<p>' . t('Order your key questions.') . '</p>';
 	}
-	$output .= theme('table', $header, $rows, array('id' => 'measures_list'));
-	$output .= drupal_render($form);
+	
+	if(count($rows) > 0) {
+		$output .= theme('table', $header, $rows, array('id' => 'measures_list'));
+		$output .= drupal_render($form);
+	}
+	else {
+		$output .= "No measures available";
+	}
 
 	return $output;
 }

@@ -137,25 +137,23 @@ function pi_wiki_notes_load($node) {
     $node->vid));
 }
 
+function pi_wiki_notes_link_alter(&$links, $node) {
+  // remove attachment links from upload.module
+	unset($links['upload_attachments']);
+}
+
+
 /**
  * Implementation of hook_view().
  */
 function pi_wiki_notes_view($node, $teaser = FALSE, $page = FALSE) {
-    if (!$teaser) {
     // Use Drupal's default node view.
         $node = node_prepare($node, $teaser);
 
         $node->content['pi_wiki_notes'] = array(
-            '#value' => theme('pi_wiki_notes', $node),
+            '#value' => theme('pi_wiki_notes', $node, $teaser),
             '#weight' => 2
         );
-
-    }
-
-    if ($teaser) {
-    // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
-    }
 
     return $node;
 }
@@ -168,7 +166,7 @@ function pi_wiki_notes_view($node, $teaser = FALSE, $page = FALSE) {
 function pi_wiki_notes_theme() {
     return array(
     'pi_wiki_notes' => array(
-    'arguments' => array('node'),
+    'arguments' => array('node', 'teaser'),
     ),
     );
 }
@@ -180,10 +178,14 @@ function pi_wiki_notes_theme() {
  * @param unknown_type $node
  * @return string
  */
-function theme_pi_wiki_notes($node) {
-
-    $output = '<p><strong>Notes:</strong> ' . check_plain($node->notes). '</p>';
-
+function theme_pi_wiki_notes($node, $teaser) {
+	
+	if($teaser) {
+		$output = check_plain($node->notes);
+	}
+	else {
+		$output = '<p><strong>Notes:</strong> ' . check_plain($node->notes). '</p>';
+	}
     return $output;
 }
 

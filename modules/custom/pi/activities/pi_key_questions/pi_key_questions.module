@@ -236,23 +236,14 @@ function pi_key_questions_load($node) {
  * Implementation of hook_view().
  */
 function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
-    if (!$teaser) {
     // Use Drupal's default node view.
         $node = node_prepare($node, $teaser);
 
         $node->content['pi_key_questions'] = array(
-            '#value' => theme('pi_key_questions', $node),
+            '#value' => theme('pi_key_questions', $node, $teaser),
             '#weight' => -8
         );
         
-        
-    }
-
-    if ($teaser) {
-    // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
-    }
-
     return $node;
 }
 
@@ -264,7 +255,7 @@ function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
 function pi_key_questions_theme() {
     return array(
     'pi_key_questions' => array(
-    'arguments' => array('node'),
+    'arguments' => array('node', 'teaser'),
     ),
     );
 }
@@ -276,7 +267,7 @@ function pi_key_questions_theme() {
  * @param unknown_type $node
  * @return string
  */
-function theme_pi_key_questions($node) {
+function theme_pi_key_questions($node, $teaser) {
 	global $user;
 	
 		$node_details = get_inquiry_details_from_current_path();
@@ -289,7 +280,7 @@ function theme_pi_key_questions($node) {
   	}
   
   $prefix = "";
-
+	
 	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
 	if ($hypothesis_param)
@@ -307,10 +298,11 @@ function theme_pi_key_questions($node) {
 		}
 		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
 	}
-  	
-	$output = $prefix;
-	$output .= "<strong>Key question:</strong>";
-    
+  
+  if(!$teaser) {
+		$output = $prefix;
+		$output .= "<strong>Key question:</strong>";
+  }  
   return $output;
 
 }

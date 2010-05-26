@@ -50,10 +50,8 @@ function pi_key_answers_access($op, $node) {
 		if (arg(0) == 'node' && arg(2) == 'delete') {
 		//get inquiry for session id and activity
 			$nid = arg(1);
-			$sid = get_current_session_id();
-			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
-			$inquiry_id = $inquiry_id->inquiry_id;
 			$activity_id = get_activity_id_for_nid($nid);
+			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id) {
 				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
 			}
@@ -132,7 +130,7 @@ function pi_key_answers_form(&$node) {
   
 	$form['key_question_id'] = array(
 		'#type' => 'select',
-		'#title' => t('Key question to answer'),
+		'#title' => t('Key question'),
 		'#required' => TRUE,
 		'#default_value' => $node->key_question_id,
 		'#description' => t('Select a key question to answer'),
@@ -141,12 +139,8 @@ function pi_key_answers_form(&$node) {
 	);
 
 	$form['title'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Short title'),
-		'#required' => TRUE,
-		'#default_value' => check_plain($node->title),
-		'#description' => t('Enter a short label for your answer'),
-		'#weight' => -4
+        '#type' => 'hidden',
+        '#value' => t('Key answer')
 	);
     
 	$form['body_filter']['body'] = array(
@@ -213,20 +207,15 @@ function pi_key_answers_load($node) {
  * Implementation of hook_view().
  */
 function pi_key_answers_view($node, $teaser = FALSE, $page = FALSE) {
-	if (!$teaser) {
+
 	// Use Drupal's default node view.
 	$node = node_prepare($node, $teaser);
 
 	$node->content['pi_key_answers'] = array(
-		'#value' => theme('pi_key_answers', $node),
-		'#weight' => 2
+		'#value' => theme('pi_key_answers', $node, $teaser),
+		'#weight' => 0
 	);
-	}
 
-	if ($teaser) {
-    // Use Drupal's default node view.
-		$node = node_prepare($node, $teaser);
-	}
 	return $node;
 }
 
@@ -241,7 +230,7 @@ function pi_key_answers_theme() {
     'arguments' => array('form'),
     ),
 		'pi_key_answers' => array(
-		'arguments' => array('node'),
+		'arguments' => array('node','teaser'),
 		),
 	);
 }
@@ -280,7 +269,7 @@ function theme_pi_key_answers_node_form($form) {
  * @param unknown_type $node
  * @return string
  */
-function theme_pi_key_answers($node) {
+function theme_pi_key_answers($node,$teaser) {
 	$details = get_inquiry_details_from_current_path();
   	if (is_numeric($details->activity_id)) {
   		$current_activity = load_activity($details->activity_id);
@@ -291,11 +280,10 @@ function theme_pi_key_answers($node) {
   	}
   	
 	$key_question_node = node_load($node->key_question_id);
-
-	$output = "";
-	$output .= "<p><strong>Question title:</strong> " . check_plain($key_question_node->title) . "</p>";
-	$output .= "<p><strong>Key question:</strong> " . check_plain($key_question_node->body) . "</p>";
-
+	if(!$teaser) {
+		$output .= "<p><strong>Key question:</strong> " . check_plain($key_question_node->body) . "</p>";
+		$output .= "<p><strong>Answer:</strong> ";
+	}
 	return $output;
 }
 

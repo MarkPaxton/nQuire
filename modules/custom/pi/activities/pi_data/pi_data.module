@@ -47,27 +47,21 @@ function pi_data_access($op, $node) {
 	{
 		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
 	}
-	if ($op == 'delete')
-	{
-		if (arg(0) == 'node' && arg(2) == 'delete')
-		{
-			//get inquiry for session id and activity
+	if ($op == 'delete') {
+		if (arg(0) == 'node' && arg(2) == 'delete') {
+		//get inquiry for session id and activity
 			$nid = arg(1);
-			$sid = get_current_session_id();
-			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
-			$inquiry_id = $inquiry_id->inquiry_id;
 			$activity_id = get_activity_id_for_nid($nid);
+			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id) {
 				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
 			}
-			else
-			{
+			else {
 				return FALSE;
 			}
 		}
-		else 
-		{
-			return check_node_function_of_activity($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		else {
+			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
 		}
 	}
 }
@@ -514,52 +508,44 @@ function pi_data_return_results($node) {
  */
 function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
 	global $user;
-	if (!$teaser) {
-		// Use Drupal's default node view.
-		$node = node_prepare($node, $teaser);
+	// Use Drupal's default node view.
+	$node = node_prepare($node, $teaser);
 
-		$node->content['pi_data'] = array(
-            '#value' => theme('pi_data', $node),
-            '#weight' => 0
-		);
+	$node->content['pi_data'] = array(
+            '#value' => theme('pi_data', $node, $teaser),
+            '#weight' => 2
+	);
 
-		$details = get_inquiry_details_from_current_path();
-		// This is actually of type "pi_draggable_measures"
-		$selected_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-		if(isset($selected_measures_nid))
+	$details = get_inquiry_details_from_current_path();
+	// This is actually of type "pi_draggable_measures"
+	$selected_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+	if(isset($selected_measures_nid))
+	{
+		$selected_measures_node = node_load($selected_measures_nid);
+		$selected_measures = $selected_measures_node->measures_list;
+	}
+
+	$rows = array();
+	if(is_array($selected_measures))
+	{
+		foreach ($selected_measures as $measure_nid => $measure)
 		{
-			$selected_measures_node = node_load($selected_measures_nid);
-			$selected_measures = $selected_measures_node->measures_list;
-		}
-
-		$rows = array();
-		if(is_array($selected_measures))
-		{
-			foreach ($selected_measures as $measure_nid => $measure)
+			$key = check_plain($selected_measures_nid . "-" . $measure_nid);
+			$measure_type = node_load($measure_nid);
+			if(array_key_exists($key, $node->measures))
 			{
-				$key = check_plain($selected_measures_nid . "-" . $measure_nid);
-				$measure_type = node_load($measure_nid);
-				if(array_key_exists($key, $node->measures))
-				{
-					$measure_value = $node->measures[$key]['#value'];
-				}
-				else
-				{
-					$measure_value = NULL;
-				}
-				$node->content[$key] = array (
+				$measure_value = $node->measures[$key]['#value'];
+			}
+			else
+			{
+				$measure_value = NULL;
+			}
+			$node->content[$key] = array (
 					'#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value),
 					'#weight' => $measure['#weight']
-				);
-			}
+			);
 		}
 	}
-	
-	if ($teaser) {
-		// Use Drupal's default node view.
-		$node = node_prepare($node, $teaser);
-	}
-
 	return $node;
 }
 
@@ -568,12 +554,12 @@ function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
  */
 function pi_data_theme() {
 	return array(
-	    'pi_data_node_form' => array(
-	    	'arguments' => array('form'),
-		),
-	    'pi_data' => array(
-	    	'arguments' => array('node'),
-		),
+    'pi_data_node_form' => array(
+    'arguments' => array('form'),
+	),
+    'pi_data' => array(
+    'arguments' => array('node','teaser'),
+	),
 	    'pi_data_measure' => array(
 	    	'arguments' => array('measure', 'measure_type', 'measure_value'),
 		),
@@ -605,8 +591,8 @@ function theme_pi_data_node_form($form) {
 	return $output;
 }
 
-function theme_pi_data($node) {
-	global $user;
+function theme_pi_data($node,$teaser) {
+	$output = '';
 	$details = get_inquiry_details_from_current_path();
 	if (is_numeric($details->activity_id))
 	{

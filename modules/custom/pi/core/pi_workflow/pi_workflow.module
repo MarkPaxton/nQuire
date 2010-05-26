@@ -153,7 +153,21 @@ function update_activity_when_result_presentations_updated($node, $user) {
 }
 
 function update_activity_when_key_answer_updated($node, $user) {
-    $uid = $user->uid;
+		//update node title
+	$length = 100;
+	if(strlen($node->body) > $length) {
+		$short_body = substr(check_plain($node->body), 0, $length);
+		$last_space = strrpos($short_body, " ");
+		$short_body = substr($short_body, 0, $last_space);
+		$node->title = $short_body;
+	}
+	else {
+		$node->title = $node->body;
+	}
+	db_query("UPDATE node SET title='" . $node->title . "' WHERE vid='" . $node->vid . "' ");
+	db_query("UPDATE node_revisions SET title='" . $node->title . "' WHERE vid='" . $node->vid . "' ");
+	
+	$uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
     $loaded_activity = load_activity($details->activity_id);
 
@@ -324,7 +338,9 @@ function add_activity_when_key_answer_created($node, $user, $node_function, $vis
 	else {
 		$node->title = $node->body;
 	}
-		
+	db_query("UPDATE node SET title='" . $node->title . "' WHERE vid='" . $node->vid . "' ");
+	db_query("UPDATE node_revisions SET title='" . $node->title . "' WHERE vid='" . $node->vid . "' ");
+	
     $uid = $user->uid;
     $details = get_inquiry_details_from_current_path();
     $loaded_activity = load_activity($details->activity_id);
@@ -921,4 +937,8 @@ function set_pi_activity_node_for_activity($inquiry, $activity, $nid) {
     $query .= ", activity_id = '" . $activity . "'";
     $query .= ", nid = '" . $nid . "'";
     db_query($query);
+}
+
+function set_hypothesis_teaser_body($node) {
+	db_query("UPDATE node_revisions SET body ='" . $node->hypothesis . "' WHERE vid='" . $node->vid . "' ");
 }

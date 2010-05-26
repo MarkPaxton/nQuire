@@ -48,10 +48,8 @@ function pi_available_measures_access($op, $node) {
 		if (arg(0) == 'node' && arg(2) == 'delete') {
 		//get inquiry for session id and activity
 			$nid = arg(1);
-			$sid = get_current_session_id();
-			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
-			$inquiry_id = $inquiry_id->inquiry_id;
 			$activity_id = get_activity_id_for_nid($nid);
+			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id) {
 				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
 			}
@@ -532,20 +530,13 @@ function pi_available_measures_load($node) {
  * Implementation of hook_view().
  */
 function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
-  if (!$teaser) {
     // Use Drupal's default node view.
     $node = node_prepare($node, $teaser);
 
     $node->content['pi_available_measures'] = array(
-      '#value' => theme('pi_available_measures', $node),
+      '#value' => theme('pi_available_measures', $node, $teaser),
       '#weight' => 2
       );
-  }
-
-  if ($teaser) {
-    // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
-  }
 
   return $node;
 }
@@ -558,7 +549,7 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
 function pi_available_measures_theme() {
   return array(
     'pi_available_measures' => array(
-      'arguments' => array('node'),
+      'arguments' => array('node','teaser'),
     ),
   );
 }
@@ -570,7 +561,8 @@ function pi_available_measures_theme() {
  * @param unknown_type $node
  * @return string
  */
-function theme_pi_available_measures($node) {
+function theme_pi_available_measures($node, $teaser) {
+
 	global $user;
 	$uid = $user->uid;
 		$node_details = get_inquiry_details_from_current_path();
@@ -606,6 +598,7 @@ function theme_pi_available_measures($node) {
     };
   };
 
+if(!$teaser) {
 	if ($filter_node->symbol_test && $node->symbol) {
 		$output .= t('<p><strong>Symbol / short-name: </strong>' . $node->symbol . '</p>');
 	}
@@ -633,7 +626,7 @@ function theme_pi_available_measures($node) {
 	if ($filter_node->measurement_device_description_test && $node->measurement_device_description) {
 		$output .= t('<p><strong>Device description: </strong><br/>' . $node->measurement_device_description . '</p>');
 	}
-	
+	}
 	//$output .= theme('table', $header, $rows);*/
   
   return $output;
