@@ -81,56 +81,54 @@ function pi_result_presentations_form(&$node) {
   	if ($current_activity->name) {
   		drupal_set_title(t($current_activity->name));
   	}
-
+		
+		//**Pick up the key questions
     // Add the categories of existing nodes and the options list for new nodes
     $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
     if(isset($key_questions_nid)) {
     		$key_questions_node = node_load(key_questions_nid);
-    		$node_categories = $key_questions_node->categories;
+    		$key_question_categories = $key_questions_node->categories;
     }
     else {
-        $node_categories = array();
+        $key_question_categories = array();
     }
     
-		$option_categories = pi_sort_key_questions_get_options();
+		$key_question_option_categories = pi_sort_key_questions_get_options();
 		$categories = array();
 		
-		foreach ($option_categories as $key => $category) {
-			$categories[$key]['#title'] = $category['#title'];
-			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+		foreach ($key_question_option_categories as $key => $category) {
+				$categories[$key]['#title'] = $category['#title'];			
+				$categories[$key]['#weight'] = $key_question_categories[$key]['#weight'];
 		}
 
 		if (count($categories) > 1) {
 			uasort($categories, "my_weight_compare");
 		}
+		
   	$key_question_options = array();
   	foreach($categories as $key => $category) {
   		$key_question_options[$key] = $category['#title'];
   	}
 
 /*
-    $key_question_options = array();
-    $key_question_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'pi_key_questions', $user->uid);
-
-    while ($key_question_node_nid = db_fetch_object($key_question_node_nids)) {
-        $key_question_node = node_load($key_question_node_nid->nid);
-        $key_question_options[$key_question_node_nid->nid] = $key_question_node->title;
-    };*/
-
-
+		//*****Get the selected measures
     $measure_options = array();
 
     $measures_param = find_selected_measures_nid_for_uid_and_inquiry ($user->uid, $node_details->inquiry_id);
-
+		print "mp".$measures_param;
+		
     if ($measures_param) {
         $measures_node = node_load($measures_param);
-        $measure_array = $measures_node->measure_rows;
+        $measure_array = $measures_node->categories;
     };
-
+		
+		$measures_in_use = array();
     if (isset($measure_array)) {
-        foreach ($measure_array as $measure_row) {
-            $measure = node_load($measure_row->measure_nid);
-            $measure_options[$measure_row->measure_nid] = $measure->title;
+        foreach ($measure_array as $key => $category) {
+        	if($category['#status'] == 'key' || $category['#status'] == 'selected') {
+        		$measures_in_use[$key]['#title'] = $category['#title'];
+        		print "mnid".$category['#title'].$category['#status'];
+        	}
         };
     };
 
@@ -139,7 +137,7 @@ function pi_result_presentations_form(&$node) {
         foreach (explode(",",$node->presentation_measures) as $sel) {
             $measures_selected[] = $sel;
         };
-    };
+    };*/
 
     if (isset($key_question_options) AND ($key_question_options != array())) {
         $form['key_question_id'] = array(
@@ -149,17 +147,17 @@ function pi_result_presentations_form(&$node) {
             '#default_value' => $node->key_question_id,
             '#description' => t('Select a key question to investigate'),
             '#options' => $key_question_options,
-            '#weight' => -4
+            '#weight' => 0
         );
     };
 
     $form['title'] = array(
         '#type' => 'textfield',
-        '#title' => t('Short title'),
+        '#title' => t('Title'),
         '#required' => TRUE,
         '#default_value' => check_plain($node->title),
-        '#description' => t('Enter a short label for your results presentation'),
-        '#weight' => -2
+        '#description' => t('Enter a title for your results presentation'),
+        '#weight' => -10
     );
 
     $form['body_filter']['body'] = array(
@@ -168,7 +166,7 @@ function pi_result_presentations_form(&$node) {
         '#required' => FALSE,
         '#default_value' => check_plain($node->body),
         '#description' => t('Enter what you would predict this data set to show'),
-        '#weight' => -1
+        '#weight' => -9
     );
 
 
@@ -177,20 +175,35 @@ function pi_result_presentations_form(&$node) {
         '#tree'   => TRUE,
         '#weight' => 0
     );
-
+		
     // Add the categories of existing nodes and the options list for new nodes
     if(isset($node->nid)) {
-        $categories = $node->categories;//pi_draggable_measures_get_choice($node);
+        $node_categories = $node->categories;//pi_draggable_measures_get_choice($node);
     }
     else {
-        $categories = pi_result_presentations_get_options();
+        $node_categories = array();
     }
+    
+    $option_categories = pi_result_presentations_get_options();
+    
+    //merge the two lists as categories
+    $categories = array();
+    foreach ($option_categories as $key => $category) {
+			//get weight from navigation
+			$measure_activity_id = get_activity_id_for_nid($key);
+			$measure_phase_id = get_phase_id_for_activity_id($measure_activity_id);
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $measure_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $measure_activity_id . "' ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
+			
+			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
+			$categories[$key]['#status'] = $node_categories[$key]['#status'];
+			$categories[$key]['#title'] = $category['#title'];
+		}
+
 
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
 
     foreach ($categories as $key => $category) {
-
         $measure = node_load($key);
 
         // format the measure units
@@ -220,19 +233,17 @@ function pi_result_presentations_form(&$node) {
             '#default_value' => $category['#status'],
             '#options' => array('0' => 'unselected', '1' => 'selected'),
         );
-        
-    }
-
+	}
     $prefix = "";
-	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+/*	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
 	if ($hypothesis_param) {
 		$hypothesis_node = node_load($hypothesis_param);
 		
 		$prefix .= theme_pi_hypothesis($hypothesis_node, FALSE, FALSE);
-	}
+	}*/
 
-    $prefix .= '<p>' . t('Enter a short title, select a set of your measures to generate a data table you can use to answer your question, and enter what you would predict to find.') . '</p>';
+    //$prefix .= '<p>' . t('Enter a short title, select a set of your measures to generate a data table you can use to answer your question, and enter what you would predict to find.') . '</p>';
 
     $form['#prefix'] = $prefix;
     
@@ -304,7 +315,7 @@ function pi_result_presentations_view($node, $teaser = FALSE, $page = FALSE) {
 
         $node->content['pi_result_presentations'] = array(
             '#value' => theme('pi_result_presentations', $node,$teaser),
-            '#weight' => 2
+            '#weight' => 10
         );
 
     return $node;
@@ -364,7 +375,7 @@ function theme_pi_result_presentations($node,$teaser) {
     $rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
     
     if(!$teaser) {
-    	$output .= theme('table', $header, $rows);
+    $table_output .= theme('table', $header, $rows);
     }
     
 
@@ -518,6 +529,12 @@ function theme_pi_result_presentations($node,$teaser) {
 		}
 		
 	};
+ 
+		
+		if(!$teaser) {
+    	$output .= $table_output;
+    }
+    
     
     if(!$teaser) {
     	$output  .= '<p>' . l('Download (csv) data file', 'export/' . $details->activity_id . '/csv') . '</p>';
@@ -789,7 +806,7 @@ function theme_pi_result_presentations_node_form($form) {
     // Build the output
     
     if(count($rows) > 0) {
-    	$output  = '<p>' . t('Select and order the measures for your presentation.') . '</p>';
+    	$output  = '<br/><strong>' . t('Select and order  measures for your presentation:') . '</strong>';
     	$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
     	$output .= drupal_render($form);
     }
@@ -849,11 +866,13 @@ function pi_result_presentations_get_options() {
 		if(count($measures_obj->categories) > 0) {
     	foreach($measures_obj->categories as $key => $measure) {
     		$measure_node = node_load($key);
-    		$categories[$key] = array (
+    		if($measure['#status'] == 'key' || $measure['#status'] == 'selected') {
+    			$categories[$key] = array (
             '#weight' => 1,
             '#title'  => t($measure_node->title),
             '#status'  => 'none'
-    		);
+    			);
+    		}
     	};
     }
     
