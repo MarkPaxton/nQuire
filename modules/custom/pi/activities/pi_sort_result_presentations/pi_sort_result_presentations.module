@@ -168,9 +168,7 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 }
 
 function theme_pi_sort_result_presentations($node,$teaser) {
-	if($teaser) {
-		return "View and organise your result presentations";
-	}
+
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
@@ -183,22 +181,32 @@ function theme_pi_sort_result_presentations($node,$teaser) {
   	}
   	
     $output = "";
-    
-    if ($current_activity->description) {
-    	$output  .= '<p>' . t($current_activity->description) . '</p>';
-    }
-    else {
-    	$output  .= '<p>' . t('Your result presentations.') . '</p>';
-    }
 
     $header = array(
         t("Result presentation")
     );
 
     $rows = array();
+    
+    //get the results including new ones not previously sorted
+    if(isset($node->nid)) {
+        $node_categories = $node->categories;
+    }
+    else {
+        $node_categories = array();
+    }
+    
+		$option_categories = pi_sort_result_presentations_get_options();
+		$categories = array();
+		
+		foreach ($option_categories as $key => $category) {
+			$categories[$key]['#title'] = $category['#title'];
+			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+		}
+		uasort($categories, "my_weight_compare");
 
-    if (is_array($node->categories)) {
-        foreach($node->categories as $key => $category) {
+    if (is_array($categories)) {
+        foreach($categories as $key => $category) {
             $row_activity_id = get_activity_id_for_nid($key);
 			if ($row_activity_id) {
 		        $row = array();
@@ -210,7 +218,12 @@ function theme_pi_sort_result_presentations($node,$teaser) {
 
 		//only display form and submit button if there are some entries
     if (count($rows) > 0) {
-    	$output .= theme('table', $header, $rows);
+    	if($teaser) {
+				$output .= "View and organise your result presentations";
+			}
+			else {
+    		$output .= theme('table', $header, $rows);
+    	}
     }
    	else {
    		$output .= "<p>No result presentations are available.</p>";
