@@ -86,7 +86,14 @@ function pi_sort_key_answers_form(&$node) {
 		
 		foreach ($option_categories as $key => $category) {
 			$categories[$key]['#title'] = $category['#title'];
-			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+			
+			//get weight from navigation
+			$answer_activity_id = get_activity_id_for_nid($key);
+			$answer_phase_id = get_phase_id_for_activity_id($answer_activity_id);	
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $answer_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $answer_activity_id . "' LIMIT 1"));
+			
+			
+			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
 		}
 		if (count($categories) > 1) {
 			uasort($categories, "my_weight_compare");
@@ -192,7 +199,13 @@ function theme_pi_sort_key_answers($node,$teaser) {
 		$answer_categories = array();
 		foreach ($option_categories as $key => $category) {
 			$answer_categories[$key]['#title'] = $category['#title'];
-			$answer_categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+			
+			//get weight from navigation
+			$answer_activity_id = get_activity_id_for_nid($key);
+			$answer_phase_id = get_phase_id_for_activity_id($answer_activity_id);	
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $answer_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $answer_activity_id . "' LIMIT 1"));
+			
+			$answer_categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
 		}
 		if (count($answer_categories) > 1) {
 			uasort($answer_categories, "my_weight_compare");
@@ -215,7 +228,13 @@ function theme_pi_sort_key_answers($node,$teaser) {
 		
 		foreach ($option_categories as $key => $category) {
 			$question_categories[$key]['#title'] = $category['#title'];
-			$question_categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+			
+			//get weight from navigation
+			$kq_activity_id = get_activity_id_for_nid($key);
+			$kq_phase_id = get_phase_id_for_activity_id($kq_activity_id);
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $kq_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $kq_activity_id . "' LIMIT 1"));
+			
+			$question_categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
 		}
 
 		if (count($question_categories) > 1) {
@@ -275,7 +294,7 @@ function theme_pi_sort_key_answers($node,$teaser) {
 			}
 			else {
 				reset($header[$key]);
-				$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
+				$output .= '<p><strong>' . $header[$key][0] . '</strong><br/> No answers linked to this question</p>';
 			}
 		}
 		}
@@ -326,7 +345,13 @@ function theme_pi_sort_key_answers_node_form($form) {
 		
 		foreach ($option_categories as $key => $category) {
 			$categories[$key]['#title'] = $category['#title'];
-			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+			
+			//get weight from navigation
+			$kq_activity_id = get_activity_id_for_nid($key);
+			$kq_phase_id = get_phase_id_for_activity_id($kq_activity_id);
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $kq_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $kq_activity_id . "' LIMIT 1"));
+			
+			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
 		}
 
 		if (count($categories) > 1) {
@@ -384,7 +409,7 @@ function theme_pi_sort_key_answers_node_form($form) {
 			}
 			else {
 				reset($header[$key]);
-				$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
+				$output .= '<p><strong>' . $header[$key][0] . '</strong><br/> No answers linked to this question</p>';
 			}
 		}
 	}

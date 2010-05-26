@@ -87,7 +87,13 @@ function pi_sort_result_presentations_form(&$node) {
 		
 		foreach ($option_categories as $key => $category) {
 			$categories[$key]['#title'] = $category['#title'];
-			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+			
+			//get weight from navigation
+			$rp_activity_id = get_activity_id_for_nid($key);
+			$rp_phase_id = get_phase_id_for_activity_id($rp_activity_id);
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $rp_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $rp_activity_id . "' LIMIT 1"));
+			
+			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
 		}
 		uasort($categories, "my_weight_compare");
 		
@@ -201,7 +207,13 @@ function theme_pi_sort_result_presentations($node,$teaser) {
 		
 		foreach ($option_categories as $key => $category) {
 			$categories[$key]['#title'] = $category['#title'];
-			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+			
+			//get weight from navigation
+			$rp_activity_id = get_activity_id_for_nid($key);
+			$rp_phase_id = get_phase_id_for_activity_id($rp_activity_id);
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $rp_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $rp_activity_id . "' LIMIT 1"));
+			
+			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
 		}
 		uasort($categories, "my_weight_compare");
 

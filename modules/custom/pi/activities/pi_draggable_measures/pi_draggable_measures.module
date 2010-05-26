@@ -102,6 +102,19 @@ function pi_draggable_measures_form(&$node) {
 	// Get the list of available measures
 	$all_measures = pi_draggable_measures_get_options();
 	
+	$categories = array();
+	
+	foreach ($all_measures as $key => $category) {
+			
+			$measure_activity_id = get_activity_id_for_nid($key);
+			$measure_phase_id = get_phase_id_for_activity_id($measure_activity_id);
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $measure_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $measure_activity_id . "' ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
+			
+		$categories[$key]['#weight'] = $pos_result;//$selected_measures[$key]['#weight'];
+		$categories[$key]['#status'] = $selected_measures[$key]['#status'];
+		$categories[$key]['#title'] = $category['#title'];
+	}
+/*
 	// Update available measures with status from selected measures
 	if (count($selected_measures) > 0) 
 	{
@@ -111,18 +124,23 @@ function pi_draggable_measures_form(&$node) {
 			// If it's no longer available, it will just dissappear from the list. 
 			if(isset($all_measures[$measure_nid]))
 			{
-				$all_measures[$measure_nid]['#weight'] = $measure['#weight'];
+			
+				$all_measures[$measure_nid]['#weight'] = $pos_result;//$measure['#weight'];
 				$all_measures[$measure_nid]['#status'] = $measure['#status'];
+				print $measure_nid.'-'.$pos_result.'a'.$measure_phase_id.'b'.$measure_activity_id.'c';
 			}
 		}
-	}
+	}*/
+	
 	// Sort the measures in reverse weight order
-	uasort($all_measures, "my_weight_compare");
+	if (count($categories) > 1) {
+		uasort($categories, "my_weight_compare");
+	}
 	
 	// set $tree to point to the above $form['measures_list'] object
 	$tree = &$form['measures_list'];
 
-	foreach ($all_measures as $measure_nid => $measure_element)
+	foreach ($categories as $measure_nid => $measure_element)
 	{
 		//load the measure properly to get the node data from drupal core db, 
 		//rather than from queries used in pi_draggable_measures_get_options()
@@ -150,18 +168,18 @@ function pi_draggable_measures_form(&$node) {
 		*/
 		
 		$tree[$measure_nid]['title'] = array(
-			'#value' => t($measure->title),
+			'#value' => t($measure_element['#title']),
 		);
 		
 		$tree[$measure_nid]['weight'] = array(
 			'#type'          => 'weight',
 			'#delta'         => count($all_measures),
-			'#default_value' => $all_measures[$measure_nid]['#weight'],
+			'#default_value' => $measure_element['#weight'],
 		);
-
+		
 		$tree[$measure_nid]['status'] = array(
 			'#type'          => 'select',
-			'#default_value' => $all_measures[$measure_nid]['#status'],
+			'#default_value' => $measure_element['#status'],
 			'#options' => array('none' => 'none', 'key' => 'key', 'selected' => 'selected'),
 		);
 	}
@@ -260,12 +278,39 @@ function theme_pi_draggable_measures($node, $teaser) {
 	 
 	$output = "";
 
-/*	if ($current_activity->description) {
-		$output  .= '<p>' . t($current_activity->description) . '</p>';
+
+	// Get the list of currently selected measures if the node has any
+	// they are stored in $node->measures_list and loaded by pi_draggable_measures_load()
+	if(isset($node->nid)) 
+	{
+		$selected_measures = $node->measures_list;
 	}
-	else {
-		$output  .= '<p>' . t('Order your measures.') . '</p>';
-	}*/
+	else 
+	{
+		$selected_measures = array();
+	}
+	
+	// Get the list of available measures
+	$all_measures = pi_draggable_measures_get_options();
+	
+	$categories = array();
+	
+	foreach ($all_measures as $key => $category) {
+			
+			$measure_activity_id = get_activity_id_for_nid($key);
+			$measure_phase_id = get_phase_id_for_activity_id($measure_activity_id);
+			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $measure_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $measure_activity_id . "' ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
+			
+		$categories[$key]['#weight'] = $pos_result;//$selected_measures[$key]['#weight'];
+		$categories[$key]['#status'] = $selected_measures[$key]['#status'];
+		$categories[$key]['#title'] = $category['#title'];
+	}
+	
+	// Sort the measures in reverse weight order
+	if (count($categories) > 1) {
+		uasort($categories, "my_weight_compare");
+	}
+	
 
 	$header = array(
 		t("Measure"),
@@ -274,13 +319,19 @@ function theme_pi_draggable_measures($node, $teaser) {
 
 	$rows = array();
 
-    if (is_array($node->categories)) {
-        foreach($node->categories as $key => $category) {
+    if (is_array($categories)) {
+        foreach($categories as $key => $category) {
             $row_activity_id = get_activity_id_for_nid($key);
 			if ($row_activity_id) {
 		        $row = array();
 		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-		        $row[] = t($category['#status']);
+		        if ($category['#status']) {
+		        	$row_status = $category['#status'];
+		        }
+		        else {
+		        	$row_status = 'none';
+		        }
+		        $row[] = t($row_status);
 		        $rows[] = array('data' => $row);
             };
         }
