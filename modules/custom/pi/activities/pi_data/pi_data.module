@@ -74,7 +74,7 @@ function pi_data_access($op, $node) {
 
 
 /**
- * Implementation of pi_data_form().
+ * hook_form() for pi_data - dynamically generates the add data form based on selected, available measures and their weights
  */
 function pi_data_form(&$node) {
 	global $user;
@@ -113,19 +113,19 @@ function pi_data_form(&$node) {
 	
 	if(is_array($measure_rows))
 	{
-		foreach ($measure_rows as $measure_nid => $measure_selection)
+		foreach ($measure_rows as $measure_info_nid => $measure_selection)
 		{
 			if($measure_selection['#status'] == 'key' || $measure_selection['#status'] == 'selected')
 			{
-				$key = t($measures_param . "-" . $measure_nid);
-				$measure = node_load($measure_nid);
+				$key = t($measures_param . "-" . $measure_info_nid);
+				$measure_info = node_load($measure_info_nid);
 	
 				//format the measure units
-				if (isset($measure->units_short) AND ($measure->units_short !='')) {
-					$units = " (" . $measure->units_short . ")";
+				if (isset($measure_info->units_short) AND ($measure_info->units_short !='')) {
+					$units = " (" . $measure_info->units_short . ")";
 				}
-				elseif (isset($measure->units) AND ($measure->units !='')) {
-					$units = " (" . $measure->units . ")";
+				elseif (isset($measure_info->units) AND ($measure_info->units !='')) {
+					$units = " (" . $measure_info->units . ")";
 				}
 				else
 				{
@@ -142,17 +142,17 @@ function pi_data_form(&$node) {
 					$required_value = FALSE;
 				};
 
-				switch($measure->field_type)
+				switch($measure_info->field_type)
 				{
 					// field_type = textfield
 					case 'textfield': 
 						//$prefix .= "textfield";
 						$tree[$key]['value'] = array(
 		                    '#type' => 'textfield',
-		                    '#title' => t($measure->title . $units),
+		                    '#title' => t($measure_info->title . $units),
 		                    '#required' => $required_value,
-	                    '#default_value' => check_plain(t($node->categories[$key]['#value'])),
-		                    '#size' => t($measure->textfield_size),
+	                    '#default_value' => check_plain(t($node->measures[$key]['#value'])),
+		                    '#size' => t($measure_info->textfield_size),
 		                    '#weight' => $measure_selection['#weight']
 						);
 					break;
@@ -160,22 +160,22 @@ function pi_data_form(&$node) {
 						//$prefix .= "textarea";
 						$tree[$key]['value'] = array(
 		                    '#type' => 'textarea',
-		                    '#title' => t($measure->title . $units),
+		                    '#title' => t($measure_info->title . $units),
 		                    '#required' => $required_value,
-	                    	'#default_value' => check_plain(t($node->categories[$key]['#value'])),
+	                    	'#default_value' => check_plain(t($node->measures[$key]['#value'])),
 		                    '#resizable' => TRUE,
-		                    '#cols' => t($measure->textarea_cols),
-		                    '#rows' => t($measure->textarea_rows),
+		                    '#cols' => t($measure_info->textarea_cols),
+		                    '#rows' => t($measure_info->textarea_rows),
 		                    '#weight' => $measure_selection['#weight']
 						);
 					break;
 					// field_type = select or radios
 					case 'select': 
 					case 'radios':
-						if ($measure->list_options)
+						if ($measure_info->list_options)
 						{
 							$options = array();
-							foreach (explode("\n",$measure->list_options) as $opt)
+							foreach (explode("\n",$measure_info->list_options) as $opt)
 							{
 								//trim added around item to prevent the following error:
 								//An illegal choice has been detected. Please contact the site administrator.
@@ -183,10 +183,10 @@ function pi_data_form(&$node) {
 								$options[$item] = $item;
 							};
 						}
-						elseif ($measure->content_options)
+						elseif ($measure_info->content_options)
 						{
 							$options = array();
-							$query = "SELECT nid, title FROM node WHERE type = '" . $measure->content_options . "' ";
+							$query = "SELECT nid, title FROM node WHERE type = '" . $measure_info->content_options . "' ";
 							$results = db_query($query);
 							while ($result = db_fetch_object($results)) {
 								$options[$result->title] = $result->title;//now use value as key
@@ -194,10 +194,10 @@ function pi_data_form(&$node) {
 						};
 	
 						$tree[$key]['value'] = array(
-		                    '#type' => t($measure->field_type),
-		                    '#title' => t($measure->title . $units),
+		                    '#type' => t($measure_info->field_type),
+		                    '#title' => t($measure_info->title . $units),
 		                    '#required' => $required_value,
-		                    '#default_value' => t($node->categories[$key]['#value']),
+		                    '#default_value' => t($node->measures[$key]['#value']),
 		                    '#options' => $options,
 		                    '#weight' => $measure_selection['#weight']
 						);
@@ -205,9 +205,9 @@ function pi_data_form(&$node) {
 					// field_type = checkboxes
 					case 'checkboxes':
 						$options = array();
-						if ($measure->list_options)
+						if ($measure_info->list_options)
 						{
-							foreach (explode("\n",$measure->list_options) as $opt)
+							foreach (explode("\n",$measure_info->list_options) as $opt)
 							{
 								$option_item = substr($opt,0,16);
 								$options[$option_item] = $option_item;
@@ -225,22 +225,51 @@ function pi_data_form(&$node) {
 	
 						$tree[$key]['value'] = array(
 		                    '#type' => 'checkboxes',
-		                    '#title' => t($measure->title . $units),
+		                    '#title' => t($measure_info->title . $units),
 		                    '#required' => $required_value,
-		                    '#default_value' => t($node->categories[$key]['#value']),
+		                    '#default_value' => t($node->measures[$key]['#value']),
 		                    '#options' => $options,
 		                    '#weight' => $measure_selection['#weight']
 						);
 					break;
 					case 'upload-file':
+						$form['#attributes'] = array('enctype' => "multipart/form-data");
+						$tree[$key]['value'] = array(
+		                    '#type' => 'file',
+		                    '#title' => t($measure_info->title),
+		                    '#options' => $options,
+		                    '#weight' => $measure_selection['#weight'],
+							'#default_value' => $node->measures[$key]['#value']
+						);
+						if(isset($node->measures[$key]['#value']))
+						{
+							$tree[$key]['value']['#suffix'] = "<a href='" . file_download_url($node->measures[$key]['#value']) . "'>" . $measure['#value'] . "'</a>";
+							$form[$key] = array(
+			                    '#type' => 'hidden',
+			                    '#weight' => $measure_selection['#weight'],
+								'#default_value' => $node->measures[$key]['#value']
+							); 
+						}
+					break;
 					case 'upload-image':
 						$form['#attributes'] = array('enctype' => "multipart/form-data");
 						$tree[$key]['value'] = array(
 		                    '#type' => 'file',
-		                    '#title' => t($measure->title),
+		                    '#title' => t($measure_info->title),
 		                    '#options' => $options,
-		                    '#weight' => $measure_selection['#weight']
+		                    '#weight' => $measure_selection['#weight'],
+							'#default_value' => $node->measures[$key]['#value']
 						);
+						if(isset($node->measures[$key]['#value']))
+						{
+							$image_node = node_load($node->measures[$key]['#value']);
+							$tree[$key]['value']['#suffix'] = '<div>' . image_display($image_node) . '</div>';
+							$form[$key] = array(
+			                    '#type' => 'hidden',
+			                    '#weight' => $measure_selection['#weight'],
+								'#default_value' => $node->measures[$key]['#value']
+							); 
+						}
 					break;
 				}
 			};
@@ -251,7 +280,7 @@ function pi_data_form(&$node) {
 	return $form;
 }
 
-
+/*
 //unused
 function get_measure_array($psm_id) {
 	$query = "SELECT value FROM pi_collected_data WHERE psm_id = " . $psm_id . " ";
@@ -260,7 +289,7 @@ function get_measure_array($psm_id) {
 	$array = explode(",", $db_result);
 	return $array;
 }
-
+*/
 
 /**
  * Implementation of hook_validate().
@@ -277,8 +306,10 @@ function pi_data_validate($node) {
 			$value = implode(",", $value);
 		}
 		$available_measures_node = node_load($available_measure_nid);
-		if($available_measures_node->data_type == 'numeric') {
-			if ($value && !is_numeric($value)) {
+		if($available_measures_node->data_type == 'numeric')
+		{
+			if ($value && !is_numeric($value))
+			{
 				form_set_error($key, t('This should be a number.'));
 			}
 		}
@@ -288,7 +319,7 @@ function pi_data_validate($node) {
 
 /**
  * hook_insert() - add the additional data for a pi_data node to the pi_collected_data table
- * @param $node the node to be inerted
+ * @param $node the node to be inserted
  */
 function pi_data_insert($node) {
 	foreach($node->onepageprofile_categories as $key => $measure)
@@ -296,9 +327,68 @@ function pi_data_insert($node) {
 		$hyphen_pos = strrpos($key, "-");
 		$selected_measure_nid = substr($key, 0, $hyphen_pos);
 		$available_measure_nid = substr($key, $hyphen_pos + 1);
+		$measure_type = node_load($available_measure_nid);
+		if(isset($measure_type))
+		{
+			if ($measure_type->type == 'pi_available_measures')
+			{
+
+				$node_data = '';
+				// if it's a file or image upload field, then move and store the file
+				switch($measure_type->field_type)
+				{
+					case 'upload-image':
+						$image_validators = array('file_validate_is_image' => array());
+						if($uploaded_file = file_save_upload("onepageprofile_categories", $image_validators))
+						{
+							$image_node = image_create_node_from($uploaded_file->filepath);
+							$node_data = $image_node->nid;
+						}
+						else
+						{
+							if(isset($node->$key))
+							{
+								$node_data = $node->$key;
+								drupal_set_message("Using existing image #$node_data");	
+							}
+							else
+							{
+								drupal_set_message(t('There was a problem saving the image for ') . check_plain($measure_type->title), 'error');
+							}
+						}
+					break;
+					case 'upload-file':
+						if($uploaded_file = file_save_upload("onepageprofile_categories", $image_validators))
+						{
+							file_set_status($uploaded_file, FILE_STATUS_PERMANENT);
+							$node_data = $uploaded_file->filepath;
+						}
+						else
+						{
+							if(isset($node->$key))
+							{
+								$node_data = $node->$key;
+								drupal_set_message("Using existing file '" . check_plain($node_data) . '"');	
+							}
+							else
+							{
+								drupal_set_message(t('There was a problem saving the file for ') . check_plain($measure_type->title), 'error');
+							}
+						}
+					break;
+					default:
+						$node_data = $measure['value'];
+				}
+			}
+		}
+		else
+		{
+			drupal_set_message(t('There was a problem finding measure data for ') . check_plain($measure_type->title) . ". Check is has saved correctly.", 'warning');
+			$node_data = $measure['value'];
+		}
 		db_query("INSERT INTO pi_collected_data (nid, vid, selected_measures_nid, available_measure_nid, value) " .
-			"VALUES ( %d, %d, %d, %d, '%s')",
-			$node->nid, $node->vid, $selected_measure_nid, $available_measure_nid, $measure['value']);
+			"VALUES ( %d, %d, %d, %d, '%s')",	$node->nid, $node->vid,
+			$selected_measure_nid, $available_measure_nid, $node_data);
 	}
 }
 
@@ -307,38 +397,57 @@ function pi_data_insert($node) {
  */
 function pi_data_update($node) {
 	// if this is a new node or we're adding a new revision,
-	if ($node->revision) {
+	if ($node->revision)
+	{
 		pi_data_insert($node);
 	}
 	else {
-		//	this methods removes all data assoicated with the vid whether or not a current selected/key measure
+		//	this methods removes all data associated with the vid whether or not a current selected/key measure
 		//		db_query("DELETE FROM pi_collected_data WHERE vid = '" . $node->vid . "' ");
 
-		//	this method only deletes data assoicated with current key/selected measures
-		while ($measure = current($node->onepageprofile_categories)) {
-			$key = key($node->onepageprofile_categories);
+		//	this method only deletes data associated with current key/selected measures
+		foreach($node->onepageprofile_categories as $key => $measure)
+		{
 			$hyphen_pos = strrpos($key, "-");
 			$selected_measure_nid = substr($key, 0, $hyphen_pos);
 			$available_measure_nid = substr($key, $hyphen_pos + 1);
 			//print $node->nid . '*' . $node->vid . '*' . $selected_measure_nid . '*' . $available_measure_nid;
-			db_query("DELETE FROM pi_collected_data WHERE nid = '" . $node->nid . "' AND vid = '" . $node->vid . "' AND selected_measures_nid = '" . $selected_measure_nid . "' AND available_measure_nid = '" . $available_measure_nid . "' ");
-
-			next($node->onepageprofile_categories);
+			db_query("DELETE FROM {pi_collected_data} WHERE nid = %d, AND vid = %d AND selected_measures_nid = %d AND available_measure_nid = %d", 
+				$node->nid, $node->vid, $selected_measure_nid, $available_measure_nid );
 		}
-		reset($node->onepageprofile_categories);
-
 		pi_data_insert($node);
 	}
 }
 
 /**
- * Implementation of pi_data_delete().
+ * hook_delete() for pi_data, also deletes data values from pi_collected_data and attached images and files
  */
 function pi_data_delete(&$node) {
-	$query = "DELETE FROM pi_collected_data WHERE nid = '" . $node->nid . "' ";
-	db_query($query);
+	foreach($node->onepageprofile_categories as $key => $measure)
+	{
+		$hyphen_pos = strrpos($key, "-");
+		$selected_measure_nid = substr($key, 0, $hyphen_pos);
+		$available_measure_nid = substr($key, $hyphen_pos + 1);
+		$measure_type = node_load($available_measure_nid);
+		if(isset($measure_type))
+		{
+			if ($measure_type->type == 'pi_available_measures')
+			{
+				switch($measure_type->field_type)
+				{
+					case 'upload-image':
+						node_delete($measure['#value']);
+						break;
+					case 'upload-file':
+						file_delete($measure['#value']);
+					break;
+				}
+			}
+		}
+	}
+	$query = "DELETE FROM {pi_collected_data} WHERE nid = %d";
+	db_query($query, $node->nid);
 }
-
 
 //needs to be reintroduced
 function is_checkboxes_measure($id) {
@@ -360,34 +469,43 @@ function is_checkboxes_measure($id) {
  */
 function pi_data_load($node) {
 	$result = new stdClass;
-	$result->categories = pi_data_return_results($node);
+	$result->measures = pi_data_return_results($node);
+	// Add pointers to measures to keep compatibility with forms, etc
+	$result->categories = &$result->measures;
+	$result->onepageprofile_categories = &$result->measures;
 	return $result;
 }
 
 function pi_data_return_results($node) {
-	$categories = array();
-	$query = "SELECT * FROM pi_collected_data WHERE nid = '" . $node->nid . "' AND vid = '" . $node->vid . "' ";
-	$db_result = db_query($query);
+	$measures = array();
+	$weights = array();
 
-	while($row = db_fetch_object($db_result)) {
+	$query = "SELECT * FROM {pi_collected_data} WHERE nid = %d AND vid = %d";
+	$db_result = db_query($query, $node->nid, $node->vid);
+	while($row = db_fetch_object($db_result))
+	{
+	
 		$key = t($row->selected_measures_nid . "-" . $row->available_measure_nid);
 		$available_measure_node = node_load($row->available_measure_nid);
 		$selected_measure_node = node_load($row->selected_measures_nid);
 		$weight = $selected_measure_node->categories[$row->available_measure_nid]['#weight'];
-		if ($available_measure_node->data_type == 'checkboxes') {
+		if ($available_measure_node->data_type == 'checkboxes')
+		{
 			$value = explode(",", $row->value);
 		}
-		else {
+		else
+		{
 			$value = $row->value;
 		}
-		$categories[$key] = array(
+		$measures[$key] = array(
             '#title' => $available_measure_node->title,
             '#value'  => $value,
             '#weight'  => $weight,
 		);
+		$weights[$key] = $weight;
 	}
-	uasort($categories, "my_weight_compare");
-	return $categories;
+	array_multisort($weights, $measures);
+	return $measures;
 }
 
 
@@ -395,16 +513,48 @@ function pi_data_return_results($node) {
  * Implementation of pi_data_view().
  */
 function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
+	global $user;
 	if (!$teaser) {
 		// Use Drupal's default node view.
 		$node = node_prepare($node, $teaser);
 
 		$node->content['pi_data'] = array(
             '#value' => theme('pi_data', $node),
-            '#weight' => 2
+            '#weight' => 0
 		);
-	}
 
+		$details = get_inquiry_details_from_current_path();
+		// This is actually of type "pi_draggable_measures"
+		$selected_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+		if(isset($selected_measures_nid))
+		{
+			$selected_measures_node = node_load($selected_measures_nid);
+			$selected_measures = $selected_measures_node->measures_list;
+		}
+
+		$rows = array();
+		if(is_array($selected_measures))
+		{
+			foreach ($selected_measures as $measure_nid => $measure)
+			{
+				$key = check_plain($selected_measures_nid . "-" . $measure_nid);
+				$measure_type = node_load($measure_nid);
+				if(array_key_exists($key, $node->measures))
+				{
+					$measure_value = $node->measures[$key]['#value'];
+				}
+				else
+				{
+					$measure_value = NULL;
+				}
+				$node->content[$key] = array (
+					'#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value),
+					'#weight' => $measure['#weight']
+				);
+			}
+		}
+	}
+	
 	if ($teaser) {
 		// Use Drupal's default node view.
 		$node = node_prepare($node, $teaser);
@@ -418,78 +568,105 @@ function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
  */
 function pi_data_theme() {
 	return array(
-    'pi_data_node_form' => array(
-    'arguments' => array('form'),
-	),
-    'pi_data' => array(
-    'arguments' => array('node'),
-	),
+	    'pi_data_node_form' => array(
+	    	'arguments' => array('form'),
+		),
+	    'pi_data' => array(
+	    	'arguments' => array('node'),
+		),
+	    'pi_data_measure' => array(
+	    	'arguments' => array('measure', 'measure_type', 'measure_value'),
+		),
 	);
 }
 
 function theme_pi_data_node_form($form) {
 	$details = get_inquiry_details_from_current_path();
 	$activity = load_activity($details->activity_id);
-	if ($activity->description) {
-		$output  .= '<p>' . t($activity->description) . '</p>';
+	if ($activity->description)
+	{
+		$output  .= '<p>' . check_plain($activity->description) . '</p>';
 	}
-	else {
+	else
+	{
 		$output  .= '<p>' . t('Collect data.') . '</p>';
 	}
     
     global $user;
     $measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-    if ($measures_param) {
-			$output .= drupal_render($form);
-		}
-		else {
+    if ($measures_param)
+    {
+    	$output .= drupal_render($form);
+    }
+    else
+    {
    		$output .= "<p>No measures are available.</p>";
    	}
 	return $output;
 }
 
 function theme_pi_data($node) {
-	$output = '';
+	global $user;
 	$details = get_inquiry_details_from_current_path();
-	if (is_numeric($details->activity_id)) {
+	if (is_numeric($details->activity_id))
+	{
 		$current_activity = load_activity($details->activity_id);
 	}
-	 
-	if ($current_activity->name) {
-		drupal_set_title(t($current_activity->name));
+
+	if ($current_activity->name)
+	{
+		drupal_set_title(check_plain($current_activity->name));
 	}
-	 
-	global $user;
-	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-	if ($measures_param) {
-		$measures_node = node_load($measures_param);
-		$measure_rows = $measures_node->categories;
-	}
+}
 
+/**
+ * theme function to display one measure in view mode for pi_data
+ * @param node(pi_draggable_measure) $measure the measure selection data for the form
+ * @param node(pi_available_measures) $measure_type the description of the measure
+ * @param string $measure_value the measure value
+ */
+function theme_pi_data_measure($measure, $measure_type, $measure_value) {
+	$output = '';
+	
+	$show_status = array('key', 'selected');
+	if(in_array($measure['#status'], $show_status))
+	{
+		//format the measure units
+		if(isset($measure_type->units_short) AND ($measure_type->units_short !=''))
+		{
+			$units = " (" . check_plain($measure_type->units_short) . ")";
+		}
+		else
+		{
+			if (isset($measure_type->units) AND ($measure_type->units !=''))
+			{
+				$units = " (" . check_plain($measure_type->units) . ")";
+			}
+			else
+			{
+				$units = "";
+			}
+		}
 
-
-	$rows = array();
-	if(is_array($measure_rows)) {
-		foreach ($measure_rows as $measure_nid => $measure_selection) {
-			if($measure_selection['#status'] == 'key' || $measure_selection['#status'] == 'selected') {
-				$key = t($measures_param . "-" . $measure_nid);
-				$measure = node_load($measure_nid);
-				//format the measure units
-				if (isset($measure->units_short) AND ($measure->units_short !='')) {
-					$units = " (" . $measure->units_short . ")";
+		switch($measure_type->field_type)
+		{
+			case 'upload-file':
+				$output .= "<p><strong>" . check_plain($measure_type->title) . ":&nbsp;</strong>";
+				$output .= "<a href='" . file_download_path($measure_value) . "'>" . t("Download") . "</a></p>";
+				break;
+			case 'upload-image':
+				$image_node = node_load($measure_value);
+				If($image_node->type == 'image')
+				{
+				$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
+				$output .= "<div>" . image_display($image_node) . "</div>";
 				}
-				elseif (isset($measure->units) AND ($measure->units !='')) {
-					$units = " (" . $measure->units . ")";
-				}
-				else {
-					$units = "";
-				};
+				break;
+			default:
+				$output .= "<p><strong>" . check_plain($measure_type->title . $units) . ":&nbsp;</strong>";
+				$output .= check_plain($measure_value) . "</p>";
+		}
 
-				$output .= "<p><strong>" . $measure->title . $units. ": </strong>";
-				$output .= $node->categories[$key]['#value'] . "</p>";
-
-			};
-		};
 	}
 	return $output;
 }
