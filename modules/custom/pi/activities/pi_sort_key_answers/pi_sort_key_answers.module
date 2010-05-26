@@ -243,7 +243,15 @@ function theme_pi_sort_key_answers($node,$teaser) {
 	foreach (element_children($tree) as $key) {
 		
 		$row = array();
-		$row[] = $tree[$key]['#title'];
+		
+		$row_activity_id = get_activity_id_for_nid($key);
+		
+		if ($row_activity_id) {
+			$row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+		}
+		else {
+			$row[] = $tree[$key]['#title'];
+		}
 		
 		
 		$key_answer_node = node_load($key);
@@ -256,6 +264,10 @@ function theme_pi_sort_key_answers($node,$teaser) {
 
   $answer_flag = 0;
   if (count($question_categories) > 0) {
+  	if($teaser) {
+  		$output .= "View and organise your key answers";
+  	}
+  	else {
 		foreach ($question_categories as $key => $category) {
 			if (count($rows[$key]) > 0) {
 				$answer_flag = 1;
@@ -265,6 +277,7 @@ function theme_pi_sort_key_answers($node,$teaser) {
 				reset($header[$key]);
 				$output .= '<p><strong>' . $header[$key][0] . ':</strong> No answers linked to this question</p>';
 			}
+		}
 		}
 	}
 	else {
