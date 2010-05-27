@@ -31,9 +31,16 @@ function pi_activity_view($activity_id, $arg_node_function) {
 		case 'view':
 			//get nid
 			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
-			//build page
-			$loaded_node = node_load($nid);
-			$output .= node_view($loaded_node, FALSE, TRUE, TRUE);
+			if(isset($nid))
+			{
+				$loaded_node = node_load($nid);
+				//build page
+				$output .= node_view($loaded_node, FALSE, TRUE, TRUE);
+			}
+			else
+			{
+				drupal_set_message(t("Can't find the content this activity."), 'error');
+			}
 			//$output .= previous_next_buttons($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id, $uid);
 			//$output .= previous_next_buttons($details->inquiry_id, $activity_id, $uid);
 			//$output .= t(next_button());
