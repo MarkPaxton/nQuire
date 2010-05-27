@@ -103,16 +103,18 @@ function pi_draggable_measures_form(&$node) {
 	$all_measures = pi_draggable_measures_get_options();
 	
 	$categories = array();
-	
+	$count = 0;
 	foreach ($all_measures as $key => $category) {
 			
 			$measure_activity_id = get_activity_id_for_nid($key);
 			$measure_phase_id = get_phase_id_for_activity_id($measure_activity_id);
 			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $measure_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $measure_activity_id . "' ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
 			
-		$categories[$key]['#weight'] = $pos_result;//$selected_measures[$key]['#weight'];
+		$categories[$key]['#weight'] = $selected_measures[$key]['#weight'];
 		$categories[$key]['#status'] = $selected_measures[$key]['#status'];
 		$categories[$key]['#title'] = $category['#title'];
+		
+		print $category['#title'].$categories[$key]['#weight'];
 	}
 /*
 	// Update available measures with status from selected measures
@@ -170,10 +172,10 @@ function pi_draggable_measures_form(&$node) {
 		$tree[$measure_nid]['title'] = array(
 			'#value' => t($measure_element['#title']),
 		);
-		
+		print $measure_element['#title'].$measure_element['#weight'];
 		$tree[$measure_nid]['weight'] = array(
 			'#type'          => 'weight',
-			'#delta'         => count($all_measures),
+			'#delta'         => count($categories),
 			'#default_value' => $measure_element['#weight'],
 		);
 		
