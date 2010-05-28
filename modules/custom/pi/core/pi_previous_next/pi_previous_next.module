@@ -1,8 +1,20 @@
 <?php
 // $Id: pi_previous_next.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
 
-function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
+/**
+ * This implements the theme hook for pi_previous_next which defines the available theme
+ * functions within this module
+ * @return array of theme names and arguments
+ */
+function pi_previous_next_theme() {
+	return array(
+		'pi_previous_next' => array(
+			'arguments' => array('previous_data', 'next_data'),
+		)
+	);
+}
 
+function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
     switch($op)
     {
     	case 'list':
@@ -11,7 +23,6 @@ function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
     	case 'view':
     		global $user;
     		$details = get_inquiry_details_from_current_path();
-    		$block['content'] ='';
 
     		$path = drupal_get_path('module', 'pi_header');
     		$image_path = $path . '/images';
@@ -19,13 +30,13 @@ function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
     		drupal_add_css( $path .'/pi_header.css' );
     		$details = get_inquiry_details_from_current_path();
     		
+    		// Set different $previous_link and $next_link on phase or activity view
     		// Activity level navigation
     		if(arg(0) == 'activity' && (arg(2) == 'view' || !arg(2)))
     		{
     			$prev_next = previous_next_buttons($details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id, $user->uid);
     			$previous_activity = $prev_next['previous'];
     			$next_activity = $prev_next['next'];
-    			$block['content'] .= '<div>';
     			if(strlen($previous_activity)>0)
     			{
     				$previous_link = $previous_activity;
@@ -35,28 +46,33 @@ function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
     				$phase_links = pi_previous_next_phase_links($details->phase_id, $details->stage_id, $user->uid);
     				$previous_link = $phase_links['previous'];
     			}
-    			$block['content'] .= "\t<div style='float:left'><strong>" . t("Previous") . ":&nbsp;</strong>$previous_link</div>";
-    			$block['content'] .= "\t<div style='float:right'><strong>" . t("Next") . ":&nbsp;</strong>$next_activity</div>";
-	    		$block['content'] .= '&nbsp;</div>';
+    			//$previous_link = set above
+    			$next_link = $next_activity;
     		}
     		
     		// Phase level navigation
     		if(arg(0) == 'phase' && is_numeric(arg(1)))
     		{
     			$links = pi_previous_next_phase_links(arg(1), $details->stage_id, $user->uid);
-    			$previous_phase_link = $links['previous'];
+    			$previous_link = $links['previous'];
     			$next_link = $links['next'];
-    			$block['content'] .= '<div>';
-    			$block['content'] .= "\t<div style='float:left'><strong>" . t("Previous") . ":&nbsp;</strong>$previous_phase_link</div>";
-    			$block['content'] .= "\t<div style='float:right'><strong>" . t("Next") . ":&nbsp;</strong>$next_link</div>";
-    			$block['content'] .= '&nbsp;</div>';
     		}
+    		$block = array();
+    		$block['content'] = theme('pi_previous_next', $previous_link, $next_link);
     	return $block;
     }
 }
 
 
-
+/**
+ * Works out the links for previous and next buttons at the activity level
+ * @param uint $inquiry_id the inquiry for the links to apply to 
+ * @param uint $stage_id the current stage
+ * @param uint $phase_id the current phase
+ * @param uint $activity_id the current activity 
+ * @param uint $uid User id for the links to apply to 
+ * @return array['previous'] and ['next'] with the html for the links
+ */
 function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
 	$output = array('previous'=> '', 'next' => '');
 	
@@ -167,12 +183,10 @@ function next_button() {
 				
 	$output = '';
 	
-	if ($next_activity) {
-		$output .= "<p>";
-		$output .=  $activity_link;
-		$output .= "</p>";
+	if ($next_activity) 
+	{
+		$output .= theme('pi_previous_next', NULL, $activity_link);
 	};
-	
 	return $output;
 }
 
@@ -273,5 +287,28 @@ function pi_previous_next_next_phase_link($inquiry_nid, $phase_nid, $uid)
 	}
 	
 	return $phase_link;	
+}
+
+
+
+/**
+ * Theme function for the pi_previous_next block if an empty string (or null) is passed, then the link will not be displayed at all 
+ * @param string $previous html for the link to the previous item  
+ * @param array $next html for the link to the next item
+ */
+function theme_pi_previous_next($previous, $next)
+{
+	$output = '';
+    $output .= '<div>';
+    if(strlen($previous)>0)
+    {
+    	$output .= "\t<div style='float:left'><strong>" . t("Previous") . ":&nbsp;</strong>$previous</div>";
+    }
+    if(strlen($next)>0)
+    {
+	    $output .= "\t<div style='float:right'><strong>" . t("Next") . ":&nbsp;</strong>$next</div>";
+    }
+    $output .= "</div>\n<div style='clear:both;'></div>";
+    return $output;
 }
 
