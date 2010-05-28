@@ -8,9 +8,12 @@
  */
 function pi_previous_next_theme() {
 	return array(
-		'pi_previous_next' => array(
-			'arguments' => array('previous_data', 'next_data'),
-		)
+		'pi_previous_next_text' => array(
+			'arguments' => array('previous_html', 'next_html'),
+		),
+		'pi_previous_next_buttons' => array(
+			'arguments' => array('previous_url', 'next_url'),
+		),
 	);
 }
 
@@ -26,9 +29,7 @@ function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
 
     		$path = drupal_get_path('module', 'pi_header');
     		$image_path = $path . '/images';
-
     		drupal_add_css( $path .'/pi_header.css' );
-    		$details = get_inquiry_details_from_current_path();
     		
     		// Set different $previous_link and $next_link on phase or activity view
     		// Activity level navigation
@@ -37,7 +38,7 @@ function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
     			$prev_next = previous_next_buttons($details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id, $user->uid);
     			$previous_activity = $prev_next['previous'];
     			$next_activity = $prev_next['next'];
-    			if(strlen($previous_activity)>0)
+    			if(strlen($previous_activity['url'])>0)
     			{
     				$previous_link = $previous_activity;
     			}
@@ -58,7 +59,8 @@ function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
     			$next_link = $links['next'];
     		}
     		$block = array();
-    		$block['content'] = theme('pi_previous_next', $previous_link, $next_link);
+    		$block['content'] = theme('pi_previous_next_text', $previous_link, $next_link);
+    		$block['content'] .= theme('pi_previous_next_buttons', $previous_link['url'], $next_link['url']);
     	return $block;
     }
 }
@@ -71,7 +73,7 @@ function pi_previous_next_block($op = 'list', $delta = 0, $edit = array()) {
  * @param uint $phase_id the current phase
  * @param uint $activity_id the current activity 
  * @param uint $uid User id for the links to apply to 
- * @return array['previous'] and ['next'] with the html for the links
+ * @return array['previous'] and ['next'] with array ['url'] and ['title'] for the links
  */
 function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
 	$output = array('previous'=> '', 'next' => '');
@@ -101,13 +103,14 @@ function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, 
 		if($previous_position<0)
 		{
 			$current_phase = node_load($phase_id);
-			$output['previous'] = l($current_phase->title, "phase/$current_phase->nid");
+			$output['previous']['title'] = check_plain($current_phase->title);
+			$output['previous']['url'] = url("phase/$current_phase->nid");
 		}
 		else
 		{
 			$previous_activity = $activities[$previous_position];
-			$prev_link = build_activity_link($inquiry_id, $stage_id, $phase_id, $previous_activity->activity_id, $uid);
-			$output['previous'] = $prev_link["data"];
+			$prev_link = pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $previous_activity->activity_id, $uid);
+			$output['previous'] = $prev_link;
 		}
 		
 		//if position >= count of activities in phase then point to next phase
@@ -118,8 +121,8 @@ function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, 
 		else
 		{
 			$next_activity = $activities[$next_position];
-			$next_link = build_activity_link($inquiry_id, $stage_id, $phase_id, $next_activity->activity_id, $uid);
-			$output['next'] = $next_link["data"];
+			$next_link = pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $next_activity->activity_id, $uid);
+			$output['next'] = $next_link;
 		}
 	}
 	else
@@ -150,10 +153,10 @@ function next_button() {
 			$destination = "";
 		break;
 	    case "phase":
-	    	$destination = t("destination=" . t("phase/" . $phase->nid));
+	    	$destination = "destination=" . "phase/" . $phase->nid;
 		break;
 		default:
-			$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
+			$destination = "destination=" . "inquiry/" . $phase->inquiry_nid;
 	};
     
 	// so that (by default) always open an existing node in view
@@ -178,14 +181,14 @@ function next_button() {
 		};
 		
     // $activity_link = l(t('Next'), $activity_path, array('html' => TRUE, 'query' => $destination));
-		$activity_link = t('<strong>Next: </strong>') . l(t($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
+		$activity_link = '<strong>' .t(Next) . ':&nbsp;</strong>' . l(check_plain($loaded_activity->name) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
 	};
 				
 	$output = '';
 	
 	if ($next_activity) 
 	{
-		$output .= theme('pi_previous_next', NULL, $activity_link);
+		$output .= theme('pi_previous_next_text', NULL, $activity_link);
 	};
 	return $output;
 }
@@ -241,18 +244,21 @@ function pi_previous_next_phase_links($current_phase_nid, $current_stage_nid, $u
 		if($previous_phase_index < 0)
 		{
 			// It doesn't exist so create a link back to the inquiry view
-			$previous_phase_link = l($inquiry->title, "inquiry/$phase_node->inquiry_nid");
+			$previous_phase_link['title'] = check_plain($inquiry->title);
+			$previous_phase_link['url'] = url("inquiry/$phase_node->inquiry_nid");
 		}
 		else
 		{
 			// it should exist, so load it and create link
 			$previous_phase = node_load($inquiry_phases[$previous_phase_index]);
-			$previous_phase_link = l($previous_phase->title, "phase/$previous_phase->nid");
+			$previous_phase_link['title'] = check_plain($previous_phase->title);
+			$previous_phase_link['url'] = url("phase/$previous_phase->nid");
 		}
 			
 		$links['previous']= $previous_phase_link;
 		$links['next'] = $next_link;
 	}
+	
 	return $links;
 }
 
@@ -265,7 +271,7 @@ function pi_previous_next_phase_links($current_phase_nid, $current_stage_nid, $u
  */
 function pi_previous_next_next_phase_link($inquiry_nid, $phase_nid, $uid)
 {
-	$phase_link = '';
+	$phase_link = array('url'=>'', 'title'=>'');
 	
 	$inquiry_phases = get_phases_of_inquiry_and_user($inquiry_nid, $uid);
 	$inquiry = node_load($inquiry_nid);
@@ -277,37 +283,64 @@ function pi_previous_next_next_phase_link($inquiry_nid, $phase_nid, $uid)
 	if($next_phase_index >= count($inquiry_phases))
 	{
 		// It doesn't exist so create a link back to the inquiry view
-		$phase_link = l($inquiry->title, "inquiry/$inquiry_nid");
+		$phase_link['title'] = check_plain($inquiry->title);
+		$phase_link['url'] = url("inquiry/$inquiry_nid");
 	}
 	else
 	{
 		// it should exist, so load it and create link
 		$next_phase = node_load($inquiry_phases[$next_phase_index]);
-		$phase_link = l($next_phase->title, "phase/$next_phase->nid");
+		$phase_link['title'] = check_plain($next_phase->title);
+		$phase_link['url'] = url("phase/$next_phase->nid");
 	}
-	
 	return $phase_link;	
 }
 
-
-
+	
 /**
- * Theme function for the pi_previous_next block if an empty string (or null) is passed, then the link will not be displayed at all 
- * @param string $previous html for the link to the previous item  
- * @param array $next html for the link to the next item
+ * Theme function for the pi_previous_next block if an empty string (or null) is passed, then the link will not be displayed at all
+ *  This version renders the links as text with "Previous" and "Next" prefixes and you should pass the 
+ *  actual HTML to make the link. See build_activity_link().
+ * @param string $previous HTML for the link to the previous item  
+ * @param array $next HTML for the link to the next item
  */
-function theme_pi_previous_next($previous, $next)
+function theme_pi_previous_next_text($previous_html, $next_html)
 {
+	$image_dir = drupal_get_path('module', 'pi_previous_next') . '/images';
 	$output = '';
     $output .= '<div>';
-    if(strlen($previous)>0)
+    if(strlen($previous_html['title'])>0)
     {
-    	$output .= "\t<div style='float:left'><strong>" . t("Previous") . ":&nbsp;</strong>$previous</div>";
+    	$output .= "\t<div style='float:left'><strong>" . t("Previous") . ":&nbsp;</strong><a href='" . $previous_html['url'] . "'>" . $previous_html['title'] . "</a></div>";
     }
-    if(strlen($next)>0)
+    if(strlen($next_html['title'])>0)
     {
-	    $output .= "\t<div style='float:right'><strong>" . t("Next") . ":&nbsp;</strong>$next</div>";
+	    $output .= "\t<div style='float:right'><strong>" . t("Next") . ":&nbsp;</strong><a href='" . $next_html['url'] . "'>" . $next_html['title'] . "</a></div>";
     }
+    $output .= "</div>\n<div style='clear:both;'></div>";
+    return $output;
+}
+
+/**
+ * Theme function for the pi_previous_next block if an empty string (or null) is passed, then the link will not be displayed at all
+ *  This version renders the links as image buttons and you should pass the 
+ *  just the URL of the link.  See pi_activity_get_url()
+ * @param string $previous URL for the link to the previous item  
+ * @param array $next URL for the link to the next item
+ */
+function theme_pi_previous_next_buttons($previous_url, $next_url)
+{
+	$image_path = drupal_get_path('module', 'pi_previous_next') . '/images';
+	$output = '';
+    $output .= '<div>';
+    if(strlen($previous_url)>0)
+    {
+    	$output .= "\t<div style='float:left'><a href='$previous_url'><img src='$image_path/previous.png'></a></div>";
+    }
+    if(strlen($next_url)>0)
+    {
+    	$output .= "\t<div style='float:right'><a href='$next_url'><img src='$image_path/next.png'></a></div>";
+	}
     $output .= "</div>\n<div style='clear:both;'></div>";
     return $output;
 }
