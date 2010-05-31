@@ -18,6 +18,8 @@ function pi_authoring_inquiry_node_edit($inquiry)
 		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 	}
 	$output .= node_page_edit($inquiry);
+	// Set the title here to override the title being set in node_page_edit
+	drupal_set_title("Editing " .  check_plain($inquiry->title));
 	return $output;
 }
 
@@ -28,51 +30,54 @@ function pi_authoring_inquiry_node_edit($inquiry)
  *  redirect back to /piauthoring/.
  */
 function pi_authoring_inquiry_phases($inquiry) {
-	// Use this to apply module specific css
-	$output .= "<div id='pi_authoring'>\n";
+	$output = '';
 	
 	//set the page title to be the inquiry name
-	drupal_set_title("Editing " .  t($inquiry->title));
+	drupal_set_title("Editing " .  check_plain($inquiry->title));
+	$output .= theme('pi_authoring_inquiry_phases', $inquiry->nid);	
 	
-	// Query for inquiry phases and list them if there are any, otherwise show 
-	// placeholder text
+	// Query for inquiry phases 
 	$phase_nids = pi_phase_load_nids($inquiry->nid);
-
-	$output .="<h2>Phases of this inquiry</h2>\n";
-	$header = array(
-        t("Phase name"),
-        t("Description")
-    );
 
     $rows = array();
 	if(!empty($phase_nids))
 	{
-		$output .= drupal_get_form('pi_authoring_order_phases_form', $phase_nids);
+		$phases = array();
+		foreach($phase_nids as $phase_nid)
+		{
+			$phase = node_load($phase_nid);
+			$phases[$phase_nid] = array(
+				'title' => $phase->title,
+				'body' => $phase->body,
+				'weight' => $phase->weight
+			);
+		}
+		$output .= drupal_get_form('pi_authoring_order_phases_form', $phases);
 	}
 	else
 	{
 		// Display a warning message to the user as there are no phases yet defined 
-		$link = l("here", 'node/add/pi-phase');    	
-		drupal_set_message("No phases added so far in this inquiry, to add phases click $link.", 'warning', FALSE);
-
-		// Also display some boilerplate text about defining inquiries
-		$output .="<div class='help'>\n";
-		$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
-		$output .= "A phase is a conceptual part of the inquiry model, for example, ";
-		$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
-		$output .= "be phases in an inquiry.</p>\n";
-		$output .= "</div>\n"; // #help
-		
+		drupal_set_message("No phases added so far in this inquiry.", 'warning', FALSE);
 	}
-	//$output .= drupal_get_form('pi_authoring_inquiry_add_phase_form', $inquiry);
-	//global $user;
-	//$new_phase_node = array('uid' =>  $user->uid, 'name' => $user->name, 'type' => 'pi_phase');
-	//$new_phase_form = drupal_retrieve_form('pi_phase_node_form', $new_phase_form_state, $new_phase_node);
-    //drupal_prepare_form('pi_phase_node_form', $new_phase_form, $new_phase_form_state);
-    //drupal_redirect_form($new_phase_form, url('nQuire/inquiry/' . $inquiry->nid));
-	//$outout .= drupal_render_form('pi_phase_node_form', $new_phase_form);
-	$output .= "</div>\n"; // #pi_authoring
-	
+	return $output;
+}
+
+/**
+ * Theme function for the inquiry phases page - provides the link to create a new phase in the inquiry
+ * @param unknown_type $inquiry_id
+ */
+function theme_pi_authoring_inquiry_phases($inquiry_id)
+{
+	$output='';
+	$link = l('here', "inquiry/$inquiry_id/phase/add");    	
+	// Display some boilerplate text about defining inquiries...
+	$output .="<div class='help'>\n";
+	$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
+	$output .= "A phase is a conceptual part of the inquiry model, for example, ";
+	$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
+	$output .= "be phases in an inquiry. ";
+	$output .= "Click $link to add a new phase.</p>";
+	$output .= "</div>\n"; // #help
 	return $output;
 }
 
@@ -93,18 +98,17 @@ function pi_authoring_order_phases_form(&$form_state, $phases) {
 	);
 	
 	$position = 0;
-	foreach($phases as $phase_nid)
+	foreach($phases as $nid => $phase)
 	{
-		$phase = node_load($phase_nid);
-		$form['order_phases_phases'][$phase->nid]['title'] =
+		$form['order_phases_phases'][$nid]['title'] =
 		 	array(
-		 		'#value' => $phase->title
+		 		'#value' => $phase['title']
 		 	);
-		$form['order_phases_phases'][$phase->nid]['body'] = 
+		$form['order_phases_phases'][$nid]['body'] = 
 			array(
-				'#value' => $phase->body
+				'#value' => $phase['body']
 			);
-		$form['order_phases_phases'][$phase->nid]['weight'] = 
+		$form['order_phases_phases'][$nid]['weight'] = 
 			array(
 	            '#type'          => 'weight',
 	            '#delta'         => count($phases),
@@ -160,52 +164,52 @@ function pi_authoring_order_phases_form_submit($form, &$form_state)
 	}
 }
 
-
-
 /**
  * This generates the page to edit the order of stages in an inquiry
  * @param uint $inquiry_id is a valid inquiry id.
  */
 function pi_authoring_inquiry_stages($inquiry) {
 	// Use this to apply module specific css
-	$output .= "<div id='pi_authoring'>\n";
+	$output = '';
 	
 	//set the page title to be the inquiry name
-	drupal_set_title("Editing " .  t($inquiry->title));
+	drupal_set_title("Editing " .  check_plain($inquiry->title));
+	$output .= theme('pi_authoring_inquiry_stages', $inquiry->nid);
 	
-	// Query for inquiry phases and list them if there are any, otherwise show 
-	// placeholder text
+	// Query for inquiry phases and list them if there are any
 	$stage_nids = pi_stage_load_nids($inquiry->nid);
-
-	$output .="<h2>Stages of this inquiry</h2>\n";
-	$header = array(
-        t("Stage name"),
-        t("Description")
-    );
-
-    $rows = array();
+	
 	if(!empty($stage_nids))
 	{
+		// Get the phases names to show what phases each stage has.
 		$output .= drupal_get_form('pi_authoring_order_stages_form', $stage_nids, $inquiry->nid);
 	}
 	else
 	{
 		// Display a warning message to the user as there are no phases yet defined 
-		$link = l("here", 'node/add/pi-stage');
-		drupal_set_message("No stages added so far in this inquiry. To create a stage click $link.", 'warning', FALSE);
-
-		// Also display some boilerplate text about defining inquiries
-		$output .="<div class='help'>\n";
-		$output .= "<p>help text</p>\n";
-		$output .= "</div>\n"; // #help
-		
+		drupal_set_message("No stages added so far in this inquiry; you need at least one stage in every inquiry.", 'warning', FALSE);
 	}
-	$output .= "</div>\n"; // #pi_authoring
-	
 	return $output;
 }
 
-
+/**
+ * Theme function for the inquiry stages page - provides the link to create a new phase in the inquiry
+ * @param uint $inquiry_id
+ */
+function theme_pi_authoring_inquiry_stages($inquiry_id)
+{
+	$output='';
+	$link = l('here', "inquiry/$inquiry_id/stage/add");    	
+	// Display some boilerplate text about defining inquiries...
+	$output .="<div class='help'>\n";
+	$output .= "<p>An inquiry can organised into things that to be done at certain times. ";
+	$output .= "A period of time is called a 'stage'; stages could be called things like ";
+	$output .= " <em>Preparation</em>, <em>Fieldwork</em> and <em>Results</em>.  During each ";
+	$output .= "stage the included phases will be higlighted on the main inquiry view. ";
+	$output .= "To add a stage click $link.</p>";
+	$output .= "</div>\n"; // #help
+	return $output;
+}
 
 
 /**
@@ -216,16 +220,6 @@ function pi_authoring_inquiry_stages($inquiry) {
  */
 function pi_authoring_order_stages_form(&$form_state, $stages, $inquiry_nid) {
 	
-	// Get the phases names to show what phases each stage has.
-	$phase_nids = pi_phase_load_nids($inquiry_nid);
-	$phase_titles = array();
-	foreach($phase_nids as $phase_nid)
-	{
-		$phase = node_load($phase_nid);
-		$phase_titles[$phase_nid] = $phase->title;
-	}
-	
-	
 	$form = array();
 	$form['#theme'] = 'pi_authoring_order_stages_form';
 	$form['#title'] = 'Inquiry Stages';
@@ -234,20 +228,32 @@ function pi_authoring_order_stages_form(&$form_state, $stages, $inquiry_nid) {
 		'#tree' => TRUE
 	);
 	
+	$phase_nids = pi_phase_load_nids($inquiry_nid);
+	$phase_titles = array();
+	foreach($phase_nids as $phase_nid)
+	{
+		$phase = node_load($phase_nid);
+		$phase_titles[$phase_nid] = check_plain($phase->title);
+	}
+
 	$position = 0;
 	foreach($stages as $stage_nid)
 	{
 		$stage = node_load($stage_nid);
+		//ob_start();
+		//var_dump($stage);
+		//drupal_set_message('<pre>' . ob_get_clean() . '</pre>');
+		
 		$form['order_stages_stages'][$stage->nid]['title'] =
 		 	array(
-		 		'#value' => $stage->title
+		 		'#value' => check_plain($stage->title)
 		 	);
 		$form['order_stages_stages'][$stage->nid]['body'] = 
 			array(
 				'#value' => $stage->body
 			);
 		$form['order_stages_stages'][$stage->nid]['phases'] = array('#tree'=>TRUE);
-		foreach($stage->stage_phases as $phase_nid)
+		foreach($stage->phases as $phase_nid)
 		{
 			$form['order_stages_stages'][$stage->nid]['phases'][$phase_nid]['#value'] = $phase_titles[$phase_nid];
 		//	$form['order_stages_stages'][$stage->nid]['phases'][$phase_nid] = "Test";
@@ -286,7 +292,6 @@ function pi_authoring_order_stages_form_submit($form, &$form_state)
 	}
 	//sort the elements by the new order
 	asort($stage_order);
-	//firep(var_dump($stage_order), "New order");
 	
 	// Now reorder from 0..n based on this order
 	$count = 0;
@@ -294,7 +299,7 @@ function pi_authoring_order_stages_form_submit($form, &$form_state)
 	{
 		$stage_order[$stage_nid] = $count++;		
 	}
-	//firep(var_dump($stage_order), "New order");
+
 	foreach($stage_order as $stage_nid => $weight)
 	{
 		if($stage = node_load($stage_nid))
@@ -317,26 +322,26 @@ function pi_authoring_order_stages_form_submit($form, &$form_state)
  * @return string html output for the form
  */
 function theme_pi_authoring_order_inquiries_form($form) {
-  drupal_add_tabledrag('pi-authoring-order-inquiries-sort', 'order', 'sibling', 'pi-authoring-order-inquiries-element');
-  $header = array(array('data' => '', 'width' => '29'), 'Inquiry', 'Description', '', 'Position');
-  
-  $rows = array();
-  foreach (element_children($form['order_inquiries_inquiries']) as $key)
-  {
-    // Add class to group weight fields for drag and drop.
-    $form['order_inquiries_inquiries'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-inquiries-element';
+	drupal_add_tabledrag('pi-authoring-order-inquiries-sort', 'order', 'sibling', 'pi-authoring-order-inquiries-element');
+	$header = array(array('data' => '', 'width' => '29'), 'Inquiry', 'Description', '', 'Position');
 
-    $row = array('');
-    $row[] = drupal_render($form['order_inquiries_inquiries'][$key]['title']);
-    $row[] = drupal_render($form['order_inquiries_inquiries'][$key]['body']);
-    $row[] = drupal_render($form['order_inquiries_inquiries'][$key]['delete']);
-    $row[] = drupal_render($form['order_inquiries_inquiries'][$key]['weight']);
-    
-    $rows[] = array('data' => $row, 'class' => 'draggable');
-  }
-  $output = theme('table', $header, $rows, array('id' => 'pi-authoring-order-inquiries-sort'));
-  $output .= drupal_render($form);
-  return $output;
+	$rows = array();
+	foreach (element_children($form['order_inquiries_inquiries']) as $key)
+	{
+		// Add class to group weight fields for drag and drop.
+		$form['order_inquiries_inquiries'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-inquiries-element';
+
+		$row = array('');
+		$row[] = drupal_render($form['order_inquiries_inquiries'][$key]['title']);
+		$row[] = drupal_render($form['order_inquiries_inquiries'][$key]['body']);
+		$row[] = drupal_render($form['order_inquiries_inquiries'][$key]['delete']);
+		$row[] = drupal_render($form['order_inquiries_inquiries'][$key]['weight']);
+
+		$rows[] = array('data' => $row, 'class' => 'draggable');
+	}
+	$output = theme('table', $header, $rows, array('id' => 'pi-authoring-order-inquiries-sort'));
+	$output .= drupal_render($form);
+	return $output;
 }
 
 
@@ -346,25 +351,27 @@ function theme_pi_authoring_order_inquiries_form($form) {
  * @return string html output for the form
  */
 function theme_pi_authoring_order_phases_form($form) {
-  drupal_add_tabledrag('pi-authoring-order-phases-sort', 'order', 'sibling', 'pi-authoring-order-phases-element');
-  $header = array(array('data' => '', 'width' => '29'), 'Phase', 'Description', 'Position');
-  
-  $rows = array();
-  foreach (element_children($form['order_phases_phases']) as $key)
-  {
-    // Add class to group weight fields for drag and drop.
-    $form['order_phases_phases'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-phases-element';
+	$output = '';
+	$output .= '<div>Drag the arrows up and down to to change the order of the phases and click save to finish.</div>';
+	drupal_add_tabledrag('pi-authoring-order-phases-sort', 'order', 'sibling', 'pi-authoring-order-phases-element');
+	$header = array(array('data' => '', 'width' => '29'), 'Phase', 'Description', 'Position');
 
-    $row = array('');
-    $row[] = l(drupal_render($form['order_phases_phases'][$key]['title']), "node/$key/edit");
-    $row[] = drupal_render($form['order_phases_phases'][$key]['body']);
-    $row[] = drupal_render($form['order_phases_phases'][$key]['weight']);
-    
-    $rows[] = array('data' => $row, 'class' => 'draggable');
-  }
-  $output = theme('table', $header, $rows, array('id' => 'pi-authoring-order-phases-sort'));
-  $output .= drupal_render($form);
-  return $output;
+	$rows = array();
+	foreach (element_children($form['order_phases_phases']) as $key)
+	{
+		// Add class to group weight fields for drag and drop.
+		$form['order_phases_phases'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-phases-element';
+
+		$row = array('');
+		$row[] = l(drupal_render($form['order_phases_phases'][$key]['title']), "phase/$key/edit");
+		$row[] = drupal_render($form['order_phases_phases'][$key]['body']);
+		$row[] = drupal_render($form['order_phases_phases'][$key]['weight']);
+
+		$rows[] = array('data' => $row, 'class' => 'draggable');
+	}
+	$output .= theme('table', $header, $rows, array('id' => 'pi-authoring-order-phases-sort'));
+	$output .= drupal_render($form);
+	return $output;
 }
 
 /**
@@ -373,44 +380,47 @@ function theme_pi_authoring_order_phases_form($form) {
  * @return string html output for the form
  */
 function theme_pi_authoring_order_stages_form($form) {
-  drupal_add_tabledrag('pi-authoring-order-stages-sort', 'order', 'sibling', 'pi-authoring-order-stages-element');
-  $header = array(array('data' => '', 'width' => '29'), 'Stage', 'Description', 'Position');
-  
-  $rows = array();
-  foreach (element_children($form['order_stages_stages']) as $key)
-  {
-    // Add class to group weight fields for drag and drop.
-    $form['order_stages_stages'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-stages-element';
+	$output = '';
+	$output .= '<div>Drag the arrows up and down to to change the order of the stages and click save to finish.</div>';
 
-    $row = array('');
-    $row[] = l(drupal_render($form['order_stages_stages'][$key]['title']), "node/$key/edit");
-    $phase_description_row = '';
-    $phase_description_row .= '<div>' . drupal_render($form['order_stages_stages'][$key]['body']) . '</div>';
-    if(count($form['order_stages_stages'][$key]['phases'] > 0))
-    {
-    	$phase_description_row .= '<div><strong>Phases in this stage:</strong></div>';    
-    	$phase_description_row .= '<div>';
-    	$phase_name_links = array();
-    	foreach(element_children($form['order_stages_stages'][$key]['phases']) as $phase_nid)
-    	{
-    		$phase_name_links[] = '<span>' . l(drupal_render($form['order_stages_stages'][$key]['phases'][$phase_nid]), "phase/$phase_nid/edit") . '</span>';
-    	}
-    	$phase_description_row .= implode($phase_name_links, ', ');
-    	$phase_description_row .= '</div>';
-    }
-    else
-    {
-    	$phase_description_row .= '<div><strong>No phases in this stage yet.</strong></div>';    
-    } 
-   
-    $row[] = $phase_description_row;
-    $row[] = drupal_render($form['order_stages_stages'][$key]['weight']);
-    
-    $rows[] = array('data' => $row, 'class' => 'draggable');
-  }
-  $output = theme('table', $header, $rows, array('id' => 'pi-authoring-order-stages-sort'));
-  $output .= drupal_render($form);
-  return $output;
+	drupal_add_tabledrag('pi-authoring-order-stages-sort', 'order', 'sibling', 'pi-authoring-order-stages-element');
+	$header = array(array('data' => '', 'width' => '29'), 'Stage', 'Description', 'Position');
+
+	$rows = array();
+	foreach (element_children($form['order_stages_stages']) as $key)
+	{
+		// Add class to group weight fields for drag and drop.
+		$form['order_stages_stages'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-stages-element';
+
+		$row = array('');
+		$row[] = l(drupal_render($form['order_stages_stages'][$key]['title']), "stage/$key/edit");
+		$phase_description_row = '';
+		$phase_description_row .= '<div>' . drupal_render($form['order_stages_stages'][$key]['body']) . '</div>';
+		if(count($form['order_stages_stages'][$key]['phases'] > 0))
+		{
+			$phase_description_row .= '<div><strong>' . t('Phases in this stage') . ':</strong></div>';
+			$phase_description_row .= '<div>';
+			$phase_name_links = array();
+			foreach(element_children($form['order_stages_stages'][$key]['phases']) as $phase_nid)
+			{
+				$phase_name_links[] = '<span>' . l(drupal_render($form['order_stages_stages'][$key]['phases'][$phase_nid]), "phase/$phase_nid/edit") . '</span>';
+			}
+			$phase_description_row .= implode($phase_name_links, ', ');
+			$phase_description_row .= '</div>';
+		}
+		else
+		{
+			$phase_description_row .= '<div><strong>' . t('No phases in this stage yet.') . '</strong></div>';
+		}
+		 
+		$row[] = $phase_description_row;
+		$row[] = drupal_render($form['order_stages_stages'][$key]['weight']);
+
+		$rows[] = array('data' => $row, 'class' => 'draggable');
+	}
+	$output = theme('table', $header, $rows, array('id' => 'pi-authoring-order-stages-sort'));
+	$output .= drupal_render($form);
+	return $output;
 }
 
 

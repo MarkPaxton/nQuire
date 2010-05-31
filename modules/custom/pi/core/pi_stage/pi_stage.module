@@ -165,36 +165,52 @@ function pi_stage_form(&$node, $form_state) {
 
 
 	// Based on the selection above generate the select boxes for phases
-	$phase_select_boxes = array();
-	$phase_select_boxes_defaults = array();
-	if($inquiry_nid_default_value != 'none')
-	{
-		$inquiry_phase_nids = pi_phase_load_nids($inquiry_nid_default_value);
-		foreach($inquiry_phase_nids as $nid)
-		{
-			$phase = node_load($nid);
-			if($phase)
-			{
-				$phase_select_boxes[$phase->nid] = $phase->title;				
-			}
-			if(in_array($nid, $node->stage_phases))
-			{
-				$phase_select_boxes_defaults[] = $nid;
-			}
-		}
-	}
-	
-	$form['stage_phases']['phases'] = array(
-		'#type' => 'checkboxes',
-	    '#weight' => 3,
-		'#options' => $phase_select_boxes,
-		'#default_value' => $phase_select_boxes_defaults,
-	);
+	$form['stage_phases']['phases'] = pi_stage_form_generate_phase_checkboxes($node->stage_phases['phases'], $inquiry_nid_default_value);
 
 	//Add some javascript to load the phases if needed on page load (e.g. when the browser pre-selects a value) 
 	//drupal_add_js('document.onLoad=function(){$[\'edit-inquiry-nid\'].onChange();}', 'inline');	
 	return $form;
 }
+
+/**
+ * Generate the ['stage_phases']['phases'] checkboxes for a given inquiry nid.
+ * this is used in this module and also called by pi_authoring using hook_form_FORM-ID_alter()
+ * as it can't run the ajaca call do do this
+ * @param array uint nids of phases belonging to node
+ * @param uint $inquiry_nid nid of the inquiry to show generate boxes for or 'none' for blank
+ * @return array describing the checkboxes form element
+ */
+function pi_stage_form_generate_phase_checkboxes($node_stage_phases, $inquiry_nid)
+{
+// Based on the selection above generate the select boxes for phases
+	$phase_select_boxes = array();
+	$phase_select_boxes_defaults = array();
+	if($inquiry_nid != 'none')
+	{
+		$inquiry_phase_nids = pi_phase_load_nids($inquiry_nid);
+		foreach($inquiry_phase_nids as $nid)
+		{
+			$phase = node_load($nid);
+			if($phase !== FALSE)
+			{
+				$phase_select_boxes[$phase->nid] = check_plain($phase->title);				
+			}
+			if($node_stage_phases[$nid]===TRUE)
+			{
+				$phase_select_boxes_defaults[] = $nid;
+			}
+		}
+	}
+
+	$form_element =  array(
+		'#type' => 'checkboxes',
+	    '#weight' => 3,
+		'#options' => $phase_select_boxes,
+		'#default_value' => $phase_select_boxes_defaults,
+	);
+	return $form_element;
+}
+
 
 /**
  * hook_form_alter - changes the form to change it from default node layout
@@ -323,9 +339,9 @@ function pi_stage_update($node) {
 			if($value==TRUE)
 			{
 				// if the phase is to be included, and it was already included it will be 
-				//  in $old_stage->stage_phases  (see pi_stage_load() below)
+				//  in $old_stage->phases  (see pi_stage_load() below)
 				// if it is not, then it should be inserted.
-				if(!in_array($phase_nid, $old_stage->stage_phases))
+				if(!in_array($phase_nid, $old_stage->phases))
 				{
 					db_query("INSERT INTO {pi_stage_phase} (stage_id, phase_id) VALUES (%d, %d)",
 						$node->nid, $phase_nid);
@@ -334,9 +350,9 @@ function pi_stage_update($node) {
 			else
 			{
 				// If the phase is not to be included, then check to see if it needs to be removed
-				//  by looking at $old_stage->stage_phases; if it is in the array, it needs to be removed
+				//  by looking at $old_stage->phases; if it is in the array, it needs to be removed
 				//  from the database
-				if(in_array($phase_nid, $old_stage->stage_phases))
+				if(in_array($phase_nid, $old_stage->phases))
 				{
 					db_query('DELETE FROM {pi_stage_phase} WHERE (stage_id = %d AND phase_id = %d)', 
 						$node->nid, $phase_nid);
@@ -383,11 +399,12 @@ function pi_stage_load($node) {
 	$result = db_query("SELECT phase_id, psp_id from {pi_stage_phase} WHERE stage_id = %d", $node->nid);
 	while($row=db_fetch_array($result))
 	{
-		$phase_nids[] = $row['phase_id'];
+		$phase_nids[$row['phase_id']] = TRUE;
 		$psp_ids[$row['phase_id']] = $row['psp_id'];
 		
 	}
-	$data->stage_phases = $phase_nids;
+	$data->stage_phases['phases'] = $phase_nids;
+	$data->phases = array_keys($phase_nids);
 	$data->stage_phase_ids = $psp_ids;
 	return $data;
 }
