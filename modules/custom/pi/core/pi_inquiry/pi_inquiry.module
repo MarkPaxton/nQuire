@@ -81,14 +81,15 @@ function pi_inquiry_form($node) {
 		'#type' => 'select',
 		'#title' => t('Layout'),
 		'#weight' => 1,
-		'#default_value' => isset($node->layout) ? $node->layout : 0,
+		'#default_value' => isset($node->layout) ? $node->layout : 'list',
 		'#options' => array(
-			0=> "One",
-			1=> "Two",
-			2=> "Fish",
-			3=> "Four",
-			4=> "Five",
-		),		
+			'list'=> t("List"),
+			'pentagon'=> t("Pentagon"),
+			'octagon'=> t("Plain octagon"),
+			'octagon_icon'=> t("Octagon with icons"),
+			'octagon_activity'=> t("Octagon with activity counts"),
+			'octagon_icon_activity' => t("Octagon with activity counts and icons"),
+		),	
 	);
 	
 	return $form;
@@ -98,7 +99,7 @@ function pi_inquiry_form($node) {
 /**
  * hook_form_alter - changes the form to change it from default node layout
  */
-function pi_inquiry_form_alter(&$form, $form_state, $form_id) {
+function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
 	if($form_id == 'pi_inquiry_node_form')
 	{
 		$form['menu']['#weight'] = 3;	
@@ -114,7 +115,7 @@ function pi_inquiry_insert($node) {
 	// If the query result is NULL then the the field will to default=0 since the weight
 	// column is defined with NOT NULL DEFAULT 0   
 	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 from pi_inquiry"));
-	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight) VALUES (%d, %d, %d, %d)",
+	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight) VALUES (%d, %d, '%s', %d)",
 		$node->nid, $node->vid, $node->layout, $initial_weight);
 }
 
@@ -127,7 +128,7 @@ function pi_inquiry_update($node) {
     pi_inquiry_insert($node);
   }
   else {
-    db_query("UPDATE {pi_inquiry} SET layout = %d, weight= %d WHERE vid = %d",
+    db_query("UPDATE {pi_inquiry} SET layout = '%s', weight= %d WHERE vid = %d",
       $node->layout, $node->weight, $node->vid);
   }
 }

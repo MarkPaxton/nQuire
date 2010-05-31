@@ -12,9 +12,14 @@
  */
 function pi_authoring_inquiry_node_edit($inquiry)
 {
-	return t($inquiry->title);
+	$output = '';
+	if( !function_exists("node_page_edit"))
+	{
+		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+	}
+	$output .= node_page_edit($inquiry);
+	return $output;
 }
-
 
 
 /**

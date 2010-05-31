@@ -13,7 +13,7 @@
  * @param uint $activity_id The id of the pi_activity to work with  
  * @param $arg_node_function The function to perform on the activity
  */
-function pi_activity_view($activity_id, $arg_node_function) {
+function pi_activity_view($activity, $arg_node_function) {
 	global $user;
 	$uid = $user->uid;
 	drupal_set_title('');
@@ -30,7 +30,7 @@ function pi_activity_view($activity_id, $arg_node_function) {
 	{
 		case 'view':
 			//get nid
-			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
+			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity->activity_id, $uid);
 			if(isset($nid))
 			{
 				$loaded_node = node_load($nid);
@@ -47,25 +47,23 @@ function pi_activity_view($activity_id, $arg_node_function) {
 			break;
 		case 'add': 
 			//get node type
-			$loaded_activity = load_activity($activity_id);
-			$node_type = $loaded_activity->node_type;
-	
+			$node_type = $activity->node_type;
 			if(!function_exists("node_add"))
 			{
 				include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 			}
-			$output .= pi_activity_actor_audience_info($details->inquiry_id, $activity_id);
+			$output .= pi_activity_actor_audience_info($details->inquiry_id, $activity->activity_id);
 			$output .= node_add($node_type);
 			break;
 		case 'edit':
 			//get nid
-			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity_id, $uid);
+			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity->activity_id, $uid);
 			//build form
 			$loaded_node = node_load($nid);
 			if( !function_exists("node_page_edit")) {
 				include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 			}
-			$output .= pi_activity_actor_audience_info($details->inquiry_id, $activity_id);
+			$output .= pi_activity_actor_audience_info($details->inquiry_id, $activity->activity_id);
 			$output .= node_page_edit($loaded_node);
 			break;
 	}

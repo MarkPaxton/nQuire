@@ -87,6 +87,21 @@ function pi_authoring_menu() {
       'access arguments' => array('administer site configuration'),
 	);
 
+
+	// NOTE: If you change the url below also change pi_authoring_form_pi_inquiry_node_form_alter()
+	$items['inquiry/add'] = array(
+    	'title' => t('Add'),
+		'file' => 'pi_authoring.inquiry_add.inc',
+		'page callback' => 'pi_authoring_inquiry_add',
+		'page arguments' => array(1),
+		'type' => MENU_CALLBACK,
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'weight' => 1,
+	);
+		
+	
+	// NOTE: If you change the url below also change pi_authoring_form_pi_inquiry_node_form_alter()
 	$items['inquiry/%node/edit'] = array(
     	'title' => t('Edit'),
 		'file' => 'pi_authoring.inquiry_edit.inc',
@@ -97,6 +112,7 @@ function pi_authoring_menu() {
 		'access arguments' => array('access pi_authoring content'),
 		'weight' => 1,
 	);
+	
 
 	$items['inquiry/%node/edit/view'] = array(
 		'title' => t('Edit Content'),
@@ -131,7 +147,7 @@ function pi_authoring_menu() {
 		'weight' => 2,
 	);
 
-	
+	// NOTE: If you change the url below also change pi_authoring_form_pi_inquiry_node_form_alter()
 	$items['piauthoring'] = array(
 	  'title' => t('Inquiry Authoring'),
   	  'page callback' => 'pi_authoring_view',
@@ -381,6 +397,43 @@ function pi_authoring_menu() {
 	return $items;
 }
 
+/**
+ * This uses hook_form_FORM-ID_alter() set the redirect for editing the inquiry details when 
+ * accessed via the inquiry editing page rather than the node editing page.
+ * It alters $from['redirect'] based on the url that the form was accessed via  
+ * @param $form
+ * @param $form_state
+ */
+function pi_authoring_form_pi_inquiry_node_form_alter(&$form, &$form_state)
+{
+	//Strip the request url of the preceeding drupal stuff base_url and ?q=/
+	// so that it's possible to work out whether the page request was from /inquiry/%inquiry/edit
+	// or from /node/%node/edit
+	$drupal_path = str_replace(base_path(), '', request_uri());
+	$drupal_path = str_replace('?q=', '', $drupal_path);
+	
+	//Perform case insennsitive comparison of first 8 chars of the path to see if it was 'inquiry/'
+	if(substr_compare($drupal_path, 'inquiry/', 0, 8, true)==0)
+	{
+		$nid = $form['nid']['#value'];
+		// check if nid is set
+		if(isset($nid))
+		{
+			// if it was from the authoring edit page, then get the node id and redirect back
+			// to the authoring page for it...
+			$form['#redirect'] = "inquiry/$nid/edit";
+		}
+		else
+		{
+			//Otherwise assume it's the new inquiry form, and we have no idea what the new nid will be,
+			// so go to the standard  authoring page so Author can click through to it 
+			// (and maybe set in order as well).
+			$form['#redirect'] = "piauthoring/";
+		}
+	}
+	//otherwise if it's not related to inquiry editing then don't touch the form
+}
+
 
 //-------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------Table View of Inquiry------------------------------------------------
@@ -397,7 +450,7 @@ function pi_authoring_view(){
 	$content .="<div id='pi_authoring'>";
 	
 	$content .= "<p>To create a new inquiry enter the details " . 
-		l("here", "node/add/pi-inquiry/")  . " .  " . 
+		l("here", "inquiry/add")  . " .  " . 
 		"To edit an existing inquiry select it from the list below.</p>\n";
 /*	
 	$content .="<div id='new_inquiry'>\n"; 
@@ -508,7 +561,6 @@ function pi_authoring_order_inquiries_form_submit($form, &$form_state)
 	{
 		$inquiry_order[$inquiry_nid] = $count++;		
 	}
-	firep($inquiry_order, "New order");
 	
 	// This should really be done in a transation, but it's not possible in the drupal api as you
 	// have to know all about the other table that may be locked..

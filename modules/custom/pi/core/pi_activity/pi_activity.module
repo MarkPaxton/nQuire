@@ -7,7 +7,7 @@
  */
 function pi_activity_menu() {
 	$items = array();
-	$items['activity/%'] = array(
+	$items['activity/%activity'] = array(
 		'page callback' => 'pi_activity_view',
 	    'page arguments' => array(1, 'view'),
 		'file' => 'pi_activity.activity.inc',
@@ -15,27 +15,7 @@ function pi_activity_menu() {
 		'access arguments' => array(1, 'view'),
 	    'type' => MENU_CALLBACK
 	);
-	$items['activity/%/view'] = array(
-		'title' => 'View',
-		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 2),
-		'file' => 'pi_activity.activity.inc', 
-		'access callback' => 'pi_activity_access',
-		'access arguments' => array(1, 2),
-		'type' => MENU_DEFAULT_LOCAL_TASK,
-		'weight' => 0,
-	);
-	$items['activity/%/edit'] = array(
-		'title' => 'Edit',
-		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 2),
-		'file' => 'pi_activity.activity.inc', 
-		'access callback' => 'pi_activity_access',
-		'access arguments' => array(1, 2),
-		'type' => MENU_LOCAL_TASK,
-		'weight' => 1,
-	);
-	$items['activity/%/add'] = array(
+	$items['activity/%pi_activity/add'] = array(
 		'title' => 'Add',
 		'page callback' => 'pi_activity_view',
 		'page arguments' => array(1, 2),
@@ -43,7 +23,61 @@ function pi_activity_menu() {
 		'access callback' => 'pi_activity_access',
 		'access arguments' => array(1, 2),
 		'type' => MENU_CALLBACK,
+		'weight' => 0
 	);
+	
+	$items['activity/%pi_activity/view'] = array(
+		'title' => 'View',
+		'page callback' => 'pi_activity_view',
+		'page arguments' => array(1, 2),
+		'file' => 'pi_activity.activity.inc', 
+		'access callback' => 'pi_activity_access',
+		'access arguments' => array(1, 2),
+		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'weight' => 1,
+	);
+	$items['activity/%pi_activity/edit'] = array(
+		'title' => 'Edit',
+		'page callback' => 'pi_activity_view',
+		'page arguments' => array(1, 2),
+		'file' => 'pi_activity.activity.inc', 
+		'access callback' => 'pi_activity_access',
+		'access arguments' => array(1, 2),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 2,
+	);
+	
+	$items['activity/%pi_activity/author/'] = array(
+		'title' => 'Author',
+		'page callback' => 'pi_activity_content',
+		'page arguments' => array(1),
+		'file' => 'pi_activity.content.inc', 
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 3
+	);
+	$items['activity/%pi_activity/author/edit'] = array(
+		'title' => 'Edit',
+		'page callback' => 'pi_activity_content',
+		'page arguments' => array(1),
+		'file' => 'pi_activity.content.inc', 
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 0
+	);
+	$items['activity/%pi_activity/author/content'] = array(
+		'title' => 'Content',
+		'page callback' => 'pi_activity_content',
+		'page arguments' => array(1),
+		'file' => 'pi_activity.content.inc', 
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'weight' => 1
+	);
+	
 	return $items;
 }
 
@@ -53,17 +87,34 @@ function pi_activity_menu() {
  * @param uint $op the function to perform on the activity (view/add/edit)
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
-function pi_activity_access($activity_id, $op) {
+function pi_activity_access($activity, $op) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-	$return_value = check_node_function_of_activity($details->inquiry_id, $activity_id, $user->uid, $op);
+	$return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, $op);
 	if(($return_value===false) && ($op='view'))
 	{
-		$return_value = $return_value || pi_activity_access($activity_id, 'edit');
+		$return_value = $return_value || pi_activity_access($activity->activity_id, 'edit');
 	}
 	return $return_value;
 }
 
+/**
+ * Returns a list of nids of activity nodes generated for the given pi_activity
+ * @param uint $inquiry_id the id of a pi_inquiry to get all related nodes for the activity (n.b. this is probably not needed)
+ * @param uint $activity_id the id of a pi_activity to get all related nodes for
+ * @return array(uint) an array of all the activity content nids for the given activity_is
+ */
+function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
+{
+	$activity_content_nids = array();
+	$query = "SELECT nid as nid FROM {pi_activity_node} WHERE activity_id = %d AND inquiry_id = %d";
+	$result = db_query($query, $activity_id, $inquiry_id);
+	while($row = db_fetch_array($result))
+	{
+		$activity_content_nids[] = $row['nid'];
+	}
+	return $activity_content_nids;
+}
 
 
 /**
@@ -463,13 +514,26 @@ function set_node_function_of_activity_type($inquiry_id, $activity_type, $uid, $
 
 /**
  * Returns the activity_object from pi_activity table.
+ * @param uint $activity_id the activity ID
+ * @return object from db_fetch_object() for pi_activity table
  */
 function load_activity($activity_id)
 {
-	$query = "SELECT * FROM pi_activity WHERE activity_id = '" . $activity_id . "'";
-	$items = db_fetch_object(db_query($query));
-	return $items;
+	$query = "SELECT * FROM {pi_activity} WHERE activity_id = %d";
+	$activity = db_fetch_object(db_query($query, $activity_id));
+	return $activity;
 }
+
+/**
+ * Returns the activity_object from pi_activity table - used in the activity menu
+ * @param uint $activity_id the activity ID
+ * @return object from db_fetch_object() for pi_activity table
+ */
+function pi_activity_load($activity_id)
+{
+	return load_activity($activity_id);
+}
+
 
 /**
  * This will insert or update depending on whether the activity_id is set in the array and
