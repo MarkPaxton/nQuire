@@ -21,6 +21,7 @@ function pi_activity_view($activity, $arg_node_function) {
 	$output = '';
 	drupal_set_title('');
 
+	$details = get_inquiry_details_from_current_path();
 
 	// Check that the node function given int the URL is allowed by comparing it with the 
 	//   node function in the database for this inquiry and user
@@ -29,7 +30,6 @@ function pi_activity_view($activity, $arg_node_function) {
 	switch($arg_node_function)
 	{
 		case 'view':
-			$details = get_inquiry_details_from_current_path();
 			//get nid
 			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity->activity_id, $uid);
 			if(isset($nid))
