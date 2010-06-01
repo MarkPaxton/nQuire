@@ -14,27 +14,32 @@
  * @param $arg_node_function The function to perform on the activity
  */
 function pi_activity_view($activity, $arg_node_function) {
+
 	global $user;
 	$uid = $user->uid;
+	
+	$output = '';
 	drupal_set_title('');
-	$details = get_inquiry_details_from_current_path();
 
-	$output = "";
 
 	// Check that the node function given int the URL is allowed by comparing it with the 
 	//   node function in the database for this inquiry and user
 	//$node_function = get_node_function_of_activity($details->inquiry_id, $activity_id, $uid);
 	// this is now handled with the access callback pi_activity_access
-	
 	switch($arg_node_function)
 	{
 		case 'view':
+			$details = get_inquiry_details_from_current_path();
 			//get nid
 			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity->activity_id, $uid);
 			if(isset($nid))
 			{
 				$loaded_node = node_load($nid);
 				//build page
+				if(!function_exists("node_view"))
+				{
+					include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+				}
 				$output .= node_view($loaded_node, FALSE, TRUE, TRUE);
 			}
 			else

@@ -7,74 +7,91 @@
  */
 function pi_activity_menu() {
 	$items = array();
-	$items['activity/%activity'] = array(
+	$items['activity/%pi_activity'] = array(
+		'title' => 'View',
+		'file' => 'pi_activity.activity.inc',
 		'page callback' => 'pi_activity_view',
 	    'page arguments' => array(1, 'view'),
-		'file' => 'pi_activity.activity.inc',
 		'access callback' => 'pi_activity_access',
 		'access arguments' => array(1, 'view'),
-	    'type' => MENU_CALLBACK
+	    'type' => MENU_CALLBACK,
+		'weight' => 0,
 	);
+	
 	$items['activity/%pi_activity/add'] = array(
 		'title' => 'Add',
+		'file' => 'pi_activity.activity.inc', 
 		'page callback' => 'pi_activity_view',
 		'page arguments' => array(1, 2),
-		'file' => 'pi_activity.activity.inc', 
 		'access callback' => 'pi_activity_access',
 		'access arguments' => array(1, 2),
-		'type' => MENU_CALLBACK,
-		'weight' => 0
+		'type' => MENU_CALLBACK,		
 	);
 	
 	$items['activity/%pi_activity/view'] = array(
 		'title' => 'View',
+		'file' => 'pi_activity.activity.inc', 
 		'page callback' => 'pi_activity_view',
 		'page arguments' => array(1, 2),
-		'file' => 'pi_activity.activity.inc', 
 		'access callback' => 'pi_activity_access',
 		'access arguments' => array(1, 2),
-		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'type' => MENU_LOCAL_TASK,
 		'weight' => 1,
 	);
+	
+	
 	$items['activity/%pi_activity/edit'] = array(
 		'title' => 'Edit',
+		'file' => 'pi_activity.activity.inc', 
 		'page callback' => 'pi_activity_view',
 		'page arguments' => array(1, 2),
-		'file' => 'pi_activity.activity.inc', 
 		'access callback' => 'pi_activity_access',
 		'access arguments' => array(1, 2),
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 2,
 	);
 	
-	$items['activity/%pi_activity/author/'] = array(
-		'title' => 'Author',
+	$items['activity/%pi_activity/admin'] = array(
+		'title' => 'Admin',
+		'file' => 'pi_activity.admin.inc', 
 		'page callback' => 'pi_activity_content',
 		'page arguments' => array(1),
-		'file' => 'pi_activity.content.inc', 
-		'access_callback' => TRUE,
+		'access_callback' => 'user_access',
 		'access arguments' => array('access pi_authoring content'),
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 3
 	);
-	$items['activity/%pi_activity/author/edit'] = array(
-		'title' => 'Edit',
+	
+	$items['activity/%pi_activity/admin/content'] = array(
+		'title' => 'View Activity Content',
+		'file' => 'pi_activity.admin.inc', 
 		'page callback' => 'pi_activity_content',
 		'page arguments' => array(1),
-		'file' => 'pi_activity.content.inc', 
+		'access_callback' => 'user_access',
+		'access arguments' => array('access pi_authoring content'),
+		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'weight' => 0
+	);
+	
+	$items['activity/%pi_activity/admin/edit'] = array(
+		'title' => 'Edit Activity',
+		'file' => 'pi_activity.admin.inc', 
+		'page callback' => 'pi_activity_edit',
+		'page arguments' => array(1),
 		'access_callback' => TRUE,
 		'access arguments' => array('access pi_authoring content'),
 		'type' => MENU_LOCAL_TASK,
-		'weight' => 0
+		'weight' => 1
 	);
-	$items['activity/%pi_activity/author/content'] = array(
-		'title' => 'Content',
-		'page callback' => 'pi_activity_content',
-		'page arguments' => array(1),
-		'file' => 'pi_activity.content.inc', 
+
+	$items['activity/%pi_activity/admin/view/%node'] = array(
+		'title' => 'Edit Activity',
+		'file' => 'pi_activity.admin.inc', 
+		'page callback' => 'pi_activity_admin_view_node',
+		'page arguments' => array(1, 4),
 		'access_callback' => TRUE,
 		'access arguments' => array('access pi_authoring content'),
-		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'type' => MENU_CALLBACK,
 		'weight' => 1
 	);
 	
@@ -90,13 +107,34 @@ function pi_activity_menu() {
 function pi_activity_access($activity, $op) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-	$return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, $op);
-	if(($return_value===false) && ($op='view'))
+	if(!isset($activity->activity_id))
 	{
-		$return_value = $return_value || pi_activity_access($activity->activity_id, 'edit');
+		$return_value = false;
+	}
+	else
+	{
+		$return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, $op);
+		if(($return_value===false) && ($op='view'))
+		{
+			$return_value = $return_value || pi_activity_access($activity, 'edit');
+		}
 	}
 	return $return_value;
 }
+
+/**
+ * hook_theme() for pi_activity content
+ */
+function pi_activity_theme()
+{
+		return array(
+		'pi_activity_admin_view_node' => array(
+			'arguments' => array('activity', 'node_view_page'),
+			'file' => 'pi_activity.admin.inc')
+		);
+}
+
+
 
 /**
  * Returns a list of nids of activity nodes generated for the given pi_activity
@@ -107,7 +145,7 @@ function pi_activity_access($activity, $op) {
 function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
 {
 	$activity_content_nids = array();
-	$query = "SELECT nid as nid FROM {pi_activity_node} WHERE activity_id = %d AND inquiry_id = %d";
+	$query = "SELECT nid FROM {pi_activity_node} WHERE activity_id = %d AND inquiry_id = %d";
 	$result = db_query($query, $activity_id, $inquiry_id);
 	while($row = db_fetch_array($result))
 	{
@@ -115,7 +153,6 @@ function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
 	}
 	return $activity_content_nids;
 }
-
 
 /**
  * Return and object with a nid property which is the phase activity resides is in in a
@@ -143,16 +180,28 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
  **/
 function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) {
 	//find if uid is author of the node
-	$query1 = "SELECT pi_activity_node.nid FROM pi_activity_node, node";
+	$query1 = "SELECT `a`.`nid` FROM {pi_activity_node} AS `a` " . 
+			 "LEFT JOIN {node} AS `n` ON `n`.`nid` = `a`.`nid` " . 
+			 "WHERE `a`.`inquiry_id` = %d " . 
+			 "AND `a`.`activity_id` = %d " . 
+			 "AND `n`.`uid` = %d " . 
+			 "ORDER BY `a`.`pan_id` DESC";
+	
+/*	$query1 = "SELECT pi_activity_node.nid FROM pi_activity_node, node";
 	$query1 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
 	$query1 .= " AND pi_activity_node.activity_id = " . $activity_id;
 	$query1 .= " AND node.nid = pi_activity_node.nid";
 	$query1 .= " AND node.uid = '" . $uid . "' ";
-	$query1 .= " ORDER BY pan_id DESC";
-	$result = db_fetch_object(db_query($query1));
+	$query1 .= " ORDER BY pan_id DESC";*/
 
-	if ($result->nid) {
-		return $result->nid;
+	
+	$result = db_fetch_object(db_query($query1, $inquiry_id, $activity_id, $uid));
+	if (isset($result))
+	{
+		if(isset($result->nid))
+		{
+			return $result->nid;
+		}
 	}
 
 	//find if uid is member of a group for the node
@@ -531,7 +580,8 @@ function load_activity($activity_id)
  */
 function pi_activity_load($activity_id)
 {
-	return load_activity($activity_id);
+	$activity = load_activity($activity_id);
+	return $activity;
 }
 
 

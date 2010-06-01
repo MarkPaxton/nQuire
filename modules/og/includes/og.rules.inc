@@ -1,5 +1,5 @@
 <?php
-// $Id: og.rules.inc,v 1.4 2009/01/02 03:58:21 weitzman Exp $
+// $Id: og.rules.inc,v 1.4.4.3 2010/03/14 08:24:16 amitaibu Exp $
 
 /**
  * @file
@@ -115,17 +115,70 @@ function og_rules_action_info() {
       ),
       'help' => t("When creating a group node organic groups module requires some group settings. This action should be used after 'Add new content' action, that adds a <a href=\"@group-node-type\">group node type</a> content, and will result with a new group node.", array('@group-node-type' => url('admin/og/og'))),
       'module' => 'Organic groups',
-    ),    
+    ),
+    'og_rules_action_audience_add_group' => array(
+      'label' => t('Add group to audience of content'),
+      'arguments' => array(
+        'node' => array(
+          'type' => 'node',
+          'label' => t('Content whose audience is changed'),
+        ),
+        'group' => array(
+          'type' => 'node',
+          'label' => t('Group that will be added to audience'),
+        ),
+      ),
+      'help' => t('Note, that group node id must be known when this action runs, so for it to work on newly created group you must save that group first.'),
+      'module' => 'Organic groups',
+    ),
+    'og_rules_action_audience_remove_group' => array(
+      'label' => t('Remove group from audience of content'),
+      'arguments' => array(
+        'node' => array(
+          'type' => 'node',
+          'label' => t('Content whose audience is changed'),
+        ),
+        'group' => array(
+          'type' => 'node',
+          'label' => t('Group that will be removed from audience'),
+        ),
+      ),
+      'module' => 'Organic groups',
+    ),
   );
+}
+
+/**
+ * Action: add group to audience of content.
+ */
+function og_rules_action_audience_add_group($node, $group) {
+  if (og_is_group_post_type($node->type)) {
+    if (!is_array($node->og_groups)) {
+      $node->og_groups = array();
+    }
+    // Newly created groups may have null nid.
+    if ($group->nid) {
+      $node->og_groups[$group->nid] = $group->nid;
+    }
+  }
+  return array('node' => $node);
+}
+
+/**
+ * Action: remove group from audience of content.
+ */
+function og_rules_action_audience_remove_group($node, $group) {
+  if (!empty($node->og_groups) && !empty($group->nid)) {
+    unset($node->og_groups[$group->nid]);
+  }
+  return array('node' => $node);
 }
 
 /**
  * Action: Subscribe user to group.
  */
 function og_rules_action_subscribe_user($user, $node, $settings) {
-  if (!og_is_group_member($node->nid, $user)) {
-    og_save_subscription($node->nid, $user->uid, array('is_active' => (int)$settings['is_active']));
-  }
+  og_save_subscription($node->nid, $user->uid, array('is_active' => (int)$settings['is_active']));
 }
 
 /**
@@ -158,8 +211,8 @@ function og_rules_action_add_group_node($node, $settings) {
     foreach ($settings['og_fieldset']['og_settings'] as $key => $value){
       $node->$key = $value;
     }
-    return array('node' => $node); 
-  } 
+    return array('node' => $node);
+  }
 }
 
 /**
@@ -206,6 +259,17 @@ function og_rules_condition_info() {
       'help' => t('Evaluates to TRUE if the content is a group.'),
       'module' => 'Organic groups',
     ),
+    'og_rules_condition_content_is_group_post' => array(
+      'label' => t('Content is a group post'),
+      'arguments' => array(
+        'group' => array(
+          'type' => 'node',
+          'label' => t('Group post'),
+        ),
+      ),
+      'help' => t('Evaluates to TRUE if the content is a group post.'),
+      'module' => 'Organic groups',
+    ),
   );
 }
 
@@ -213,12 +277,32 @@ function og_rules_condition_info() {
  * Condition: User is group member.
  */
 function og_rules_condition_user_in_group($user, $node, $settings) {
-  return !empty($node->nid) && og_is_group_member($node->nid, $user);
+  return !empty($node->nid) && og_is_group_member($node->nid, $settings['include_admins'], $user->uid);
 }
 
 /**
- * Condition: Content is a group.
+ * Condition: User is group member.
+ */
+function og_rules_condition_user_in_group_form($settings, &$form) {
+  $form['settings']['include_admins'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Include admins'),
+    '#description' => t('When enabled, users with "administer nodes" permission will always be treated as group members.'),
+    '#default_value' => $settings['include_admins'],
+  );
+}
+
+
+/**
+ * Condition: Content is a group node.
  */
 function og_rules_condition_content_is_group($node, $settings) {
   return og_is_group_type($node->type);
+}
+
+/**
+ * Condition: Content is a group post.
+ */
+function og_rules_condition_content_is_group_post($node, $settings) {
+  return og_is_group_post_type($node->type);
 }
