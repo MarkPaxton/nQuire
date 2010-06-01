@@ -492,6 +492,7 @@ function pi_authoring_form_pi_inquiry_node_form_alter(&$form, &$form_state)
 	
 	// Look for /inuqiry/{number}/edit
 	// First see if the array is big enough to avoid looking at null refs.
+	
 	if(count($path_parts)>= 3)
 	{
 		// Now check all the parts for vaildity... inquiry NUMBER edit
@@ -502,7 +503,7 @@ function pi_authoring_form_pi_inquiry_node_form_alter(&$form, &$form_state)
 			// /inquiry/%inquiry/edit?some=query&string=too OR
 			// /inquiry/%inquiry/edit&some=query&string=too
 			$valid_strings = array('edit', 'edit?', 'edit&');
-			if(in_array(strtolower($path_parts[3]), $valid_strings))
+			if(in_array(strtolower($path_parts[2]), $valid_strings))
 			{
 					$nid = $form['nid']['#value'];
 					// check if nid is set
@@ -510,7 +511,7 @@ function pi_authoring_form_pi_inquiry_node_form_alter(&$form, &$form_state)
 					{
 						// if it was from the authoring edit page, then get the node id and redirect back
 						// to the authoring page for it...
-						$form['#redirect'] = "inquiry/$nid/edit";
+						$form['#redirect'] = "inquiry/$nid";
 					}
 				}
 		}
@@ -519,13 +520,13 @@ function pi_authoring_form_pi_inquiry_node_form_alter(&$form, &$form_state)
 	{
 		//Otherwise see if it's the new inquiry form, and we have no idea what the new nid will be,
 		// so go to the standard  authoring page so Author can click through to it
-		// (and maybe set in order as well).
+		// (and maybe set in order as well).	
 		if(count($path_parts)>= 2)
 		{
 			// as above the final bit in inquiry/add could end in ? or & so check that
 			$valid_strings = array('add', 'add?', 'add&');
 			if((strcasecmp($path_parts[0], 'inquiry')==0) &&
-			in_array(strtolower($path_parts[3]), $valid_strings))
+			in_array(strtolower($path_parts[1]), $valid_strings))
 			{
 				$form['#redirect'] = 'piauthoring/';
 			}
@@ -806,7 +807,7 @@ function pi_authoring_order_inquiries_form(&$form_state, $inquiries) {
 		$inquiry = node_load($inquiry_nid);
 		$form['order_inquiries_inquiries'][$inquiry->nid]['title'] =
 		 	array(
-		 		'#value' => l(t($inquiry->title), '/inquiry/' . $inquiry->nid . '/edit'),
+		 		'#value' => l(check_plain($inquiry->title), 'inquiry/' . $inquiry->nid . '/edit'),
 		 	);
 		$form['order_inquiries_inquiries'][$inquiry->nid]['body'] = 
 			array(
