@@ -265,7 +265,7 @@ function theme_pi_sort_key_answers($node,$teaser) {
 		
 		$row_activity_id = get_activity_id_for_nid($key);
 		
-		if ($row_activity_id) {
+		if ($row_activity_id) {	  
 			$row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
 		}
 		else {
@@ -277,27 +277,34 @@ function theme_pi_sort_key_answers($node,$teaser) {
 		$key_question = $key_answer_node->key_question_id;
 		
 		
-		$rows[$key_question][] = array('data' => $row);
+		//$rows[$key_question][] = array('data' => $row);
+		$rows[$key_question][] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
 		
    }
 
   $answer_flag = 0;
   if (count($question_categories) > 0) {
-  	if($teaser) {
-  		$output .= "View and organise your key answers";
-  	}
-  	else {
+//  	if($teaser) {
+//  		$output .= "View and organise your key answers";
+//  	}
+//  	else {
 		foreach ($question_categories as $key => $category) {
 			if (count($rows[$key]) > 0) {
 				$answer_flag = 1;
-				$output .= theme('table', $header[$key], $rows[$key]);
+
+				$output .= '<strong>' . $header[$key][0] . '</strong><br/>';
+				$output .= theme('item_list', $rows[$key], NULL, 'ol', array('style' => 'list-style-type:none'));
+				//$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
 			}
 			else {
 				reset($header[$key]);
-				$output .= '<p><strong>' . $header[$key][0] . '</strong><br/> No answers linked to this question</p>';
+				$output .= '<p><strong>' . $header[$key][0] . '</strong><br/>';
+				$output .= theme('item_list', array('No answers linked to this question'), NULL, 'ol', array('style' => 'list-style-type:none'));
+				
+				;
 			}
 		}
-		}
+//		}
 	}
 	else {
 		$output .= "<p>No key questions are available.</p>";

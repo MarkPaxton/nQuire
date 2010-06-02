@@ -240,19 +240,25 @@ function theme_pi_sort_data($node,$teaser) {
             $row_activity_id = get_activity_id_for_nid($key);
 			if ($row_activity_id) {
 		        $row = array();
-		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-		        $rows[] = array('data' => $row);
+		        //$row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+		        //$rows[] = array('data' => $row);
+		        
+		        $loaded_activity = load_activity($row_activity_id);
+		        $loaded_node = node_load($key);
+		        //$rows[] = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
+		        $activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+		        $activity_teaser = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
+		        
+		        $rows[] = $activity_link['data'] . $activity_teaser;
             };
         }
     }
 		
 		if(count($rows) > 0) {
-				if($teaser) {
-					$output .= "View and organise your data entries";
-				}
-				else {
-					$output .= theme('table', $header, $rows);
-				}
+    		$output .= '<div><strong>You have collected this data:</strong></div>';
+    		$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
+
+				//$output .= theme('table', $header, $rows);
 		}
 		else {
 			$output .= 'No data entries are available';
