@@ -38,12 +38,12 @@ function pi_sort_result_presentations_access($op, $node) {
  */
 function pi_sort_result_presentations_theme() {
     return array(
-    'pi_sort_result_presentations_node_form' => array(
-    'arguments' => array('form'),
-    ),
-    'pi_sort_result_presentations' => array(
-    'arguments' => array('node'),
-    ),
+	    'pi_sort_result_presentations_node_form' => array(
+	    	'arguments' => array('form'),
+	    ),
+	    'pi_sort_result_presentations' => array(
+	    	'arguments' => array('node'),
+	    ),
     );
 }
 
@@ -173,75 +173,81 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
     return $node;
 }
 
-function theme_pi_sort_result_presentations($node,$teaser) {
+function theme_pi_sort_result_presentations($node, $teaser) {
 
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
-  	if (is_numeric($details->activity_id)) {
-  		$current_activity = load_activity($details->activity_id);
-  	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
-  	
-    $output = "";
+	if (is_numeric($details->activity_id)) {
+		$current_activity = load_activity($details->activity_id);
+	}
+	 
+	if ($current_activity->name) {
+		drupal_set_title(t($current_activity->name));
+	}
+	 
+	$output = "";
 
-    $header = array(
-        t("Result presentation")
-    );
+	$header = array(
+		t("Result presentation")
+	);
 
-    $rows = array();
-    
-    //get the results including new ones not previously sorted
-    if(isset($node->nid)) {
-        $node_categories = $node->categories;
-    }
-    else {
-        $node_categories = array();
-    }
-    
-		$option_categories = pi_sort_result_presentations_get_options();
-		$categories = array();
-		
-		foreach ($option_categories as $key => $category) {
-			$categories[$key]['#title'] = $category['#title'];
+	$rows = array();
+
+	//get the results including new ones not previously sorted
+	if(isset($node->nid)) {
+		$node_categories = $node->categories;
+	}
+	else {
+		$node_categories = array();
+	}
+
+	$option_categories = pi_sort_result_presentations_get_options();
+	$result_presentations = array();
+	$result_presentation_ids_by_weight = array();
+	
+	foreach ($option_categories as $key => $category)
+	{
+		$result_presentations[$key]['#title'] = $category['#title'];
 			
-			//get weight from navigation
-			$rp_activity_id = get_activity_id_for_nid($key);
-			$rp_phase_id = get_phase_id_for_activity_id($rp_activity_id);
-			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $rp_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $rp_activity_id . "' LIMIT 1"));
+		//get weight from navigation
+		$rp_activity_id = get_activity_id_for_nid($key);
+		$rp_phase_id = get_phase_id_for_activity_id($rp_activity_id);
+		$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $rp_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $rp_activity_id . "' LIMIT 1"));
 			
-			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
+		$result_presentations[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
+		$result_presentation_ids_by_weight[$key] = $pos_result;
+	}
+
+	//uasort($categories, "my_weight_compare");
+	asort($result_presentation_ids_by_weight);
+
+	if (is_array($result_presentations))
+	{
+		foreach(array_keys($result_presentation_ids_by_weight) as $result_presentation_id) {
+			$row_activity_id = get_activity_id_for_nid($result_presentation_id);
+			if ($row_activity_id)
+			{
+				$activity_content_node = node_load($result_presentation_id);
+				$loaded_activity = load_activity($row_activity_id);
+				$loaded_activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+				$activity_content_teaser = pi_activity_teaser($activity_content_node, $loaded_activity, 'view');
+				$rows[] = $loaded_activity_link['data'] . $activity_content_teaser;
+			};
 		}
-		uasort($categories, "my_weight_compare");
+	}
 
-    if (is_array($categories)) {
-        foreach($categories as $key => $category) {
-            $row_activity_id = get_activity_id_for_nid($key);
-			if ($row_activity_id) {
-		        $row = array();
-		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-		        $rows[] = array('data' => $row);
-            };
-        }
-    }
+	//only display form and submit button if there are some entries
+	$output .= '<div>View and organise the presentations of your results.</div>';
+	if (count($rows) > 0)
+	{
+		$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
+	}
+	else {
+		$output .= "<div>No result presentations are available.</div>";
+	}
 
-		//only display form and submit button if there are some entries
-    if (count($rows) > 0) {
-    	if($teaser) {
-				$output .= "View and organise your result presentations";
-			}
-			else {
-    		$output .= theme('table', $header, $rows);
-    	}
-    }
-   	else {
-   		$output .= "<p>No result presentations are available.</p>";
-   	}
-   	
-    return $output;
+return $output;
 }
 
 
