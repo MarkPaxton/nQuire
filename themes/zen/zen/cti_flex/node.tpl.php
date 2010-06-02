@@ -65,7 +65,7 @@
     <div class="unpublished"><?php print t('Unpublished'); ?></div>
   <?php endif; ?>
 
-  <?php if ($submitted or $terms): ?>
+  <?php if ((!$teaser && $submitted) || $terms): ?>
     <div class="meta">
       <?php if ($submitted): ?>
         <div class="submitted">
@@ -83,6 +83,14 @@
     <?php print $content; ?>
   </div>
 
+  <?php if (($teaser && $submitted) ): ?>
+    <div class="meta">
+        <div class="submitted">
+          <?php print $submitted; ?>
+        </div>
+    </div>
+  <?php endif; ?>
+  
   <div class="node-links">
     <?php print $links; ?>
   </div>
