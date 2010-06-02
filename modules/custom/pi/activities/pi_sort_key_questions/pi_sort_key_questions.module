@@ -235,19 +235,39 @@ function theme_pi_sort_key_questions($node, $teaser) {
 			if ($row_activity_id) {
 		        $row = array();
 		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-		        $rows[] = array('data' => $row);
+		        //$rows[] = array('data' => $row);
+		        $rows[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+		        $loaded_activity = load_activity($row_activity_id);
+		        $loaded_node = node_load($key);
+		        //$rows[] = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
             };
         }
     }
 		
 		//only display form and submit button if there are some entries
     if (count($rows) > 0) {
-    	if($teaser) {
-    		$output .= "View and organise your key questions";
+    	if(!$teaser) {
+    			$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, 						$details->inquiry_id);
+
+				if ($hypothesis_param)
+				{
+					$hypothesis_node = node_load($hypothesis_param);
+					$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
+					$hypothesis_activity = load_activity($hypothesis_activity_id);
+					if ($hypothesis_activity->description)
+					{
+						$hypothesis_prefix .= "<strong>" . check_plain($hypothesis_activity->description) . ": </strong>";
+					}
+					else
+					{
+						$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
+					}
+					$output .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
+				}
     	}
-    	else {
-    		$output .= theme('table', $header, $rows);
-    	}
+    		$sentence = format_plural(count($rows), 'Your key question is:', 'Your key questions are:');
+    		$output .= '<div><strong>' . $sentence . '</strong></div>';
+    		$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
     }
    	else {
    		$output .= "<p>No key questions are available.</p>";
