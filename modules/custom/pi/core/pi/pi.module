@@ -374,22 +374,26 @@ function pi_inquiry_phase_view($phase) {
 	
 	
 	//$hidden_created_activity_types = array();
-	if ($activities) {
-	
+	if ($activities)
+	{
 		// $headings = array('Activity', 'You can...', 'Description');
 		$headings = array('Activity', 'Description');
 		$table = array();
 
 		$active_activity_flag = 0;
 
-		foreach ($activities as $activity) {
-		
+		foreach($activities as $activity)
+		{
 			$loaded_activity = load_activity($activity->activity_id);
 			$loaded_activity_status = load_activity_status($phase->inquiry_nid, $activity->activity_id, $user->uid);
-			
+				
 			// only display activities that are not in the hidden list
-			if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) || $loaded_activity_status->visible_status == 'start' || $loaded_activity_status->visible_status == 'unavailable') {
-				switch ($loaded_activity->destination) {
+			if(!(in_array($loaded_activity->node_type, $hidden_created_activity_types)) 
+				|| $loaded_activity_status->visible_status == 'start' 
+				|| $loaded_activity_status->visible_status == 'unavailable')
+			{
+				switch ($loaded_activity->destination)
+				{
 					case "self":
 						$destination = t("destination=" . t("activity/" . $activity->activity_id . "/view"));
 						break;
@@ -400,47 +404,56 @@ function pi_inquiry_phase_view($phase) {
 						$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
 						break;
 				};
-			
+					
 				// so that (by default) always open an exitsing node in view
 				// if node_function for link is edit or view then set node function to view
 				$link_node_function = $loaded_activity_status->node_function;
+				
 				if (($link_node_function == 'edit') OR ($link_node_function == 'view')) {
 					$link_node_function = 'view';
 				};
-			
-	  			$activity_path = "activity/" . $activity->activity_id . "/" . $link_node_function;
-	  			if ($loaded_activity_status->visible_status == 'unavailable') {
-	  				
-	  				$activity_link = check_plain($loaded_activity->name) . '&nbsp;' . add_activity_icon($loaded_activity_status->visible_status);
-	  			}
+					
+				/*
+				$activity_path = "activity/" . $activity->activity_id . "/" . $link_node_function;
+				if ($loaded_activity_status->visible_status == 'unavailable') {
+						
+					$activity_link = check_plain($loaded_activity->name) . '&nbsp;' . add_activity_icon($loaded_activity_status->visible_status);
+				}
 				else {
 					$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-					
-					/*
+						
+						
 					//new activity lightbulb
 					if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
-	  					$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
-	  				}
-	  				else {
-	  					$new_icon = "";
-	  				};
-	  			*/
-  					$activity_link = l(check_plain($loaded_activity->name) . '&nbsp;' . add_activity_icon($loaded_activity_status->visible_status) . '&nbsp;' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
+						$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
+					}
+					else {
+						$new_icon = "";
+					};
+
+					$activity_link = l(check_plain($loaded_activity->name) . '&nbsp;' . add_activity_icon($loaded_activity_status->visible_status) . '&nbsp;' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
 				};
+*/
+				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity->activity_id, $user->uid);
+				if (($active_activity_flag == 0) AND $loaded_activity)
+				{
+					$active_activity_flag = 1;
+				}
 
-	  			if (($active_activity_flag == 0) AND $loaded_activity) {
-	  				$active_activity_flag = 1;
-	  			};
+				// $table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
+				$nid = get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
+				$loaded_actvity_node = node_load($nid);
+				$activity_desc = pi_activity_teaser($loaded_actvity_node, $loaded_activity, $link_node_function);
+				$table[] = array(
+						array('data' => $activity_link['data'], 'valign' => 'top'),
+						array('data' => $activity_desc, 'valign' => 'top')
+						//array('data' => $activity_link, 'valign' => 'top'),
+						//t($activity_desc)
+					);
+				//$table[] = array($activity_link , t($loaded_activity->description));
+			}
+		}
 
-	  			// $table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
-	  			$nid = get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
-	  			$loaded_actvity_node = node_load($nid);
-	  			$activity_desc = pi_activity_teaser($loaded_actvity_node, $loaded_activity, $link_node_function);
-	  			$table[] = array(array('data' => $activity_link, 'valign' => 'top') , t($activity_desc));
-	  			//$table[] = array($activity_link , t($loaded_activity->description));
-			};
-		};
-		
 		$output .= theme('table', $headings, $table);
 		
 		if ($active_activity_flag == 0) {
