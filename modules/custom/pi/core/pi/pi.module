@@ -640,7 +640,6 @@ function get_group_of_type ($uid, $group_type, $inquiry_id, $stage_id = NULL, $p
 	$query .= "AND (pi_inquiry_grouping.stage_id =  '" . $stage_id . "' OR pi_inquiry_grouping.stage_id IS NULL) ";
 	$query .= "AND (pi_inquiry_grouping.phase_id =  '" . $phase_id . "' OR pi_inquiry_grouping.phase_id IS NULL) ";
 	$query .= "AND (pi_inquiry_grouping.activity_id =  '" . $activity_id . "' OR pi_inquiry_grouping.activity_id IS NULL) ";
-
 	$result = db_result(db_query($query));
 	return $result;
 }
@@ -1574,7 +1573,7 @@ function get_viewable_activity_ids ($inquiry_id, $uid) {
 
 function pi_activity_teaser($node, $activity, $link_node_function) {
 	if($link_node_function != 'view') {
-		$output = "<div class='node-inner'><div class='content'>" . $activity->description . "</div></div>";
+		$output = "<div class='node-inner'><div class='content'>" . check_plain($activity->description) . "</div></div>";
 	}
 	else {
 		$output = node_view($node, TRUE, TRUE);
@@ -1631,3 +1630,17 @@ function pi_activity_teaser($node, $activity, $link_node_function) {
 	}
 	return $output;
 }
+
+/**
+ * This is a debug function that prints a given variable to drupal message area
+ * it uses output buffers (ob_start, ob_get_clean) and var_dump
+ * @param $var_to_dump any variable
+ */
+function pi_debug_message($var_to_dump)
+{
+	ob_start();
+	var_dump($var_to_dump);
+	drupal_set_message('<pre>' . check_plain(ob_get_clean()) . '</pre>');
+}
+
+?>
