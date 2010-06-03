@@ -6,16 +6,16 @@
  * @return array of node data as per hook_node api 
  */
 function pi_draggable_measures_node_info() {
-    return array(
-    'pi_draggable_measures' => array(
-    'name' => t('Inquiry measures selection'), // Required.
-    'module' => 'pi_draggable_measures',  // Required.
-    'description' => t('Inquiry measures selection: selection of which measures to record and which of these are key measures.'), // Required.
-    'has_title' => TRUE,
-    'title_label' => t('Selected measures'),
-    'has_body' => FALSE,
-    'locked' => TRUE)
-    );
+	return array(
+		'pi_draggable_measures' => array(
+		'name' => t('Inquiry measures selection'), // Required.
+		'module' => 'pi_draggable_measures',  // Required.
+		'description' => t('Inquiry measures selection: selection of which measures to record and which of these are key measures.'), // Required.
+		'has_title' => TRUE,
+		'title_label' => t('Selected measures'),
+		'has_body' => FALSE,
+		'locked' => TRUE)
+	);
 }
 
 /**
@@ -65,15 +65,31 @@ function pi_draggable_measures_theme() {
  */
 function pi_draggable_measures_form(&$node) {
 	global $user;
-	$node_details = get_inquiry_details_from_current_path();
 	if (is_numeric($node_details->activity_id))
 	{
 		$current_activity = load_activity($node_details->activity_id);
 	}
 	 
-	if ($current_activity->name)
+
+	if ($current_activity->name)  	{
+		$users_group = get_group_of_type($user->uid, $current_activity->audience,
+		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+		if($users_group!=false)
+		{
+			$group = node_load($users_group);
+			$sort_for = $group->title;
+		}
+		else
+		{
+			$sort_for = $user->name;
+		}
+		$node_title = check_plain(t('Selected measures for ') . $sort_for);
+		drupal_set_title($node_title);
+	}
+	else
 	{
-		drupal_set_title(t($current_activity->name));
+		$type = node_get_types('type', $node);
+		$node_title = $type->name;
 	}
 
 	// Build the form
@@ -82,7 +98,7 @@ function pi_draggable_measures_form(&$node) {
 	$type = node_get_types('type', $node);
 	$form['title'] = array (
         '#type' => 'hidden',
-        '#value' => check_plain($type->title_label),
+        '#value' => $node_title,
 	);
 
 	// measures_list and tree used for draggable menu items
@@ -293,8 +309,7 @@ function get_region_label($region) {
 
 function get_empty_region_label($region) {
 
-	$labels = array( 'key' => 'No key measures have been choosen' ,'selected' => 'No selected measures have been choosen' ,'none' => 'All ava‎ilable measures are being used' );
-
+	$labels = array( 'key' => 'No key measures have been chosen' ,'selected' => 'No measures have been selected' ,'none' => 'All available measures are being used' );
 	return $labels[$region];
 }
 
