@@ -254,10 +254,17 @@ function theme_pi_draggable_measures($node, $teaser) {
 			$rows = array();
 			foreach($node->measures_list as $nid => $measure) {
 				$row_activity_id = get_activity_id_for_nid($nid);
-				if ($row_activity_id && ($measure['#status'] == $region)) {
-					$link = pi_activity_get_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-					$rows[] = array( "<a href='" . $link['url'] .  "'>" . $link['title'] . "</a>" );
-				}
+				
+				if ($row_activity_id) {
+				    $row = array();				    
+				    $loaded_activity = load_activity($row_activity_id);
+				    $loaded_node = node_load($nid);
+				    //$rows[] = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
+				    $activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+				    $activity_teaser = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
+				    
+				    $rows[] = $activity_link['data'] . $activity_teaser;
+		        };
 			}
 			
 		  	if(count($rows) == 0) {
