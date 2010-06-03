@@ -541,7 +541,7 @@ function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
 				$measure_value = NULL;
 			}
 			$node->content[$key] = array (
-					'#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value),
+					'#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value, $teaser),
 					'#weight' => $measure['#weight']
 			);
 		}
@@ -561,7 +561,7 @@ function pi_data_theme() {
     'arguments' => array('node','teaser'),
 	),
 	    'pi_data_measure' => array(
-	    	'arguments' => array('measure', 'measure_type', 'measure_value'),
+	    	'arguments' => array('measure', 'measure_type', 'measure_value', 'teaser'),
 		),
 	);
 }
@@ -611,7 +611,7 @@ function theme_pi_data($node,$teaser) {
  * @param node(pi_available_measures) $measure_type the description of the measure
  * @param string $measure_value the measure value
  */
-function theme_pi_data_measure($measure, $measure_type, $measure_value) {
+function theme_pi_data_measure($measure, $measure_type, $measure_value, $teaser) {
 	$output = '';
 	
 	$show_status = array('key', 'selected');
@@ -637,20 +637,38 @@ function theme_pi_data_measure($measure, $measure_type, $measure_value) {
 		switch($measure_type->field_type)
 		{
 			case 'upload-file':
-				$output .= "<p><strong>" . check_plain($measure_type->title) . ":&nbsp;</strong>";
-				$output .= "<a href='" . file_download_path($measure_value) . "'>" . t("Download") . "</a></p>";
+				if($teaser) {
+					$output .= "<strong>" . check_plain($measure_type->title) . ":&nbsp;</strong>";
+					$output .= "<a href='" . file_download_path($measure_value) . "'>" . t("Download") . "</a>&nbsp;&nbsp;";				
+				}
+				else {
+					$output .= "<p><strong>" . check_plain($measure_type->title) . ":&nbsp;</strong>";
+					$output .= "<a href='" . file_download_path($measure_value) . "'>" . t("Download") . "</a><p>";
+				}
 				break;
 			case 'upload-image':
 				$image_node = node_load($measure_value);
-				If($image_node->type == 'image')
+				if($image_node->type == 'image')
 				{
-				$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
-				$output .= "<div>" . image_display($image_node) . "</div>";
+				if($teaser) {
+					$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
+					$output .= "<div>" . image_display($image_node) . "</div>";
+				}
+				else {
+					$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
+					$output .= "<div>" . image_display($image_node) . "</div>";				
+				}
 				}
 				break;
 			default:
-				$output .= "<p><strong>" . check_plain($measure_type->title . $units) . ":&nbsp;</strong>";
-				$output .= check_plain($measure_value) . "</p>";
+				if($teaser) {
+					$output .= "<strong>" . check_plain($measure_type->title . $units) . ":&nbsp;</strong>";
+					$output .= check_plain($measure_value) . "&nbsp;&nbsp;";
+				}
+				else {
+					$output .= "<p><strong>" . check_plain($measure_type->title . $units) . ":&nbsp;</strong>";
+					$output .= check_plain($measure_value) . "</p>";				
+				}
 		}
 
 	}
