@@ -18,16 +18,6 @@ function pi_activity_menu() {
 		'weight' => 0,
 	);
 	
-	$items['activity/%pi_activity/add'] = array(
-		'title' => 'Add',
-		'file' => 'pi_activity.activity.inc', 
-		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 2),
-		'access callback' => 'pi_activity_access',
-		'access arguments' => array(1, 2),
-		'type' => MENU_CALLBACK,		
-	);
-	
 	$items['activity/%pi_activity/view'] = array(
 		'title' => 'View',
 		'file' => 'pi_activity.activity.inc', 
@@ -35,10 +25,9 @@ function pi_activity_menu() {
 		'page arguments' => array(1, 2),
 		'access callback' => 'pi_activity_access',
 		'access arguments' => array(1, 2),
-		'type' => MENU_LOCAL_TASK,
+		'type' => MENU_DEFAULT_LOCAL_TASK,
 		'weight' => 1,
 	);
-	
 	
 	$items['activity/%pi_activity/edit'] = array(
 		'title' => 'Edit',
@@ -50,6 +39,19 @@ function pi_activity_menu() {
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 2,
 	);
+	
+	$items['activity/%pi_activity/add'] = array(
+		'title' => 'Add',
+		'file' => 'pi_activity.activity.inc', 
+		'page callback' => 'pi_activity_view',
+		'page arguments' => array(1, 2),
+		'access callback' => 'pi_activity_access',
+		'access arguments' => array(1, 2),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 3,	
+	);
+
+	
 	
 	$items['activity/%pi_activity/admin'] = array(
 		'title' => 'Admin',
@@ -69,7 +71,7 @@ function pi_activity_menu() {
 		'page arguments' => array(1),
 		'access_callback' => 'user_access',
 		'access arguments' => array('access pi_authoring content'),
-		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'type' => MENU_LOCAL_TASK,
 		'weight' => 0
 	);
 	
@@ -107,16 +109,21 @@ function pi_activity_menu() {
 function pi_activity_access($activity, $op) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-	if(!isset($activity->activity_id))
-	{
-		$return_value = false;
-	}
-	else
+	$return_value = false;
+	if(isset($activity->activity_id))
 	{
 		$return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, $op);
-		if(($return_value===false) && ($op='view'))
+		if(($return_value===false) && ($op=='view'))
 		{
-			$return_value = $return_value || pi_activity_access($activity, 'edit');
+			$return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, 'edit');
+		}
+		if(($return_value===false) && ($op=='add'))
+		{
+			$possible_add_nid = pi_activity_get_add_activity_for_sort_activity($details->inquiry_id, $activity->activity_id, $user->uid);
+			if( $possible_add_nid !== NULL)
+			{
+				$return_value = true;
+			}
 		}
 	}
 	return $return_value;
@@ -440,10 +447,8 @@ function set_visible_status_of_activity_type($inquiry_id, $activity_type, $uid, 
  * @return unknown_type
  */
 function get_node_function_of_activity($inquiry_id, $activity_id, $uid) {
-	$activity_status = load_activity_status ($inquiry_id, $activity_id, $uid);
-
+	$activity_status = load_activity_status($inquiry_id, $activity_id, $uid);
 	$result = $activity_status->node_function;
-
 	return $result ;
 	/*
 	 $query = "SELECT pi_activity_status.node_function ";
@@ -472,14 +477,15 @@ function get_node_function_of_activity($inquiry_id, $activity_id, $uid) {
  * @return unknown_type
  */
 function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $function) {
-	$node_function = get_node_function_of_activity ($inquiry_id, $activity_id, $uid);
-	if ($node_function == $function) {
+	$node_function = get_node_function_of_activity($inquiry_id, $activity_id, $uid);
+	if ($node_function == $function)
+	{
 		$result = TRUE;
 	}
-	else {
+	else
+	{
 		$result = FALSE;
-	};
-
+	}
 	return $result;
 }
 
@@ -951,6 +957,45 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
 	}
 	return $activities_in_order;
 }
+
+/**
+ * Return the activity_id of an "Add $whatever"n activity for a given "Sort $whatever" function, if not return NULL  
+ * @param unknown_type $inquiry_nid The inquiry id that the activity belongs to
+ * @param unknown_type $activity_ind The "Sort $whatever" activity id for the add activity.
+ * @param unknown_type $uid The user id to find the add activity id for.
+ */
+function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid) {
+	$return_value = NULL;
+	$sort_activity = load_activity($activity_id);
+
+	if($sort_activity!=false)
+	{
+		$type = node_get_types('type', $sort_activity->node_type);
+		if(isset($type->add_node_type))
+		{
+			$node_type_to_find = $type->add_node_type;
+			$phases = get_phases_of_inquiry_and_user($inquiry_id, $uid);
+			foreach ($phases as $phase)
+			{
+				$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);				
+				foreach ($activities as $activity)
+				{
+					if($activity->node_type == $node_type_to_find)
+					{
+						$activity_status = load_activity_status($inquiry_id, $activity->activity_id, $uid);
+						if ($activity_status->node_function == 'add')
+						{
+							$return_value = $activity->activity_id;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	return $return_value;
+}
+
 
 
 ?>

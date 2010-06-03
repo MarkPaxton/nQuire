@@ -4,16 +4,16 @@
 function pi_sort_key_answers_node_info() {
     return array(
     'pi_sort_key_answers' => array(
-    'name' => t('Draggable key answers'), // Required.
-    'module' => 'pi_sort_key_answers',  // Required.
-    'description' => t('Draggable key answers'), // Required.
-    'has_title' => TRUE,
-    'title_label' => t('Draggable key answers'),
-    'has_body' => TRUE,
-    'body_label' => t('Draggable key answers'),
-    'locked' => TRUE)
+	    'name' => t('Key answers sort'), // Required.
+	    'module' => 'pi_sort_key_answers',  // Required.
+	    'description' => t('Answers sort'), // Required.
+	    'has_title' => TRUE,
+	    'title_label' => t(''),
+	    'has_body' => TRUE,
+	    'body_label' => t('Sort of key answers'),
+	    'locked' => TRUE,
+	    'add_node_type' => 'pi_key_answers')
     );
-
 }
 
 function pi_sort_key_answers_perm() {
@@ -49,25 +49,46 @@ function pi_sort_key_answers_theme() {
 
 
 /**
- * Admin page to change category weights
+ * hook_form() for pi_sort_key_answers which provides draggable sorting for pi_key_answers nodes in an inquiry
+ * @param $node the pi_sort_key_answers node if it is to be edited, as per drupal 6 API
  */
 function pi_sort_key_answers_form(&$node) {
-		$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id)) {
+	
+	global $user;
+	$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id))
+  	{
   		$current_activity = load_activity($node_details->activity_id);
   	}
   	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
+  	if ($current_activity->name)
+  	{
+  		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
+  		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id); 
+  		if($users_group!=false)
+  		{
+  			$group = node_load($users_group);
+  			$sort_for = $group->title;
+		}
+  		else
+  		{
+  			$sort_for = $user->name;
+  		}
+  		$node_title = check_plain(t('Key answers for ') . $sort_for);
+  		drupal_set_title($node_title);
   	}
-// Build the form
-    $form = array();
+  	else
+  	{
+		$type = node_get_types('type', $node);
+  		$node_title = $type->name;
+  	}
+	// Build the form
+	$form = array();
 
-    $type = node_get_types('type', $node);
-    $form['title'] = array (
+	$form['title'] = array (
         '#type' => 'hidden',
-        '#value' => check_plain($type->title_label),
-    );
+        '#value' => $node_title,
+	);
 
     // onepageprofile_categories and tree used for draggable menu items
     $form['onepageprofile_categories'] = array(
@@ -82,26 +103,29 @@ function pi_sort_key_answers_form(&$node) {
         $node_categories = array();
     }
 		
-		$option_categories = pi_sort_key_answers_get_options();
-		
-		foreach ($option_categories as $key => $category) {
-			$categories[$key]['#title'] = $category['#title'];
-			
-			//get weight from navigation
-			$answer_activity_id = get_activity_id_for_nid($key);
-			$answer_phase_id = get_phase_id_for_activity_id($answer_activity_id);	
-			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $answer_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $answer_activity_id . "' LIMIT 1"));
-			
-			
-			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-		}
-		if (count($categories) > 1) {
-			uasort($categories, "my_weight_compare");
-		}
+    $option_categories = pi_sort_key_answers_get_options();
+    $categories = array();
+    
+    foreach ($option_categories as $key => $category)
+    {
+    	$categories[$key]['#title'] = $category['#title'];
+    		
+    	//get weight from navigation
+    	$answer_activity_id = get_activity_id_for_nid($key);
+    	$answer_phase_id = get_phase_id_for_activity_id($answer_activity_id);
+    	$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $answer_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $answer_activity_id . "' LIMIT 1"));
+    		
+    		
+    	$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
+    }
+
+    if (count($categories) > 1) {
+    	uasort($categories, "my_weight_compare");
+    }
 		
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
-    foreach ($categories as $key => $category) {
+    foreach($categories as $key => $category) {
 				
         $key_answer = node_load($key);
 
@@ -167,30 +191,106 @@ function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
     return $node;
 }
 
-function theme_pi_sort_key_answers($node,$teaser) {
+function theme_pi_sort_key_answers($node, $teaser) {
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
+
+	$output = '';
+
+	// Get the sorted key answers for this node
+	if(isset($node->nid)) {
+		$sorted_key_answers = $node->categories;
+	}
+	else {
+		$sorted_key_answers = array();
+	}
 	
-	//set page title
-	  	if (is_numeric($details->activity_id)) {
-  		$current_activity = load_activity($details->activity_id);
-  	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
-  	
+	//Get all key answers for this inquiry
+	$all_key_answers = pi_sort_key_answers_get_options();
+
+	// Add unsorted key answers to the list of sorted key answers and give an appropriate count
+	// (the sorted key answers will have a sequential count from 0 
+	foreach(array_keys($all_key_answers) as $keq_answer_nid)
+	{
+		if(!array_key_exists($keq_answer_nid, $sorted_key_answers))
+		{
+			$sorted_key_answers[$keq_answer_nid] = $all_key_answers[$keq_answer_nid];
+			$sorted_key_answers[$keq_answer_nid]['#weight'] = count($sorted_key_answers);
+		}
+	}
 	
-    // Get the key answers that will be rows in the table(s)
-    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
+	// Assemble an array of key answers in the output format (build_activity_link makes this a link with icon)
+	$key_answers_to_show = array();
+	foreach(array_keys($sorted_key_answers) as $sorted_key_answers_nid)
+	{
+		$key_answer_activity_id = get_activity_id_for_nid($sorted_key_answers_nid);
+		if ($key_answer_activity_id)
+		{
+			$key_answers_to_show[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $key_answer_activity_id, $uid);
+		}
+	}
+
+	// When there's key answers to show, show them
+	// otherwise show a placeholder text
+	if (count($key_answers_to_show) > 0)
+	{
+		if(!$teaser) {
+			// If there are some key answers, also get the hypothesis for this inquiry (if exists)
+			// when it's not a teaser view
+			$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+
+			if ($hypothesis_param)
+			{
+				$hypothesis_node = node_load($hypothesis_param);
+				$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
+				$hypothesis_activity = load_activity($hypothesis_activity_id);
+				if ($hypothesis_activity->description)
+				{
+					$hypothesis_prefix .= "<strong>" . check_plain($hypothesis_activity->description) . ": </strong>";
+				}
+				else
+				{
+					$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
+				}
+				$output .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
+			}
+		}
+		
+		// Add a title to the list in a ncie format, then list the key answers
+		$sentence = format_plural(count($key_answers_to_show), 'Your key answer is:', 'Your key answers are:');
+		$output .= '<div><strong>' . $sentence . '</strong></div>';
+		$output .= theme('item_list', $key_answers_to_show, NULL, 'ol', array('style' => 'list-style-type:none'));
+	}
+	else
+	{
+		// No key answers, so say that.
+		$output .= "<p>No key answers are available.</p>";
+	}
+
+	return $output;
+}
+
+
+
+function theme_pi_sort_key_answers2($node, $teaser) {
+	global $user;
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+
+	$output = '';
+    
+	// Get the key a that will be rows in the table(s)
+    //$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
     
     
     // Add the categories of existing nodes and the options list for new nodes
-    if(isset($node->nid)) {
+    if(isset($node->nid))
+    {
         $node_categories = $node->categories;
     }
-    else {
+    else
+    {
         $node_categories = array();
     }
 		
@@ -309,19 +409,12 @@ function theme_pi_sort_key_answers($node,$teaser) {
 	else {
 		$output .= "<p>No key questions are available.</p>";
 	}
-	
-	if($answer_flag == 1) {
-		$output .= drupal_render($form);
-	}
-
 	return $output;
 }
 
 
 
-/**
- * Theme admin settings form
- */
+
 function theme_pi_sort_key_answers_node_form($form) {
 	global $user;
 	$uid = $user->uid;
@@ -432,43 +525,66 @@ function theme_pi_sort_key_answers_node_form($form) {
 }
 
 /**
- * Load the user edit form and grab all of the fieldsets
+ * Returns the array of key questions that were selected for the sort 
+ * indexed by their node ids and with #weight and incremental count starting at 0 
+ * @return array [key question node id] #weight=> 1, #title = key question title
  */
 function pi_sort_key_answers_get_choice($node) {
-
     global $user;
     $categories = array();
-				
-    $result = db_query("SELECT * FROM pi_sort_key_answers WHERE pi_sort_key_answers.nid = '" . $node->nid . "' AND pi_sort_key_answers.vid = '" . $node->vid . "'");
 
-    while ($row = db_fetch_object($result)) {
+    $query = "SELECT key_answer FROM pi_sort_key_answers " .
+    	"WHERE pi_sort_key_answers.nid = %d " .
+    	"AND pi_sort_key_answers.vid = %d " .
+    	"ORDER BY weight ASC";
+    
+    $result = db_query($query, $node->nid, $node->vid);
+	
+    while ($row = db_fetch_object($result))
+    {
         $loaded_node = node_load($row->key_answer, NULL, TRUE);
-        $categories[$row->key_answer] = array(
-            '#weight' => $row->weight,
-            '#title'  => t($loaded_node->title)
-        );
+        if($loaded_node!=false)
+        {
+	        $categories[$row->key_answer] = array(
+	            '#weight' => count($categories),
+	            '#title'  => t($loaded_node->title)
+	        );
+        }
     }
-
-    uasort($categories, "my_weight_compare");
-
     return $categories;
 }
 
 /**
- * Load the user edit form and grab all of the fieldsets
+ * Returns an array of key answer titles indexed by their node ids
+ * @return array [key answer node id] #weight=> 1, #title = key answer title
  */
 function pi_sort_key_answers_get_options() {
-    global $user;
-    $categories = array();
-    
-    $result = db_query("SELECT DISTINCT node.nid FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE TYPE = 'pi_key_answers' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $user->uid . "') ORDER BY nid ASC");
+	global $user;
+	$details = get_inquiry_details_from_current_path();
 
-    while ($row = db_fetch_object($result)) {
-        $title_result = db_result(db_query("SELECT node.title FROM node WHERE node.nid = '" . $row->nid . "' ORDER BY node.vid DESC"));
-        $categories[$row->nid] = array(
-            '#weight' => 1,
-            '#title'  => t($title_result)
-        );
-    }
-    return $categories;
+/*	$query = "SELECT DISTINCT node.nid FROM node " .
+		"LEFT JOIN node_access ON node.nid = node_access.nid " .
+		"LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT " .
+		"JOIN pi_activity_node ON pi_activity_node.nid = node.nid " .
+		"WHERE TYPE = 'pi_key_answers' AND pi_activity_node.inquiry_id = %d " .
+		"AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid = %d )";*/
+	
+	$query = "SELECT DISTINCT node.nid FROM node " .
+		"LEFT JOIN node_access ON node.nid = node_access.nid " .
+		"LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT " .
+		"JOIN pi_activity_node ON pi_activity_node.nid = node.nid " .
+		"WHERE TYPE = 'pi_key_answers' AND pi_activity_node.inquiry_id = %d " .
+		"AND STATUS = '1' AND ((node.uid = %d) OR (og_uid.uid = %d) )";
+	$key_answers_nids_result = db_query($query, $details->inquiry_id, $user->uid, $user->uid);
+	$key_answers = array();
+	while ($key_answers_nid_row = db_fetch_object($key_answers_nids_result))
+	{
+		$key_answer_node = node_load($key_answers_nid_row->nid);
+		$key_answer_title = $key_answer_node->title;
+		$key_answers[$key_answers_nid_row->nid] = array(
+			'#weight' => 1,
+			'#title'  => t($key_answer_title)
+		);
+	}
+	return $key_answers;
 }
