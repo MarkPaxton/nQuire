@@ -4,13 +4,13 @@
 function pi_sort_data_node_info() {
     return array(
 	    'pi_sort_data' => array(
-	    'name' => t('Draggable data'), // Required.
+	    'name' => t('Data sort data'), // Required.
 	    'module' => 'pi_sort_data',  // Required.
-	    'description' => t('Draggable data'), // Required.
+	    'description' => t('Data sort'), // Required.
 	    'has_title' => TRUE,
-	    'title_label' => t('Draggable data'),
+	    'title_label' => t(''),
 	    'has_body' => TRUE,
-	    'body_label' => t('Draggable data'),
+	    'body_label' => t('Sort of collected data'),
 	    'locked' => TRUE,
 	    'add_node_type' => 'pi_data')
     );
@@ -50,24 +50,45 @@ function pi_sort_data_theme() {
 
 
 /**
- * Admin page to change category weights
+ * hook_form() for pi_sort_data which provides draggable sorting for pi_data nodes in an inquiry
+ * @param $node the pi_sort_data node if it is to be edited, as per drupal 6 API
  */
 function pi_sort_data_form(&$node) {
-		$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id)) {
+	global $user;
+	$node_details = get_inquiry_details_from_current_path();
+  	if (is_numeric($node_details->activity_id))
+  	{
   		$current_activity = load_activity($node_details->activity_id);
   	}
   	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
+  	if ($current_activity->name)
+  	{
+  		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
+  		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id); 
+  		if($users_group!=false)
+  		{
+  			$group = node_load($users_group);
+  			$sort_for = $group->title;
+		}
+  		else
+  		{
+  			$sort_for = $user->name;
+  		}
+  		$node_title = check_plain(t('Data for ') . $sort_for);
+  		drupal_set_title($node_title);
   	}
-// Build the form
+  	else
+  	{
+  		$type = node_get_types('type', $node);
+  		$node_title = $type->name;
+  	}
+  	
+  	// Build the form
     $form = array();
 
-    $type = node_get_types('type', $node);
     $form['title'] = array (
         '#type' => 'hidden',
-        '#value' => check_plain($type->title_label),
+        '#value' => $node_title,
     );
 		
     // onepageprofile_categories and tree used for draggable menu items
