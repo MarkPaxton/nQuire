@@ -8,15 +8,13 @@
 function pi_draggable_measures_node_info() {
     return array(
     'pi_draggable_measures' => array(
-    'name' => t('Measures selection'), // Required.
+    'name' => t('Inquiry measures selection'), // Required.
     'module' => 'pi_draggable_measures',  // Required.
-    'description' => t('Measures selection: selection of which measures to record and which of these are key measures.'), // Required.
+    'description' => t('Inquiry measures selection: selection of which measures to record and which of these are key measures.'), // Required.
     'has_title' => TRUE,
-    'title_label' => t(''),
+    'title_label' => t('Selected measures'),
     'has_body' => FALSE,
-    'body_label' => t('Sort of key questions'),	    
-    'locked' => TRUE,
-    'add_node_type' => 'pi_available_measures')
+    'locked' => TRUE)
     );
 }
 
@@ -61,45 +59,29 @@ function pi_draggable_measures_theme() {
 
 
 /**
- * hook_form() for pi_draggable_measures which provides draggable sorting for pi_available_measures
- *  nodes in an inquiry
- * @param $node the pi_draggable_measures node if it is to be edited, as per drupal 6 API
+ * Admin page to change measure weights
+ * @param $node
+ * @return unknown_type
  */
 function pi_draggable_measures_form(&$node) {
 	$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id))
-  	{
-  		$current_activity = load_activity($node_details->activity_id);
-  	}
-  	
-  	if ($current_activity->name)
-  	{
-  		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
-  		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id); 
-  		if($users_group!=false)
-  		{
-  			$group = node_load($users_group);
-  			$sort_for = $group->title;
-		}
-  		else
-  		{
-  			$sort_for = $user->name;
-  		}
-  		$node_title = check_plain(t('Selected measures for ') . $sort_for);
-  		drupal_set_title($node_title);
-  	}
-  	else
-  	{
-		$type = node_get_types('type', $node);
-  		$node_title = $type->name;
-  	}
+	if (is_numeric($node_details->activity_id))
+	{
+		$current_activity = load_activity($node_details->activity_id);
+	}
+	 
+	if ($current_activity->name)
+	{
+		drupal_set_title(t($current_activity->name));
+	}
 
 	// Build the form
 	$form = array();
 
+	$type = node_get_types('type', $node);
 	$form['title'] = array (
         '#type' => 'hidden',
-        '#value' => $node_title,
+        '#value' => check_plain($type->title_label),
 	);
 
 	// measures_list and tree used for draggable menu items
@@ -310,7 +292,7 @@ function get_region_label($region) {
 
 function get_empty_region_label($region) {
 
-	$labels = array( 'key' => 'No key measures have been chosen' ,'selected' => 'No measures have been selected' ,'none' => 'All available measures are being used' );
+	$labels = array( 'key' => 'No key measures have been choosen' ,'selected' => 'No selected measures have been choosen' ,'none' => 'All ava‎ilable measures are being used' );
 
 	return $labels[$region];
 }
