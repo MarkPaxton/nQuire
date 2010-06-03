@@ -261,10 +261,14 @@ function theme_pi_draggable_measures($node, $teaser) {
 			}
 			
 		  	if(count($rows) == 0) {
-		  		$rows[] = array( "No measures have been selected" );
+		  		$rows[] = array( get_empty_region_label($region) );
 			}
 			
-			$output .=  theme('table', $header, $rows);
+    		// $sentence = format_plural(count($rows), 'Your key question is:', 'Your key questions are:');
+    		$output .= '<div><strong>' . get_region_label($region) . '</strong></div>';
+    		$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
+    		
+			// $output .=  theme('table', $header, $rows);
 			
 		}
     }
@@ -275,6 +279,13 @@ function theme_pi_draggable_measures($node, $teaser) {
 function get_region_label($region) {
 
 	$labels = array( 'key' => 'Key measures' ,'selected' => 'Selected measures' ,'none' => 'Not used' );
+
+	return $labels[$region];
+}
+
+function get_empty_region_label($region) {
+
+	$labels = array( 'key' => 'No key measures have been choosen' ,'selected' => 'No selected measures have been choosen' ,'none' => 'All ava‎ilable measures are being used' );
 
 	return $labels[$region];
 }
@@ -380,7 +391,7 @@ function pi_draggable_measures_display_table($header, $rows, $attributes) {
 		
 		$region_style = empty($rows[$region]) ? 'region-empty' : 'region-populated';
         $output .= '<tr class="region-message region-' . $region . '-message ' . $region_style . '">';
-        $output .= '<td colspan="3"><em>' . t('No measures in this region') . '</em></td>';
+        $output .= '<td colspan="3"><em>' . t( get_empty_region_label($region) ) . '</em></td>';
         $output .= '</tr>';
       
 		$row = 0;
