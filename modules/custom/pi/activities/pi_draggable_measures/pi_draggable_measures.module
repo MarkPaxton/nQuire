@@ -48,6 +48,7 @@ function pi_draggable_measures_access($op, $node) {
 function pi_draggable_measures_theme() {
     return array(
 	    'pi_draggable_measures_node_form' => array(
+//      		'template' => 'pi_draggable_measures-display-form',
 	    	'arguments' => array('form'),
 	    ),
 	    'pi_draggable_measures' => array(
@@ -114,23 +115,6 @@ function pi_draggable_measures_form(&$node) {
 		$categories[$key]['#status'] = $selected_measures[$key]['#status'];
 		$categories[$key]['#title'] = $category['#title'];
 	}
-/*
-	// Update available measures with status from selected measures
-	if (count($selected_measures) > 0) 
-	{
-		foreach($selected_measures as $measure_nid => $measure)
-		{
-			// If the selected measure is still available, then update it's weight and status/
-			// If it's no longer available, it will just dissappear from the list. 
-			if(isset($all_measures[$measure_nid]))
-			{
-			
-				$all_measures[$measure_nid]['#weight'] = $pos_result;//$measure['#weight'];
-				$all_measures[$measure_nid]['#status'] = $measure['#status'];
-				print $measure_nid.'-'.$pos_result.'a'.$measure_phase_id.'b'.$measure_activity_id.'c';
-			}
-		}
-	}*/
 	
 	// Sort the measures in reverse weight order
 	if (count($categories) > 1) {
@@ -145,39 +129,19 @@ function pi_draggable_measures_form(&$node) {
 		//load the measure properly to get the node data from drupal core db, 
 		//rather than from queries used in pi_draggable_measures_get_options()
 		$measure = node_load($measure_nid);
-
-		/*
-		// format the measure units
-		if (isset($measure->units_short) AND ($measure->units_short !=''))
-		{
-			$units = " (" . $measure->units_short . ")";
-		}
-		elseif(isset($measure->units) AND ($measure->units !=''))
-		{
-			$units = " (" . $measure->units . ")";
-		}
-		else
-		{
-			$units = "";
-		};
-
-		// add $tree entries for current measure (i.e. $measure_nid)
-		$tree[$measure_nid]['title'] = array(
-			'#value' => t($measure->title . " " . $units),
-		);
-		*/
+		$region = $measure_element['#status'];
 		
-		$tree[$measure_nid]['title'] = array(
+		$tree[$region][$measure_nid]['title'] = array(
 			'#value' => t($measure_element['#title']),
 		);
 
-		$tree[$measure_nid]['weight'] = array(
+		$tree[$region][$measure_nid]['weight'] = array(
 			'#type'          => 'weight',
 			'#delta'         => count($categories),
 			'#default_value' => $measure_element['#weight'],
 		);
 		
-		$tree[$measure_nid]['status'] = array(
+		$tree[$region][$measure_nid]['status'] = array(
 			'#type'          => 'select',
 			'#default_value' => $measure_element['#status'],
 			'#options' => array('none' => 'none', 'key' => 'key', 'selected' => 'selected'),
@@ -193,10 +157,13 @@ function pi_draggable_measures_form(&$node) {
  */
 function pi_draggable_measures_insert($node) {
 	$details  = get_inquiry_details_from_current_path();
-	while ($measure = current($node->measures_list))
-	{
-		db_query("INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->measures_list) . "', '" . $measure['status'] . "', '" . $measure['weight'] . "')");
-		pi_activity_update_activity_weight_from_node(key($node->measures_list), $measure['weight']);
+	while ($region = current($node->measures_list)) {
+		foreach ($region as $nid => $measure) {
+			$query = "INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . $nid . "', '" . $measure['status'] . "', '" . $measure['weight'] . "')";
+			//echo $query . "\n<br>";
+			db_query($query);
+			pi_activity_update_activity_weight_from_node($nid, $measure['weight']);
+		}
 		next($node->measures_list);
 	}
 	reset($node->measures_list);
@@ -224,7 +191,7 @@ function pi_draggable_measures_update($node) {
  * @return unknown_type
  */
 function pi_draggable_measures_delete(&$node) {
-    db_query("DELETE FROM pi_selected_measures WHERE nid = '" . $node->nid . "' ");
+    //db_query("DELETE FROM pi_selected_measures WHERE nid = '" . $node->nid . "' ");
 }
 
 /**
@@ -278,77 +245,38 @@ function theme_pi_draggable_measures($node, $teaser) {
 	 
 	$output = "";
 
-
-	// Get the list of currently selected measures if the node has any
-	// they are stored in $node->measures_list and loaded by pi_draggable_measures_load()
-	if(isset($node->nid)) 
-	{
-		$selected_measures = $node->measures_list;
-	}
-	else 
-	{
-		$selected_measures = array();
-	}
-	
-	// Get the list of available measures
-	$all_measures = pi_draggable_measures_get_options();
-	
-	$categories = array();
-	
-	foreach ($all_measures as $key => $category) {
+    if (is_array($node->measures_list)) {
+		$regions = array('key','selected','none');
+		foreach($regions as $region) {
+			$header = array(
+				t( get_region_label($region) )
+			);
+			$rows = array();
+			foreach($node->measures_list as $nid => $measure) {
+				$row_activity_id = get_activity_id_for_nid($nid);
+				if ($row_activity_id && ($measure['#status'] == $region)) {
+					$link = pi_activity_get_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+					$rows[] = array( "<a href='" . $link['url'] .  "'>" . $link['title'] . "</a>" );
+				}
+			}
 			
-			$measure_activity_id = get_activity_id_for_nid($key);
-			$measure_phase_id = get_phase_id_for_activity_id($measure_activity_id);
-			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $measure_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $measure_activity_id . "' ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
+		  	if(count($rows) == 0) {
+		  		$rows[] = array( "No measures have been selected" );
+			}
 			
-		$categories[$key]['#weight'] = $pos_result;//$selected_measures[$key]['#weight'];
-		$categories[$key]['#status'] = $selected_measures[$key]['#status'];
-		$categories[$key]['#title'] = $category['#title'];
-	}
-	
-	// Sort the measures in reverse weight order
-	if (count($categories) > 1) {
-		uasort($categories, "my_weight_compare");
-	}
-	
-
-	$header = array(
-		t("Measure"),
-		t("Status")
-	);
-
-	$rows = array();
-
-    if (is_array($categories)) {
-        foreach($categories as $key => $category) {
-            $row_activity_id = get_activity_id_for_nid($key);
-			if ($row_activity_id) {
-		        $row = array();
-		        $row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-		        if ($category['#status']) {
-		        	$row_status = $category['#status'];
-		        }
-		        else {
-		        	$row_status = 'none';
-		        }
-		        $row[] = t($row_status);
-		        $rows[] = array('data' => $row);
-            };
-        }
+			$output .=  theme('table', $header, $rows);
+			
+		}
     }
-  
-  if($teaser) {
-  	$output .= "View and organise your measures";
-  }
-  else {
-  	if(count($rows) > 0) {
-			$output .= theme('table', $header, $rows);
-		}
-		else {
-			$output .= "No measures have been selected";
-		}
-	}
+		
 	return $output;
+}
+
+function get_region_label($region) {
+
+	$labels = array( 'key' => 'Key measures' ,'selected' => 'Selected measures' ,'none' => 'Not used' );
+
+	return $labels[$region];
 }
 
 /**
@@ -361,31 +289,43 @@ function theme_pi_draggable_measures_node_form($form) {
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
 
-	drupal_add_tabledrag('measures_list', 'order', 'sibling', 'measures_list-element');
-
+	/*
+	$regions = array('none', 'key', 'selected');
+	foreach ($regions as $region) {
+		drupal_add_tabledrag('measures_list', 'order', 'sibling', 'measures_list-element', 'measures_list-element-' . $region);
+	};
+	*/
+	
 	// Header
-	$header = array(
-		t('Measure'),
-		t('Status'),
-		t('Weight')
+	$header = array(	array( 'theading' => t('Measure'), 'class' => '' ),
+						array( 'theading' => t('Status'), 'class' => 'measures_theading_status' ),
+						array( 'theading' => t('Weight'), 'class' => 'measures_theading_weight' )
 	);
 
 	// Rows for the tabledrag
 	$rows = array();
 
 	$tree = &$form['measures_list'];
-	foreach (element_children($tree) as $key)
+	
+	//print_r($tree);
+	
+	$rows = array();		
+	foreach (element_children($tree) as $region)
 	{
-		$tree[$key]['weight']['#attributes']['class'] = 'measures_list-element';
+		foreach (element_children($tree[$region]) as $key)
+		{
+			$tree[$region][$key]['weight']['#attributes']['class'] = 'measures_list-weight measures_list-weight-'. $region;
+			$tree[$region][$key]['status']['#attributes']['class'] = 'measures_list-region-select measures_list-region-'. $region;
+		
+			$rows[$region][$key]['title'] = drupal_render($tree[$region][$key]['title']);
+			$rows[$region][$key]['status'] = drupal_render($tree[$region][$key]['status']);
+			$rows[$region][$key]['weight'] = drupal_render($tree[$region][$key]['weight']);
 
-		$row = array();
-		$row[] = drupal_render($tree[$key]['title']);
-		$row[] = drupal_render($tree[$key]['status']);
-		$row[] = drupal_render($tree[$key]['weight']);
-
-		$rows[] = array('data' => $row, 'class' => 'draggable');
+		}
 	}
-
+	
+	// print_r($rows);
+	
 	// Build the output
 	$activity = load_activity($details->activity_id);
 	if ($activity->description) {
@@ -396,7 +336,8 @@ function theme_pi_draggable_measures_node_form($form) {
 	}
 	
 	if(count($rows) > 0) {
-		$output .= theme('table', $header, $rows, array('id' => 'measures_list'));
+		// $output .= theme('table', $header, $rows, array('id' => 'measures_list'));
+		$output .= pi_draggable_measures_display_table($header, $rows, array('id' => 'measures_list'));
 		$output .= drupal_render($form);
 	}
 	else {
@@ -405,6 +346,66 @@ function theme_pi_draggable_measures_node_form($form) {
 
 	return $output;
 }
+
+function pi_draggable_measures_display_table($header, $rows, $attributes) {
+
+ // Add table javascript.
+
+    drupal_add_js('misc/tableheader.js');
+    drupal_add_js(drupal_get_path('module', 'pi_draggable_measures') .'/pi_draggable_measures.js');
+
+	//drupal_add_tabledrag('measures_list', 'match', 'sibling', 'measures_list-element');
+	$regions = array('key', 'selected', 'none');
+    // $regions = array('key','selected','none');
+	foreach ($regions as $region) {
+		//drupal_add_tabledrag('measures_list', 'match', 'sibling', 'measures_list-element', 'measures_list-region-' . $region, NULL, FALSE);
+		drupal_add_tabledrag('measures_list', 'match', 'sibling', 'measures_list-region-select', 'measures_list-region-' . $region, NULL, FALSE);
+		drupal_add_tabledrag('measures_list', 'order', 'sibling', 'measures_list-weight', 'measures_list-weight-' . $region, NULL, FALSE);
+	};
+
+	$output = "";
+	$output .= '<table id="' . $attributes['id'] . '" class="sticky-enabled">';
+	$output .= '<thead>';
+	$output .= '<tr>';
+	foreach($header as $heading) {
+    	$output .= '<th class="' . $heading['class'] . '">' . $heading['theading'] . '</th>';
+	}
+	$output .= '</tr>';
+  	$output .= '</thead>';
+  	$output .= '<tbody>';
+    foreach ($regions as $region) {
+		$output .= '<tr class="region region-' . $region . '">';
+		$output .= '<td colspan="3" class="region">' . get_region_label($region) . '</td>';
+		$output .= '</tr>';
+		
+		$region_style = empty($rows[$region]) ? 'region-empty' : 'region-populated';
+        $output .= '<tr class="region-message region-' . $region . '-message ' . $region_style . '">';
+        $output .= '<td colspan="3"><em>' . t('No measures in this region') . '</em></td>';
+        $output .= '</tr>';
+      
+		$row = 0;
+		
+		//print_r($rows[$region]);
+		
+		if (is_array($rows[$region])) {
+			foreach ($rows[$region] as $key => $data) {
+				$style = $row % 2 == 0 ? 'odd' : 'even';
+				$row_class = $data->row_class ? ' '. $data->row_class : '';
+				$output .= '<tr class="draggable ' . $style . $row_class . '">';
+				$output .= '<td class="measures_title">' . $data['title'] . '</td>';
+				$output .= '<td class="measures_status">' . $data['status'] . '</td>';
+				$output .= '<td class="measures_weight">' . $data['weight'] . '</td>';
+				$output .= '</tr>';
+				$row++;
+			}
+		}
+	}
+    $output .= '</tbody>';
+	$output .= '</table>';
+
+	return $output;
+}
+
 
 /**
  * Load the user edit form and grab all of the fieldsets
