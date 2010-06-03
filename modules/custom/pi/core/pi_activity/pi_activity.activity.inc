@@ -19,10 +19,9 @@ function pi_activity_view($activity, $arg_node_function) {
 	$uid = $user->uid;
 	
 	$output = '';
-	drupal_set_title('');
-
+	
 	$details = get_inquiry_details_from_current_path();
-
+				
 	// Check that the node function given int the URL is allowed by comparing it with the 
 	//   node function in the database for this inquiry and user
 	//$node_function = get_node_function_of_activity($details->inquiry_id, $activity_id, $uid);
@@ -46,19 +45,42 @@ function pi_activity_view($activity, $arg_node_function) {
 			{
 				drupal_set_message(t("Can't find the content this activity."), 'error');
 			}
-			//$output .= previous_next_buttons($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id, $uid);
-			//$output .= previous_next_buttons($details->inquiry_id, $activity_id, $uid);
-			//$output .= t(next_button());
 			break;
 		case 'add': 
-			//get node type
-			$node_type = $activity->node_type;
-			if(!function_exists("node_add"))
+			// Add can have two outcomes, one is the actual add activity of this activity
+			// The other is if the activity node exists, but its acts as a shortcut to another
+			// activity (for example a shortcut to add a key question from the sort key question page.)
+			// The conditions are determined by:
+			// 1) If  "get_node_function_of_activity" returns that it is in the "add" state, then it is condition one
+			//		i.e. performing an add of the activity node_type as normal
+			// 2) If "get_node_function_of_activity" is not add, then this indicates an add shortcut COULD be used
+			// 3) If an "Add x" activity of the correct node type exists, then the add function is available to be
+			//		called, so forward to that page using drupal_goto().
+			$node_function = get_node_function_of_activity($details->inquiry_id, $activity->activity_id, $uid);
+			if($node_function == 'add')
 			{
-				include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+				// Normal add activity
+				$node_type = $activity->node_type;
+				if(!function_exists("node_add"))
+				{
+					include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+				}
+				$output .= pi_activity_actor_audience_info($details->inquiry_id, $activity->activity_id);
+				$output .= node_add($node_type);
 			}
-			$output .= pi_activity_actor_audience_info($details->inquiry_id, $activity->activity_id);
-			$output .= node_add($node_type);
+			else
+			{
+				// Possible add shortcut, check if there's a valid shortcut target
+				$add_activity_id = pi_activity_get_add_activity_for_sort_activity($details->inquiry_id, $activity->activity_id, $uid);
+				if($add_activity_id !== NULL)
+				{
+					$activity_link = 'activity/' . $add_activity_id . '/add';
+					$destination = drupal_get_destination();
+					unset($_REQUEST['destination']);
+					drupal_goto($activity_link, $destination);
+				}
+				
+			}
 			break;
 		case 'edit':
 			//get nid
@@ -72,6 +94,7 @@ function pi_activity_view($activity, $arg_node_function) {
 			$output .= node_page_edit($loaded_node);
 			break;
 	}
+	//drupal_set_title(check_plain($activity->name));
 	return $output;
 }
 
