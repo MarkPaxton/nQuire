@@ -1,8 +1,79 @@
 <?php 
+/** @file This file contains all the functions that display the inquiry level view.
+ * This is the page where the phases will be listed, e.g. with the octagon layout 
+ */
 
+
+
+function pi_inquiry_inquiry_view($node) {
+	global $user;
+	$uid = $user->uid;
+    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+	
+	$details = get_inquiry_details_from_current_path();
+	
+	/*
+	 * We are now assuming a 1-1 mapping of both activities and phases to inquiries
+	 * This means we no longer need session ids
+	 * to find the inquiry when on the phase or activity level
+	*/
+	
+	
+	//set current inquiry
+	//$sid = get_current_session_id();
+	//set_current_inquiry_for_session_and_user_id($details->inquiry_id, $sid, $uid);
+	
+
+	$loaded_stage = node_load($details->stage_id);
+	drupal_set_title($loaded_stage->title);
+	$output = "<p>" . $loaded_stage->body . "</p>";
+	$phases = get_phases_of_inquiry_and_user($details->inquiry_id, $user->uid);
+
+	// Header
+	$header = array(
+	t('Name'),
+	t('Description'),
+	);
+
+	$rows = array();
+
+	//current phase check
+	$current_stage = get_current_stage_of_inquiry_and_user($details->inquiry_id, $user->uid);
+	if (isset($current_stage->stage_id))
+	{
+		$current_stage_id = $current_stage->stage_id;
+		$stage = node_load($current_stage_id);
+		$phases_of_current_stage = $stage->phases;
+	}
+	else
+	{
+		$current_stage_id = '';
+		$phases_of_current_stage = array();
+	}
+
+	foreach($phases as $phase_nid)
+	{
+		$phase = node_load($phase_nid);
+		$row = array();
+		if (in_array($phase->nid, $phases_of_current_stage)) {
+			$row[] = l(t($phase->title . " <img width='12' src='" . $image_path . "/folder_empty_current.png'/>"), t("phase/" . $phase->nid), array('html' => TRUE));
+		}
+		else {
+			$row[] = l($phase->title, t("phase/" . $phase->nid));
+		}
+		$row[] = $phase->body;
+		$rows[] = array('data' => $row);
+		$activity_count[] = count(get_activities_of_stage_phase_and_user($phase->inquiry_id, NULL, $phase->nid, $user->uid));
+		$new_activity_count[] = new_activity_list_count($phase->inquiry_id, $phase->nid, $user->uid);
+	}
+	//get_phase_view_preference
+	$output .= display_phases( $rows, $activity_count, $new_activity_count, $node->layout);
+	//$output .= theme('table', $header, $rows);
+	return $output;
+}
 
 /**
- * This function generates the HTML code for the "pase view". Dependant on the parameter layout, 
+ * This function generates the HTML code for the "phase view". Dependant on the parameter layout, 
  * it generates either a list, a pentagon or an octagon view.
  * 
  * @param array $phases An array with the data for every phase.

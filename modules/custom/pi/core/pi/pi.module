@@ -47,6 +47,7 @@ function pi_menu() {
 	$items['home'] = array(
 		'title' => 'Home',
 		'page callback' => 'pi_home_view',
+		'file' => 'pi.home.inc',
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
 	);
@@ -54,6 +55,7 @@ function pi_menu() {
 	$items['inquiry'] = array(
 		'title' => 'Inquiry',
 		'page callback' => 'pi_home_view',
+		'file' => 'pi.home.inc',
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK
 	);
@@ -61,7 +63,7 @@ function pi_menu() {
 	$items['inquiry/%node'] = array(
 		'page callback' => 'pi_inquiry_inquiry_view',
 	    'page arguments' => array(1),
-		'file' => 'pi.phases_view.inc',
+		'file' => 'pi.inquiry.inc',
 		'access arguments' => array('access content'),
 	    'type' => MENU_CALLBACK
 	);
@@ -70,7 +72,7 @@ function pi_menu() {
 		'title' => 'View',
 	    'page callback' => 'pi_inquiry_inquiry_view',
 	    'page arguments' => array(1),
-		'file' => 'pi.phases_view.inc',
+		'file' => 'pi.inquiry.inc',
 		'access arguments' => array('access content'),
 	    'type' => MENU_DEFAULT_LOCAL_TASK,
 		'weight' => 0
@@ -80,6 +82,7 @@ function pi_menu() {
 		'title' => 'Phase',
 		'page callback' => 'pi_inquiry_phase_view',
 	    'page arguments' => array(1),
+		'file' => 'pi.phase.inc',
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
 	);
@@ -126,6 +129,7 @@ function pi_stage_selector_view() {
 	return $output;
 }
 
+
 /**
  * Saves an inquiry_phase into the pi_inquiry_phase table
  * If it does not exist (pip_id is null) then it will be created.
@@ -135,6 +139,7 @@ function pi_stage_selector_view() {
  * @param array $inquiry_phase consists of pip_id uint, inquiry_id uint, phase_id uint and position tinyint.
  * @return db_query() result: FALSE on failure.
  */
+/*
 function save_inquiry_phase($inquiry_phase) {
 	// These are the fields that will be inserted if specified
 	$allowed_fields = array('inquiry_id', 'phase_id', 'position');
@@ -170,126 +175,7 @@ function save_inquiry_phase($inquiry_phase) {
 	$result = db_query(str_replace('%s', $fields, $query));
 	return $result;
 }
-
-function pi_inquiry_inquiry_view($node) {
-	global $user;
-	$uid = $user->uid;
-    $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-	
-	$details = get_inquiry_details_from_current_path();
-	
-	/*
-	 * We are now assuming a 1-1 mapping of both activities and phases to inquiries
-	 * This means we no longer need session ids
-	 * to find the inquiry when on the phase or activity level
-	*/
-	
-	
-	//set current inquiry
-	//$sid = get_current_session_id();
-	//set_current_inquiry_for_session_and_user_id($details->inquiry_id, $sid, $uid);
-	
-
-	$loaded_stage = node_load($details->stage_id);
-	drupal_set_title($loaded_stage->title);
-	$output = "<p>" . $loaded_stage->body . "</p>";
-	$phases = get_phases_of_inquiry_and_user($details->inquiry_id, $user->uid);
-
-	// Header
-	$header = array(
-	t('Name'),
-	t('Description'),
-	);
-
-	$rows = array();
-
-	//current phase check
-	$current_stage = get_current_stage_of_inquiry_and_user($details->inquiry_id, $user->uid);
-	if (isset($current_stage->stage_id))
-	{
-		$current_stage_id = $current_stage->stage_id;
-		$stage = node_load($current_stage_id);
-		$phases_of_current_stage = $stage->phases;
-	}
-	else
-	{
-		$current_stage_id = '';
-		$phases_of_current_stage = array();
-	}
-
-	foreach($phases as $phase_nid)
-	{
-		$phase = node_load($phase_nid);
-		$row = array();
-		if (in_array($phase->nid, $phases_of_current_stage)) {
-			$row[] = l(t($phase->title . " <img width='12' src='" . $image_path . "/folder_empty_current.png'/>"), t("phase/" . $phase->nid), array('html' => TRUE));
-		}
-		else {
-			$row[] = l($phase->title, t("phase/" . $phase->nid));
-		}
-		$row[] = $phase->body;
-		$rows[] = array('data' => $row);
-		$activity_count[] = count(get_activities_of_stage_phase_and_user($phase->inquiry_id, NULL, $phase->nid, $user->uid));
-		$new_activity_count[] = new_activity_list_count($phase->inquiry_id, $phase->nid, $user->uid);
-	}
-	//get_phase_view_preference
-	$output .= display_phases( $rows, $activity_count, $new_activity_count, $node->layout);
-	//$output .= theme('table', $header, $rows);
-	return $output;
-}
-
-
-
-function pi_cycle_phase_view($rows) {
-	foreach($rows as $next) {
-		$row = $next->data;
-		$output .= '1'.next($row);
-		$output .= '2'.next($row);
-	}
-	return $output;
-	/*
-	 $pos_array = (array(0, 400), array(100, 100), array(100, 500), array(200, 100), array(200, 500), array(300, 200), array(300, 400));
-
-	 $output = "<div style='position: relative; width: 100%; height: 500px;'>";
-	 $output .= "<div style='position: absolute; top: 0px; left: 200px; width: 180px; background-color: gray;'>";
-	 $output .= "<div style='float:left; background-color: red'>title</div>"
-	 $output .= "<div style='clear:both;float:left; background-color: blue'>body</div>";
-	 $output .= "</div>";
-
-
-	 */
-}
-
-
-/**
- * pi_home_view - Home page for PI that lists all the inquiries
- */
-function pi_home_view() {
-	global $user;
-	drupal_set_title("My inquiries");
-	$output = "<p>Choose an inquiry.</p>";
-
-	// Header
-	$header = array(
-		t('Inquiry'),
-		t('Description'),
-	);
-
-	$rows = array();
-
-	//list all inquiries for the user
-	$inquiries_for_user = get_inquiries_of_user($user->uid);
-	foreach($inquiries_for_user as $inquiry)
-	{
-		$row = array();
-		$row[] = l($inquiry->title, t("inquiry/" . $inquiry->nid));
-		$row[] = $inquiry->body;
-		$rows[] = array('data' => $row);
-	}
-
-	$output .= theme('table', $header, $rows);
-	return $output;
-}
+*/
 
 function compare_phase($a, $b) {
 	$aposition = $a->position;
@@ -348,121 +234,6 @@ function compare_status($a, $b) {
 	}
 }
 
-
-/**
- * Produces the view of the activities, etc within a particular phase in an inquiry
- * @param $phase A node of type pi_phase
- * @return sting HTMl output of the phase
- */
-function pi_inquiry_phase_view($phase) {
-
-	global $user;
-	$details = get_inquiry_details_from_current_path();
-	drupal_set_title($phase->title);
-
-	//stage is set to NULL to show all activities of the phase
-	$activities = get_activities_of_stage_phase_and_user($phase->inquiry_nid, NULL, $phase->nid, $user->uid);
-
-	$output = "";
-	$output .= "<div style='display: block; clear: both;'>";
-	$output .= t("<p>" . $phase->body . "</p>");
-	$output .= "</div>";
-	
-
-	$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
-	//$hidden_created_activity_types = array('pi_measure_filter');
-	
-	
-	//$hidden_created_activity_types = array();
-	if ($activities)
-	{
-		// $headings = array('Activity', 'You can...', 'Description');
-		$headings = array('Activity', 'Description');
-		$table = array();
-
-		$active_activity_flag = 0;
-
-		foreach($activities as $activity)
-		{
-			$loaded_activity = load_activity($activity->activity_id);
-			$loaded_activity_status = load_activity_status($phase->inquiry_nid, $activity->activity_id, $user->uid);
-				
-			// only display activities that are not in the hidden list
-			if(!(in_array($loaded_activity->node_type, $hidden_created_activity_types)))
-			{
-				switch ($loaded_activity->destination)
-				{
-					case "self":
-						$destination = t("destination=" . t("activity/" . $activity->activity_id . "/view"));
-						break;
-					case "phase":
-						$destination = t("destination=" . t("phase/" . $phase->nid));
-						break;
-					default:
-						$destination = t("destination=" . t("inquiry/" . $phase->inquiry_nid));
-						break;
-				};
-					
-				// so that (by default) always open an exitsing node in view
-				// if node_function for link is edit or view then set node function to view
-				$link_node_function = $loaded_activity_status->node_function;
-				
-				if (($link_node_function == 'edit') OR ($link_node_function == 'view')) {
-					$link_node_function = 'view';
-				};
-					
-				/*
-				$activity_path = "activity/" . $activity->activity_id . "/" . $link_node_function;
-				if ($loaded_activity_status->visible_status == 'unavailable') {
-						
-					$activity_link = check_plain($loaded_activity->name) . '&nbsp;' . add_activity_icon($loaded_activity_status->visible_status);
-				}
-				else {
-					$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-						
-						
-					//new activity lightbulb
-					if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
-						$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
-					}
-					else {
-						$new_icon = "";
-					};
-
-					$activity_link = l(check_plain($loaded_activity->name) . '&nbsp;' . add_activity_icon($loaded_activity_status->visible_status) . '&nbsp;' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
-				};
-*/
-				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity->activity_id, $user->uid);
-				if (($active_activity_flag == 0) AND $loaded_activity)
-				{
-					$active_activity_flag = 1;
-				}
-
-				// $table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
-				$nid = get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
-				$loaded_actvity_node = node_load($nid);
-				$activity_desc = pi_activity_teaser($loaded_actvity_node, $loaded_activity, $link_node_function);
-				$table[] = array(
-						array('data' => t('<div class="teaser_table_cell">'.$activity_link['data'].'</div>'), 'valign' => 'top'),
-						array('data' => $activity_desc, 'valign' => 'top')
-						//array('data' => $activity_link, 'valign' => 'top'),
-						//t($activity_desc)
-					);
-				//$table[] = array($activity_link , t($loaded_activity->description));
-			}
-		}
-
-		$output .= theme('table', $headings, $table);
-		
-		if ($active_activity_flag == 0) {
-			$output .= "<div class='status'><div class='messages'><ul><li>None of the above activities can be accessed at this stage.</li></ul></div></div>";
-		};
-	}
-	else {
-		$output .= "<div class='status'><div class='messages'><ul><li>No activities are available in this phase at this stage.</li></ul></div></div>";
-	};
-	return $output;
-}
 
 // ****************************************************************
 
@@ -596,26 +367,31 @@ function get_inquiry_id_for_phase_id($phase_id) {
  * Returns an inquiry node object from the database - use node_load() instead!
  * @param unknown_type $inquiry_id
  */
+/*
 function load_inquiry($inquiry_id) {
 	drupal_set_message("load_inquiry depricated, use node_load instead", 'warning', FALSE);
 	return node_load($inquiry_id);
-}
+}*/
 
 /**
  * Returns the stage_object from pi_stage table  - use node_load() instead!
  */
+/*
 function load_stage($stage_id) {
 	drupal_set_message("load_stage depricated, use node_load instead", 'warning', FALSE);
 	return node_load($stage_id);
 }
+*/
 
 /**
  * Returns the phase_object from pi_phase table - use node_load() instead!
  */
+/*
 function load_phase($phase_id) {
 	drupal_set_message("load_phase depricated, use node_load instead", 'warning', FALSE);
 	return node_load($phase_id);
 }
+*/
 
 // ----------------------------------------------------------------------------------
 
