@@ -22,10 +22,10 @@ function pi_activity_view($activity, $arg_node_function) {
 	
 	$details = get_inquiry_details_from_current_path();
 				
-	// Check that the node function given int the URL is allowed by comparing it with the 
+	// Check that the node function given in the URL is allowed by comparing it with the 
 	//   node function in the database for this inquiry and user
 	//$node_function = get_node_function_of_activity($details->inquiry_id, $activity_id, $uid);
-	// this is now handled with the access callback pi_activity_access
+	// this is now handled with the access callback pi_activity_item_access
 	switch($arg_node_function)
 	{
 		case 'view':
@@ -77,7 +77,7 @@ function pi_activity_view($activity, $arg_node_function) {
 					$activity_link = 'activity/' . $add_activity_id . '/add';
 					$destination = drupal_get_destination();
 					unset($_REQUEST['destination']);
-					drupal_goto($activity_link, $destination);
+					drupal_goto($activity_link, 'destination=activity/' . $activity->activity_id . '/view');
 				}
 				
 			}
@@ -94,7 +94,7 @@ function pi_activity_view($activity, $arg_node_function) {
 			$output .= node_page_edit($loaded_node);
 			break;
 	}
-	//drupal_set_title(check_plain($activity->name));
+	drupal_set_title(check_plain($activity->name));
 	return $output;
 }
 

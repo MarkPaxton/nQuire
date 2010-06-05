@@ -12,16 +12,16 @@
  */
 function pi_key_questions_node_info() {
     return array(
-    'pi_key_questions' => array(
-    'name' => t('Inquiry key questions'), // Required.
-    'module' => 'pi_key_questions',  // Required.
-    'description' => t('What are the key questions of your inquiry?'), // Required.
-    'has_title' => TRUE,
-    'title_label' => t('Short title'),
-    'has_body' => TRUE,
-    'body_label' => t('Key question'),
-    'locked' => TRUE
-    )
+	    'pi_key_questions' => array(
+		    'name' => t('Inquiry key questions'), // Required.
+		    'module' => 'pi_key_questions',  // Required.
+		    'description' => t('What are the key questions of your inquiry?'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t('Short title'),
+		    'has_body' => TRUE,
+		    'body_label' => t('Key question'),
+		    'locked' => TRUE
+    	)
     );
 }
 
@@ -65,35 +65,6 @@ function pi_key_questions_access($op, $node) {
 	}
 }
 
-
-/*	global $user;
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
-
-	if ($op == 'create') {
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
-	}
-
-	if ($op == 'update') {
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-	}
-    
-	if ($op == 'delete') {
-		if (arg(0) == 'node' && arg(2) == 'delete') {
-		//get inquiry for session id and activity
-			$nid = arg(1);
-			$sid = get_current_session_id();
-			$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
-			$activity_id = get_activity_id_for_nid($nid);
-		
-			return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
-		}
-		else {
-			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-		}
-   }
-}*/
-
 /**
  * Implementation of hook_form().
  */
@@ -130,180 +101,114 @@ function pi_key_questions_form(&$node) {
 		'#cols' => 40,
 		'#weight' => 0
 	);
-/*
-	if ($node->inquiry_id) {
-		$inquiry_value = $node->inquiry_id;
-	}
-	else {
-		$inquiry_value = $node_details->inquiry_id;
-	}
-	$form['inquiry_id'] = array(
-		'#type' => 'hidden',
-		'#value' => $inquiry_value,
-		'#weight' => 4
-	);
-
-	$form['weight'] = array(
-		'#type' => 'textfield',
-		'#title' => t('Order'),
-		'#required' => FALSE,
-		'#default_value' => $node->weight,
-		'#description' => t('Enter a number from 1 to 10 used to oder your key questions'),
-		'#resizable' => FALSE,
-		'#weight' => 6
-	);*/
-    
-	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-
-/*Shows the hypothesis
-	if ($hypothesis_param) {
-		$hypothesis_node = node_load($hypothesis_param);
-		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
-		$hypothesis_activity = load_activity($hypothesis_activity_id);
-		if ($hypothesis_activity->description) {
-  		$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";  
-  	}
-  	else {
-    	$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
-  	}
-		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
-	}*/
-	
-	$prefix .= "<p>" . $current_activity->description . "</p>";
-/*
-    $hypothesis_node_nids = get_node_ids_for_activity_type ($node_details->inquiry_id, 'pi_hypothesis', $user->uid);
-
-    while ($hypothesis_node_nid = db_fetch_object($hypothesis_node_nids)) {
-        $hypothesis_node = node_load($hypothesis_node_nid->nid);
-        $prefix .= "<p><strong>Your hypothesis is</strong>: " . $hypothesis_node->hypothesis . "</p>";
-    };*/
-
-	$prefix = "";
 
 	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-
 	if ($hypothesis_param)
 	{
-		$hypothesis_node = node_load($hypothesis_param);
-		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
-		$hypothesis_activity = load_activity($hypothesis_activity_id);
-		if ($hypothesis_activity->description)
+		$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis_param);
+		if($hypothesis_activity_nid)
 		{
-			$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";
+			$hypothesis_activity = load_activity($hypothesis_activity_nid);
+			if($hypothesis_activity)
+			{
+				$form['#prefix'] = theme('theme_pi_key_questions_hypothesis', $node, $hypothesis_activity);
+			}
 		}
-		else
-		{
-			$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
-		}
-		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
 	}
 	
-	$form['#prefix'] = $prefix;
-	
 	return $form;
-
 }
-
-/**
- * Implementation of hook_insert().
- */
-//function pi_key_questions_insert($node) {
-//} 
-
-/**
- * Implementation of hook_update().
- */
-//function pi_key_questions_update($node) {
-//} 
-
-/**
- * Implementation of hook_delete().
-
-function pi_key_questions_delete(&$node) {
-// Delete the related information we were saving for this node.
-    db_query('DELETE FROM {pi_key_questions} WHERE nid = %d', $node->nid);
-} */
-
-/**
- * Implementation of hook_load().
-
-function pi_key_questions_load($node) {
-    return db_fetch_object(db_query('SELECT * FROM {pi_key_questions} WHERE vid = %d',
-    $node->vid));
-} */
 
 /**
  * Implementation of hook_view().
  */
 function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
-    // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
+	global $user;
+	$node_details = get_inquiry_details_from_current_path();
 
-        $node->content['pi_key_questions'] = array(
+	$node = node_prepare($node, $teaser);
+	if (is_numeric($node_details->activity_id))
+	{
+		$current_activity = load_activity($node_details->activity_id);
+		if ($current_activity->name)
+		{
+			drupal_set_title(check_plain($current_activity->name));
+		}
+	}
+	if(!$teaser)
+	{
+		$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+		if ($hypothesis_nid)
+		{
+			$hypothesis_node = node_load($hypothesis_nid);
+			$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis_node->nid);
+			if($hypothesis_activity_nid)
+			{
+				$hypothesis_activity = load_activity($hypothesis_activity_nid);
+				if($hypothesis_activity)
+				{
+					$node->content['pi_key_questions_hypothesis'] = array(
+						'#value' => theme('pi_key_questions_hypothesis', $hypothesis_node, $hypothesis_activity),
+						'#weight' => -2
+					);
+				}
+			}
+		}
+	}
+	$node->content['pi_key_questions'] = array(
             '#value' => theme('pi_key_questions', $node, $teaser),
-            '#weight' => -8
-        );
-        
-    return $node;
+            '#weight' => -1
+	);
+	return $node;
 }
 
 /**
- * MISSING
- * 
- * @return multitype:multitype:multitype:string   
+ * hook_theme() for pi_key_questions
+ * @return array describing the provided themes as per drupal 6 api    
  */
 function pi_key_questions_theme() {
     return array(
-    'pi_key_questions' => array(
-    'arguments' => array('node', 'teaser'),
-    ),
+	    'pi_key_questions' => array(
+	    	'arguments' => array('node', 'teaser'),
+	    ),
+	    'pi_key_questions_hypothesis' => array(
+	    	'arguments' => array('hypothesis', 'hypothesis_activity')
+	    )
     );
 }
 
 
 /**
- * MISSING
- * 
- * @param unknown_type $node
- * @return string
+ * Theme function to show a key question
+ * @param object (node->pi_key_question )$node
+ * @return string HTML output
  */
 function theme_pi_key_questions($node, $teaser) {
-	global $user;
-	
-		$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
-  	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
-  
-  $prefix = "";
-	
-	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-
-	if ($hypothesis_param)
+	if(!$teaser)
 	{
-		$hypothesis_node = node_load($hypothesis_param);
-		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
-		$hypothesis_activity = load_activity($hypothesis_activity_id);
-		if ($hypothesis_activity->description)
-		{
-			$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";
-		}
-		else
-		{
-			$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
-		}
-		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
-	}
-  
-  if(!$teaser) {
-		$output = $prefix;
 		$output .= "<strong>Key question:</strong>";
-  }  
-  return $output;
+	}
+	return $output;
+}
 
+/**
+ * Theme function to generate a hypothesis prefix for the key_questions activity
+ * @param object(node->pi_hypotheis) $hypothesis The hypothesis to show
+ * @param object(pi_activity) $hypothesis_activity The activity relating to this hypothesis
+ */
+function theme_pi_key_questions_hypothesis($hypothesis, $hypothesis_activity)
+{
+	$output = '';
+	$hypothesis_prefix = '';
+	//if ($hypothesis_activity->description)
+	//{
+	//	$hypothesis_prefix .= "<strong>" . check_plain($hypothesis_activity->description) . ": </strong>";
+	//}
+	//else
+	//{
+		$hypothesis_prefix .= "<strong>" . t('Your hypothesis is') . ": </strong>";
+	//}
+	$output .= "<p>" . $hypothesis_prefix . check_plain($hypothesis->hypothesis) . "</p>";
+	return $output;
 }
 
