@@ -1188,13 +1188,16 @@ function get_selected_measures_headings_for_inquiry_and_user ($inquiry_id, $sele
 function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected_measures, $uid) {
 	$result = array();
 
-	foreach (explode(',', $selected_measures) as $measure_id) {
-
-		if ($measure_id != 0) {
+	foreach (explode(',', $selected_measures) as $measure_id) 
+	{
+		//Just to make sure there are no spaces...
+		$measure_id = trim($measure_id);
+		if ($measure_id != 0) 
+		{
 			$result[] = get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid);
-		};
-	};
-
+		}
+	}
+	
 	//sort $result by up to first three columns
     /***
 	if (isset($result[2]) AND $result[2] != NULL AND $result[1] != NULL AND $result[0] != NULL) {
@@ -1223,14 +1226,16 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 	$j = 0;
 	$fliped_results = array();
 
-	foreach ($result as $row) {
-		foreach ($row as $col) {
+	foreach ($result as $row) 
+	{
+		foreach ($row as $col) 
+		{
 			$fliped_results[$i][$j] = $col;
 			$i = $i + 1;
-		};
+		}
 		$j = $j + 1;
 		$i = 0;
-	};
+	}
 
 	return $fliped_results;
 }
@@ -1247,7 +1252,7 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 
 function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) {
 
-    $query = "SELECT DISTINCT(pi_collected_data.nid), pi_collected_data.value AS value ";
+    $query = "SELECT DISTINCT pi_collected_data.nid AS nid, pi_collected_data.value AS value ";
 	$query .= "FROM pi_collected_data ";
     $query .= "LEFT JOIN pi_sort_data ON pi_collected_data.nid = pi_sort_data.data ";
 	$query .= "LEFT JOIN node ON pi_collected_data.nid = node.nid ";
@@ -1256,15 +1261,23 @@ function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) 
 	$query .= "WHERE (pi_collected_data.available_measure_nid = '" . $measure_id . "') ";
 	$query .= "AND (node.uid = '" . $uid . "' ";
 	$query .= "OR og_uid.uid = '" . $uid . "') ";
-    $query .= "ORDER BY pi_sort_data.weight ASC";
+    $query .= "ORDER BY pi_sort_data.weight, pi_collected_data.vid ASC";
 
 	// print $query;
 	$db_result = db_query($query);
-
+	//echo "\n" . $query;
+	
 	$values = array();
-	while ($result = db_fetch_object($db_result)) {
-		$values[] = $result->value;
+	
+	while($result = db_fetch_object($db_result)) 
+	{
+		//SQL orders the results as well as by VID
+		//Therefore the higest VID is overrideing NID's with lower VID's
+		$values[$result->nid] = $result->value;
 	}
+	
+	$values = array_values($values);
+	
 	return $values;
 }
 
