@@ -145,19 +145,12 @@ function pi_sort_result_presentations_insert($node) {
         
         db_query("INSERT INTO pi_sort_result_presentations (nid, vid, result_presentations, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->onepageprofile_categories) . "', '" . $result_presentations['weight'] . "')");
         
-        update_activity_weight_from_node(key($node->onepageprofile_categories), $result_presentations['weight'], $details);
+        pi_activity_update_weight_from_node(key($node->onepageprofile_categories), $result_presentations['weight'], $details);
 
         next($node->onepageprofile_categories);
     }
     reset($node->onepageprofile_categories);
 }
-
-/***********
-function update_activity_weight_from_node($nid, $weight, $details) {
-	$activity_id = get_activity_id_for_nid($nid);
-	$new_weight =  $weight + 999;
-	db_query("UPDATE pi_stage_phase_activity SET position = '" . $new_weight . "' WHERE activity_id = '" . $activity_id . "' ");
-}*/
 
 function pi_sort_result_presentations_update($node) {
 // if this is a new node or we're adding a new revision,
@@ -333,16 +326,6 @@ function theme_pi_sort_result_presentations_node_form($form) {
 
     return $output;
 }
-
-/*
-function table_activity_link($activity_id, $status, $destination) {
-	if(in_array($status, array('edit', 'view'))) {
-		return l(ucwords($status), t('activity/' . $activity_id . '/' . $status), array('query' => t('destination=' . $destination)));
-	}
-	else {
-		return t('unavailable');
-	}
-}*/
 
 /**
  * Load the user edit form and grab all of the fieldsets

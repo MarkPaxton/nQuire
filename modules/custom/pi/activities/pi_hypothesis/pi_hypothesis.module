@@ -10,19 +10,17 @@
  * Implementation of hook_node_info().
  */
 function pi_hypothesis_node_info() {
-
     return array(
-    'pi_hypothesis' => array(
-    'name' => t('Inquiry hypothesis'), // Required.
-    'module' => 'pi_hypothesis',  // Required.
-    'description' => t('What is your hypothesis?'), // Required.
-    'has_title' => TRUE,
-    'title_label' => t('Inquiry hypothesis'),
-    'has_body' => TRUE,
-    'body_label' => t('Hypothesis'),
-    'locked' => TRUE)
+	    'pi_hypothesis' => array(
+	    'name' => t('Inquiry hypothesis'), // Required.
+	    'module' => 'pi_hypothesis',  // Required.
+	    'description' => t('What is your hypothesis?'), // Required.
+	    'has_title' => TRUE,
+	    'title_label' => t('Inquiry hypothesis'),
+	    'has_body' => TRUE,
+	    'body_label' => t('Hypothesis'),
+	    'locked' => TRUE)
     );
-
 }
 
 /**
@@ -161,27 +159,34 @@ function pi_hypothesis_load($node) {
  */
 function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
     // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
-		$activity_id = get_activity_id_for_nid($node->nid);
-		if(!is_numeric($activity_id))
+	$node = node_prepare($node, $teaser);
+	$activity_id = get_activity_id_for_nid($node->nid);
+	
+	if(!is_numeric($activity_id))
+	{
+		$details = get_inquiry_details_from_current_path();
+		$activity_id = $details->activity_id;
+	}
+	if(!is_numeric($activity_id))
+	{
+		$activity = NULL;
+	}
+	else
+	{
+		$activity = load_activity($activity_id);
+		if(isset($activity))
 		{
-			$details = get_inquiry_details_from_current_path();
-			$activity_id = $details->activity_id;
+			if(isset($activity->name))
+			{
+				drupal_set_title(check_plain($activity->name));
+			}
 		}
-		if(!is_numeric($activity_id))
-		{
-			$activity_id = NULL;
-		}
-        	else
-    	{
-    		$activity = load_activity($activity_id);
-    	}
-    	
-		$node->content['pi_hypothesis'] = array(
-            '#value' => theme('pi_hypothesis', $node, $activity, $teaser),
-            '#weight' => 2
-        );
+	}
 
+	$node->content['pi_hypothesis'] = array(
+		'#value' => theme('pi_hypothesis', $node, $activity, $teaser),
+		'#weight' => 2
+	);
     return $node;
 }
 
@@ -194,15 +199,7 @@ function pi_hypothesis_theme() {
     return array(
 	    'pi_hypothesis' => array(
 		    'arguments' => array('node', 'current_activity', 'teaser'),
-	    ),
-    );
-}
-
-function pi_hypothesis_teaser_theme() {
-	return array(
-	    'pi_hypothesis_teaser' => array(
-		    'arguments' => array('node', 'current_activity', 'teaser'),
-	    ),
+	    )
     );
 }
 
@@ -213,26 +210,19 @@ function pi_hypothesis_teaser_theme() {
  * @return string HTML for the page content added for hypothesis data
  */
 function theme_pi_hypothesis($node, $current_activity=NULL, $teaser) {
-	if(!$teaser) {
-	if(isset($current_activity))
-  	{
-	  	if(isset($current_activity->name)) {
-	  		drupal_set_title(t($current_activity->name));
-	  	}
-	  	if(isset($current_activity->description))
-	  	{
-	    	$output .= "<p>" . check_plain($current_activity->description) . "</p>";
-	    }
+	$output = '';
+	if(!$teaser)
+	{
+		if(isset($current_activity->description))
+		{
+			$output .= "<p>" . check_plain($current_activity->description) . "</p>";
+		}
   	}
     else
     {
-    	$output .= "<p>A hypothesis is a prediction that you can test.</p>";
+    	$output .= "<p>" . t('A hypothesis is a prediction that you can test') . ".</p>";
     }
-    }
-    if(!$teaser) {
-    	$output .= "<div style='font-weight:bold;'>My hypothesis is:</div>\n";
-    }
+   	$output .= "<h3>Your hypothesis is:</h3>\n";
     $output .= '<p style="border-width: 2px;border-style: sold;border-color: black;">' . check_plain($node->hypothesis). '</p>';
-
     return $output;
 }

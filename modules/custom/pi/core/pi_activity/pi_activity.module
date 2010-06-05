@@ -11,47 +11,39 @@ function pi_activity_menu() {
 		'title' => 'View',
 		'file' => 'pi_activity.activity.inc',
 		'page callback' => 'pi_activity_view',
-	    'page arguments' => array(1, 'view'),
-		'access callback' => 'pi_activity_access',
+		'page arguments' => array(1, 'view'),
+		'access callback' => 'pi_activity_item_access',
 		'access arguments' => array(1, 'view'),
-	    'type' => MENU_NORMAL_ITEM,
-		'weight' => 0,
+		'type' => MENU_CALLBACK
 	);
 	
 	$items['activity/%pi_activity/view'] = array(
 		'title' => 'View',
-		'file' => 'pi_activity.activity.inc', 
-		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 2),
-		'access callback' => 'pi_activity_access',
-		'access arguments' => array(1, 2),
 		'type' => MENU_DEFAULT_LOCAL_TASK,
-		'weight' => 1,
+		'weight' => 0
 	);
 	
 	$items['activity/%pi_activity/edit'] = array(
 		'title' => 'Edit',
 		'file' => 'pi_activity.activity.inc', 
 		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 2),
-		'access callback' => 'pi_activity_access',
-		'access arguments' => array(1, 2),
+		'page arguments' => array(1, 'edit'),
+		'access callback' => 'pi_activity_item_access',
+		'access arguments' => array(1, 'edit'),
 		'type' => MENU_LOCAL_TASK,
-		'weight' => 2,
+		'weight' => 1
 	);
 	
 	$items['activity/%pi_activity/add'] = array(
 		'title' => 'Add',
 		'file' => 'pi_activity.activity.inc', 
 		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 2),
-		'access callback' => 'pi_activity_access',
-		'access arguments' => array(1, 2),
-		'type' => MENU_CALLBACK,//MENU_LOCAL_TASK,
-		'weight' => 3,	
+		'page arguments' => array(1, 'add'),
+		'access callback' => 'pi_activity_item_access',
+		'access arguments' => array(1, 'add'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 2
 	);
-
-	
 	
 	$items['activity/%pi_activity/admin'] = array(
 		'title' => 'Admin',
@@ -63,15 +55,10 @@ function pi_activity_menu() {
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 3
 	);
-	
+
 	$items['activity/%pi_activity/admin/content'] = array(
 		'title' => 'View Activity Content',
-		'file' => 'pi_activity.admin.inc', 
-		'page callback' => 'pi_activity_content',
-		'page arguments' => array(1),
-		'access_callback' => 'user_access',
-		'access arguments' => array('access pi_authoring content'),
-		'type' => MENU_LOCAL_TASK,
+		'type' => MENU_DEFAULT_LOCAL_TASK,
 		'weight' => 0
 	);
 	
@@ -106,12 +93,12 @@ function pi_activity_menu() {
  * @param uint $op the function to perform on the activity (view/add/edit)
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
-function pi_activity_access($activity, $op) {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
+function pi_activity_item_access($activity, $op) {
 	$return_value = false;
 	if(isset($activity->activity_id))
 	{
+		global $user;
+		$details = get_inquiry_details_from_current_path();
 		$return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, $op);
 		if(($return_value===false) && ($op=='view'))
 		{
@@ -967,7 +954,6 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
 function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid) {
 	$return_value = NULL;
 	$sort_activity = load_activity($activity_id);
-
 	if($sort_activity!=false)
 	{
 		$type = node_get_types('type', $sort_activity->node_type);
@@ -980,6 +966,7 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
 				$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);				
 				foreach ($activities as $activity)
 				{
+			
 					if($activity->node_type == $node_type_to_find)
 					{
 						$activity_status = load_activity_status($inquiry_id, $activity->activity_id, $uid);
@@ -1003,11 +990,17 @@ function make_add_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id,
 	$add_activity_id = pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid);
 	if ($add_activity_id) {
 		$activity_link = build_activity_link($inquiry_id, $stage_id, $phase_id, $add_activity_id, $uid);
-		return t('<div style="display: block; float: right; margin: 0 1em 0 1em;">'.$activity_link['data'].'</div>');
+		return t('<div style="display: block; float: right; margin: 0 1em 0 1em;clear:left;">'.$activity_link['data'].'</div>');
 	}
 	else {
 		return '';
 	}
+}
+
+function pi_activity_update_weight_from_node($nid, $weight, $details) {
+	$activity_id = get_activity_id_for_nid($nid);
+	$new_weight =  $weight + 999;
+	db_query("UPDATE pi_stage_phase_activity SET position = '" . $new_weight . "' WHERE activity_id = '" . $activity_id . "' ");
 }
 
 ?>

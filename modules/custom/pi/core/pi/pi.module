@@ -1430,6 +1430,41 @@ function my_weight_compare($x, $y) {
     return $xw > $yw;
 }
 
+/**
+ * This is a utility function to merge two content item lists which have '#weight' elements
+ * e.g. item[x]['#weight'].  Weight elements in the second list are ignored and this list is
+ * appended to the ordrered items in their default order.
+ * If an unsorted item occurrs in the sorted item list, the sorted item weight takes precidence
+ * Weight attributes are renumbered incrementally from 0  
+ * @param array(array) $sorted_items content item list with '#weight' elements
+ * @param $unsorted_items  $sorted_items content item list - weight ignored
+ * @return array of items sorted by weight
+ */
+function pi_merge_content_item_lists($sorted_items, $unsorted_items) 
+{
+	$return_data = array();
+	$weight_data = array();
+	foreach($sorted_items as $key => $sorted_item)
+	{
+		$weight_data[$key] =  $sorted_item['#weight'];
+	}
+	asort($weight_data);
+	foreach(array_keys($weight_data) as $ordered_item_key)
+	{
+		$sorted_items[$ordered_item_key]['#weight'] = count($return_data);
+		$return_data[$ordered_item_key] = $sorted_items[$ordered_item_key];
+	}
+	foreach($unsorted_items as $unsorted_item_key => $unsorted_item)
+	{
+		if(!array_key_exists($unsorted_item_key, $return_data))
+		{
+			$unsorted_item['#weight'] = count($return_data);
+			$return_data[$unsorted_item_key] = $unsorted_item;
+		}
+	}
+	return $return_data;
+}
+
 
 /**
  * This is a debug function that prints a given variable to drupal message area
