@@ -463,50 +463,54 @@ function pi_available_measures_validate($node) {
 }
 
 /**
- * Implementation of pi_available_measures_insert().
+ * hook_insert() for available_measures: adds image node if needed
  */
 function pi_available_measures_insert($node) {
+	$validators = array(
+		'file_validate_is_image' => array(),
+	);
 
-    $validators = array(
-        'file_validate_is_image' => array(),
-    );
-
-  if($tdpic = file_save_upload('image_filename', $validators)) {
-    $pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
-    file_copy($tdpic,'images/'.$tdpic->filename);
-    $image_node = image_create_node_from($tdpic->filepath); 
-    $pic_nid = $image_node->nid;
-    db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, list_options, content_options, textfield_size, textarea_cols, textarea_rows, measurement_device_name, measurement_device_description, image_id) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, '%s','%s', %d)",
-      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $pic_nid);
-  }
-
-  else {
-    db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, list_options, content_options, textfield_size, textarea_cols, textarea_rows, measurement_device_name, measurement_device_description) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, '%s', '%s')",
-      $node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $textarea_rows, $node->measurement_device_name, $node->measurement_device_description);
-  };
+	if($tdpic = file_save_upload('image_filename', $validators))
+	{
+		$pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
+		file_copy($tdpic,'images/'.$tdpic->filename);
+		$image_node = image_create_node_from($tdpic->filepath);
+		$pic_nid = $image_node->nid;
+		db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, list_options, content_options, textfield_size, textarea_cols, textarea_rows, measurement_device_name, measurement_device_description, image_id) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, '%s','%s', %d)",
+		$node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $pic_nid);
+	}
+	else
+	{
+		db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, list_options, content_options, textfield_size, textarea_cols, textarea_rows, measurement_device_name, measurement_device_description) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, '%s', '%s')",
+		$node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $textarea_rows, $node->measurement_device_name, $node->measurement_device_description);
+	};
 }
 
 /**
  * Implementation of pi_available_measures_update().
  */
 function pi_available_measures_update($node) {
-  if ($node->revision) {
-    pi_available_measures_insert($node);
-  }
-  else {
-    if($tdpic = file_save_upload('image_filename')) {
-      $pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
-      file_copy($tdpic,'images/'.$tdpic->filename);
-      $image_node = image_create_node_from($tdpic->filepath); 
-      $pic_nid = $image_node->nid;
-      db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', list_options = '%s', content_options = '%s', textfield_size = '%d', textarea_cols = '%d', textarea_rows = '%d', measurement_device_name = '%s', measurement_device_description = '%s', image_id = '%d' 
-        WHERE vid = %d", $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $node->textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $pic_nid, $node->vid);
-    }
-    else {
-      db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', list_options = '%s', content_options = '%s', textfield_size = '%d', textarea_cols = '%d', textarea_rows = '%d', measurement_device_name = '%s', measurement_device_description = '%s' WHERE vid = %d",
-        $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $node->textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $node->vid);
-    };
-  }
+	if ($node->revision)
+	{
+		pi_available_measures_insert($node);
+	}
+	else
+	{
+		if($tdpic = file_save_upload('image_filename'))
+		{
+			$pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
+			file_copy($tdpic,'images/'.$tdpic->filename);
+			$image_node = image_create_node_from($tdpic->filepath);
+			$pic_nid = $image_node->nid;
+			db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', list_options = '%s', content_options = '%s', textfield_size = '%d', textarea_cols = '%d', textarea_rows = '%d', measurement_device_name = '%s', measurement_device_description = '%s', image_id = '%d' WHERE vid = %d", 
+			$node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $node->textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $pic_nid, $node->vid);
+		}
+		else
+		{
+			db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', list_options = '%s', content_options = '%s', textfield_size = '%d', textarea_cols = '%d', textarea_rows = '%d', measurement_device_name = '%s', measurement_device_description = '%s' WHERE vid = %d",
+			$node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $node->textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $node->vid);
+		};
+	}
 }
 
 /**
@@ -530,141 +534,203 @@ function pi_available_measures_load($node) {
  * Implementation of hook_view().
  */
 function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
+    global $user;
+    $node_details = get_inquiry_details_from_current_path();
+
     // Use Drupal's default node view.
     $node = node_prepare($node, $teaser);
 
-    $node->content['pi_available_measures'] = array(
-      '#value' => theme('pi_available_measures', $node, $teaser),
-      '#weight' => 2
-      );
+    if(is_numeric($node_details->activity_id))
+    {
+    	$current_activity = load_activity($node_details->activity_id);
+    	if ($current_activity->name)
+    	{
+    		drupal_set_title(t($current_activity->name));
+    	}
+    }
+    $filter_nid = find_measure_filter_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+    if($filter_nid)
+    {
+    	$filter_node = node_load($filter_nid);
+    }
+    
+    // Load the measaure data into a list, to save time stick them in a master list:
+    // "switch" method", "value" method and text description
+    $measure_parameters_switch_values_and_description_list = array(
+    	array('symbol_test', 'symbol', 'Symbol / short-name'),
+    	array('units_test', 'units', 'Units'),
+    	array('units_short_test', 'units_short', 'Units symbol / short name'),
+    	array('data_type_test', 'data_type', 'Data type'),
+    	array('list_options_test', 'list_options', 'Menu options'),
+    	array('measurement_device_name_test', 'measurement_device_name', 'Device name'),
+    	array('measurement_device_description_test', 'measurement_device_description', 'Device description'),
+    );
+
+    $measure_parameters_defined = array();
+    foreach($measure_parameters_switch_values_and_description_list as $parameter)
+    {
+    	$switch = $parameter[0];
+    	
+    	// See if the parameter is used
+    	if($filter_node->$switch)
+    	{
+    		$value = $parameter[1];
+    		if(strlen($node->$value)>0)
+    		{
+    			$description = $parameter[2];
+    			// Handle the special types or default to a standard format
+    			switch($value)
+    			{
+    				case 'data_type':
+    					$processed_value = ucwords($node->$value);
+    					break;
+    				case 'list_options':
+    					$processed_value = explode("\n", $node->$value);
+    					break;
+    				default:
+    					$processed_value = $node->$value;
+    			}
+    			$measure_parameters_defined[$value] = array(
+	    		'title' => $description,
+    			'value' => $processed_value
+    			);
+    		}
+    	}
+    }
+
+    if($teaser)
+    {
+		$node->content['pi_available_measures_teaser'] = array(
+			'#value' => theme('pi_available_measures_teaser', $node, $measure_parameters_defined),
+			'#weight' => 1
+		);
+    }
+    else
+    {
+	    if ($node->image_id)
+	    {
+	    	$node->content['pi_available_measures_image'] = array(
+		      '#value' => theme('pi_available_measures_image', $node->image_id, $teaser),
+		      '#weight' => -1
+	    	);
+	    }
+    	$node->content['pi_available_measures'] = array(
+			'#value' => theme('pi_available_measures', $node, $measure_parameters_defined),
+			'#weight' => 1
+	    );
+    	
+    }    
 
   return $node;
 }
 
 /**
- * MISSING
- * 
- * @return multitype:multitype:multitype:string   
+ * hook_theme() for pi_available_measures
+ * @return array of theme data as per drupal 6 api   
  */
 function pi_available_measures_theme() {
-  return array(
-    'pi_available_measures' => array(
-      'arguments' => array('node','teaser'),
-    ),
-  );
+	return array(
+	    'pi_available_measures' => array(
+			'arguments' => array('node', 'measures_parameters'),
+		),
+	    'pi_available_measures_teaser' => array(
+			'arguments' => array('node', 'measures_parameters'),
+		),
+		'pi_available_measures_image' => array(
+			'arguments' => array('image_node_nid','teaser')
+		)
+	);
 }
 
 
 /**
- * MISSING
- * 
- * @param unknown_type $node
- * @return string
+ * Theme function for pi_acailale_measures
+ * @param object(node->pi_available_measures) $node
+ * @param bool $teaser whethere to render teaser or full view
+ * @param array $measures_parameters array of parameter name, value and description to show
+ * @return string HTML output
  */
-function theme_pi_available_measures($node, $teaser) {
+function theme_pi_available_measures($node, $measures_parameters) {
 
-	global $user;
-	$uid = $user->uid;
-		$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
-  	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
-  	
-  	$output =  "";
-    
-  $filter_nid = find_measure_filter_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
-
-  if($filter_nid) {
-  	$filter_node = node_load($filter_nid);
-  }
-  
-  if ($node->image_id) {
-    $page_nid = arg(1);
-    if (is_numeric($page_nid)) {
-      $page = node_load($page_nid);
-      if ($page->type == 'pi_available_measures') {
-        $output .= '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/preview") . '" />';
-      }
-      else {
-        $output .= '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
-      };
-    }
-    else {
-      $output .= '<img style="float: right; clear: right; padding: 10px 0 10px 10px;" src="' . url("image/view/" . $node->image_id . "/thumbnail") . '" />';
-    };
-  };
-
-if(!$teaser) {
-	if ($filter_node->symbol_test && $node->symbol) {
-		$output .= t('<p><strong>Symbol / short-name: </strong>' . $node->symbol . '</p>');
-	}
+	$output = '';
 	
-	if ($filter_node->units_test && $node->units) {
-		$output .= t('<p><strong>Units: </strong>' . $node->units . '</p>');
+	// For the long list of parameters, interate through them and process any exceptions here,
+	// otherwise use a standard format.
+	foreach($measures_parameters as $parameter_type => $parameter)
+	{
+		$print_title = $parameter['title'];
+		switch($parameter_type)
+		{
+			case 'data_type':
+				$print_value = check_plain(ucwords($parameter['value']));
+				break;
+			case 'list_options':
+				$print_value = theme('item_list', $parameter['value']);
+				break;
+			default:
+				$print_value = check_plain($parameter['value']);
+		}
+		$output .= "<p><strong>" . check_plain($print_title) . "</strong>:&nbsp;" . $print_value . "  </p>";
 	}
-
-	if ($filter_node->units_short_test && $node->units_short) {
-		$output .= t('<p><strong>Units symbol / short name: </strong>' . $node->units_short . '</p>');
-	}
-	
-	if ($filter_node->data_type_test && $node->data_type) {
-		$output .= t('<p><strong>Data type: </strong>' . ucwords($node->data_type) . '</p>');
-	}
-	
-	if ($filter_node->list_options_test && $node->list_options) {
-		$output .= t('<p><strong>Menu options: </strong>' . implode(", ", explode("\n",$node->list_options)) . '</p>');
-	}
-	
-	if ($filter_node->measurement_device_name_test && $node->measurement_device_name) {
-		$output .= t('<p><strong>Device name: </strong>' . $node->measurement_device_name . '</p>');
-	}
-	
-	if ($filter_node->measurement_device_description_test && $node->measurement_device_description) {
-		$output .= t('<p><strong>Device description: </strong>' . $node->measurement_device_description . '</p>');
-	}
-	}
-	else {
-	
-	if ($filter_node->symbol_test && $node->symbol) {
-		$output .= t('<strong>Symbol / short-name: </strong>' . $node->symbol . '&nbsp;&nbsp;');
-	}
-	
-	if ($filter_node->units_test && $node->units) {
-		$output .= t('<strong>Units: </strong>' . $node->units . '&nbsp;&nbsp;');
-	}
-
-	if ($filter_node->units_short_test && $node->units_short) {
-		$output .= t('<strong>Units symbol / short name: </strong>' . $node->units_short . '&nbsp;&nbsp;');
-	}
-	
-	if ($filter_node->data_type_test && $node->data_type) {
-		$output .= t('<strong>Data type: </strong>' . ucwords($node->data_type) . '&nbsp;&nbsp;');
-	}
-	
-	if ($filter_node->list_options_test && $node->list_options) {
-		$output .= t('<strong>Menu options: </strong>' . implode(", ", explode("\n",$node->list_options)) . '&nbsp;&nbsp;');
-	}
-	
-	if ($filter_node->measurement_device_name_test && $node->measurement_device_name) {
-		$output .= t('<strong>Device name: </strong>' . $node->measurement_device_name . '&nbsp;&nbsp;');
-	}
-	
-	if ($filter_node->measurement_device_description_test && $node->measurement_device_description) {
-		$output .= t('<strong>Device description: </strong>' . $node->measurement_device_description . '&nbsp;&nbsp;');
-	}
-	$output .= "<br /><br />";
-	
-	}
-	//$output .= theme('table', $header, $rows);*/
-  
-  return $output;
+	return $output;
 }
 
+/**
+ * Theme function for pi_acailale_measures
+ * @param object(node->pi_available_measures) $node
+ * @param bool $teaser whethere to render teaser or full view
+ * @param array $measures_parameters array of parameter name, value and description to show
+ * @return string HTML output
+ */
+function theme_pi_available_measures_teaser($node, $measures_parameters) {
 
+	$output = '';
+	$output .= '<div>';
+	// For the long list of parameters, interate through them and process any exceptions here,
+	// otherwise use a standard format.
+	foreach($measures_parameters as $parameter_type => $parameter)
+	{
+		$print_title = $parameter['title'];
+		switch($parameter_type)
+		{
+			case 'data_type':
+				$print_value = check_plain(ucwords($parameter['value']));
+				break;
+			case 'list_options':
+				$print_value = implode(', ', $parameter['value']);
+				break;
+			default:
+				$print_value = check_plain($parameter['value']);
+		}
+		$output .= "<span><strong>" . check_plain($print_title) . "</strong>:&nbsp;" . $print_value . "  </span>";
+	}
+	$output .= '</div>';
+
+	return $output;
+}
+
+/**
+ * Theme function to place an image in a measure page
+ * @param unknown_type $image_node_nid
+ * @param unknown_type $teaser
+ */
+function theme_pi_available_measures_image($image_node_nid, $teaser)
+{
+	$output = '';
+	// If the measure had an image attached, deal with that here so it can float left at the top of the page
+	$image_node = node_load($image_node_nid);
+	$output .= '<div style="float: right; clear: right; padding: 10px 0 10px 10px;">';
+	if($image_node->type=='image')
+	{
+			$output .= theme('image_teaser', $image_node, NULL);
+	}
+	else
+	{
+		$output .= t("Image ") . check_plain($image_node_nid) . t(' not found.');
+	}
+	$output .= '</div>';
+	return $output;
+}
 
 
 
