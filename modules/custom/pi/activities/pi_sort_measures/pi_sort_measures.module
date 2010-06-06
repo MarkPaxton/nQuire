@@ -128,25 +128,7 @@ function pi_sort_measures_form(&$node) {
 	
 	//$categories = array();
 	$sorted_measures = pi_merge_content_item_lists($selected_measures, $all_measures);
-/*
-	$count = 0;
-	foreach ($all_measures as $key => $category) {
-			
-			$measure_activity_id = get_activity_id_for_nid($key);
-			$measure_phase_id = get_phase_id_for_activity_id($measure_activity_id);
-			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $measure_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $measure_activity_id . "' ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
-			
-		$categories[$key]['#weight'] = $selected_measures[$key]['#weight'];
-		$categories[$key]['#status'] = $selected_measures[$key]['#status'];
-		$categories[$key]['#title'] = $category['#title'];
-	}
-	
-	// Sort the measures in reverse weight order
-	if (count($categories) > 1) {
-		uasort($categories, "my_weight_compare");
-	}
-*/
-	
+
 	// set $tree to point to the above $form['measures_list'] object
 	$tree = &$form['measures_list'];
 
@@ -383,7 +365,7 @@ function theme_pi_sort_measures_node_form($form) {
 		{
 			$tree[$region][$key]['weight']['#attributes']['class'] = 'measures_list-weight measures_list-weight-'. $region;
 			$tree[$region][$key]['status']['#attributes']['class'] = 'measures_list-region-select measures_list-region-'. $region;
-		
+
 			$rows[$region][$key]['title'] = drupal_render($tree[$region][$key]['title']);
 			$rows[$region][$key]['description'] = drupal_render($tree[$region][$key]['description']);
 			$rows[$region][$key]['status'] = drupal_render($tree[$region][$key]['status']);
@@ -433,6 +415,7 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
 
 	$output = "";
 	$output .= '<table id="' . $attributes['id'] . '" class="sticky-enabled">';
+	/* //don't show the table header
 	$output .= '<thead>';
 	$output .= '<tr>';
 	foreach($header as $heading) {
@@ -440,11 +423,12 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
 	}
 	$output .= '</tr>';
   	$output .= '</thead>';
+  	*/
   	$output .= '<tbody>';
     foreach ($regions as $region) {
 		$output .= '<tr class="region region-' . $region . '">';
-		$output .= '<td class="region">' . pi_sort_measures_get_region_label($region) . '</td>';
-		$output .= '<td colspan="3" class="region">' . pi_sort_measures_get_region_description($region) . '</td>';
+		$output .= '<td class="region" colspan="4"><span style="font-size:130%;font-weight:bold;margin-right:15px;">' . pi_sort_measures_get_region_label($region) . '</span>';
+		$output .= '<span style="font-size:90%;font-weight:normal">' . pi_sort_measures_get_region_description($region) . '</span></td>';
 		$output .= '</tr>';
 		
 		$region_style = empty($rows[$region]) ? 'region-empty' : 'region-populated';
@@ -456,13 +440,19 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
 		
 		//print_r($rows[$region]);
 		
-		if (is_array($rows[$region])) {
-			foreach ($rows[$region] as $key => $data) {
+		if (is_array($rows[$region]))
+		{
+			foreach ($rows[$region] as $key => $data)
+			{
+				$modified_description = str_replace(
+					array('<div', '</div', 'class="submitted"'), 
+					array('<span', '</span', 'class="submitted" style="display:none"'),  
+					$data['description']);
 				$style = $row % 2 == 0 ? 'odd' : 'even';
 				$row_class = $data->row_class ? ' '. $data->row_class : '';
 				$output .= '<tr class="draggable ' . $style . $row_class . '">';
-				$output .= '<td class="measures_title">' . $data['title'] . '</td>';
-				$output .= '<td class="measures_title">' . $data['description'] . '</td>';
+				$output .= '<td class="measures_title"><span style="font-size:115%;font-weight:bold;">' . $data['title'] . '</td>';
+				$output .= '<td class="measures_title">' .  $modified_description . '</td>';
 				$output .= '<td class="measures_status">' . $data['status'] . '</td>';
 				$output .= '<td class="measures_weight">' . $data['weight'] . '</td>';
 				$output .= '</tr>';
