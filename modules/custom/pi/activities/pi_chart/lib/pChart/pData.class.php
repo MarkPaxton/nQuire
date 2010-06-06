@@ -49,19 +49,19 @@ class pData
 		$this->DataDescription = "";
 		$this->DataDescription["Position"] = "Name";
 	}
-	
+
 	function sort( $name )
 	{
 		foreach( $this->Data as $item )
 		{
 			$data[ $item[$name] ] = $item;
 		}
-		
-		
+
+
 		//print_r( $data );
 		ksort( $data );
 		//print_r( $data );
-		
+
 		$this->Data = $data;
 	}
 
@@ -128,7 +128,12 @@ class pData
 
 		$ID = 0;
 		for($i=0;$i<=count($this->Data);$i++)
-		{ if(isset($this->Data[$i][$Serie])) { $ID = $i+1; } }
+		{ 
+			if(isset($this->Data[$i][$Serie])) 
+			{ 
+				$ID = $i+1; 
+			} 
+		}
 
 		if ( count($Value) == 1 )
 		{

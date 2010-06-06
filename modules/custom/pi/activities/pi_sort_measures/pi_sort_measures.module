@@ -55,6 +55,9 @@ function pi_sort_measures_theme() {
 	    'pi_sort_measures' => array(
 	    	'arguments' => array('node','teaser'),
 	    ),
+	    'pi_sort_measures_region' => array(
+	    	'arguments' => 'title', 'description', 'empty', 'measures'
+	    )
     );
 }
 
@@ -151,11 +154,15 @@ function pi_sort_measures_form(&$node) {
 	{
 		//load the measure properly to get the node data from drupal core db, 
 		//rather than from queries used in pi_sort_measures_get_options()
-		//$measure = node_load($measure_nid);
+		$measure = node_load($measure_nid);
 		$region = $measure_element['#status'];
 		
 		$tree[$region][$measure_nid]['title'] = array(
-			'#value' => t($measure_element['#title']),
+			'#value' => check_plain($measure_element['#title']),
+		);
+		
+		$tree[$region][$measure_nid]['description'] = array(
+			'#value' => node_view($measure, TRUE, TRUE),
 		);
 
 		$tree[$region][$measure_nid]['weight'] = array(
@@ -186,7 +193,7 @@ function pi_sort_measures_insert($node) {
 		{
 			$query = "INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
 			db_query($query, $node->nid, $node->vid, $nid, $measure['status'], $measure['weight']);
-			pi_activity_update_weight_from_node($nid, $measure['weight'], $details);
+			pi_activity_update_weight_from_node($nid, $measure['weight']);
 		}
 	}
 }
@@ -266,45 +273,75 @@ function theme_pi_sort_measures($node, $teaser) {
 
     if (is_array($node->measures_list))
     {
-		$regions = array('key','selected','none');
+		$regions = array('key','selected','none');		
 		foreach($regions as $region)
 		{
-			$output .= '<h3>' . get_region_label($region) . '</h3>';
-			$rows = array();
+			$region_title = pi_sort_measures_get_region_label($region);
+			$region_description = pi_sort_measures_get_region_description($region);
+			$region_empty = pi_sort_measures_get_empty_region_label($region);
+			$region_measures = array();
 			foreach($node->measures_list as $nid => $measure)
 			{
-				$row_activity_id = get_activity_id_for_nid($nid);
-				if ($row_activity_id && ($measure['#status'] == $region))
+				$measure_activity_id = get_activity_id_for_nid($nid);
+				if ($measure_activity_id && ($measure['#status'] == $region))
 				{
-				    $loaded_activity = load_activity($row_activity_id);
+				    $loaded_activity = load_activity($measure_activity_id);
 				    $loaded_node = node_load($nid);
-				    $activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $user->uid);
+				    $activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $measure_activity_id, $user->uid);
 				    $activity_teaser = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
-				    
-				    $rows[] = '<h4 style="float:left;padding-right:6px;">' . $activity_link['data'] . '</h4>' .
-				    			'<div style="float:left;padding-top:3px;padding-left:3px;">' . $activity_teaser . '</div>' .
-				    			'<div style="clear:both;"></div>';
+				    $region_measures[] = array(
+				    	'title' => $activity_link['data'],
+				    	'description' => $activity_teaser
+				    );
 		        }
 			}
-			
-		  	if(count($rows) == 0)
-		  	{
-		  		$rows[] = array( get_empty_region_label($region) );
-			}
-    		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
+			$output .= theme('pi_sort_measures_region', $region_title, $region_description, $region_empty, $region_measures);
 		}
     }
 	return $output;
 }
 
-function get_region_label($region) {
-	$labels = array( 'key' => 'Key measures' ,'selected' => 'Selected measures' ,'none' => 'Not used' );
+
+/**
+ * Returns the label of a given measure region (key, selected, none)
+ * @param string $region key, selected, none
+ * @return string Translated string using t()
+ */
+function pi_sort_measures_get_region_label($region) {
+	$labels = array( 
+		'key' => t('Key measures') ,
+		'selected' => t('Selected measures') ,
+		'none' => t('Not used')
+	);
 	return $labels[$region];
 }
 
-function get_empty_region_label($region) {
+/**
+ * Returns the description of a given measure region (key, selected, none)
+ * @param string $region key, selected, none
+ * @return string Translated string using t()
+ */
+function pi_sort_measures_get_region_description($region)
+{
+	$region_descriptions = array(
+			'key' => t('Key measures are how you organise the data you collect.'),
+			'selected' => t('Selected measures are collected with key measures.'),
+			'none' => t('These measurements will not be collected.'));
+	return $region_descriptions[$region];
+}
 
-	$labels = array( 'key' => 'No key measures have been chosen' ,'selected' => 'No measures have been selected' ,'none' => 'All available measures are being used' );
+/**
+ * Returns the 'empty' description of a given measure region (key, selected, none)
+ * @param string $region key, selected, none
+ * @return string Translated string using t()
+ */
+function pi_sort_measures_get_empty_region_label($region) {
+
+	$labels = array(
+		'key' => t('No key measures have been chosen') ,
+		'selected' => t('No measures have been selected') ,
+		'none' => t('All available measures are being used')
+	);
 	return $labels[$region];
 }
 
@@ -327,6 +364,7 @@ function theme_pi_sort_measures_node_form($form) {
 	
 	// Header
 	$header = array(	array( 'theading' => t('Measure'), 'class' => '' ),
+						array( 'theading' => t('Description'), 'class' => '' ),
 						array( 'theading' => t('Status'), 'class' => 'measures_theading_status' ),
 						array( 'theading' => t('Weight'), 'class' => 'measures_theading_weight' )
 	);
@@ -347,6 +385,7 @@ function theme_pi_sort_measures_node_form($form) {
 			$tree[$region][$key]['status']['#attributes']['class'] = 'measures_list-region-select measures_list-region-'. $region;
 		
 			$rows[$region][$key]['title'] = drupal_render($tree[$region][$key]['title']);
+			$rows[$region][$key]['description'] = drupal_render($tree[$region][$key]['description']);
 			$rows[$region][$key]['status'] = drupal_render($tree[$region][$key]['status']);
 			$rows[$region][$key]['weight'] = drupal_render($tree[$region][$key]['weight']);
 
@@ -358,10 +397,10 @@ function theme_pi_sort_measures_node_form($form) {
 	// Build the output
 	$activity = load_activity($details->activity_id);
 	if ($activity->description) {
-		$output  .= '<p>' . t($activity->description) . '</p>';
+		$output  .= '<p>' . $activity->description . '</p>';
 	}
 	else {
-		$output  .= '<p>' . t('Order your key questions.') . '</p>';
+		$output  .= '<p>' . t('Choose which measures you will use.') . '</p>';
 	}
 	
 	if(count($rows) > 0) {
@@ -404,12 +443,13 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
   	$output .= '<tbody>';
     foreach ($regions as $region) {
 		$output .= '<tr class="region region-' . $region . '">';
-		$output .= '<td colspan="3" class="region">' . get_region_label($region) . '</td>';
+		$output .= '<td class="region">' . pi_sort_measures_get_region_label($region) . '</td>';
+		$output .= '<td colspan="3" class="region">' . pi_sort_measures_get_region_description($region) . '</td>';
 		$output .= '</tr>';
 		
 		$region_style = empty($rows[$region]) ? 'region-empty' : 'region-populated';
         $output .= '<tr class="region-message region-' . $region . '-message ' . $region_style . '">';
-        $output .= '<td colspan="3"><em>' . t( get_empty_region_label($region) ) . '</em></td>';
+        $output .= '<td colspan="4"><em>' . t( pi_sort_measures_get_empty_region_label($region) ) . '</em></td>';
         $output .= '</tr>';
       
 		$row = 0;
@@ -422,6 +462,7 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
 				$row_class = $data->row_class ? ' '. $data->row_class : '';
 				$output .= '<tr class="draggable ' . $style . $row_class . '">';
 				$output .= '<td class="measures_title">' . $data['title'] . '</td>';
+				$output .= '<td class="measures_title">' . $data['description'] . '</td>';
 				$output .= '<td class="measures_status">' . $data['status'] . '</td>';
 				$output .= '<td class="measures_weight">' . $data['weight'] . '</td>';
 				$output .= '</tr>';
@@ -491,4 +532,38 @@ function pi_sort_measures_get_options() {
         );
     }
     return $measures;
+}
+
+function theme_pi_sort_measures_region($title, $description, $empty, $measures)
+{
+	$output = '';
+	$output .= '<div><span style="font-size:130%;font-weight:bold;margin-right:15px;">' . $title . '</span>';
+	$output .= '<span style="font-size:90%;">' . $description . '</span></div>';
+		
+	if(count($measures) == 0)
+	{
+		$output .= '<p>' . $empty . '</p>';
+	}
+	else
+	{
+		$rows = array();
+		foreach($measures as $measure)
+		{
+			// this section replaces some hardcoded html from the node teaser view to make it fit in this
+			// theme layout better, since the default teaser theme isn't quite suited to this layout.
+			// it does break the encalsulation of 'node' functionality by messing with another
+			// object's data but since in a template is making changes on the html display level
+			// this isn't so bad - and the functionality is hardcoded into 'node' rather than
+			// available_mesaure.  The correct way would probably be to write a new theme within
+			// available measure and render that
+			$modified_description = str_replace(
+				array('<div', '</div', 'class="submitted"'), 
+				array('<span', '</span', 'class="submitted" style="display:none"'),  $measure['description']);
+			$rows[] = '<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $measure['title'] . '</span>' .
+				'<span>' . $modified_description . '</span>' .
+				'</div>';
+		}
+		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
+	}
+	return $output;
 }

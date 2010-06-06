@@ -136,6 +136,8 @@ function pi_activity_theme()
 function pi_activity_teaser($node, $activity, $link_node_function) {
 	if($link_node_function == 'view')
 	{
+		//Add activity ID to node, needed for the PI chart module
+		$node->activity_id = $activity->activity_id;
 		$output = node_view($node, TRUE, TRUE);
 	}
 	else
@@ -1014,7 +1016,7 @@ function make_add_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id,
 	}
 }
 
-function pi_activity_update_weight_from_node($nid, $weight, $details) {
+function pi_activity_update_weight_from_node($nid, $weight) {
 	$activity_id = get_activity_id_for_nid($nid);
 	$new_weight =  $weight + 999;
 	db_query("UPDATE pi_stage_phase_activity SET position = '" . $new_weight . "' WHERE activity_id = '" . $activity_id . "' ");

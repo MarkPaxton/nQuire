@@ -3,7 +3,7 @@
 require_once( 'lib/pChart/pData.class.php');
 require_once( 'lib/pChart/pChart.class.php');
 
-function pi_chart_menu() 
+function pi_chart_menu()
 {
 	$items['activity/%/chart.png'] = array(
     		'page callback' => 'pi_chart_show_chart_as_png',
@@ -15,7 +15,7 @@ function pi_chart_menu()
 	return $items;
 }
 
-function pi_chart_show_chart_as_png($activity_id, $arg_node_function) 
+function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 {
 	global $user;
 
@@ -51,14 +51,17 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 	$x_axis_labels = array_shift($data);
 
 	$counter = 0;
-	
+
 	$scatter_graph_check = FALSE;
 
-	foreach ($x_axis_labels as $x_axis_label)
+	if(is_array($x_axis_labels))
 	{
-		if (is_numeric($x_axis_label))
+		foreach ($x_axis_labels as $x_axis_label)
 		{
-			$scatter_graph_check = TRUE;
+			if (is_numeric($x_axis_label))
+			{
+				$scatter_graph_check = TRUE;
+			}
 		}
 	}
 
@@ -68,6 +71,9 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 	$chart['width'] = 700;
 	$chart['title'] = t($node->title);
 
+	$x_axis_labels = shorten_x_lables($x_axis_labels, 5);
+	$x_axis_labels = check_x_labels($x_axis_labels);
+	
 	foreach($data as $data_row)
 	{
 		$text_data = FALSE;
@@ -79,13 +85,13 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 				break;
 			}
 		}
-
+		
 		if($text_data === FALSE)
 		{
 			$data_set->AddPoint($data_row, 'Serie_' . $counter );
 			$serie_names['Serie_' . $counter] = array( 	'label' => $header[$counter],
 														'color' => get_color( $counter ) 
-														);
+			);
 
 			$counter++;
 		}
@@ -104,28 +110,64 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 
 	$graph = pi_chart_generate($graph_type, $chart, $data_set, $serie_names, $x_axis_labels);
 	$graph->Render();
-	
+
 	exit;
 }
+
+function shorten_x_lables($x_labels, $length)
+{
+	if(is_array($x_labels))
+	{
+		$array_length = count($x_labels) - 1;
+		for($i=$array_length; $i >= 0; $i-- )
+		{
+			if(strlen($x_labels[$i])>$length)
+			{
+				$x_labels[$i] = substr( $x_labels[$i], 0, $length ). "."; 
+			}
+		}
+	}
+	
+	return $x_labels;
+}
+
+function check_x_labels($x_labels)
+{
+	if(is_array($x_labels))
+	{
+		$array_length = count($x_labels) - 1;
+		for($i=$array_length; $i >= 0; $i-- )
+		{
+			$keys = array_keys($x_labels, $x_labels[$i]);
+			if(count($keys)>1)
+			{
+				$x_labels[$i] = $x_labels[$i] . " (" . (count($keys) - 1) . ")"; 
+			}
+		}
+	}
+	
+	return $x_labels;
+}
+
 
 function get_color( $counter )
 {
 	switch($counter)
 	{
 		case 0:	$color = array( 'red' => 200, 'green' => 0, 'blue' => 0 );
-				break;
+		break;
 		case 1:	$color = array( 'red' => 100, 'green' => 200, 'blue' => 50 );
-				break;
+		break;
 		case 2:	$color = array( 'red' => 200, 'green' => 255, 'blue' => 100 );
-				break;		
+		break;
 	}
-	
+
 	return $color;
 }
 
 function pi_chart_generate( $graph_type, $chart, $data_set, $serie_names, $x_axis_label )
 {
-	
+
 	// Initialise the graph
 	$graph = new pChart( $chart['width'], $chart['height'] );
 	$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',8);
@@ -133,25 +175,26 @@ function pi_chart_generate( $graph_type, $chart, $data_set, $serie_names, $x_axi
 	$graph->drawFilledRoundedRectangle(7,7,693,223,5,240,240,240);
 	$graph->drawRoundedRectangle(5,5,695,225,5,230,230,230);
 	$graph->drawGraphArea(255,255,255,TRUE);
-	
-	
+
 	$data_set->AddPoint($x_axis_label, 'x_label' );
 
 	$counter = 0;
-	
-	foreach($serie_names as $serie => $label_info)
+
+	if(is_array($serie_names))
 	{
-		$data_set->SetSerieName($label_info['label'], $serie);
-		$data_set->AddSerie($serie);
-		$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
-		$counter++;
+		foreach($serie_names as $serie => $label_info)
+		{
+			$data_set->SetSerieName($label_info['label'], $serie);
+			$data_set->AddSerie($serie);
+			$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
+			$counter++;
+		}
 	}
 
 	$data_set->SetAbsciseLabelSerie('x_label');
-	
+
 	$data_set->sort( 'x_label' );
-	
-	
+
 	$graph->drawScale($data_set->GetData(),$data_set->GetDataDescription(),5,0,0,0,TRUE,0,0,TRUE);
 
 	$graph->drawGrid(4,TRUE,230,230,230,50);
@@ -162,32 +205,28 @@ function pi_chart_generate( $graph_type, $chart, $data_set, $serie_names, $x_axi
 
 	// Draw the bar graph
 
-	//print_r( $data_set->GetData() );
-	//print_r( $data_set->GetDataDescription() );
-
-
 	switch( $graph_type )
 	{
 		case 'bar_graph' : 	$graph->drawBarGraph($data_set->GetData(),$data_set->GetDataDescription(),TRUE);
-							$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',10);
-							$counter = 0;
-							foreach($serie_names as $serie => $label_info)
-							{
-								$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
-								$graph->writeValues($data_set->GetData(),$data_set->GetDataDescription(), $serie);
-								$counter++;
-							}
+		$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',10);
+		$counter = 0;
+		foreach($serie_names as $serie => $label_info)
+		{
+			$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
+			$graph->writeValues($data_set->GetData(),$data_set->GetDataDescription(), $serie);
+			$counter++;
+		}
 		break;
 		default:			$graph->drawPlotGraph($data_set->GetData(),$data_set->GetDataDescription(),3,1,0,0,0);
-							$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',10);
-							$counter = 0;
-							foreach($serie_names as $serie => $label_info)
-							{
-								$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
-								$graph->writeValues($data_set->GetData(),$data_set->GetDataDescription(), $serie);
-								$counter++;
-							}
-							
+		$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',10);
+		$counter = 0;
+		foreach($serie_names as $serie => $label_info)
+		{
+			$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
+			$graph->writeValues($data_set->GetData(),$data_set->GetDataDescription(), $serie);
+			$counter++;
+		}
+			
 		break;
 	}
 
