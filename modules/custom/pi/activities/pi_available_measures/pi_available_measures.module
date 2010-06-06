@@ -539,13 +539,12 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
 
     // Use Drupal's default node view.
     $node = node_prepare($node, $teaser);
-
-    if(is_numeric($node_details->activity_id))
+	if(is_numeric($node_details->activity_id))
     {
     	$current_activity = load_activity($node_details->activity_id);
     	if ($current_activity->name)
     	{
-    		drupal_set_title(t($current_activity->name));
+    		drupal_set_title(check_plain($current_activity->name));
     	}
     }
     $filter_nid = find_measure_filter_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
@@ -602,8 +601,10 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
     {
 		$node->content['pi_available_measures_teaser'] = array(
 			'#value' => theme('pi_available_measures_teaser', $node, $measure_parameters_defined),
-			'#weight' => 1
+			'#weight' => 0,
+			'#style' => 'margon-top:2px;'
 		);
+		$node->content['body']['#value'] = '';
     }
     else
     {
@@ -620,8 +621,7 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
 	    );
     	
     }    
-
-  return $node;
+	return $node;
 }
 
 /**
@@ -685,27 +685,48 @@ function theme_pi_available_measures($node, $measures_parameters) {
 function theme_pi_available_measures_teaser($node, $measures_parameters) {
 
 	$output = '';
-	$output .= '<div>';
-	// For the long list of parameters, interate through them and process any exceptions here,
-	// otherwise use a standard format.
-	foreach($measures_parameters as $parameter_type => $parameter)
-	{
-		$print_title = $parameter['title'];
-		switch($parameter_type)
-		{
-			case 'data_type':
-				$print_value = check_plain(ucwords($parameter['value']));
-				break;
-			case 'list_options':
-				$print_value = implode(', ', $parameter['value']);
-				break;
-			default:
-				$print_value = check_plain($parameter['value']);
-		}
-		$output .= "<span><strong>" . check_plain($print_title) . "</strong>:&nbsp;" . $print_value . "  </span>";
-	}
-	$output .= '</div>';
 
+	switch(strtolower($measures_parameters['data_type']['value']))
+	{
+		case 'text':
+			$output .= "<span><strong>" . t('Text') . "</strong></span>";
+			unset($measures_parameters['data_type']);			
+		break;
+		case 'numeric':
+			$output .= "<span><strong>" . t('A number') . "</strong></span>";
+			unset($measures_parameters['data_type']);
+			break;
+		case 'menu':
+			$title = t('Choose from');
+			$value = implode(', ', $measures_parameters['list_options']['value']);
+			$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+			unset($measures_parameters['data_type']);
+			unset($measures_parameters['list_options']);
+		break;
+	}
+	if(isset($measures_parameters['units']))
+	{
+		$title = t('measured in');
+		$value = $measures_parameters['units']['value'];
+		$output .= " <span>$title<strong>&nbsp;" . check_plain($value) . "</strong></span> ";
+		unset($measures_parameters['units']);
+	}
+
+	if(isset($measures_parameters['units_short']))
+	{
+		$value = $measures_parameters['units_short']['value'];
+		$output .= " <span>(" . check_plain($value) . ")</span>";
+		unset($measures_parameters['units_short']);
+	}
+	
+	if(isset($measures_parameters['measurement_device_name']))
+	{
+		$title = t('using');
+		$value = $measures_parameters['measurement_device_name']['value'];
+		$output .= " <span>$title&nbsp;<strong>" . check_plain($value) . "</strong></span>";
+		unset($measures_parameters['measurement_device_name']);
+	}	
+	
 	return $output;
 }
 

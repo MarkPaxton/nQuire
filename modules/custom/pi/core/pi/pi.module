@@ -1311,111 +1311,26 @@ function show_phases($uid) {
 	}
 }
 
-function get_viewable_activity_ids ($inquiry_id, $uid) {
-
-	
+function get_viewable_activity_ids($inquiry_id, $uid) {
 	$query = "SELECT DISTINCT(pi_activity_status.activity_id),pi_phase.weight,pi_stage_phase_activity.position FROM pi_activity_status ";
 	$query .= "LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id ";
 	$query .= "LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id ";
 	$query .= "LEFT JOIN pi_phase ON pi_stage_phase.phase_id = pi_phase.nid ";
 	$query .= "LEFT JOIN pi_activity_actor ON pi_activity_status.activity_id = pi_activity_actor.activity_id ";
 	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-	$query .= "WHERE (pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
+	$query .= "WHERE (pi_activity_status.inquiry_id = %d ";
 	$query .= "AND (pi_activity_status.visible_status = 'view' OR pi_activity_status.visible_status = 'edit')) ";
-	$query .= "AND (og_uid.uid = '" . $uid . "' OR pi_activity_actor.uid = '" . $uid . "') ";
+	$query .= "AND (og_uid.uid = %d OR pi_activity_actor.uid = %uid) ";
 	$query .= "ORDER BY pi_phase.weight,pi_stage_phase_activity.position";
 
-
-	// print $query;
-	$results = db_query($query);
+	// drupal_set_message(sprintf($query, $inquiry_id, $uid, $uid));
+	$results = db_query($query, $inquiry_id, $uid, $uid);
 	$activity_ids = array();
-	
-
-	$hidden_created_activity_types = array('pi_measure_filter');
-	
-	$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
-	
-	while ($item = db_fetch_object($results)) {
-	
-		$loaded_activity = load_activity($item->activity_id);
-	
-
-        //if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
-	
-			$activity_ids[] = $item->activity_id;
-		
-	//};
-	
-	};
-	
-	
+	while ($item = db_fetch_object($results))
+	{
+		$activity_ids[] = $item->activity_id;
+	}
 	return $activity_ids;
-	
-	
-}
-	
-/*
- *activity teaser
- */
-
-function pi_activity_teaser($node, $activity, $link_node_function) {
-	if($link_node_function != 'view') {
-		$output = "<div class='teaser_table_cell'>" . check_plain($activity->description) . "</div>";
-	}
-	else {
-		$output = node_view($node, TRUE, TRUE);
-/*
-	//this was a test just putting content on the phase page without using node_view
-	switch ($activity->node_type)
-		{
-		case 'pi_hypothesis':
-			$output = $node->hypothesis;
-			break;
-		case 'pi_key_questions':
-			$output = $node->body;
-			break;
-		case 'pi_key_answers':
-			$output = $node->body;
-			break;
-		case 'pi_wiki_notes':
-			$output = $node->notes;
-			break;
-		case 'pi_hypothesis_conclusion':
-			$output = $node->conclusion;
-			break;
-		case 'pi_available_measures':
-			$output = $node->body;
-			break;
-		case 'pi_sort_key_questions':
-			$output = 'Here you can change the order of your key questions to put them in the order you will answer them.';
-			break;
-		case 'pi_data':
-			$output_array = array();
-			if (is_array($node->categories)) {
-				foreach($node->categories as $key=>$data) {
-					$output_array[] = "<strong>".$data['#title'].": </strong>".$data['#value'];
-				}
-				$output = implode(" &#8226; ",$output_array);
-			}
-			else {
-				$output = $activity->description;
-			}
-			break;	
-		case 'pi_result_presentations':
-			$graph = result_presentations_teaser_view($node);
-			if ($graph == '') {
-				$output = $activity->description;
-			}
-			else {
-				$output = $graph;
-			}
-			break;
-		default:
-			$output = $activity->description;
-			break;
-		}*/
-	}
-	return $output;
 }
 
 /**

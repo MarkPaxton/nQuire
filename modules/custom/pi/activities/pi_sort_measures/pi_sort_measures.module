@@ -66,15 +66,18 @@ function pi_sort_measures_theme() {
  */
 function pi_sort_measures_form(&$node) {
 	global $user;
-	if (is_numeric($node_details->activity_id))
+	$node_details = get_inquiry_details_from_current_path();
+	
+	$current_activity = NULL;
+	if(is_numeric($node_details->activity_id))
 	{
 		$current_activity = load_activity($node_details->activity_id);
 	}
-	 
-
-	if ($current_activity->name)  	{
+	if ($current_activity->name)
+	{
 		$users_group = get_group_of_type($user->uid, $current_activity->audience,
-		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+						$node_details->inquiry_id, $node_details->stage_id, 
+						$node_details->phase_id, $node_details->activity_id);
 		if($users_group!=false)
 		{
 			$group = node_load($users_group);
@@ -85,7 +88,6 @@ function pi_sort_measures_form(&$node) {
 			$sort_for = $user->name;
 		}
 		$node_title = check_plain(t('Selected measures for ') . $sort_for);
-		drupal_set_title($node_title);
 	}
 	else
 	{
@@ -121,7 +123,9 @@ function pi_sort_measures_form(&$node) {
 	// Get the list of available measures
 	$all_measures = pi_sort_measures_get_options();
 	
-	$categories = array();
+	//$categories = array();
+	$sorted_measures = pi_merge_content_item_lists($selected_measures, $all_measures);
+/*
 	$count = 0;
 	foreach ($all_measures as $key => $category) {
 			
@@ -138,15 +142,16 @@ function pi_sort_measures_form(&$node) {
 	if (count($categories) > 1) {
 		uasort($categories, "my_weight_compare");
 	}
+*/
 	
 	// set $tree to point to the above $form['measures_list'] object
 	$tree = &$form['measures_list'];
 
-	foreach ($categories as $measure_nid => $measure_element)
+	foreach ($sorted_measures as $measure_nid => $measure_element)
 	{
 		//load the measure properly to get the node data from drupal core db, 
 		//rather than from queries used in pi_sort_measures_get_options()
-		$measure = node_load($measure_nid);
+		//$measure = node_load($measure_nid);
 		$region = $measure_element['#status'];
 		
 		$tree[$region][$measure_nid]['title'] = array(
@@ -155,7 +160,7 @@ function pi_sort_measures_form(&$node) {
 
 		$tree[$region][$measure_nid]['weight'] = array(
 			'#type'          => 'weight',
-			'#delta'         => count($categories),
+			'#delta'         => count($sorted_measures),
 			'#default_value' => $measure_element['#weight'],
 		);
 		
@@ -175,16 +180,15 @@ function pi_sort_measures_form(&$node) {
  */
 function pi_sort_measures_insert($node) {
 	$details  = get_inquiry_details_from_current_path();
-	while ($region = current($node->measures_list)) {
-		foreach ($region as $nid => $measure) {
-			$query = "INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . $nid . "', '" . $measure['status'] . "', '" . $measure['weight'] . "')";
-			//echo $query . "\n<br>";
-			db_query($query);
-			pi_activity_update_weight_from_node($nid, $measure['weight']);
+	foreach($node->measures_list as $region)
+	{
+		foreach ($region as $nid => $measure)
+		{
+			$query = "INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
+			db_query($query, $node->nid, $node->vid, $nid, $measure['status'], $measure['weight']);
+			pi_activity_update_weight_from_node($nid, $measure['weight'], $details);
 		}
-		next($node->measures_list);
 	}
-	reset($node->measures_list);
 }
 
 /**
@@ -251,65 +255,50 @@ function pi_sort_measures_view($node, $teaser, $page = FALSE) {
  */
 function theme_pi_sort_measures($node, $teaser) {
 	global $user;
-	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
-	if (is_numeric($details->activity_id)) {
-		$current_activity = load_activity($details->activity_id);
-	}
-	 
-	if ($current_activity->name) {
-		drupal_set_title(t($current_activity->name));
-	}
-	 
-	$output = "";
 	
-		//Link to add a new key question
-		//cannot get activity id from $details when viewing a list of activity teasers
-		$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
-		$output .= make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);
+	$output = '';
+	
+	//Link to add a new key question
+	//cannot get activity id from $details when viewing a list of activity teasers
+	$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+	$output .= make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);
 
-    if (is_array($node->measures_list)) {
+    if (is_array($node->measures_list))
+    {
 		$regions = array('key','selected','none');
-		foreach($regions as $region) {
-			$header = array(
-				t( get_region_label($region) )
-			);
+		foreach($regions as $region)
+		{
+			$output .= '<h3>' . get_region_label($region) . '</h3>';
 			$rows = array();
-			foreach($node->measures_list as $nid => $measure) {
+			foreach($node->measures_list as $nid => $measure)
+			{
 				$row_activity_id = get_activity_id_for_nid($nid);
-				
-				if ($row_activity_id && ($measure['#status'] == $region)) {
-				    $row = array();				    
+				if ($row_activity_id && ($measure['#status'] == $region))
+				{
 				    $loaded_activity = load_activity($row_activity_id);
 				    $loaded_node = node_load($nid);
-				    //$rows[] = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
-				    $activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
+				    $activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $user->uid);
 				    $activity_teaser = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
 				    
-				    $rows[] = $activity_link['data'] . $activity_teaser;
-		        };
+				    $rows[] = '<h4 style="float:left;padding-right:6px;">' . $activity_link['data'] . '</h4>' .
+				    			'<div style="float:left;padding-top:3px;padding-left:3px;">' . $activity_teaser . '</div>' .
+				    			'<div style="clear:both;"></div>';
+		        }
 			}
 			
-		  	if(count($rows) == 0) {
+		  	if(count($rows) == 0)
+		  	{
 		  		$rows[] = array( get_empty_region_label($region) );
 			}
-			
-    		// $sentence = format_plural(count($rows), 'Your key question is:', 'Your key questions are:');
-    		$output .= '<div><strong>' . get_region_label($region) . '</strong></div>';
-    		$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
-    		
-			// $output .=  theme('table', $header, $rows);
-			
+    		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
 		}
     }
-		
 	return $output;
 }
 
 function get_region_label($region) {
-
 	$labels = array( 'key' => 'Key measures' ,'selected' => 'Selected measures' ,'none' => 'Not used' );
-
 	return $labels[$region];
 }
 
