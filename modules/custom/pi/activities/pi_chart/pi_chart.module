@@ -71,8 +71,8 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 	$chart['width'] = 700;
 	$chart['title'] = t($node->title);
 
-	$x_axis_labels = shorten_x_lables($x_axis_labels, 5);
-	$x_axis_labels = check_x_labels($x_axis_labels);
+	$x_axis_labels = shorten_lables($x_axis_labels, 5);
+	$x_axis_labels = check_labels($x_axis_labels);
 	
 	foreach($data as $data_row)
 	{
@@ -114,39 +114,53 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 	exit;
 }
 
-function shorten_x_lables($x_labels, $length)
+function shorten_lables($labels, $length)
 {
-	if(is_array($x_labels))
+	if(is_array($labels))
 	{
-		$array_length = count($x_labels) - 1;
+		$array_length = count($labels) - 1;
 		for($i=$array_length; $i >= 0; $i-- )
 		{
-			if(strlen($x_labels[$i])>$length)
+			if(strlen($labels[$i])>$length)
 			{
-				$x_labels[$i] = substr( $x_labels[$i], 0, $length ). "."; 
+				$labels[$i] = substr( $labels[$i], 0, $length ). "."; 
 			}
 		}
 	}
 	
-	return $x_labels;
+	return $labels;
 }
 
-function check_x_labels($x_labels)
+function check_labels($labels)
 {
-	if(is_array($x_labels))
+	if(is_array($labels))
 	{
-		$array_length = count($x_labels) - 1;
+		$array_length = count($labels) - 1;
 		for($i=$array_length; $i >= 0; $i-- )
 		{
-			$keys = array_keys($x_labels, $x_labels[$i]);
+			$keys = array_keys($labels, $labels[$i]);
 			if(count($keys)>1)
 			{
-				$x_labels[$i] = $x_labels[$i] . " (" . (count($keys) - 1) . ")"; 
+				$renamed_labels[] = $labels[$i];
+				$labels[$i] = $labels[$i] . " (" . (count($keys) ) . ")";
 			}
 		}
 	}
 	
-	return $x_labels;
+	if(is_array($renamed_labels))
+	{
+		foreach( $renamed_labels as $renamed_label )
+		{
+			$key = array_search($renamed_label, $labels);
+			
+			if($key !== FALSE && $key !== NULL)
+			{
+				$labels[$key] = $labels[$key] . " (1)";
+			}
+		}
+	}
+	
+	return $labels;
 }
 
 
