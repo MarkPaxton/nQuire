@@ -346,8 +346,9 @@ function theme_pi_result_presentations($node,$teaser) {
 
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-	if(!$teaser) {
-
+	
+	if(!$teaser) 
+	{
 		drupal_set_title(t($node->title));
 	}
 
@@ -362,12 +363,15 @@ function theme_pi_result_presentations($node,$teaser) {
 
 	$output = "";
 
-	if(!$teaser) {
-		if (isset($node->key_question_id) AND ($node->key_question_id > 0)) {
+	if(!$teaser) 
+	{
+		if (isset($node->key_question_id) AND ($node->key_question_id > 0)) 
+		{
 			$loaded_key_question = node_load($node->key_question_id);
 			$output .= "<p><strong>Key question:</strong> " . check_plain($loaded_key_question->title) . "</p>";
-		};
+		}
 	}
+	
 	$selected_measures = "";
 	$delim = "";
 
@@ -392,7 +396,6 @@ function theme_pi_result_presentations($node,$teaser) {
 		$table_output .= theme('table', $header, $rows);
 	}
 
-
 	$data = spin_array($rows);
 
 	$x_axis_labels_heading = array_shift($header);
@@ -404,17 +407,19 @@ function theme_pi_result_presentations($node,$teaser) {
 	$colour_array = Gradient("FF0000", "0000FF", count($x_axis_labels)-1);
 
 	$scatter_graph_check = 0;
-	foreach ($x_axis_labels as $x_axis_label) {
-		if (is_numeric($x_axis_label)) {
+	foreach ($x_axis_labels as $x_axis_label) 
+	{
+		if (is_numeric($x_axis_label)) 
+		{
 			$scatter_graph_check = 1;
-		};
-	};
+		}
+	}
 
 	// now make the chart
-	if ($scatter_graph_check) {
-
-		foreach($data as $data_row) {
-
+	if ($scatter_graph_check) 
+	{
+		foreach($data as $data_row) 
+		{
 			unset($chart);
 
 			$chart = array(
@@ -429,14 +434,16 @@ function theme_pi_result_presentations($node,$teaser) {
 			$chart['#data'][] = $x_axis_labels;
 
 			$text_data = 0;
-			foreach ($data_row as $data_item) {
-				if (!(is_numeric($data_item))) {
+			foreach ($data_row as $data_item) 
+			{
+				if (!(is_numeric($data_item))) 
+				{
 					$text_data = 1;
-				};
-			};
+				}			
+			}
 
-			if ($text_data == 0) {
-					
+			if ($text_data == 0) 
+			{		
 				// add data sets to chart
 				$chart['#data'][] = $data_row;
 
@@ -447,13 +454,15 @@ function theme_pi_result_presentations($node,$teaser) {
 				$chart['#data_colors'][] = $colour_array[$counter];
 					
 				// record minimum data value
-				if (min($data_row) < $min_y_value) {
+				if (min($data_row) < $min_y_value) 
+				{
 					$min_y_value = min($data_row);
-				};
+				}
 				// record maximum data value
-				if (max($data_row) > $max_y_value) {
+				if (max($data_row) > $max_y_value) 
+				{
 					$max_y_value = max($data_row);
-				};
+				}
 
 				// y axis - heading and max value
 				$chart['#mixed_axis_labels'][CHART_AXIS_Y_LEFT][0][] = chart_mixed_axis_range_label(0, $max_y_value);
@@ -465,20 +474,15 @@ function theme_pi_result_presentations($node,$teaser) {
 				$chart['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][1][] = chart_mixed_axis_label(t($x_axis_labels_heading), 50);
 					
 				// render chart
-				$output .= chart_render($chart);
-				$output .= t('<p> </p>');
-
-				if(function_exists('pi_chart_show_chart_as_png'))
+				if(!function_exists('pi_chart_show_chart_as_png'))
 				{
-					$output .= "<p><img src='?q=activity/" . $chart_activity_id . "/chart.png'></p>";
+					$output .= chart_render($chart);
+					$output .= t('<p> </p>');
 				}
 
 				$counter++;
-
-			};
-
-		};
-
+			}
+		}
 	}
 	else
 	{
@@ -491,7 +495,7 @@ function theme_pi_result_presentations($node,$teaser) {
 		);
 
 		foreach($data as $data_row)
-		{	
+		{
 			$text_data = 0;
 			foreach ($data_row as $data_item)
 			{
@@ -522,7 +526,6 @@ function theme_pi_result_presentations($node,$teaser) {
 				}
 
 				$counter++;
-
 			}
 		}
 
@@ -532,32 +535,34 @@ function theme_pi_result_presentations($node,$teaser) {
 
 		// x axis - heading and values
 		$chart_1['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][2][] = chart_mixed_axis_label(t($x_axis_labels_heading), 50);
-		foreach ($x_axis_labels as $x_axis_label) {
-			$chart_1['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][1][] = chart_mixed_axis_label(t(substr($x_axis_label, 0, 3)));
-		};
-
-		// render chart
-		$output .= chart_render($chart_1);
-
-		if(function_exists('pi_chart_show_chart_as_png'))
+		foreach ($x_axis_labels as $x_axis_label) 
 		{
-			$output .= "<p><img src='?q=activity/" . $chart_activity_id . "/chart.png'></p>";
+			$chart_1['#mixed_axis_labels'][CHART_AXIS_X_BOTTOM][1][] = chart_mixed_axis_label(t(substr($x_axis_label, 0, 3)));
 		}
 
-	};
+		// render chart
+		if(!function_exists('pi_chart_show_chart_as_png'))
+		{
+			$output .= chart_render($chart_1);
+		}
+	}
 
+	if(function_exists('pi_chart_show_chart_as_png'))
+	{
+		$output .= "<p><img src='?q=activity/" . $chart_activity_id . "/chart.png'></p>";
+	}
 
-	if(!$teaser) {
+	if(!$teaser) 
+	{
 		$output .= $table_output;
 	}
 
-
-	if(!$teaser) {
+	if(!$teaser) 
+	{
 		$output  .= '<p>' . l('Download (csv) data file', 'export/' . $details->activity_id . '/csv') . '</p>';
 	}
 
 	return $output;
-
 }
 
 function spin_array ($data_array) {
