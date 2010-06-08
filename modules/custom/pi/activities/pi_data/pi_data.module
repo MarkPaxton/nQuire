@@ -518,6 +518,8 @@ function pi_data_return_results($node) {
  */
 function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
 	global $user;
+	$details = get_inquiry_details_from_current_path();
+
 	// Use Drupal's default node view.
 	$node = node_prepare($node, $teaser);
 
@@ -526,7 +528,6 @@ function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
             '#weight' => 2
 	);
 
-	$details = get_inquiry_details_from_current_path();
 	// This is actually of type "pi_sort_measures"
 	$selected_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
 
@@ -605,18 +606,9 @@ function theme_pi_data_node_form($form) {
 	return $output;
 }
 
-function theme_pi_data($node,$teaser) {
+function theme_pi_data($node, $teaser) {
 	$output = '';
-	$details = get_inquiry_details_from_current_path();
-	if (is_numeric($details->activity_id))
-	{
-		$current_activity = load_activity($details->activity_id);
-	}
-
-	if ($current_activity->name)
-	{
-		drupal_set_title(check_plain($current_activity->name));
-	}
+	return $output;
 }
 
 /**
@@ -651,6 +643,7 @@ function theme_pi_data_measure($measure, $measure_type, $measure_value, $teaser)
 		switch($measure_type->field_type)
 		{
 			case 'upload-file':
+				//pi_debug_message($measure_value);
 				if($teaser) {
 					$output .= "<strong>" . check_plain($measure_type->title) . ":&nbsp;</strong>";
 					$output .= "<a href='" . file_download_path($measure_value) . "'>" . t("Download") . "</a>&nbsp;";				
@@ -662,7 +655,7 @@ function theme_pi_data_measure($measure, $measure_type, $measure_value, $teaser)
 				break;
 			case 'upload-image':
 				$image_node = node_load($measure_value);
-				pi_debug_message($measure_value);
+				//pi_debug_message($measure_value);
 				if($image_node->type == 'image')
 				{
 					if($teaser)

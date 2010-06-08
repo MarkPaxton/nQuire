@@ -553,7 +553,7 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
     	$filter_node = node_load($filter_nid);
     }
     
-    // Load the measaure data into a list, to save time stick them in a master list:
+    // Load the measure data into a list, to save time stick them in a master list:
     // "switch" method", "value" method and text description
     $measure_parameters_switch_values_and_description_list = array(
     	array('symbol_test', 'symbol', 'Symbol / short-name'),
@@ -584,18 +584,27 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
     					$processed_value = ucwords($node->$value);
     					break;
     				case 'list_options':
-    					$processed_value = explode("\n", $node->$value);
+    					$raw_values = explode("\n", $node->$value);
+    					$processed_value = array();
+    					foreach($raw_values as $raw_value)
+    					{
+    						$processed_value[] = trim($raw_value);
+    					}
     					break;
     				default:
     					$processed_value = $node->$value;
     			}
     			$measure_parameters_defined[$value] = array(
-	    		'title' => $description,
-    			'value' => $processed_value
+		    		'title' => $description,
+	    			'value' => $processed_value
     			);
     		}
     	}
     }
+    $measure_parameters_defined['field_type'] = array(
+		'title' => t('Field type'),
+	    'value' => $node->field_type
+    );
 
     if($teaser)
     {
@@ -654,7 +663,8 @@ function theme_pi_available_measures($node, $measures_parameters) {
 
 	$output = '';
 	
-	// For the long list of parameters, interate through them and process any exceptions here,
+	unset($measures_parameters['field_type']);
+	// For the long list of parameters, iterate through them and process any exceptions here,
 	// otherwise use a standard format.
 	foreach($measures_parameters as $parameter_type => $parameter)
 	{
@@ -678,7 +688,7 @@ function theme_pi_available_measures($node, $measures_parameters) {
 /**
  * Theme function for pi_acailale_measures
  * @param object(node->pi_available_measures) $node
- * @param bool $teaser whethere to render teaser or full view
+ * @param bool $teaser weather to render teaser or full view
  * @param array $measures_parameters array of parameter name, value and description to show
  * @return string HTML output
  */
@@ -686,23 +696,46 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 
 	$output = '';
 
-	switch(strtolower($measures_parameters['data_type']['value']))
+	switch ($measures_parameters['field_type']['value'])
 	{
-		case 'text':
-			$output .= "<span><strong>" . t('Text') . "</strong></span>";
-			unset($measures_parameters['data_type']);			
-		break;
-		case 'numeric':
-			$output .= "<span><strong>" . t('A number') . "</strong></span>";
+		case 'upload-file':
+			$output .= "<span><strong>" . t('Upload a file') . "</strong></span>";
 			unset($measures_parameters['data_type']);
 			break;
-		case 'menu':
-			$title = t('Choose from');
-			$value = implode(', ', $measures_parameters['list_options']['value']);
-			$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+			case 'upload-image':
+			$output .= "<span><strong>" . t('Upload an image') . "</strong></span>";
 			unset($measures_parameters['data_type']);
-			unset($measures_parameters['list_options']);
-		break;
+			break;
+	}
+	unset($measures_parameters['field_type']);
+	if(array_key_exists('data_type', $measures_parameters))
+	{
+		switch(strtolower($measures_parameters['data_type']['value']))
+		{
+			case 'text':
+				switch ($measures_parameters['field_type'])
+				{
+					case 'upload-file':
+					case 'upload-image':
+						$output .= "<span><strong>" . t('Upload') . "</strong></span>";
+						break;
+					default:
+						$output .= "<span><strong>" . t('Text') . "</strong></span>";
+				}
+				unset($measures_parameters['data_type']);			
+			break;
+			case 'numeric':
+				$output .= "<span><strong>" . t('A number') . "</strong></span>";
+				unset($measures_parameters['data_type']);
+				break;
+			case 'menu':
+				$title = t('Choose from');
+				$value = implode(', ', $measures_parameters['list_options']['value']);
+				$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+				unset($measures_parameters['data_type']);
+				unset($measures_parameters['list_options']);
+			break;
+		}
 	}
 	if(isset($measures_parameters['units']))
 	{

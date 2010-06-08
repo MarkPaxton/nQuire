@@ -57,6 +57,8 @@ function pi_sort_data_theme() {
 function pi_sort_data_form(&$node) {
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
+	
+	$current_activity = NULL;	
 	if (is_numeric($node_details->activity_id))
 	{
 		$current_activity = load_activity($node_details->activity_id);
@@ -65,7 +67,8 @@ function pi_sort_data_form(&$node) {
 	if ($current_activity->name)
 	{
 		$users_group = get_group_of_type($user->uid, $current_activity->audience,
-		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+					$node_details->inquiry_id, $node_details->stage_id, 
+					$node_details->phase_id, $node_details->activity_id);
 		if($users_group!=false)
 		{
 			$group = node_load($users_group);
@@ -76,7 +79,6 @@ function pi_sort_data_form(&$node) {
 			$sort_for = $user->name;
 		}
 		$node_title = check_plain(t('Data for ') . $sort_for);
-		drupal_set_title($node_title);
 	}
 	else
 	{
@@ -86,7 +88,11 @@ function pi_sort_data_form(&$node) {
 	 
 	// Build the form
 	$form = array();
-
+	if($current_activity->description)
+	{
+		$form['#prefix'] = $current_activity->description;
+	}
+		
 	$form['title'] = array (
         '#type' => 'hidden',
         '#value' => $node_title,
@@ -97,41 +103,51 @@ function pi_sort_data_form(&$node) {
         '#tree'   => TRUE,
 	);
 
-	// Add the categories of existing nodes and the options list for new nodes
-	if(isset($node->nid)) {
-		$node_categories = $node->categories;
+	// Add the sorted data for this node and the unsorted ones to the end
+	if(isset($node->nid))
+	{
+		$sorted_collected_data = $node->categories;
 	}
-	else {
-		$node_categories = array();
+	else
+	{
+		$sorted_collected_data = array();
 	}
 
-	$option_categories = pi_sort_data_get_options();
+	$all_collected_data = pi_sort_data_get_options();
 	
-	$categories = pi_merge_content_item_lists($node_categories, $option_categories);
+	$data_to_show = pi_merge_content_item_lists($sorted_collected_data, $all_collected_data);
 	
 	// set $tree to point to the above $form['onepageprofile_categories'] object
 	$tree = &$form['onepageprofile_categories'];
-	foreach ($categories as $key => $category)
+	foreach($data_to_show as $data_nid => $data_item)
 	{
-		$measure = node_load($key);
-		$new_title = $category['#title'];
-		if (strlen($category['#title']) > 3)
+		// if data item doesn't exist anymore, the don't add it to the form!
+		$data_item_node = node_load($data_nid);
+		if($data_item_node)
 		{
-			if (substr($category['#title'], 0, 3) == 'D: ')
+			$new_title = $data_item['#title'];
+			if (strlen($data_item['#title']) > 3)
 			{
-				$new_title = substr($category['#title'], 3);
+				if (substr($data_item['#title'], 0, 3) == 'D: ')
+				{
+					$new_title = substr(trim($data_item['#title']), 3);
+				}
 			}
+			// add $tree entries for current category (i.e. $key)
+			$tree[$data_nid]['title'] = array(
+	            '#value' => check_plain($new_title),
+			);
+			
+			$tree[$data_nid]['description'] = array(
+				'#value' => node_view($data_item_node, TRUE, TRUE),
+			);
+			
+			$tree[$data_nid]['weight'] = array(
+	            '#type'          => 'weight',
+	            '#delta'         =>count($data_to_show),
+	            '#default_value' => $data_to_show[$data_nid]['#weight'],
+			);
 		}
-		// add $tree entries for current category (i.e. $key)
-		$tree[$key]['title'] = array(
-            '#value' => t($new_title),
-		);
-
-		$tree[$key]['weight'] = array(
-            '#type'          => 'weight',
-            '#delta'         => max(10, count($categories)),
-            '#default_value' => $node_categories[$key]['#weight'],
-		);
 	}
 	return $form;
 }
@@ -141,7 +157,7 @@ function pi_sort_data_insert($node) {
 	{
 		db_query("INSERT INTO pi_sort_data (nid, vid, data, weight) VALUES (%d, %d, '%s', %d)",
 			$node->nid, $node->vid, $key, $measure['weight']);
-		pi_activity_update_activity_weight_from_node($key, $measure['weight']);
+		pi_activity_update_weight_from_node($key, $measure['weight']);
 	}
 }
 
@@ -212,7 +228,7 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 		//cannot get activity id from $node_details when viewing a list of activity teasers
 		$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
 		$link_output = make_add_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $activity_id_for_this_node, $user->uid);
-		$node->content['pi_sort_key_questions_add_key_question_link'] =  array(
+		$node->content['pi_sort_data_add_link'] =  array(
             '#value' =>$link_output,
             '#weight' => -3
 		);
@@ -274,25 +290,16 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
  * Theme for sort data form
  */
 function theme_pi_sort_data_node_form($form) {
-	global $user;
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
-	if (is_numeric($details->activity_id)) {
-		$current_activity = load_activity($details->activity_id);
-	}
-	 
-	if ($current_activity->name) {
-		drupal_set_title(t($current_activity->name));
-	}
-
+	$output = '';
+	
 	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
 
-	// Header
+/*	// Header
 	$header = array(
-	t('Data'),
-	t('Weight')
+		t('Data'),
+		t('Weight')
 	);
-
+*/
 	// Rows for the tabledrag
 	$rows = array();
 
@@ -301,26 +308,44 @@ function theme_pi_sort_data_node_form($form) {
 		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
 
 		$row = array();
-		$row[] = drupal_render($tree[$key]['title']);
+		$tree[$key]['title']['#prefix'] = '<span style="white-space:nowrap;font-size:130%;font-weight:bold;margin-right:15px;">';
+		$tree[$key]['title']['#suffix'] =  '</span>';
+		
+		$tree[$key]['description']['#prefix'] = '<span style="font-size:90%;">';
+		$tree[$key]['description']['#suffix'] = '</span>';
+		
+		$modified_description = str_replace(array('<div', '</div', 'class="submitted"'), 
+			array('<span', '</span', 'class="submitted" style="display:none"'),  
+		$tree[$key]['description']['#value']);
+		$tree[$key]['description']['#value'] = $modified_description;
+
+		$row[] = array('data' => drupal_render($tree[$key]['title']), 
+					'style' => 'white-space:nowrap;'
+			);
+		$row[] = drupal_render($tree[$key]['description']);
 		$row[] = drupal_render($tree[$key]['weight']);
 
 		$rows[] = array('data' => $row, 'class' => 'draggable');
 	}
 
 	// Build the output
-	if ($current_activity->description) {
-		$output  .= '<p>' . t($current_activity->description) . '</p>';
+	if ($current_activity->description)
+	{
+		$output  .= '<p>' . $current_activity->description . '</p>';
 	}
-	else {
+	else
+	{
 		$output  .= '<p>' . t('Order your data.') . '</p>';
 	}
 
-	if (count($rows) > 0) {
-		$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
-		$output .= drupal_render($form);
-	}
-	else {
+	if (count($rows) == 0)
+	{
 		$output .= "<p>No data is available.</p>";
+	}
+	else
+	{
+		$output .= theme('table', NULL, $rows, array('id' => 'onepageprofile-categories'));
+		$output .= drupal_render($form);
 	}
 	return $output;
 }
@@ -329,23 +354,20 @@ function theme_pi_sort_data_node_form($form) {
  * Load the user edit form and grab all of the fieldsets
  */
 function pi_sort_data_get_choice($node) {
-
-	global $user;
 	$categories = array();
-
-	$result = db_query("SELECT * FROM pi_sort_data WHERE pi_sort_data.nid = '" . $node->nid . "' AND pi_sort_data.vid = '" . $node->vid . "'");
-
-	while ($row = db_fetch_object($result)) {
+	$result = db_query("SELECT * FROM {pi_sort_data} WHERE " .
+		"pi_sort_data.nid = %d " .
+		"AND pi_sort_data.vid = %d " .
+		"ORDER BY weight ASC", $node->nid, $node->vid );
+	while ($row = db_fetch_object($result))
+	{
 		$activity_id = get_activity_id_for_nid($row->data);
 		$activity = load_activity($activity_id);
 		$categories[$row->data] = array(
-            '#weight' => $row->weight,
-            '#title'  => t($activity->name)
+            '#weight' => count($categories),
+            '#title'  => check_plain($activity->name)
 		);
 	}
-
-	uasort($categories, "my_weight_compare");
-
 	return $categories;
 }
 
@@ -356,16 +378,24 @@ function pi_sort_data_get_choice($node) {
 function pi_sort_data_get_options() {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
+
+	//	$result = db_query("SELECT DISTINCT node.nid FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  node.nid WHERE TYPE = 'pi_data' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $user->uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ORDER BY nid ASC");
+	$query = "SELECT DISTINCT node.nid FROM {node} " .
+		"LEFT JOIN {node_access} ON node.nid = node_access.nid " .
+		"LEFT JOIN {og_uid} ON node_access.gid = og_uid.nid " .
+		"LEFT JOIN {pi_activity_node} ON pi_activity_node.nid =  node.nid  " .
+		"WHERE TYPE = 'pi_data'  AND pi_activity_node.inquiry_id = %d " .
+		"AND STATUS = '1' AND ((node.uid = %d) OR (og_uid.uid = %d) )";
+	$result = db_query($query, $details->inquiry_id, $user->uid, $user->uid);
+
 	$categories = array();
-
-	$result = db_query("SELECT DISTINCT node.nid FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  node.nid WHERE TYPE = 'pi_data' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $user->uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ORDER BY nid ASC");
-
-	while ($row = db_fetch_object($result)) {
+	while ($row = db_fetch_object($result))
+	{
 		$activity_id = get_activity_id_for_nid($row->nid);
 		$activity = load_activity($activity_id);
 		$categories[$row->nid] = array(
-				'#weight' => 1,
-				'#title'  => t($activity->name)
+			'#weight' => 1,
+			'#title'  => check_plain($activity->name)
 		);
 	}
 	return $categories;

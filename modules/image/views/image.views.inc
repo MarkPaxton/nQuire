@@ -1,5 +1,5 @@
 <?php
-// $Id: image.views.inc,v 1.2 2009/05/01 22:29:47 sun Exp $
+// $Id: image.views.inc,v 1.4 2009/08/27 12:10:57 joachim Exp $
 
 /**
  * @file
@@ -118,6 +118,11 @@ function image_views_data_alter(&$data) {
       'help' => t('The rendered image of an Image node, shown at a chosen size. This field can be added without a relationship.'),
       'handler' => 'image_handler_field_image_node_image',
     ),
+    'argument' => array(
+      'title' => t('Image size'),
+      'help' => t('Allows the size of the Image node image field to be set with the argument.'),
+      'handler' => 'image_handler_argument_image_node_image_size',
+    ),
   );
 }
 
@@ -139,6 +144,9 @@ function image_views_handlers() {
       'image_handler_argument_image_size' => array(
         'parent' => 'views_handler_argument_string',
       ),
+      'image_handler_argument_image_node_image_size' => array(
+        'parent' => 'views_handler_argument_string',
+      ),
       'image_handler_filter_image_size' => array(
         'parent' => 'views_handler_filter_in_operator',
       ),
@@ -154,12 +162,37 @@ function image_views_handlers() {
  */
 function image_views_plugins() {
   return array(
-    'module' => 'views', // This just tells our themes are elsewhere.
+    'style' => array(
+      /**
+       * A fluid grid view style for gallery items.
+       */
+      'image_gallery' => array(
+        'title'  => 'Gallery',
+        'help' => t('Displays items in a fluid grid.'),
+        'parent' => 'list',
+        'handler' => 'views_plugin_style_list',
+        'theme path' => drupal_get_path('module', 'image') . '/views/theme',
+        'theme file' => 'theme.inc',
+        'theme' => 'image_view_image_gallery',
+        'uses row plugin' => TRUE,
+        'uses options' => TRUE,
+        'type' => 'normal',
+        'help topic' => 'style-list',
+      ),
+    ),
     'argument validator' => array(
       'image_size' => array(
         'title' => t('Image size'),
         'handler' => 'image_plugin_argument_validate_image_size',
         'path' => drupal_get_path('module', 'image') . '/views',
+      ),
+    ),
+    'argument default' => array(
+      'image_size' => array(
+        'title' => t('Image size'),
+        'handler' => 'image_plugin_argument_default_image_size',
+        'path' => drupal_get_path('module', 'image') . '/views',
+        'parent' => 'fixed', // so that the parent class is included
       ),
     ),
   );

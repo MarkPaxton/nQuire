@@ -91,6 +91,7 @@ function pi_sort_measures_form(&$node) {
 			$sort_for = $user->name;
 		}
 		$node_title = check_plain(t('Selected measures for ') . $sort_for);
+		
 	}
 	else
 	{
@@ -100,6 +101,10 @@ function pi_sort_measures_form(&$node) {
 
 	// Build the form
 	$form = array();
+	if($current_activity->description)
+	{
+		$form['#prefix'] = $current_activity->description;
+	}
 
 	$type = node_get_types('type', $node);
 	$form['title'] = array (
@@ -136,28 +141,32 @@ function pi_sort_measures_form(&$node) {
 	{
 		//load the measure properly to get the node data from drupal core db, 
 		//rather than from queries used in pi_sort_measures_get_options()
+		// if it doesn't exist and more then don't add it to the form!
 		$measure = node_load($measure_nid);
-		$region = $measure_element['#status'];
-		
-		$tree[$region][$measure_nid]['title'] = array(
-			'#value' => check_plain($measure_element['#title']),
-		);
-		
-		$tree[$region][$measure_nid]['description'] = array(
-			'#value' => node_view($measure, TRUE, TRUE),
-		);
-
-		$tree[$region][$measure_nid]['weight'] = array(
-			'#type'          => 'weight',
-			'#delta'         => count($sorted_measures),
-			'#default_value' => $measure_element['#weight'],
-		);
-		
-		$tree[$region][$measure_nid]['status'] = array(
-			'#type'          => 'select',
-			'#default_value' => $measure_element['#status'],
-			'#options' => array('none' => 'none', 'key' => 'key', 'selected' => 'selected'),
-		);
+		if($measure)
+		{
+			$region = $measure_element['#status'];
+			
+			$tree[$region][$measure_nid]['title'] = array(
+				'#value' => check_plain($measure_element['#title']),
+			);
+			
+			$tree[$region][$measure_nid]['description'] = array(
+				'#value' => node_view($measure, TRUE, TRUE),
+			);
+	
+			$tree[$region][$measure_nid]['weight'] = array(
+				'#type'          => 'weight',
+				'#delta'         => count($sorted_measures),
+				'#default_value' => $measure_element['#weight'],
+			);
+			
+			$tree[$region][$measure_nid]['status'] = array(
+				'#type'          => 'select',
+				'#default_value' => $measure_element['#status'],
+				'#options' => array('none' => 'none', 'key' => 'key', 'selected' => 'selected'),
+			);
+		}
 	}
 	return $form;
 }
@@ -211,9 +220,21 @@ function pi_sort_measures_delete(&$node) {
  */
 function pi_sort_measures_load($node) {
     $result = new stdClass;
-    $result->measures_list = pi_sort_measures_get_choice($node);
-    // $result->categories = &$result->measures_list;
-    $result->categories = pi_sort_measures_get_choice($node);
+
+    $selected_measures = pi_sort_measures_get_choice($node);
+    $all_measures = pi_sort_measures_get_options();
+	
+	// Add in any new measures as none selected 
+	// new measures wont exist in the selection
+	foreach($all_measures as $measure_to_check_nid => $measure_to_check)
+	{
+		if(!array_key_exists($measure_to_check_nid, $selected_measures))
+		{
+			$selected_measures[$measure_to_check_nid] = $measure_to_check;
+		}
+	}
+	$node->measures_list = $selected_measures;
+	
     return $result;
 }
 
@@ -225,15 +246,17 @@ function pi_sort_measures_load($node) {
  * @return unknown_type
  */
 function pi_sort_measures_view($node, $teaser, $page = FALSE) {
+	global $user;
+	$details = get_inquiry_details_from_current_path();
 
-        $node = node_prepare($node, $teaser);
+	$node = node_prepare($node, $teaser);
 
-        $node->content['pi_sort_measures'] = array(
+	$node->content['pi_sort_measures'] = array(
             '#value' => theme('pi_sort_measures', $node, $teaser),
             '#weight' => 2
-        );
+	);
 
-    return $node;
+	return $node;
 }
 
 /**
@@ -335,10 +358,7 @@ function pi_sort_measures_get_empty_region_label($region) {
  * @return unknown_type
  */
 function theme_pi_sort_measures_node_form($form) {
-	global $user;
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
-
+	$output = '';
 	/*
 	$regions = array('none', 'key', 'selected');
 	foreach ($regions as $region) {
@@ -380,22 +400,25 @@ function theme_pi_sort_measures_node_form($form) {
 	
 	// Build the output
 	$activity = load_activity($details->activity_id);
-	if ($activity->description) {
+	if ($activity->description)
+	{
 		$output  .= '<p>' . $activity->description . '</p>';
 	}
-	else {
+	else 
+	{
 		$output  .= '<p>' . t('Choose which measures you will use.') . '</p>';
 	}
 	
-	if(count($rows) > 0) {
+	if(count($rows) == 0)
+	{
+		$output .= "No measures available";
+	}
+	else
+	{
 		// $output .= theme('table', $header, $rows, array('id' => 'measures_list'));
 		$output .= pi_sort_measures_display_table($header, $rows, array('id' => 'measures_list'));
 		$output .= drupal_render($form);
 	}
-	else {
-		$output .= "No measures available";
-	}
-
 	return $output;
 }
 
@@ -512,13 +535,13 @@ function pi_sort_measures_get_options() {
     $measures = array();
     
     $result = db_query("SELECT DISTINCT node.nid FROM node " .
-    	"LEFT JOIN node_access ON node.nid = node_access.nid " . 
-    	"LEFT JOIN og_uid ON node_access.gid = og_uid.nid " . 
-    	"LEFT JOIN pi_activity_node ON pi_activity_node.nid = node.nid " .
-    	"WHERE type = 'pi_available_measures' AND pi_activity_node.inquiry_id = %d" .
-    		" AND STATUS = '1' AND (node_access.realm = 'all' " .
-    		"OR og_uid.uid = %d) " .
-    	"ORDER BY nid ASC", $details->inquiry_id, $user->uid);
+	    	"LEFT JOIN node_access ON node.nid = node_access.nid " . 
+	    	"LEFT JOIN og_uid ON node_access.gid = og_uid.nid " . 
+	    	"LEFT JOIN pi_activity_node ON pi_activity_node.nid = node.nid " .
+	    	"WHERE type = 'pi_available_measures' AND pi_activity_node.inquiry_id = %d" .
+	   		" AND STATUS = '1' AND (node_access.realm = 'all' " .
+	   		"OR og_uid.uid = %d)",
+     	$details->inquiry_id, $user->uid);
 		 
     while ($row = db_fetch_object($result))
     {

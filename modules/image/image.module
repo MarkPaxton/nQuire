@@ -1,5 +1,5 @@
 <?php
-// $Id: image.module,v 1.305 2009/05/22 19:32:29 sun Exp $
+// $Id: image.module,v 1.322 2009/09/13 20:21:04 joachim Exp $
 
 define('IMAGE_ORIGINAL', '_original');
 define('IMAGE_PREVIEW', 'preview');
@@ -81,24 +81,31 @@ function image_node_info() {
  * Implementation of hook_perm
  */
 function image_perm() {
-  return array('create images', 'view original images', 'edit own images', 'edit images');
+  return array('view original images', 'create images', 'edit own images', 'edit any images', 'delete own images', 'delete any images');
 }
 
 /**
  * Implementation of hook_access().
  */
 function image_access($op, $node, $account) {
-  if ($op == 'create' && user_access('create images', $account)) {
-    return TRUE;
-  }
+  switch ($op) {
+    case 'create':
+      if (user_access('create images', $account)) {
+        return TRUE;
+      }
+      break;
 
-  if ($op == 'update' || $op == 'delete') {
-    if (user_access('edit images', $account)) {
-      return TRUE;
-    }
-    if (user_access('edit own images', $account) && ($account->uid == $node->uid)) {
-      return TRUE;
-    }
+    case 'update':
+      if (user_access('edit any images', $account) || ($account->uid == $node->uid && user_access('edit own images', $account))) {
+        return TRUE;
+      }
+      break;
+
+    case 'delete':
+      if (user_access('delete any images', $account) || ($account->uid == $node->uid && user_access('delete own images', $account))) {
+        return TRUE;
+      }
+      break;
   }
 }
 
@@ -469,25 +476,32 @@ function image_load(&$node) {
     // There's no original image, we're in trouble...
     return;
   }
+  
+  if ((arg(0) != 'batch') && (strpos($_GET['q'], 'admin/content/node') === FALSE)) {
+    _image_build_derivatives_if_needed($node);
+  }
+}
+  
+/**
+ * Rebuild derivatives if needed. Helper function for image_load(). 
+ */
+function _image_build_derivatives_if_needed(&$node) {
   $node->rebuild_images = FALSE;
 
   // Figure out which sizes should have been generated.
   $all_sizes = image_get_sizes();
   unset($all_sizes[IMAGE_ORIGINAL]);
-  $needed_sizes = array_keys(image_get_derivative_sizes($original_path));
+  $needed_sizes = array_keys(image_get_derivative_sizes($node->images[IMAGE_ORIGINAL]));
   $unneeded_sizes = array_diff(array_keys($all_sizes), $needed_sizes);
 
   // Derivative sizes that are larger than the original get set to the
   // original.
   foreach ($unneeded_sizes as $key) {
     if (empty($node->images[$key])) {
-      $node->images[$key] = $original_path;
+      $node->images[$key] = $node->images[IMAGE_ORIGINAL];
     }
     else {
       // Need to remove an extra derivative image in the database.
-      if (image_access('update', $node, $GLOBALS['user'])) {
-        drupal_set_message(t("%title's has an unneeded %key derivative images. The derivatives will be rebuilt to remove it.", array('%title' => $node->title, '%key' => $key)));
-      }
       $node->rebuild_images = TRUE;
     }
   }
@@ -497,30 +511,35 @@ function image_load(&$node) {
     // If the file is missing or created after the last change to the sizes,
     // rebuild the derivatives.
     if (empty($node->images[$key]) || !file_exists($node->images[$key])) {
-      if (image_access('update', $node, $GLOBALS['user'])) {
-        drupal_set_message(t("%title's %key derivative image %filepath was missing. The derivatives will be rebuilt to regenerate it.", array('%title' => $node->title, '%key' => $key, '%filepath' => isset($node->images[$key]) ? $node->images[$key] : '')));
-      }
       $node->rebuild_images = TRUE;
     }
-    else if (filemtime($node->images[$key]) < variable_get('image_updated', 0)) {
-      if (image_access('update', $node, $GLOBALS['user'])) {
-        drupal_set_message(t("%title's %key derivative image had a timestamp (%filetime) that predates the last changes to the image size settings (%vartime). The derivatives will be rebuilt to regenerate it.", array('%title' => $node->title, '%key' => $key, '%filetime' => format_date(filemtime($node->images[$key])), '%vartime' => format_date(variable_get('image_updated', 0)))));
-      }
+    // Derivative image had a timestamp that predates last changes to image
+    // size settings, so it needs to be rebuilt.
+    elseif (filemtime($node->images[$key]) < variable_get('image_updated', 0)) {
       $node->rebuild_images = TRUE;
     }
   }
 
   // Correct any problems with the derivative images.
   if ($node->rebuild_images) {
+    // Possibly TODO: calling a hook implementation here isn't very elegant.
+    // but the code there is tangled and it works, so maybe leave it ;)    
     image_update($node);
-    watchdog('image', 'Derivative images were regenerated for %title.', array('%title' => $node->title), WATCHDOG_NOTICE, l(t('view'), 'node/'. $node->nid));
+    watchdog('image', 'Derivative images were regenerated for %title.', array('%title' => $node->title), WATCHDOG_INFO, l(t('view'), 'node/'. $node->nid));
   }
 }
 
 /**
- * Implementation of hook_insert
+ * Implementation of hook_insert().
  */
 function image_insert($node) {
+  // If a new image node contains no new file, but has a translation source,
+  // insert all images from the source for this node.
+  if (empty($node->new_file) && !empty($node->translation_source)) {
+    db_query("INSERT INTO {image} (nid, fid, image_size) SELECT %d, fid, image_size FROM {image} WHERE nid = %d", $node->nid, $node->translation_source->nid);
+    return;
+  }    
+
   // Derivative images that aren't needed are set to the original file. Make
   // note of the current path before calling _image_insert() because if it's
   // in the temp directory it'll be moved. We'll need it later to determine
@@ -540,7 +559,7 @@ function image_insert($node) {
 }
 
 /**
- * Implementation of hook_update
+ * Implementation of hook_update().
  *
  * Take $node by reference so we can use this to save the node after
  * rebuilding derivatives.
@@ -561,10 +580,9 @@ function image_update(&$node) {
       // Remove all the existing images.
       $result = db_query("SELECT f.fid, f.filepath FROM {image} i INNER JOIN {files} f ON i.fid = f.fid WHERE i.nid = %d", $node->nid);
       while ($file = db_fetch_object($result)) {
-        file_delete(file_create_path($file->filepath));
-        db_query("DELETE FROM {files} WHERE fid = %d", $file->fid);
+        db_query("DELETE FROM {image} WHERE nid = %d AND fid = %d", $node->nid, $file->fid);
+        _image_file_remove($file);
       }
-      db_query("DELETE FROM {image} WHERE nid = %d", $node->nid);
 
       // Save the original first so that it if it's moved the derivatives are
       // placed in the correct directory.
@@ -577,23 +595,16 @@ function image_update(&$node) {
       // Delete all but the original image.
       $result = db_query("SELECT i.fid, f.filepath FROM {image} i INNER JOIN {files} f ON i.fid = f.fid WHERE i.nid = %d AND f.fid <> %d", $node->nid, $original_file->fid);
       while ($file = db_fetch_object($result)) {
+        db_query("DELETE FROM {image} WHERE nid = %d AND fid = %d", $node->nid, $file->fid);
         // Beware of derivative images that have the same path as the original.
         if ($file->filepath != $original_file->filepath) {
-          file_delete(file_create_path($file->filepath));
+          _image_file_remove($file);
         }
-        db_query("DELETE FROM {files} WHERE fid = %d", $file->fid);
-        db_query("DELETE FROM {image} WHERE fid = %d", $file->fid);
       }
 
       $node->images = _image_build_derivatives($node, FALSE);
 
-      // Display a message to the user if they're be able to modify the node
-      // (this might have been called as part of a rebuild by a visitor).
-      if (image_access('update', $node, $GLOBALS['user'])) {
-        drupal_set_message(t('The derivative images for <a href="@link">@title</a> have been regenerated.', array('@link' => url('node/'. $node->nid), '@title' => $node->title)));
-      }
-
-      // Clear the flag so that we don't some how rebuild the images twice.
+      // Prevent multiple rebuilds.
       $node->rebuild_images = FALSE;
     }
 
@@ -607,15 +618,14 @@ function image_update(&$node) {
 }
 
 /**
- * Implementation of hook_delete.
+ * Implementation of hook_delete().
  */
 function image_delete($node) {
   $result = db_query('SELECT i.fid, f.filepath FROM {image} i INNER JOIN {files} f ON i.fid = f.fid WHERE i.nid = %d', $node->nid);
   while ($file = db_fetch_object($result)) {
-    file_delete(file_create_path($file->filepath));
-    db_query('DELETE FROM {files} WHERE fid = %d', $file->fid);
-  }
-  db_query("DELETE FROM {image} WHERE nid = %d", $node->nid);
+    db_query("DELETE FROM {image} WHERE nid = %d AND fid = %d", $node->nid, $file->fid);  
+    _image_file_remove($file);
+  }  
 }
 
 /**
@@ -689,7 +699,9 @@ function theme_image_body($node, $size) {
  * Theme an img tag for displaying the image.
  */
 function theme_image_display($node, $label, $url, $attributes) {
-  return theme('image', $url, $node->title, $node->title, $attributes, FALSE);
+  $title = isset($attributes['title']) ? $attributes['title'] : $node->title;
+  $alt = isset($attributes['alt']) ? $attributes['alt'] : $node->title;
+  return theme('image', $url, $alt, $title, $attributes, FALSE);
 }
 
 /**
@@ -863,17 +875,30 @@ function _image_build_derivatives($node, $temp = FALSE) {
 
 /**
  * Creates an image filename.
+ *
+ * @param $filepath
+ *   The full path and filename of the original image file,relative to Drupal
+ *   root, eg 'sites/default/files/images/myimage.jpg'.
+ * @return
+ *   A full path and filename with derivative image label inserted if required.
  */
-function _image_filename($filename, $label = IMAGE_ORIGINAL, $temp = FALSE) {
+function _image_filename($filepath, $label = IMAGE_ORIGINAL, $temp = FALSE) {
+  // Get default path for a new file.
   $path = file_directory_path() .'/'. variable_get('image_default_path', 'images');
   if ($temp) {
     $path .= '/temp';
   }
 
-  $filename = basename($filename);
+  $original_path = dirname($filepath);
+  $filename = basename($filepath);
 
-  // Insert the resized name in non-original images
   if ($label && ($label != IMAGE_ORIGINAL)) {
+    // Keep resized images in the same path, where original is (does not
+    // apply to temporary files, these still use the default path).
+    if (!$temp && $original_path != '.') {
+      $path = $original_path;
+    }
+    // Insert the resized name in non-original images.
     $pos = strrpos($filename, '.');
     if ($pos === false) {
       // The file had no extension - which happens in really old image.module
@@ -989,6 +1014,19 @@ function _image_insert(&$node, $size, $image_path) {
 }
 
 /**
+ * Remove image file if no other node references it.
+ *
+ * @param $file
+ *   An object representing a table row from {files}.
+ */
+function _image_file_remove($file) {
+  if (!db_result(db_query("SELECT COUNT(*) FROM {image} WHERE fid = %d", $file->fid))) {
+    file_delete(file_create_path($file->filepath));
+    db_query('DELETE FROM {files} WHERE fid = %d', $file->fid);
+  }
+}
+
+/**
  * Function to other modules to use to create image nodes.
  *
  * @param $filepath
@@ -1013,6 +1051,12 @@ function image_create_node_from($filepath, $title = NULL, $body = '', $taxonomy 
 
   // Ensure it's a valid image.
   if (!$image_info = image_get_info($filepath)) {
+    return FALSE;
+  }
+
+  // Ensure the file is within our size bounds.
+  if ($image_info['file_size'] > variable_get('image_max_upload_size', 800) * 1024) {
+    form_set_error('', t('The image you uploaded was too big. You are only allowed upload files less than %max_size but your file was %file_size.', array('%max_size' => format_size(variable_get('image_max_upload_size', 800) * 1024), '%file_size' => format_size($image_info['file_size']))), 'warning');
     return FALSE;
   }
 
