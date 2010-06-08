@@ -472,6 +472,7 @@ function pi_data_load($node) {
 
 function pi_data_return_results($node) {
 	$measures = array();
+	$measure_ids = array();
 	$weights = array();
 
 	$query = "SELECT * FROM {pi_collected_data} WHERE nid = %d AND vid = %d";
@@ -483,6 +484,7 @@ function pi_data_return_results($node) {
 		$available_measure_node = node_load($row->available_measure_nid);
 		$selected_measure_node = node_load($row->selected_measures_nid);
 		$weight = $selected_measure_node->categories[$row->available_measure_nid]['#weight'];
+		$status = $selected_measure_node->categories[$row->available_measure_nid]['#status'];
 		if ($available_measure_node->data_type == 'checkboxes')
 		{
 			$value = explode(",", $row->value);
@@ -491,15 +493,23 @@ function pi_data_return_results($node) {
 		{
 			$value = $row->value;
 		}
-		$measures[$key] = array(
+		if(!array_key_exists($status, $measures))
+		{
+			$measures[$status] = array();
+		}
+		$measures[$status][$key] = array(
             '#title' => $available_measure_node->title,
             '#value'  => $value,
             '#weight'  => $weight,
+            '#status'  => $status,
 		);
-		$weights[$key] = $weight;
 	}
-	array_multisort($weights, $measures);
-	return $measures;
+	
+	// Order  these to ensure key measures are listed first
+	// n.b. you may get 'none' measures if selected measures were changed after collecting data.
+	$status_order = array('key', 'selected', 'none');
+	$sorted_measures = pi_sort_grouped_item_list($status_order, $measures, '#weight');
+	return $sorted_measures;
 }
 
 
@@ -517,33 +527,37 @@ function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
 	);
 
 	$details = get_inquiry_details_from_current_path();
-	// This is actually of type "pi_draggable_measures"
+	// This is actually of type "pi_sort_measures"
 	$selected_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+
+	// If there's no sort_measures then just show all available
 	if(isset($selected_measures_nid))
 	{
 		$selected_measures_node = node_load($selected_measures_nid);
-		$selected_measures = $selected_measures_node->measures_list;
-	}
-
-	$rows = array();
-	if(is_array($selected_measures))
-	{
-		foreach ($selected_measures as $measure_nid => $measure)
+		if($selected_measures_node)
 		{
-			$key = check_plain($selected_measures_nid . "-" . $measure_nid);
-			$measure_type = node_load($measure_nid);
-			if(array_key_exists($key, $node->measures))
+			$selected_measures_to_show = $selected_measures_node->measures_list;
+			$measures_to_show = $node->measures;
+			if(is_array($selected_measures_to_show))
 			{
-				$measure_value = $node->measures[$key]['#value'];
+				foreach ($selected_measures_to_show as $measure_nid => $measure)
+				{
+					$key = check_plain($selected_measures_nid . "-" . $measure_nid);
+					$measure_type = node_load($measure_nid);
+					if(array_key_exists($key, $measures_to_show))
+					{
+						$measure_value = $node->measures[$key]['#value'];
+					}
+					else
+					{
+						$measure_value = NULL;
+					}
+					$node->content[$key] = array (
+						'#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value, $teaser),
+						'#weight' => $measures_count++
+					);
+				}
 			}
-			else
-			{
-				$measure_value = NULL;
-			}
-			$node->content[$key] = array (
-					'#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value, $teaser),
-					'#weight' => $measure['#weight']
-			);
 		}
 	}
 	return $node;
@@ -554,12 +568,12 @@ function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
  */
 function pi_data_theme() {
 	return array(
-    'pi_data_node_form' => array(
-    'arguments' => array('form'),
-	),
-    'pi_data' => array(
-    'arguments' => array('node','teaser'),
-	),
+	    'pi_data_node_form' => array(
+	    	'arguments' => array('form'),
+		),
+	    'pi_data' => array(
+	    	'arguments' => array('node','teaser'),
+		),
 	    'pi_data_measure' => array(
 	    	'arguments' => array('measure', 'measure_type', 'measure_value', 'teaser'),
 		),
@@ -639,7 +653,7 @@ function theme_pi_data_measure($measure, $measure_type, $measure_value, $teaser)
 			case 'upload-file':
 				if($teaser) {
 					$output .= "<strong>" . check_plain($measure_type->title) . ":&nbsp;</strong>";
-					$output .= "<a href='" . file_download_path($measure_value) . "'>" . t("Download") . "</a>&nbsp;&nbsp;";				
+					$output .= "<a href='" . file_download_path($measure_value) . "'>" . t("Download") . "</a>&nbsp;";				
 				}
 				else {
 					$output .= "<p><strong>" . check_plain($measure_type->title) . ":&nbsp;</strong>";
@@ -648,16 +662,19 @@ function theme_pi_data_measure($measure, $measure_type, $measure_value, $teaser)
 				break;
 			case 'upload-image':
 				$image_node = node_load($measure_value);
+				pi_debug_message($measure_value);
 				if($image_node->type == 'image')
 				{
-				if($teaser) {
-					$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
-					$output .= "<div>" . image_display($image_node) . "</div>";
-				}
-				else {
-					$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
-					$output .= "<div>" . image_display($image_node) . "</div>";				
-				}
+					if($teaser)
+					{
+						$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
+						$output .= "<div>" . check_plain($image_node->title) . "</div>";
+					}
+					else
+					{
+						$output .= "<div><strong>" . check_plain($measure_type->title) . ": </strong></div>";
+						$output .= "<div>" . image_display($image_node) . "</div>";				
+					}
 				}
 				break;
 			default:

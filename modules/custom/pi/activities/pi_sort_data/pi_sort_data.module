@@ -4,15 +4,16 @@
 function pi_sort_data_node_info() {
 	return array(
 	    'pi_sort_data' => array(
-	    'name' => t('Data sort data'), // Required.
-	    'module' => 'pi_sort_data',  // Required.
-	    'description' => t('Data sort'), // Required.
-	    'has_title' => TRUE,
-	    'title_label' => t(''),
-	    'has_body' => TRUE,
-	    'body_label' => t('Sort of collected data'),
-	    'locked' => TRUE,
-	    'add_node_type' => 'pi_data')
+		    'name' => t('Data sort data'), // Required.
+		    'module' => 'pi_sort_data',  // Required.
+		    'description' => t('Data sort'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t(''),
+		    'has_body' => TRUE,
+		    'body_label' => t('Sort of collected data'),
+		    'locked' => TRUE,
+		    'add_node_type' => 'pi_data'
+		)
 	);
 
 }
@@ -39,12 +40,12 @@ function pi_sort_data_access($op, $node) {
  */
 function pi_sort_data_theme() {
 	return array(
-    'pi_sort_data_node_form' => array(
-    'arguments' => array('form'),
-	),
-    'pi_sort_data' => array(
-    'arguments' => array('node','teaser'),
-	),
+	    'pi_sort_data_node_form' => array(
+	    	'arguments' => array('form'),
+		),
+	    'pi_sort_data' => array(
+	   		'arguments' => array('node', 'teaser', 'data_items_to_show'),
+		),
 	);
 }
 
@@ -105,35 +106,19 @@ function pi_sort_data_form(&$node) {
 	}
 
 	$option_categories = pi_sort_data_get_options();
-
-	foreach ($option_categories as $key => $category) {
-		$categories[$key]['#title'] = $category['#title'];
-			
-		//get weight direct from navigation order in case it has changed
-		$data_activity_id = get_activity_id_for_nid($key);
-		$data_phase_id = get_phase_id_for_activity_id($data_activity_id);
-		$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $data_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $data_activity_id . "' LIMIT 1"));
-			
-		$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-	}
-
-	if(count($categories) > 2) {
-		uasort($categories, "my_weight_compare");
-	}
-
+	
+	$categories = pi_merge_content_item_lists($node_categories, $option_categories);
+	
 	// set $tree to point to the above $form['onepageprofile_categories'] object
 	$tree = &$form['onepageprofile_categories'];
-
-	if (count($categories) < 1) {
-		return;
-	}
-
-	foreach ($categories as $key => $category) {
-
+	foreach ($categories as $key => $category)
+	{
 		$measure = node_load($key);
 		$new_title = $category['#title'];
-		if (strlen($category['#title']) > 3) {
-			if (substr($category['#title'], 0, 3) == 'D: ') {
+		if (strlen($category['#title']) > 3)
+		{
+			if (substr($category['#title'], 0, 3) == 'D: ')
+			{
 				$new_title = substr($category['#title'], 3);
 			}
 		}
@@ -147,36 +132,34 @@ function pi_sort_data_form(&$node) {
             '#delta'         => max(10, count($categories)),
             '#default_value' => $node_categories[$key]['#weight'],
 		);
-
 	}
-
 	return $form;
 }
 
 function pi_sort_data_insert($node) {
-	$details  = get_inquiry_details_from_current_path();
-	while ($measure = current($node->onepageprofile_categories)) {
-		db_query("INSERT INTO pi_sort_data (nid, vid, data, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->onepageprofile_categories) . "', '" . $measure['weight'] . "')");
-
-		update_activity_weight_from_node(key($node->onepageprofile_categories), $measure['weight'], $details);
-		next($node->onepageprofile_categories);
+	foreach($node->onepageprofile_categories as $key => $measure)
+	{
+		db_query("INSERT INTO pi_sort_data (nid, vid, data, weight) VALUES (%d, %d, '%s', %d)",
+			$node->nid, $node->vid, $key, $measure['weight']);
+		pi_activity_update_activity_weight_from_node($key, $measure['weight']);
 	}
-	reset($node->onepageprofile_categories);
 }
 
 function pi_sort_data_update($node) {
 	// if this is a new node or we're adding a new revision,
-	if ($node->revision) {
+	if ($node->revision)
+	{
 		pi_sort_data_insert($node);
 	}
-	else {
-		db_query("DELETE FROM pi_sort_data WHERE vid = '" . $node->vid . "' ");
+	else
+	{
+		db_query("DELETE FROM pi_sort_data WHERE vid = %d", $node->vid);
 		pi_sort_data_insert($node);
 	}
 }
 
 function pi_sort_data_delete(&$node) {
-	db_query("DELETE FROM pi_sort_data WHERE nid = '" . $node->nid . "' ");
+	db_query("DELETE FROM pi_sort_data WHERE nid = %d", $node->nid);
 }
 
 
@@ -188,98 +171,94 @@ function pi_sort_data_load($node) {
 
 
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
+	global $user;
+	$node_details = get_inquiry_details_from_current_path();
+	
 	$node = node_prepare($node, $teaser);
-
+	
+	if (is_numeric($node_details->activity_id))
+	{
+		$current_activity = load_activity($node_details->activity_id);
+		if ($current_activity->name)
+		{
+			drupal_set_title(check_plain($current_activity->name));
+		}
+	}
+	
+	// Assemble an array of key questions in the output format (build_activity_link makes this a link with icon)
+	$already_sorted_data_items = $node->categories;
+	$unsorted_data_items = pi_sort_data_get_options();
+    $sorted_data_items = pi_merge_content_item_lists($already_sorted_data_items, $unsorted_data_items);
+	$data_items_to_show = array();
+	foreach(array_keys($sorted_data_items) as $sorted_data_items_nid)
+	{
+		$data_item_activity_id = get_activity_id_for_nid($sorted_data_items_nid);
+		if ($data_item_activity_id)
+		{
+			$data_item_node = node_load($sorted_data_items_nid);
+			$data_item_activity = pi_activity_load($data_item_activity_id);
+			$activity_link = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $data_item_activity_id, $user->uid);
+			$activity_teaser = pi_activity_teaser($data_item_node, $data_item_activity, 'view');
+			$data_items_to_show[] = array(
+				'title' => $activity_link['data'],
+				'description' => $activity_teaser			
+			);
+		}
+	}
+	
+	if($teaser && count($data_items_to_show)>0)
+	{
+		//Link to add a new key question
+		//cannot get activity id from $node_details when viewing a list of activity teasers
+		$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+		$link_output = make_add_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $activity_id_for_this_node, $user->uid);
+		$node->content['pi_sort_key_questions_add_key_question_link'] =  array(
+            '#value' =>$link_output,
+            '#weight' => -3
+		);
+	}	
+	
+	
+	
+	
 	$node->content['pi_sort_data'] = array(
-            '#value' => theme('pi_sort_data', $node, $teaser),
+            '#value' => theme('pi_sort_data', $node, $teaser, $data_items_to_show),
             '#weight' => 2
 	);
 
 	return $node;
 }
 
-function theme_pi_sort_data($node,$teaser) {
-
+function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
 	global $user;
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
-	if (is_numeric($details->activity_id)) {
-		$current_activity = load_activity($details->activity_id);
-	}
 	 
-	if ($current_activity->name) {
-		drupal_set_title(t($current_activity->name));
-	}
-	 
-	$output = "";
-
-
-	// Add the categories of existing nodes and the options list for new nodes
-	if(isset($node->nid)) {
-		$node_categories = $node->categories;
-	}
-	else {
-		$node_categories = array();
-	}
-
-	$option_categories = pi_sort_data_get_options();
-
-	foreach ($option_categories as $key => $category) {
-		$categories[$key]['#title'] = $category['#title'];
-			
-		//get weight direct from navigation order in case it has changed
-		$data_activity_id = get_activity_id_for_nid($key);
-		$data_phase_id = get_phase_id_for_activity_id($data_activity_id);
-		$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $data_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $data_activity_id . "' LIMIT 1"));
-			
-		$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-	}
-
-	if(count($categories) > 2) {
-		uasort($categories, "my_weight_compare");
-	}
-
-	//Link to add a new key question
-	//cannot get activity id from $details when viewing a list of activity teasers
-	$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
-	$output .= make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);
-
-
-	/*    if ($current_activity->description) {
-	 $output  .= '<p>' . t($current_activity->description) . '</p>';
-	 }
-	 else {
-	 $output  .= '<p>' . t('Order your key questions.') . '</p>';
-	 }*/
+	$output = '';
 
 	$header = array(
-	t("Data")
+		t("Data")
 	);
 
 	$rows = array();
-
-	if (is_array($categories)) {
-		foreach($categories as $key => $category) {
-			$row_activity_id = get_activity_id_for_nid($key);
-			if ($row_activity_id) {
-				$row = array();
-				//$row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-				//$rows[] = array('data' => $row);
-
-				$loaded_activity = load_activity($row_activity_id);
-				$loaded_node = node_load($key);
-				//$rows[] = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
-				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-				$activity_teaser = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
-
-				$rows[] = $activity_link['data'] . $activity_teaser;
-			};
+	if (is_array($data_items_to_show))
+	{
+		foreach($data_items_to_show as $data_item)
+		{
+			$title_for_row = $data_item['title'];
+			$description_for_row =  str_replace(
+				array('<div', '</div', 'class="submitted"'), 
+				array('<span', '</span', 'class="submitted" style="display:none"'),  
+				$data_item['description']);
+			
+			$rows[] =	'<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $title_for_row . '</span>' .
+							'<span>' . $description_for_row . '</span>' .
+						'</div>';
 		}
 	}
 
-	if(count($rows) > 0) {
-		$output .= '<div><strong>You have collected this data:</strong></div>';
-		$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
+	if(count($rows) > 0)
+	{
+		$output .= '<h3>You have collected this data:</h3>';
+		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
 
 		//$output .= theme('table', $header, $rows);
 	}
@@ -292,7 +271,7 @@ function theme_pi_sort_data($node,$teaser) {
 
 
 /**
- * Theme admin settings form
+ * Theme for sort data form
  */
 function theme_pi_sort_data_node_form($form) {
 	global $user;

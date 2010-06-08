@@ -1380,6 +1380,75 @@ function pi_merge_content_item_lists($sorted_items, $unsorted_items)
 	return $return_data;
 }
 
+/**
+ * This is a function to sort items by first array indext then then by #weight property
+ * The status order is determined by $group_order, which will set the order for the groups
+ * the #weight parameter of the items will be reset to a sequential series starting from 0
+ * any groups that are not listed are added to the end of the list in order of occurrence
+ * @param array $group_order array of indexes to define what order the grouped items will be sorted, e.g. key, selected, none
+ * @param $grouped_items array of arrays of items with #weight parameters. 
+ * 	e.g. array(
+ * 		'key' => 
+ * 			array( 
+ * 				'123'=> array('#weight' => 12),
+ * 				'321'=>array('#weight' => 32),
+ * 			), 
+ * 		'selected' => etc
+ * @param string $weight_index this will usually be #weight for display items
+ * 	but for form data it could be anything, e.g. 'weight' is often used 
+ * @return array Flattened array of items from $grouped_items with a sequential #weight value. 
+ */
+function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
+{
+	$item_ids = array();
+	$item_groups = array();
+	$item_weights = array();
+	$items = array();
+	foreach($grouped_items as $group_name => $group)
+	{
+		if(!is_array($item_ids[$group_name]))
+		{
+			$item_ids[$group_name] = array();			
+		}
+
+		if(!is_array($item_weights[$group_name]))
+		{
+			$item_weights[$group_name] = array();			
+		}
+		foreach($group as $item_id => $item)
+		{		
+			$item_ids[$group_name][] = $item_id;
+			$item_weights[$group_name][] = $item[$weight_index];
+			$items[$item_id] = $item;
+		}
+	}
+	
+	// If new groups appear that aren't in the default list, append them to the end of the list:
+	foreach(array_keys($item_ids) as $other_group)
+	{
+		if(!in_array($other_group, $group_order))
+		{
+			$group_order[] = $other_group;
+		}
+	}
+	$sorted_items = array();
+	foreach($group_order as $group)
+	{
+		if(array_key_exists($group, $item_ids)!=NULL)
+		{
+			$sort_weights = $item_weights[$group];
+			$sort_ids = $item_ids[$group];
+			array_multisort($sort_weights, $sort_ids);
+			foreach($sort_ids as $item_id)
+			{
+				$items[$item_id][$weight_index] = count($sorted_items);
+				$sorted_items[$item_id] = $items[$item_id];
+			}
+		}
+	}	
+	return $sorted_items;
+}
+
 
 /**
  * This is a debug function that prints a given variable to drupal message area

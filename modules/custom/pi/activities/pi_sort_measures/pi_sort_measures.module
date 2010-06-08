@@ -168,15 +168,14 @@ function pi_sort_measures_form(&$node) {
  * @return null
  */
 function pi_sort_measures_insert($node) {
-	$details  = get_inquiry_details_from_current_path();
-	foreach($node->measures_list as $region)
+	$default_region_order = array('key', 'selected', 'none');
+	
+	$measures_to_save = pi_sort_grouped_item_list($default_region_order, $node->measures_list, 'weight');
+	foreach($measures_to_save as $nid => $measure)
 	{
-		foreach ($region as $nid => $measure)
-		{
-			$query = "INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
-			db_query($query, $node->nid, $node->vid, $nid, $measure['status'], $measure['weight']);
-			pi_activity_update_weight_from_node($nid, $measure['weight']);
-		}
+		$query = "INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
+		db_query($query, $node->nid, $node->vid, $nid, $measure['status'], $measure['weight']);
+		pi_activity_update_weight_from_node($nid, $measure['weight']);
 	}
 }
 
@@ -191,7 +190,7 @@ function pi_sort_measures_update($node) {
         pi_sort_measures_insert($node);
     }
     else {
-        db_query("DELETE FROM pi_selected_measures WHERE vid = '" . $node->vid . "' ");
+        db_query("DELETE FROM pi_selected_measures WHERE vid = %d", $node->vid);
         pi_sort_measures_insert($node);
     }
 }
@@ -206,9 +205,9 @@ function pi_sort_measures_delete(&$node) {
 }
 
 /**
- * hook_load()
- * @param unknown_type $node
- * @return unknown_type
+ * hook_load() for pi_sort_measures
+ * @param uobject(node) $node
+ * @return object
  */
 function pi_sort_measures_load($node) {
     $result = new stdClass;
@@ -265,6 +264,7 @@ function theme_pi_sort_measures($node, $teaser) {
 			foreach($node->measures_list as $nid => $measure)
 			{
 				$measure_activity_id = get_activity_id_for_nid($nid);
+				// Collect together all the measures for a region and sort them in order...
 				if ($measure_activity_id && ($measure['#status'] == $region))
 				{
 				    $loaded_activity = load_activity($measure_activity_id);
@@ -277,6 +277,8 @@ function theme_pi_sort_measures($node, $teaser) {
 				    );
 		        }
 			}
+
+			//Once they're in order, give them a global count to work with view forms (which don't know how to order regions)
 			$output .= theme('pi_sort_measures_region', $region_title, $region_description, $region_empty, $region_measures);
 		}
     }
@@ -473,10 +475,8 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
  * @return unknown_type
  */
 function pi_sort_measures_get_choice($node) {
-	
-    global $user;
     $measures = array();
-
+    
     $result = db_query("SELECT * FROM pi_selected_measures " .
     	"WHERE pi_selected_measures.nid = %d AND pi_selected_measures.vid = %d ",
      	$node->nid, $node->vid);
@@ -484,14 +484,22 @@ function pi_sort_measures_get_choice($node) {
     while ($row = db_fetch_object($result))
     {
         $loaded_node = node_load($row->available_measure, NULL, TRUE);
-        $measures[$row->available_measure] = array(
+        $status = $row->status;
+        if(!array_key_exists($status, $measures))
+        {
+        	$measures[$status] = array();
+        }
+        
+        $measures[$status][$row->available_measure] = array(
             '#weight' => $row->weight,
-            '#title'  => t($loaded_node->title),
-            '#status'  => $row->status
+            '#title'  => $loaded_node->title,
+            '#status'  => $status
         );
     }
-    uasort($measures, "my_weight_compare");
-    return $measures;
+    
+    $group_order = array('key', 'selected', 'node');
+    $sorted_measures = pi_sort_grouped_item_list($group_order, $measures, '#weight');
+    return $sorted_measures;
 }
 
 /**
@@ -514,10 +522,10 @@ function pi_sort_measures_get_options() {
 		 
     while ($row = db_fetch_object($result))
     {
-        $title_result = db_result(db_query("SELECT node.title FROM node WHERE node.nid = %d ORDER BY node.vid DESC", $row->nid));
+    	$item_node = node_load($row->nid); 
         $measures[$row->nid] = array(
             '#weight' => 1,
-            '#title'  => t($title_result),
+            '#title'  => $item_node->title,
             '#status'  => 'none'
         );
     }
@@ -541,7 +549,7 @@ function theme_pi_sort_measures_region($title, $description, $empty, $measures)
 		{
 			// this section replaces some hardcoded html from the node teaser view to make it fit in this
 			// theme layout better, since the default teaser theme isn't quite suited to this layout.
-			// it does break the encalsulation of 'node' functionality by messing with another
+			// it does break the encapsulation of 'node' functionality by messing with another
 			// object's data but since in a template is making changes on the html display level
 			// this isn't so bad - and the functionality is hardcoded into 'node' rather than
 			// available_mesaure.  The correct way would probably be to write a new theme within
