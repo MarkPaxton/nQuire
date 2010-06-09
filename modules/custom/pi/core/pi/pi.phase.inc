@@ -110,11 +110,11 @@ function pi_inquiry_phase_view($phase) {
 		$output .= theme('table', $headings, $table);
 		
 		if ($active_activity_flag == 0) {
-			$output .= "<div class='status'><div class='messages'><ul><li>None of the above activities can be accessed at this stage.</li></ul></div></div>";
+			drupal_set_message(t('None of the above activities can be accessed at this stage.'));
 		};
 	}
 	else {
-		$output .= "<div class='status'><div class='messages'><ul><li>No activities are available in this phase at this stage.</li></ul></div></div>";
+		drupal_set_message(t('No activities are available in this phase at this stage.'));
 	};
 	return $output;
 }
