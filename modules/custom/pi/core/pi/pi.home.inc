@@ -25,7 +25,7 @@ function pi_home_view() {
 	foreach($inquiries_for_user as $inquiry)
 	{
 		$row = array();
-		$row[] = l($inquiry->title, t("inquiry/" . $inquiry->nid));
+		$row[] = array('data' => l(check_plain($inquiry->title), "inquiry/" . $inquiry->nid), 'style' => 'font-size:130%;font-weight:bold;white-space:nowrap');
 		$row[] = $inquiry->body;
 		$rows[] = array('data' => $row);
 	}

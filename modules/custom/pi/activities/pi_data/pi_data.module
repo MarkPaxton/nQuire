@@ -72,32 +72,48 @@ function pi_data_access($op, $node) {
  */
 function pi_data_form(&$node) {
 	global $user;
-
 	$node_details = get_inquiry_details_from_current_path();
-	if (is_numeric($node_details->activity_id))
-	{
-		$current_activity = load_activity($node_details->activity_id);
-	}
-	if ($current_activity->name)
-	{
-		drupal_set_title(t($current_activity->name));
-	}
+  	if (is_numeric($node_details->activity_id))
+  	{
+  		$current_activity = load_activity($node_details->activity_id);
+  	}
+  	
+  	if ($current_activity->name)
+  	{
+  		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
+  				$node_details->inquiry_id, $node_details->stage_id, 
+  				$node_details->phase_id, $node_details->activity_id); 
+  		if($users_group!=false)
+  		{
+  			$group = node_load($users_group);
+  			$sort_for = $group->title;
+		}
+  		else
+  		{
+  			$sort_for = $user->name;
+  		}
+  		$node_title = check_plain(t('Key questions for ') . $sort_for);
+  	}
+  	else
+  	{
+	    $type = node_get_types('type', $node);
+  		$node_title = $type->name;
+  	}
+  	
+  	// Build the form
+    $form = array();
+    $form['title'] = array (
+        '#type' => 'hidden',
+        '#value' => $node_title,
+    );
 
+		
 	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 	if ($measures_param)
 	{
 		$measures_node = node_load($measures_param);
 		$measure_rows = $measures_node->measures_list;
 	}
-
-	// Get metadata for this node type
-	$type = node_get_types('type', $node);
-
-	$form = array();
-	$form['title'] = array(
-        '#type' => 'hidden',
-        '#value' => 'Data',//check_plain($type->title),
-	);
 
 	$form['onepageprofile_categories'] = array(
         '#tree'   => TRUE,
@@ -344,11 +360,12 @@ function pi_data_insert($node) {
 							if(isset($node->$key))
 							{
 								$node_data = $node->$key;
-								drupal_set_message("Using existing image #$node_data");	
+								drupal_set_message("Keeping existing image for " . check_plain($measure_type->title) . ".");	
 							}
 							else
 							{
-								drupal_set_message(t('There was a problem saving the image for ') . check_plain($measure_type->title), 'error');
+								//drupal_set_message(t('There was a problem saving the image for ') . check_plain($measure_type->title), 'error');
+								// usually this is if the file name isn't set...
 							}
 						}
 					break;
@@ -367,7 +384,7 @@ function pi_data_insert($node) {
 							}
 							else
 							{
-								drupal_set_message(t('There was a problem saving the file for ') . check_plain($measure_type->title), 'error');
+								//drupal_set_message(t('There was a problem saving the file for ') . check_plain($measure_type->title), 'error');
 							}
 						}
 					break;

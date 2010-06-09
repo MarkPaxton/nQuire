@@ -494,31 +494,35 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
 
 
 /**
- * Load the user edit form and grab all of the fieldsets
+ * Load the selected measures indexed by status and nid, ordered by weight
  * @param unknown_type $node
  * @return unknown_type
  */
 function pi_sort_measures_get_choice($node) {
-    $measures = array();
-    
-    $result = db_query("SELECT * FROM pi_selected_measures " .
-    	"WHERE pi_selected_measures.nid = %d AND pi_selected_measures.vid = %d ",
-     	$node->nid, $node->vid);
+    $query = "SELECT * FROM {pi_selected_measures} pi_selected_measures " .
+    		"WHERE pi_selected_measures.nid = %d " .
+    		"AND pi_selected_measures.vid = %d " .
+    		"ORDER BY status ASC, weight ASC";
 
+    $result = db_query($query, $node->nid, $node->vid);
+
+    $measures = array();
     while ($row = db_fetch_object($result))
     {
         $loaded_node = node_load($row->available_measure, NULL, TRUE);
-        $status = $row->status;
-        if(!array_key_exists($status, $measures))
+        if($loaded_node)
         {
-        	$measures[$status] = array();
+	        $status = $row->status;
+	        if(!array_key_exists($status, $measures))
+	        {
+	        	$measures[$status] = array();
+	        }
+	        $measures[$status][$row->available_measure] = array(
+	            '#weight' => count($measures[$status]),
+	            '#title'  => $loaded_node->title,
+	            '#status'  => $status
+	        );
         }
-        
-        $measures[$status][$row->available_measure] = array(
-            '#weight' => $row->weight,
-            '#title'  => $loaded_node->title,
-            '#status'  => $status
-        );
     }
     
     $group_order = array('key', 'selected', 'node');
@@ -531,29 +535,17 @@ function pi_sort_measures_get_choice($node) {
  * @return array of db_fetch_objects() for the measures available in db 
  */
 function pi_sort_measures_get_options() {
-    $details = get_inquiry_details_from_current_path();
     global $user;
-    $measures = array();
+    $details = get_inquiry_details_from_current_path();
     
-    $result = db_query("SELECT DISTINCT node.nid FROM node " .
-	    	"LEFT JOIN node_access ON node.nid = node_access.nid " . 
-	    	"LEFT JOIN og_uid ON node_access.gid = og_uid.nid " . 
-	    	"LEFT JOIN pi_activity_node ON pi_activity_node.nid = node.nid " .
-	    	"WHERE type = 'pi_available_measures' AND pi_activity_node.inquiry_id = %d" .
-	   		" AND STATUS = '1' AND (node_access.realm = 'all' " .
-	   		"OR og_uid.uid = %d)",
-     	$details->inquiry_id, $user->uid);
-		 
-    while ($row = db_fetch_object($result))
-    {
-    	$item_node = node_load($row->nid); 
-        $measures[$row->nid] = array(
-            '#weight' => 1,
-            '#title'  => $item_node->title,
-            '#status'  => 'none'
-        );
-    }
-    return $measures;
+	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_available_measures');
+	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
+	foreach(array_keys($items) as $nid)
+	{
+		$items[$nid]['#status'] = 'none';
+		$items[$nid]['#weight'] = 0;
+	}
+	return $items;
 }
 
 function theme_pi_sort_measures_region($title, $description, $empty, $measures)

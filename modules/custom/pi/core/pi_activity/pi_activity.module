@@ -142,7 +142,7 @@ function pi_activity_teaser($node, $activity, $link_node_function) {
 	}
 	else
 	{
-		$output = "<div class='teaser_table_cell'>" . check_plain($activity->description) . "</div>";
+		$output = "<div>" . $activity->description . "</div>";
 	}
 	return $output;
 }
@@ -1021,5 +1021,65 @@ function pi_activity_update_weight_from_node($nid, $weight) {
 	$new_weight =  $weight + 999;
 	db_query("UPDATE pi_stage_phase_activity SET position = '" . $new_weight . "' WHERE activity_id = '" . $activity_id . "' ");
 }
+
+/**
+ * Returns an array of nids of a node type available 
+ * to a user for a given inquiry 
+ * @param $uid The user to which the nodes are availeable
+ * @param $inquiry_id the inquiry id that the nodes belong to
+ * @param $type the node type to search for e.g. 'pi_data'
+ * 
+ */
+function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
+{
+	$return_nids = array();
+
+	$query = "SELECT DISTINCT node.nid as nid FROM {node} node " .
+		"LEFT JOIN {node_access} node_access ON node.nid = node_access.nid " .
+		"LEFT JOIN {og_uid} og_uid ON node_access.gid = og_uid.nid " .
+		"LEFT JOIN {pi_activity_node} pi_activity_node ON pi_activity_node.nid =  node.nid  " .
+		"WHERE TYPE = '%s'  AND pi_activity_node.inquiry_id = %d " .
+		"AND STATUS = '1' AND ((node.uid = %d) OR (og_uid.uid = %d) )";
+	$result = db_query($query, $node_type, $inquiry_id, $uid, $uid);
+	while($row = db_fetch_object($result))
+	{
+		$return_nids[] = $row->nid;
+	}
+	return $return_nids;
+}
+
+
+/**
+ * This function takes an array of nids, loads the node and then maps the
+ * node attributes to fields as per the key and value of $field_maping
+ * if the node cann't be loaded it is dropped from the array therefore 
+ * if this is of concern to you, you should check array_keys($results) 
+ * with $nids
+ * @param $nids array(uint) nids to get data from 
+ * @param $field_mapping mapping of node attribute to field e.g. array('weight' => '#weight')
+ * @return array [nid][{field_mapping_value}] node->{field_mapping_key} 
+ */
+function pi_activity_map_fields_from_nids($nids, $field_mapping)
+{
+	$result = array();
+	foreach($nids as $nid)
+	{
+		$node = node_load($nid);
+		if($node)
+		{
+			if($item_node)
+			{
+				$node_fields = array();
+				foreach($field_mapping as $field => $mapping)
+				{
+					$node_fields[$mapping] = $item_node->$field;
+				}
+			}
+		}
+		$result[$nid] = $node_fields;
+	}
+	return $result;
+}
+
 
 ?>

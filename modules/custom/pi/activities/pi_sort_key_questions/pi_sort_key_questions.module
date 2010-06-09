@@ -324,27 +324,25 @@ function theme_pi_sort_key_questions_node_form($form) {
  * @return array [key question node id] #weight=> 1, #title = key question title
  */
 function pi_sort_key_questions_get_choice($node) {
-    $categories = array();
-
-    $query = "SELECT key_question FROM {pi_sort_key_questions} " .
+    $query = "SELECT key_question FROM {pi_sort_key_questions} pi_sort_key_questions " .
     	"WHERE pi_sort_key_questions.nid = %d " .
     	"AND pi_sort_key_questions.vid = %d " .
     	"ORDER BY weight ASC";
-    
     $result = db_query($query, $node->nid, $node->vid);
 	
+    $questions = array();
     while ($row = db_fetch_object($result))
     {
         $loaded_node = node_load($row->key_question, NULL, TRUE);
         if($loaded_node!=false)
         {
-	        $categories[$row->key_question] = array(
-	            '#weight' => count($categories),
+	        $questions[$row->key_question] = array(
+	            '#weight' => count($questions),
 	            '#title'  => check_plain($loaded_node->title)
 	        );
         }
     }
-    return $categories;
+    return $questions;
 }
 
 /**
@@ -355,22 +353,12 @@ function pi_sort_key_questions_get_options() {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
 	
-	$query = "SELECT DISTINCT node.nid FROM {node} " .
-		"LEFT JOIN {node_access} ON node.nid = node_access.nid " .
-		"LEFT JOIN {og_uid} ON node_access.gid = og_uid.nid LEFT " .
-		"JOIN {pi_activity_node} ON pi_activity_node.nid = node.nid " .
-		"WHERE TYPE = 'pi_key_questions' AND pi_activity_node.inquiry_id = %d " .
-		"AND STATUS = '1' AND ((node.uid = %d) OR (og_uid.uid = %d) )";
-	$key_questions_nids_result = db_query($query, $details->inquiry_id, $user->uid, $user->uid);
-	$key_questions = array();
-	while ($key_questions_nid_row = db_fetch_object($key_questions_nids_result))
+	$items = array();
+	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_key_questions');
+	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
+	foreach(array_keys($items) as $nid)
 	{
-		$key_question_node = node_load($key_questions_nid_row->nid);
-		$key_question_title = $key_question_node->title;
-		$key_questions[$key_questions_nid_row->nid] = array(
-			'#weight' => 1,
-			'#title'  => t($key_question_title)
-		);
+		$items[$nid]['#weight'] = 0;
 	}
-	return $key_questions;
+	return $items;
 }

@@ -4,15 +4,16 @@
 function pi_sort_result_presentations_node_info() {
     return array(
 		'pi_sort_result_presentations' => array(
-		'name' => t('Sort result presentations'), // Required.
-		'module' => 'pi_sort_result_presentations',  // Required.
-		'description' => t('Draggable result presentations'), // Required.
-		'has_title' => TRUE,
-		'title_label' => t('Draggable result presentations'),
-		'has_body' => TRUE,
-		'body_label' => t('Draggable result presentations'),
-		'locked' => TRUE,
-		'add_node_type' => 'pi_result_presentations')
+			'name' => t('Result presentations sort'), // Required.
+			'module' => 'pi_sort_result_presentations',  // Required.
+			'description' => t('Result presentations sort'), // Required.
+			'has_title' => FALSE,
+			'title_label' => t('Sorted result presentations'),
+			'has_body' => FALSE,
+			'body_label' => t('Sort of result presentations'),
+			'locked' => TRUE,
+			'add_node_type' => 'pi_result_presentations'
+    	)
     );
 }
 
@@ -294,45 +295,42 @@ function table_activity_link($activity_id, $status, $destination) {
 }*/
 
 /**
- * Load the user edit form and grab all of the fieldsets
+ * Load all the already sorted rows for results presentations
  */
 function pi_sort_result_presentations_get_choice($node) {
-
-    global $user;
-    $categories = array();
-				
-    $result = db_query("SELECT * FROM pi_sort_result_presentations WHERE pi_sort_result_presentations.nid = '" . $node->nid . "' AND pi_sort_result_presentations.vid = '" . $node->vid . "'");
-
-    while ($row = db_fetch_object($result)) {
-        $loaded_node = node_load($row->result_presentations, NULL, TRUE);
-        $categories[$row->result_presentations] = array(
-            '#weight' => $row->weight,
-            '#title'  => t($loaded_node->title)
-        );
+	$query = "SELECT * FROM {pi_sort_result_presentations} pi_sort_result_presentations " .
+    		"WHERE pi_sort_result_presentations.nid = %d " .
+    		"AND pi_sort_result_presentations.vid = %d " .
+    		"ORDER BY weight ASC";					
+    $result = db_query($query, $node->nid, $node->vid);
+    
+    $results = array();
+	while ($row = db_fetch_object($result))
+    {
+    	$loaded_node = node_load($row->result_presentations);
+    	if($loaded_node)
+    	{
+	    	$results[$row->result_presentations] = array(
+	            '#weight' => $row->weight,
+	            '#title'  => check_plain($loaded_node->title)
+	    	);
+    	}
     }
-
-    uasort($categories, "my_weight_compare");
-
-    return $categories;
+    return $results;
 }
 
 /**
- * Load the user edit form and grab all of the fieldsets
+ * Get all the available results presentations  
  */
 function pi_sort_result_presentations_get_options() {
+	global $user;
 	$details = get_inquiry_details_from_current_path();
 
-	global $user;
-	$categories = array();
-	
-	$result = db_query("SELECT DISTINCT node.nid FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid = node.nid WHERE TYPE = 'pi_result_presentations' AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $user->uid . "') ORDER BY nid ASC");
-
-	while ($row = db_fetch_object($result)) {
-		$title_result = db_result(db_query("SELECT node.title FROM node WHERE node.nid = '" . $row->nid . "' ORDER BY node.vid DESC"));
-		$categories[$row->nid] = array(
-			'#weight' => 1,
-			'#title'  => t($title_result)
-		);
+	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_result_presentations');
+	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
+	foreach(array_keys($items) as $nid)
+	{
+		$items[$nid]['#weight'] = 0;
 	}
-	return $categories;
+	return $items;
 }

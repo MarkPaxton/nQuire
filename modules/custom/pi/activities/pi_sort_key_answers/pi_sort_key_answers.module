@@ -478,28 +478,25 @@ function theme_pi_sort_key_answers_node_form($form) {
  * @return array [key question node id] #weight=> 1, #title = key question title
  */
 function pi_sort_key_answers_get_choice($node) {
-    global $user;
-    $categories = array();
-
-    $query = "SELECT key_answer FROM pi_sort_key_answers " .
+    $query = "SELECT key_answer FROM {pi_sort_key_answers} pi_sort_key_answers " .
     	"WHERE pi_sort_key_answers.nid = %d " .
     	"AND pi_sort_key_answers.vid = %d " .
     	"ORDER BY weight ASC";
-    
     $result = db_query($query, $node->nid, $node->vid);
 	
-    while ($row = db_fetch_object($result))
+    $answers = array();
+    while($row = db_fetch_object($result))
     {
-        $loaded_node = node_load($row->key_answer, NULL, TRUE);
+    	$loaded_node = node_load($row->data);
         if($loaded_node!=false)
         {
-	        $categories[$row->key_answer] = array(
-	            '#weight' => count($categories),
-	            '#title'  => t($loaded_node->title)
+	        $answers[$row->key_answer] = array(
+	            '#weight' => count($answers),
+	            '#title'  => check_plain($loaded_node->title)
 	        );
         }
     }
-    return $categories;
+    return $answers;
 }
 
 /**
@@ -509,30 +506,12 @@ function pi_sort_key_answers_get_choice($node) {
 function pi_sort_key_answers_get_options() {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
+	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_key_answers');
 
-/*	$query = "SELECT DISTINCT node.nid FROM node " .
-		"LEFT JOIN node_access ON node.nid = node_access.nid " .
-		"LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT " .
-		"JOIN pi_activity_node ON pi_activity_node.nid = node.nid " .
-		"WHERE TYPE = 'pi_key_answers' AND pi_activity_node.inquiry_id = %d " .
-		"AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid = %d )";*/
-	
-	$query = "SELECT DISTINCT node.nid FROM node " .
-		"LEFT JOIN node_access ON node.nid = node_access.nid " .
-		"LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT " .
-		"JOIN pi_activity_node ON pi_activity_node.nid = node.nid " .
-		"WHERE TYPE = 'pi_key_answers' AND pi_activity_node.inquiry_id = %d " .
-		"AND STATUS = '1' AND ((node.uid = %d) OR (og_uid.uid = %d) )";
-	$key_answers_nids_result = db_query($query, $details->inquiry_id, $user->uid, $user->uid);
-	$key_answers = array();
-	while ($key_answers_nid_row = db_fetch_object($key_answers_nids_result))
+	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
+	foreach(array_keys($items) as $nid)
 	{
-		$key_answer_node = node_load($key_answers_nid_row->nid);
-		$key_answer_title = $key_answer_node->title;
-		$key_answers[$key_answers_nid_row->nid] = array(
-			'#weight' => 1,
-			'#title'  => t($key_answer_title)
-		);
+		$items[$nid]['#weight'] = 0;
 	}
-	return $key_answers;
+	return $items;
 }

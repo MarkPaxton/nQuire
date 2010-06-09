@@ -125,17 +125,23 @@ function pi_sort_data_form(&$node) {
 		$data_item_node = node_load($data_nid);
 		if($data_item_node)
 		{
-			$new_title = $data_item['#title'];
-			if (strlen($data_item['#title']) > 3)
+			$title = $data_item_node->title;
+			//Overrride the data item title with activity title for node 
+			$data_activity_id = get_activity_id_for_nid($data_item_node->nid);
+			if($data_activity_id)
 			{
-				if (substr($data_item['#title'], 0, 3) == 'D: ')
+				$data_activity = load_activity($data_activity_id);
+				if($data_activity)
 				{
-					$new_title = substr(trim($data_item['#title']), 3);
+					if(strlen($data_activity->name)>0)
+					{
+						$title = $data_activity->name; 
+					}
 				}
 			}
 			// add $tree entries for current category (i.e. $key)
 			$tree[$data_nid]['title'] = array(
-	            '#value' => check_plain($new_title),
+	            '#value' => check_plain($title),
 			);
 			
 			$tree[$data_nid]['description'] = array(
@@ -234,8 +240,24 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 		);
 	}	
 	
+	$node->key_measures = array();
 	
-	
+	$selected_measure_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	if($selected_measure_nid)
+	{
+		$selected_measures_node = node_load($selected_measure_nid);
+		if($selected_measures_node)
+		{
+			$selected_measures = $selected_measures_node->measures_list;
+			foreach($selected_measures as $measure)
+			{
+				if($measure['#status']=='key')
+				{
+					$node->key_measures[] = $measure['#title'];
+				}
+			}
+		}
+	}
 	
 	$node->content['pi_sort_data'] = array(
             '#value' => theme('pi_sort_data', $node, $teaser, $data_items_to_show),
@@ -273,7 +295,27 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
 
 	if(count($rows) > 0)
 	{
-		$output .= '<h3>You have collected this data:</h3>';
+		
+		if(count($node->key_measures)>0)
+		{
+			$measures_text = " for your key " . format_plural(count($node->key_measures), t("measure"), t("measures")) . " ";
+			foreach($node->key_measures as $key => $measure_name)
+			{
+				unset($node->key_measures[$key]);
+				switch(count($node->key_measures))
+				{
+					case 0:
+						$measures_text .= $measure_name;
+						break;
+					case 1:
+						$measures_text .= $measure_name . t(' and ');
+						break;
+					default:
+						$measures_text .= $measure_name . ', ';
+				}
+			}
+		}
+		$output .= '<p>You have collected these data' . check_plain($measures_text) . '.  Click the activity to sort them or add new data.</p>';
 		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
 
 		//$output .= theme('table', $header, $rows);
@@ -354,21 +396,35 @@ function theme_pi_sort_data_node_form($form) {
  * Load the user edit form and grab all of the fieldsets
  */
 function pi_sort_data_get_choice($node) {
-	$categories = array();
-	$result = db_query("SELECT * FROM {pi_sort_data} WHERE " .
-		"pi_sort_data.nid = %d " .
+	$query = "SELECT * FROM {pi_sort_data} pi_sort_data " .
+		"WHERE pi_sort_data.nid = %d " .
 		"AND pi_sort_data.vid = %d " .
-		"ORDER BY weight ASC", $node->nid, $node->vid );
+		"ORDER BY weight ASC";
+	$result = db_query($query, $node->nid, $node->vid);
+	$data = array();
 	while ($row = db_fetch_object($result))
 	{
-		$activity_id = get_activity_id_for_nid($row->data);
-		$activity = load_activity($activity_id);
-		$categories[$row->data] = array(
-            '#weight' => count($categories),
-            '#title'  => check_plain($activity->name)
-		);
+		$loaded_node = node_load($row->data);
+        if($loaded_node!=false)
+        {
+        	$activity_nid = get_activity_id_for_nid($loaded_node->nid);
+        	$activity = load_activity($activity_nid);
+        	$title = $loaded_node->title;
+        	// Activity title is better here, so if it's set, use that
+        	if($activity)
+        	{
+        		if($activity->name)
+        		{
+        			$title = $activity->name;
+        		}
+        	}
+        	$data[$row->data] = array(
+	            '#weight' => count($data),
+	            '#title'  => check_plain($title)
+        	);
+        }
 	}
-	return $categories;
+	return $data;
 }
 
 
@@ -379,24 +435,12 @@ function pi_sort_data_get_options() {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
 
-	//	$result = db_query("SELECT DISTINCT node.nid FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_activity_node.nid =  node.nid WHERE TYPE = 'pi_data' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $user->uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ORDER BY nid ASC");
-	$query = "SELECT DISTINCT node.nid FROM {node} " .
-		"LEFT JOIN {node_access} ON node.nid = node_access.nid " .
-		"LEFT JOIN {og_uid} ON node_access.gid = og_uid.nid " .
-		"LEFT JOIN {pi_activity_node} ON pi_activity_node.nid =  node.nid  " .
-		"WHERE TYPE = 'pi_data'  AND pi_activity_node.inquiry_id = %d " .
-		"AND STATUS = '1' AND ((node.uid = %d) OR (og_uid.uid = %d) )";
-	$result = db_query($query, $details->inquiry_id, $user->uid, $user->uid);
-
-	$categories = array();
-	while ($row = db_fetch_object($result))
+	$items = array();
+	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_data');
+	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
+	foreach(array_keys($items) as $nid)
 	{
-		$activity_id = get_activity_id_for_nid($row->nid);
-		$activity = load_activity($activity_id);
-		$categories[$row->nid] = array(
-			'#weight' => 1,
-			'#title'  => check_plain($activity->name)
-		);
+		$items[$nid]['#weight'] = 0;
 	}
-	return $categories;
+    return $items;
 }
