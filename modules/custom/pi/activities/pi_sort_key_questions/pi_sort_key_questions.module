@@ -75,27 +75,26 @@ function pi_sort_key_questions_form(&$node) {
   			$sort_for = $user->name;
   		}
   		$node_title = check_plain(t('Key questions for ') . $sort_for);
-  		drupal_set_title($node_title);
   	}
   	else
   	{
+	    $type = node_get_types('type', $node);
   		$node_title = $type->name;
   	}
   	
   	// Build the form
     $form = array();
-    $type = node_get_types('type', $node);
     $form['title'] = array (
         '#type' => 'hidden',
         '#value' => $node_title,
     );
 
-    // onepageprofile_categories and tree used for draggable menu items
+    // All key qiestions are collected in this array:
     $form['onepageprofile_categories'] = array(
         '#tree'   => TRUE,
     );
 
-    // Add the categories of existing nodes and the options list for new nodes
+     // Add the existing sorted items and add the new new ones to the end
     if(isset($node->nid))
     {
         $sorted_key_questions = $node->categories;
@@ -117,7 +116,7 @@ function pi_sort_key_questions_form(&$node) {
         	'title' => array('#value' => check_plain($question_item['#title'])),
        		'weight' => array(
 	            '#type' => 'weight',
-	            '#delta' => max(10, count($key_questions_to_list)),
+	            '#delta' => count($key_questions_to_list),
 				'#default_value' => $question_item['#weight']
         	)
         );
@@ -221,7 +220,7 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 		}
 	}
 	
-	if($teaser)// && count($key_questions_to_show)>0)
+	if($teaser)
 	{
 		//Link to add a new key question
 		//cannot get activity id from $details when viewing a list of activity teasers
