@@ -74,8 +74,8 @@
   </div>
   
   <?php if ($node->og_groups && $page) {
-          print '<div class="groups">'. t('Groups'). ': ';
-          print '<div class="links">'.  $og_links['view']. '</div></div>';
+          //print '<div class="groups">'. t('Groups'). ': ';
+          //print '<div class="links">'.  $og_links['view']. '</div></div>';
    } ?>
 
   <?php print $links; ?>
