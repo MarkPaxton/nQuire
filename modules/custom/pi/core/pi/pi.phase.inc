@@ -98,7 +98,7 @@ function pi_inquiry_phase_view($phase) {
 				$loaded_actvity_node = node_load($nid);
 				$activity_desc = pi_activity_teaser($loaded_actvity_node, $loaded_activity, $link_node_function);
 				$table[] = array(
-						array('data' => t('<div class="teaser_table_cell">'.$activity_link['data'].'</div>'), 'valign' => 'top'),
+						array('data' => '<div class="teaser_table_cell">'. $activity_link['data'].'</div>', 'valign' => 'top'),
 						array('data' => $activity_desc, 'valign' => 'top')
 						//array('data' => $activity_link, 'valign' => 'top'),
 						//t($activity_desc)
