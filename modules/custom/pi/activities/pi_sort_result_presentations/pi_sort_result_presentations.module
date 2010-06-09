@@ -82,6 +82,18 @@ function pi_sort_result_presentations_form(&$node) {
   		$node_title = $type->name;
   	}
   	
+    // Add the existing sorted items and add the new new ones to the end
+    if(isset($node->nid))
+    {
+        $sorted_results = $node->categories;
+    }
+    else {
+        $sorted_results = array();
+    }
+	$all_results = pi_sort_result_presentations_get_options();
+	$results_to_show = pi_merge_content_item_lists($sorted_results, $all_results);
+		
+  	
   	// Build the form
     $form = array();
     $form['title'] = array (
@@ -94,17 +106,6 @@ function pi_sort_result_presentations_form(&$node) {
         '#tree'   => TRUE,
     );
 
-    // Add the existing sorted items and add the new new ones to the end
-    if(isset($node->nid))
-    {
-        $sorted_results = $node->categories;
-    }
-    else {
-        $sorted_results = array();
-    }
-	$all_results = pi_sort_result_presentations_get_options();
-	$results_to_show = pi_merge_content_item_lists($sorted_results, $all_results);
-		
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
     foreach ($results_to_show as $results_nid => $results) {
@@ -200,13 +201,7 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
             '#weight' => -3
 		);
 	}
-	if($loaded_activity)
-	{
-		$node->content['activity_description'] = array(
-	            '#value' => $loaded_activity->description,
-	            '#weight' => -2
-		);
-	}	
+
 	$node->content['pi_sort_result_presentations'] = array(
             '#value' => theme('pi_sort_result_presentations', $node, $teaser, $result_presentations_to_show),
             '#weight' => -1
@@ -217,7 +212,8 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 function theme_pi_sort_result_presentations($node, $teaser, $result_presentations) {
 
 	$output = '';
-
+	$output = '<p>' . t('View and organise the presentations of your results.') . '</p>';
+	
 	foreach ($result_presentations as $results)
 	{
 		$title_for_row = $results['title'];
@@ -246,7 +242,8 @@ function theme_pi_sort_result_presentations($node, $teaser, $result_presentation
 /**
  * Theme for result presentations form
  */
-function theme_pi_sort_result_presentations_node_form($form, $result_presentations) {
+function theme_pi_sort_result_presentations_node_form($form) {
+	$output = '';
 	
     drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
 
@@ -268,12 +265,8 @@ function theme_pi_sort_result_presentations_node_form($form, $result_presentatio
 
     // Build the output
     $activity = load_activity($details->activity_id);
-    if ($activity->description) {
-    	$output  = '<p>' . t($activity->description) . '</p>';
-    }
-    else {
-    	$output  = '<p>' . t('Order your result presentations.') . '</p>';
-    }
+
+   	$output .= '<p>' . t('View and organise the presentations of your results.') . '</p>';
     
     //only display form and submit button if there are some entries
     if (count($rows) > 0) {

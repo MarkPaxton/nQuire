@@ -55,12 +55,14 @@ function pi_sort_key_answers_theme() {
 function pi_sort_key_answers_form(&$node) {	
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id))
+	$type = node_get_types('type', $node);
+
+	if (is_numeric($node_details->activity_id))
   	{
   		$current_activity = load_activity($node_details->activity_id);
   	}
   	
-  	if ($current_activity->name)
+  	if ($current_activity)
   	{
   		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
   		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id); 
@@ -74,11 +76,9 @@ function pi_sort_key_answers_form(&$node) {
   			$sort_for = $user->name;
   		}
   		$node_title = check_plain(t('Key answers for ') . $sort_for);
-  		drupal_set_title($node_title);
   	}
   	else
   	{
-		$type = node_get_types('type', $node);
   		$node_title = $type->name;
   	}
 	// Build the form
@@ -176,13 +176,58 @@ function pi_sort_key_answers_load($node) {
 
 
 function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
+	global $user;
+	$details = get_inquiry_details_from_current_path();
+	
+	$node = node_prepare($node, $teaser);
 
-        $node = node_prepare($node, $teaser);
+	// Get the key a that will be rows in the table(s)
+    //$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
+    
+    
+    // Add the categories of existing nodes and the options list for new nodes
+    if(isset($node->nid))
+    {
+        $sorted_key_answers = $node->categories;
+    }
+    else
+    {
+        $sorted_key_answers = array();
+    }
+    $all_key_answers = pi_sort_key_answers_get_options();
+    $key_answers_to_show = pi_merge_content_item_lists($sorted_key_answers, $all_key_answers);
 
-        $node->content['pi_sort_key_answers'] = array(
-            '#value' => theme('pi_sort_key_answers', $node, $teaser),
+    // Get the key questions that will be table(s)
+    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+    if(isset($key_questions_nid))
+    {
+    	$key_questions_node = node_load($key_questions_nid);
+    	$sorted_key_questions = $key_questions_node->categories;
+    }
+    else
+    {
+        $sorted_key_questions = array();
+    }
+    
+    $all_key_questions = pi_sort_key_questions_get_options();
+    $key_questions_to_show = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
+    
+    //Link to add a new key question
+	//cannot get activity id from $details when viewing a list of activity teasers
+	$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+
+	if($activity_id_for_this_node)
+	{
+		$node->content['pi_sort_key_answers_add_link'] = array(
+	            '#value' => make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid),
+	            '#weight' => -1
+		);
+	}
+
+    $node->content['pi_sort_key_answers'] = array(
+            '#value' => theme('pi_sort_key_answers', $node, $teaser, $key_questions_to_show, $key_answers_to_show),
             '#weight' => 2
-        );
+    );
 
     return $node;
 }
@@ -269,48 +314,13 @@ function theme_pi_sort_key_answers_no_questions($node, $teaser) {
 
 
 
-function theme_pi_sort_key_answers($node, $teaser) {
+function theme_pi_sort_key_answers($node, $teaser, $key_questions_to_show, $key_answers_to_show) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
 
 	$output = '';
-	
-		//Link to add a new key question
-		//cannot get activity id from $details when viewing a list of activity teasers
-		$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
-		$output .= make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);	
     
-	// Get the key a that will be rows in the table(s)
-    //$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
-    
-    
-    // Add the categories of existing nodes and the options list for new nodes
-    if(isset($node->nid))
-    {
-        $sorted_key_answers = $node->categories;
-    }
-    else
-    {
-        $sorted_key_answers = array();
-    }
-    $all_key_answers = pi_sort_key_answers_get_options();
-    $key_answers_to_show = pi_merge_content_item_lists($sorted_key_answers, $all_key_answers);
-
-    // Get the key questions that will be table(s)
-    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-    if(isset($key_questions_nid))
-    {
-    	$key_questions_node = node_load($key_questions_nid);
-    	$sorted_key_questions = $key_questions_node->categories;
-    }
-    else
-    {
-        $sorted_key_questions = array();
-    }
-    
-    $all_key_questions = pi_sort_key_questions_get_options();
-    $key_questions_to_show = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
-    $rows = array();
+	$rows = array();
 	$header = array();
 	foreach($key_questions_to_show as $key_question_nid => $question)
 	{
@@ -342,8 +352,15 @@ function theme_pi_sort_key_answers($node, $teaser) {
 		}
 	}
 
+	
+    
 	if(count($key_questions_to_show)>0)
 	{
+		if($teaser)
+		{
+			$output .= '<p>' . t('These are the answers to your key questions.  Click the activity to sort them.') . '</p>';
+		}
+		
 		foreach($key_questions_to_show as $question_nid => $question)
 		{
 			$output .= '<div><strong>' . $header[$question_nid][0] . '</strong></div>';
@@ -372,108 +389,87 @@ function theme_pi_sort_key_answers_node_form($form) {
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
 	
-	/*
-	//Get the key questions. One table will be made for each.
-	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
-  //**should look for the key questions not the sort nid*********
-  
-  // Add the categories of existing nodes and the options list for new nodes
-  if(isset($key_questions_nid)) {
-    $key_questions_node = node_load($key_questions_nid);
-    $categories = $key_questions_node->categories;
-  }*/
-    // Add the categories of existing nodes and the options list for new nodes
-    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
-    if(isset($key_questions_nid)) {
-    		$key_questions_node = node_load(key_questions_nid);
-    		$node_categories = $key_questions_node->categories;
+    // Add the sorted key questions if they exist and then add unsorted ones
+    $sorted_key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+    if(isset($sorted_key_questions_nid))
+    {
+    		$sorted_key_questions_node = node_load($sorted_key_questions_nid);
+    		$sorted_key_questions = $sorted_key_questions_node->categories;
     }
-    else {
-        $node_categories = array();
+    else
+    {
+        $sorted_key_questions = array();
     }
     
-		$option_categories = pi_sort_key_questions_get_options();
-		$categories = array();
-		
-		foreach ($option_categories as $key => $category) {
-			$categories[$key]['#title'] = $category['#title'];
-			
-			//get weight from navigation
-			$kq_activity_id = get_activity_id_for_nid($key);
-			$kq_phase_id = get_phase_id_for_activity_id($kq_activity_id);
-			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $kq_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $kq_activity_id . "' LIMIT 1"));
-			
-			$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-		}
+    $all_key_questions = pi_sort_key_questions_get_options();
+    $key_questions = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
 
-		if (count($categories) > 1) {
-			uasort($categories, "my_weight_compare");
-		}  
-  
-  
-  
-	$header = array();
-	$rows = array();
-	
-  $key_question_options = array();
-  if (count($categories) > 0) {
-  	foreach ($categories as $key => $category) {
-  	  //Make a table for each key question
-  		drupal_add_tabledrag(t('onepageprofile-categories'.$key), 'order', 'sibling', 'onepageprofile-element');
-  		$rows[$key] = array();
-   	 $key_question = node_load($key);
-   	 $key_question_options[$key] = $key_question->title;
-   	 $header[$key] = array(t($key_question->title), t('Weight'));
-   	}
-  }
-
+    $rows = array();
+    
+    // Prepare rows to hold an array of arrays if key answers, organised by key question nid
+    // also prepare draggable table elements
+    if (count($key_questions) > 0)
+    {
+    	foreach ($key_questions as $key_question_nid => $key_question)
+    	{
+    		//Make a table for each key question
+    		$key_question_node = node_load($key_question_nid);
+    		if($key_question_node)
+    		{
+	    		drupal_add_tabledrag(check_plain('onepageprofile-categories'.$key_question_nid), 'order', 'sibling', 'onepageprofile-element');
+	    		$rows[$key] = array();
+    		}
+    	}
+    }
+    
+    // Load all the key answers into the array of arrays
 	$tree = &$form['onepageprofile_categories'];
-	foreach (element_children($tree) as $key) {
-		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
+	foreach (element_children($tree) as $key_answer_nid)
+	{
+		$tree[$key_answer_nid]['weight']['#attributes']['class'] = 'onepageprofile-element';
 	
 		$row = array();
-		$row[] = drupal_render($tree[$key]['title']);
-		$row[] = drupal_render($tree[$key]['weight']);
+		$row[] = drupal_render($tree[$key_answer_nid]['title']);
+		$row[] = drupal_render($tree[$key_answer_nid]['weight']);
 		
 		
-		$key_answer_node = node_load($key);
-		$key_question = $key_answer_node->key_question_id;
-	
-		$rows[$key_question][] = array('data' => $row, 'class' => 'draggable');
-		
+		$key_answer_node = node_load($key_answer_nid);
+		if($key_answer_node)
+		{
+			$key_question_id = $key_answer_node->key_question_id;
+			$rows[$key_question_id][$key_answer_nid] = array('data' => $row, 'class' => 'draggable');
+		}
    }
    
-
-	// Build the output
-	  $activity = load_activity($details->activity_id);
-    if ($activity->description) {
-    	$output  .= '<p>' . t($activity->description) . '</p>';
-    }
-    else {
-    	$output  .= '<p>' . t('Order your key questions.') . '</p>';
-    }
-  $answer_flag = 0;
-  if (count($categories) > 0) {
-		foreach ($categories as $key => $category) {//*****
-			if (count($rows[$key]) > 0) {
+	$output  .= '<p>' . t('Here you can change the order of your key answers for each key question. Click on the plus sign next to the answer and drag it to where you want it to be.') . '</p>';
+	$answer_flag = 0;
+	if (count($key_questions) > 0)
+	{
+		//Render the array of arrays to make a table listing each key question with answers
+		// using table drag 
+		foreach(array_keys($key_questions) as $key_question_nid)
+		{
+			if(count($rows[$key_question_nid]) > 0)
+			{
 				$answer_flag = 1;
-				$output .= theme('table', $header[$key], $rows[$key], array('id' => t('onepageprofile-categories'.$key)));
+				$output .= theme('table', array(check_plain($key_questions[$key_question_nid]['#title']), t('Weight')), $rows[$key_question_nid], array('id' => check_plain('onepageprofile-categories'.$key_question_nid)));
 			}
-			else {
-				reset($header[$key]);
-				$output .= '<p><strong>' . $header[$key][0] . '</strong><br/> No answers linked to this question</p>';
+			else
+			{
+				$output .= '<p><strong>' . $key_questions[$key_question_nid]['#title'] . '</strong><br/> No answers linked to this question</p>';
 			}
 		}
 	}
-	else {
+	else
+	{
 		$output .= "<p>No key questions are available.</p>";
 	}
-	
+
 	if($answer_flag == 1) {
 		$output .= drupal_render($form);
 	}
 
-	return $output;
+   	return $output;
 }
 
 /**

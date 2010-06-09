@@ -11,17 +11,17 @@
  * Implementation of hook_node_info().
  */
 function pi_hypothesis_conclusion_node_info() {
-
     return array(
-    'pi_hypothesis_conclusion' => array(
-    'name' => t('Inquiry hypothesis conclusion'), // Required.
-    'module' => 'pi_hypothesis_conclusion',  // Required.
-    'description' => t('What is your conclusion?'), // Required.
-    'has_title' => TRUE,
-    'title_label' => t('Inquiry hypothesis conclusion'),
-    'has_body' => TRUE,
-    'body_label' => t('Conclusion'),
-    'locked' => TRUE)
+	    'pi_hypothesis_conclusion' => array(
+		    'name' => t('Inquiry hypothesis conclusion'), // Required.
+		    'module' => 'pi_hypothesis_conclusion',  // Required.
+		    'description' => t('What is your conclusion?'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t('Inquiry conclusion'),
+		    'has_body' => TRUE,
+		    'body_label' => t('My conclusion is'),
+		    'locked' => TRUE
+    	)
     );
 
 }
@@ -53,36 +53,68 @@ function pi_hypothesis_conclusion_access($op, $node) {
 }
 
 /**
+ * hook_theme() for pi_hypothesis_conclusion - defines theme function 
+ * for viewing a pi_hypothesis conclusion
+ * @return array as per drupal hook_theme() api.   
+ */
+function pi_hypothesis_conclusion_theme() {
+	return array(
+	    'pi_hypothesis_conclusion' => array(
+		    'arguments' => array('node', 'teaser'),
+		),
+	    'pi_hypothesis_conclusion_hypothesis' => array(
+		    'arguments' => array('node'),
+		),
+	);
+}
+
+
+
+
+/**
  * Implementation of hook_form() for pi_hypothesis_conclusion
  */
 function pi_hypothesis_conclusion_form(&$node) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
+	$type = node_get_types('type', $node);    
 
-	if ($details->activity_id)
-	{
-		$current_activity = load_activity($details->activity_id);
-	}
-
-	if ($current_activity->name)
-	{
-		drupal_set_title(t($current_activity->name));
-	}
-	else {
-		drupal_set_title(t('Conclusion'));
-	}
-
-	$type = node_get_types('type', $node);
+  	if (is_numeric($details->activity_id))
+  	{
+  		$current_activity = load_activity($details->activity_id);
+  	}
+  	
+  	if ($current_activity->name)
+  	{
+  		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
+  		$details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id); 
+  		if($users_group!=false)
+  		{
+  			$group = node_load($users_group);
+  			$sort_for = $group->title;
+		}
+  		else
+  		{
+  			$sort_for = $user->name;
+  		}
+  		$node_title = check_plain(t('Conclusion for ') . $sort_for);
+  	}
+  	else
+  	{
+  		$node_title = $type->name;
+  	}
+  	
 	$form['title'] = array(
 		'#type' => 'hidden',
 		'#title' => check_plain($type->title_label),
 		'#required' => FALSE,
-		'#default_value' => check_plain($type->title_label),
+		'#default_value' => $node_title,
 		'#weight' => -5
 	);
 
 	$form['conclusion'] = array(
 		'#type' => 'textarea',
+		'#title' => $type->body_label,
 		'#required' => TRUE,
 		'#default_value' => $node->conclusion,
 		'#description' => t('Type your answer into the above box and click on the Save button when you are finished'),
@@ -92,32 +124,16 @@ function pi_hypothesis_conclusion_form(&$node) {
 		'#weight' => -2
 	);
 
-	$prefix = "";
+	$prefix = '';
 
 	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-
 	if ($hypothesis_param)
 	{
 		$hypothesis_node = node_load($hypothesis_param);
-		$hypothesis_activity_id = get_activity_id_for_nid($hypothesis_param);
-		$hypothesis_activity = load_activity($hypothesis_activity_id);
-		if ($hypothesis_activity->description)
+		if ($hypothesis_node)
 		{
-			$hypothesis_prefix .= "<strong>" . t($hypothesis_activity->description) . ": </strong>";
+			$prefix .= theme('pi_hypothesis_conclusion_hypothesis', $hypothesis_node);
 		}
-		else
-		{
-			$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
-		}
-		$prefix .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
-	}
-
-	if ($current_activity->description)
-	{
-		$prefix .= "<p><strong>" . t($current_activity->description) . ":</strong></p>";
-	}
-	else {
-		$prefix .= "<p><strong>" . t('Our conclusion') . ":</strong></p>";
 	}
 
 	$form['#prefix'] = $prefix;
@@ -167,54 +183,28 @@ function pi_hypothesis_conclusion_load($node) {
 function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
     global $user;
 	$details = get_inquiry_details_from_current_path();
-		if(!$teaser) {
-    	$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-    	if ($hypothesis_nid)
-    	{
-    		$hypothesis_node = node_load($hypothesis_nid);
-    		$hypothsis_view = pi_hypothesis_view($hypothesis_node);
-    		$node->content['pi_hypothesis'] = array(
-	            '#value' => $hypothsis_view->content['pi_hypothesis']['#value'],
-	            '#weight' => 1
-   			);
-    	}
-    	}
-    	$activity_id = get_activity_id_for_nid($node->nid);
-		if(!is_numeric($activity_id))
+	$node = node_prepare($node, $teaser);
+
+	if(!$teaser)
+	{
+		$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+		if ($hypothesis_nid)
 		{
-			$details = get_inquiry_details_from_current_path();
-			$activity_id = $details->activity_id;
+			$hypothesis_node = node_load($hypothesis_nid);
+			$node->content['pi_hypothesis_conclusion_hypothesis'] = array(
+				'#value' => theme('pi_hypothesis_conclusion_hypothesis', $hypothesis_node),
+				'#weight' => 1
+			);
 		}
-		if(!is_numeric($activity_id))
-		{
-			$activity_id = NULL;
-		}
-    	else
-    	{
-    		$activity = load_activity($activity_id);
-    	}
-    	
-	    // Use Drupal's default node view.
-        $node = node_prepare($node, $teaser);
-        $node->content['pi_hypothesis_conclusion'] = array(
-            '#value' => theme('pi_hypothesis_conclusion', $node, $activity,$teaser),
-            '#weight' => 2
-        );
+	}
+	 
+	// Use Drupal's default node view.
+	$node->content['pi_hypothesis_conclusion'] = array(
+		'#value' => theme('pi_hypothesis_conclusion', $node, $teaser),
+		'#weight' => 2
+	);
 
     return $node;
-}
-
-/**
- * hook_theme() for pi_hypothesis_conclusion - defines theme function 
- * for viewing a pi_hypothesis conclusion
- * @return array as per drupal hook_theme() api.   
- */
-function pi_hypothesis_conclusion_theme() {
-	return array(
-	    'pi_hypothesis_conclusion' => array(
-		    'arguments' => array('node', 'current_activity','teaser'),
-		),
-	);
 }
 
 
@@ -224,22 +214,29 @@ function pi_hypothesis_conclusion_theme() {
  * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
  * @return string HTML for the page content added for hypothesis conclusion data
  */
-function theme_pi_hypothesis_conclusion($node, $current_activity=NULL,$teaser) {
+function theme_pi_hypothesis_conclusion($node, $teaser) {
 	$output='';
-
-	if(isset($current_activity))
+	if(!$teaser)
 	{
-		if (isset($current_activity->name))
-		{
-			drupal_set_title(t($current_activity->name));
-		}
+		$output .= '<div><strong>My conclusion is:</strong></div>' . "\n";
 	}
-		if(!$teaser) {
-    	$output .= '<div style="font-weight:bold">My conclusion is:</div>' . "\n";
-    }
-    	$output .= '<p>' . check_plain($node->conclusion). '</p>';
+	$output .= '<p>' . check_plain($node->conclusion). '</p>';
 
-	
     return $output;
 }
+
+/**
+ * Theme function to display the pi_hypothesis_conclusion view page (uses drupal theme_hook()) 
+ * @param object(node) $node Drupal node of type pi_hypothesis_conlcusion
+ * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
+ * @return string HTML for the page content added for hypothesis conclusion data
+ */
+function theme_pi_hypothesis_conclusion_hypothesis($node) {
+	$output='';
+	$output .= '<div><strong>My hypothesis is:</strong></div>' . "\n";
+	$output .= '<p>' . check_plain($node->hypothesis). '</p>';
+    return $output;
+}
+
+
 
