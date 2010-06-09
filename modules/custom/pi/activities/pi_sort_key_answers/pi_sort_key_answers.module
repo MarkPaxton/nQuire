@@ -247,14 +247,14 @@ function theme_pi_sort_key_answers_no_questions($node, $teaser) {
 				}
 				else
 				{
-					$hypothesis_prefix .= "<strong>" . t('Your hypothesis') . ": </strong>";
+					$hypothesis_prefix .= "<strong>" . t('My hypothesis') . ": </strong>";
 				}
 				$output .= "<p>" . $hypothesis_prefix . $hypothesis_node->hypothesis . "</p>";
 			}
 		}
 		
 		// Add a title to the list in a ncie format, then list the key answers
-		$sentence = format_plural(count($key_answers_to_show), 'Your key answer is:', 'Your key answers are:');
+		$sentence = format_plural(count($key_answers_to_show), 'My key answer is:', 'My key answers are:');
 		$output .= '<div><strong>' . $sentence . '</strong></div>';
 		$output .= theme('item_list', $key_answers_to_show, NULL, 'ol', array('style' => 'list-style-type:none'));
 	}
@@ -271,7 +271,6 @@ function theme_pi_sort_key_answers_no_questions($node, $teaser) {
 
 function theme_pi_sort_key_answers($node, $teaser) {
 	global $user;
-	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
 
 	$output = '';
@@ -288,127 +287,79 @@ function theme_pi_sort_key_answers($node, $teaser) {
     // Add the categories of existing nodes and the options list for new nodes
     if(isset($node->nid))
     {
-        $node_categories = $node->categories;
+        $sorted_key_answers = $node->categories;
     }
     else
     {
-        $node_categories = array();
+        $sorted_key_answers = array();
     }
-		
-		$option_categories = pi_sort_key_answers_get_options();
-		
-		$answer_categories = array();
-		foreach ($option_categories as $key => $category) {
-			$answer_categories[$key]['#title'] = $category['#title'];
-			
-			//get weight from navigation
-			$answer_activity_id = get_activity_id_for_nid($key);
-			$answer_phase_id = get_phase_id_for_activity_id($answer_activity_id);	
-			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $answer_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $answer_activity_id . "' LIMIT 1"));
-			
-			$answer_categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-		}
-		if (count($answer_categories) > 1) {
-			uasort($answer_categories, "my_weight_compare");
-		}
-    
-  
+    $all_key_answers = pi_sort_key_answers_get_options();
+    $key_answers_to_show = pi_merge_content_item_lists($sorted_key_answers, $all_key_answers);
+
     // Get the key questions that will be table(s)
-    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $details->inquiry_id);
-
-    if(isset($key_questions_nid)) {
-    		$key_questions_node = node_load(key_questions_nid);
-    		$node_categories = $key_questions_node->categories;
+    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+    if(isset($key_questions_nid))
+    {
+    	$key_questions_node = node_load($key_questions_nid);
+    	$sorted_key_questions = $key_questions_node->categories;
     }
-    else {
-        $node_categories = array();
+    else
+    {
+        $sorted_key_questions = array();
     }
     
-		$option_categories = pi_sort_key_questions_get_options();
-		$question_categories = array();
-		
-		foreach ($option_categories as $key => $category) {
-			$question_categories[$key]['#title'] = $category['#title'];
-			
-			//get weight from navigation
-			$kq_activity_id = get_activity_id_for_nid($key);
-			$kq_phase_id = get_phase_id_for_activity_id($kq_activity_id);
-			$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $kq_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $kq_activity_id . "' LIMIT 1"));
-			
-			$question_categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-		}
-
-		if (count($question_categories) > 1) {
-			uasort($question_categories, "my_weight_compare");
-		}   
-
-    foreach ($question_categories as $key => $question) {
-    }
-
+    $all_key_questions = pi_sort_key_questions_get_options();
+    $key_questions_to_show = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
+    $rows = array();
 	$header = array();
-	$rows = array();
-	
-  if (count($question_categories) > 0) {
-  	foreach ($question_categories as $key => $question) {
-  	  //Make a table for each key question
+	foreach($key_questions_to_show as $key_question_nid => $question)
+	{
+		//Make a table for each key question
 
-  	 $rows[$key] = array();
-   	 $header[$key] = array(t($question['#title']));
+		$rows[$key_question_nid] = array();
+		$header[$key_question_nid] = array(check_plain($question['#title']));
 
-   	}
-  }
-  
-	
-	$tree = $answer_categories;
-	foreach (element_children($tree) as $key) {
-		
-		$row = array();
-		
-		$row_activity_id = get_activity_id_for_nid($key);
-		
-		if ($row_activity_id) {	  
-			$row[] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-		}
-		else {
-			$row[] = $tree[$key]['#title'];
-		}
-		
-		
-		$key_answer_node = node_load($key);
-		$key_question = $key_answer_node->key_question_id;
-		
-		
-		//$rows[$key_question][] = array('data' => $row);
-		$rows[$key_question][] = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $uid);
-		
-   }
-
-  $answer_flag = 0;
-  if (count($question_categories) > 0) {
-//  	if($teaser) {
-//  		$output .= "View and organise your key answers";
-//  	}
-//  	else {
-		foreach ($question_categories as $key => $category) {
-			if (count($rows[$key]) > 0) {
-				$answer_flag = 1;
-
-				$output .= '<strong>' . $header[$key][0] . '</strong><br/>';
-				$output .= theme('item_list', $rows[$key], NULL, 'ol', array('style' => 'list-style-type:none'));
-				//$output .= theme('item_list', $rows, NULL, 'ol', array('style' => 'list-style-type:none'));
-			}
-			else {
-				reset($header[$key]);
-				$output .= '<p><strong>' . $header[$key][0] . '</strong><br/>';
-				$output .= theme('item_list', array('No answers linked to this question'), NULL, 'ol', array('style' => 'list-style-type:none'));
-				
-				;
-			}
-		}
-//		}
 	}
-	else {
-		$output .= "<p>No key questions are available.</p>";
+	
+	foreach($key_answers_to_show as $answer_nid => $answer)
+	{
+		$key_answer_node = node_load($answer_nid);
+		if($key_answer_node)
+		{
+			$key_question_id = $key_answer_node->key_question_id;
+			$row_activity_id = get_activity_id_for_nid($answer_nid);
+			if ($row_activity_id)
+			{
+				$line = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $user->uid);
+			}
+			else
+			{
+				$line = $answer['#title'];
+			}
+
+			//$rows[$key_question][] = array('data' => $row);
+			$rows[$key_question_id][] = $line;
+		}
+	}
+
+	if(count($key_questions_to_show)>0)
+	{
+		foreach($key_questions_to_show as $question_nid => $question)
+		{
+			$output .= '<div><strong>' . $header[$question_nid][0] . '</strong></div>';
+			if (count($rows[$question_nid]) > 0)
+			{
+				$output .= theme('item_list', $rows[$question_nid], NULL, 'ul', array('style' => 'list-style-type:none'));
+			}
+			else
+			{
+				$output .= theme('item_list', array('No answers linked to this question'), NULL, 'ul', array('style' => 'list-style-type:none'));
+			}
+		}
+	}
+	else
+	{
+		$output .= "<p>No key questions are available to answer.</p>";
 	}
 	return $output;
 }
