@@ -13,7 +13,7 @@
 function pi_result_presentations_node_info() {
 	return array(
     'pi_result_presentations' => array(
-		'name' => t('Inquiry result presentations'), // Required.
+		'name' => t('Inquiry result '), // Required.
 		'module' => 'pi_result_presentations',  // Required.
 		'description' => t('A presentation for exploring part of a collected dataset?'), // Required.
 		'has_title' => TRUE,
@@ -70,74 +70,35 @@ function pi_result_presentations_access($op, $node) {
  * Implementation of hook_form().
  */
 function pi_result_presentations_form(&$node) {
-
 	global $user;
-
 	$node_details = get_inquiry_details_from_current_path();
+
 	if (is_numeric($node_details->activity_id)) {
 		$current_activity = load_activity($node_details->activity_id);
 	}
 
-	if ($current_activity->name) {
-		drupal_set_title(t($current_activity->name));
-	}
-
 	//**Pick up the key questions
 	// Add the categories of existing nodes and the options list for new nodes
-	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
-	if(isset($key_questions_nid)) {
-		$key_questions_node = node_load(key_questions_nid);
-		$key_question_categories = $key_questions_node->categories;
+	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	if(isset($key_questions_nid))
+	{
+		$key_questions_node = node_load($key_questions_nid);
+		$sorted_key_questions = $key_questions_node->categories;
 	}
-	else {
-		$key_question_categories = array();
-	}
-
-	$key_question_option_categories = pi_sort_key_questions_get_options();
-	$categories = array();
-
-	foreach ($key_question_option_categories as $key => $category) {
-		$categories[$key]['#title'] = $category['#title'];
-		$categories[$key]['#weight'] = $key_question_categories[$key]['#weight'];
+	else
+	{
+		$sorted_key_questions = array();
 	}
 
-	if (count($categories) > 1) {
-		uasort($categories, "my_weight_compare");
-	}
+	$all_key_questions = pi_sort_key_questions_get_options();
+	
+	$key_questions_to_show = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
 
 	$key_question_options = array();
-	foreach($categories as $key => $category) {
-		$key_question_options[$key] = $category['#title'];
+	foreach($key_questions_to_show as $key => $question)
+	{
+		$key_question_options[$key] = $question['#title'];
 	}
-
-	/*
-		//*****Get the selected measures
-		$measure_options = array();
-
-		$measures_param = find_selected_measures_nid_for_uid_and_inquiry ($user->uid, $node_details->inquiry_id);
-		print "mp".$measures_param;
-
-		if ($measures_param) {
-		$measures_node = node_load($measures_param);
-		$measure_array = $measures_node->categories;
-		};
-
-		$measures_in_use = array();
-		if (isset($measure_array)) {
-		foreach ($measure_array as $key => $category) {
-		if($category['#status'] == 'key' || $category['#status'] == 'selected') {
-		$measures_in_use[$key]['#title'] = $category['#title'];
-		print "mnid".$category['#title'].$category['#status'];
-		}
-		};
-		};
-
-		$measures_selected = array();
-		if ($node->presentation_measures) {
-		foreach (explode(",",$node->presentation_measures) as $sel) {
-		$measures_selected[] = $sel;
-		};
-		};*/
 
 	if (isset($key_question_options) AND ($key_question_options != array())) {
 		$form['key_question_id'] = array(
@@ -177,33 +138,23 @@ function pi_result_presentations_form(&$node) {
 	);
 
 	// Add the categories of existing nodes and the options list for new nodes
-	if(isset($node->nid)) {
-		$node_categories = $node->categories;//pi_draggable_measures_get_choice($node);
+	if(isset($node->nid))
+	{
+		$selected_results_measures = $node->categories;
 	}
-	else {
-		$node_categories = array();
+	else
+	{
+		$selected_results_measures = array();
 	}
-
-	$option_categories = pi_result_presentations_get_options();
+	$all_results_measures = pi_result_presentations_get_options();
 
 	//merge the two lists as categories
-	$categories = array();
-	foreach ($option_categories as $key => $category) {
-		//get weight from navigation
-		$measure_activity_id = get_activity_id_for_nid($key);
-		$measure_phase_id = get_phase_id_for_activity_id($measure_activity_id);
-		$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $measure_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $measure_activity_id . "' ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
-			
-		$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-		$categories[$key]['#status'] = $node_categories[$key]['#status'];
-		$categories[$key]['#title'] = $category['#title'];
-	}
-
-
+	$results_measures_to_show = pi_merge_content_item_lists($selected_results_measures, $all_results_measures);
 	// set $tree to point to the above $form['onepageprofile_categories'] object
 	$tree = &$form['onepageprofile_categories'];
 
-	foreach ($categories as $key => $category) {
+	foreach ($results_measures_to_show as $key => $category)
+	{
 		$measure = node_load($key);
 
 		// format the measure units
@@ -224,7 +175,7 @@ function pi_result_presentations_form(&$node) {
 
 		$tree[$key]['weight'] = array(
             '#type'          => 'weight',
-            '#delta'         => max(10, count($categories)),
+            '#delta'         => max(10, count($results_measures_to_show)),
             '#default_value' => $category['#weight'],
 		);
 
@@ -234,7 +185,7 @@ function pi_result_presentations_form(&$node) {
             '#options' => array('0' => 'unselected', '1' => 'selected'),
 		);
 	}
-	$prefix = "";
+	$prefix = '';
 	/*	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
 	if ($hypothesis_param) {
@@ -242,7 +193,6 @@ function pi_result_presentations_form(&$node) {
 
 	$prefix .= theme_pi_hypothesis($hypothesis_node, FALSE, FALSE);
 	}*/
-
 	//$prefix .= '<p>' . t('Enter a short title, select a set of your measures to generate a data table you can use to answer your question, and enter what you would predict to find.') . '</p>';
 
 	$form['#prefix'] = $prefix;
@@ -317,7 +267,7 @@ function pi_result_presentations_view($node, $teaser = FALSE, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
 
 	$node->content['pi_result_presentations'] = array(
-            '#value' => theme('pi_result_presentations', $node,$teaser),
+            '#value' => theme('pi_result_presentations', $node, $teaser),
             '#weight' => 10
 	);
 
@@ -342,15 +292,9 @@ function pi_result_presentations_theme() {
 /**
  * implementation of theme_hook().
  */
-function theme_pi_result_presentations($node,$teaser) {
-
+function theme_pi_result_presentations($node, $teaser) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-	
-	if(!$teaser) 
-	{
-		drupal_set_title(t($node->title));
-	}
 
 	$chart_activity_id = $details->activity_id;
 
@@ -361,7 +305,7 @@ function theme_pi_result_presentations($node,$teaser) {
 		$chart_activity_id = $node->activity_id;
 	}
 
-	$output = "";
+	$output = '';
 
 	if(!$teaser) 
 	{
@@ -375,10 +319,12 @@ function theme_pi_result_presentations($node,$teaser) {
 	$selected_measures = "";
 	$delim = "";
 
-	$measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid .
-    								"' AND vid = '" . $node->vid . 
-    								"' AND status = '1' ORDER BY weight ASC");
-
+	$query = "SELECT available_measure FROM pi_result_presentations " .
+				"WHERE nid = %d " .
+				"AND vid = %d " . 
+				"AND status = '1' " .
+				"ORDER BY weight ASC";
+	$measures = db_query($query, $node->nid, $node->vid);
 	while ($measure = db_fetch_object($measures))
 	{
 		$selected_measures .= $delim . $measure->available_measure;
@@ -387,10 +333,9 @@ function theme_pi_result_presentations($node,$teaser) {
 			$delim = ",";
 		}
 	}
-
-	$header = get_selected_measures_headings_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
-	$rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
-
+	$header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+	$rows = get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+	
 	if(!$teaser)
 	{
 		$table_output .= theme('table', $header, $rows);
@@ -795,13 +740,7 @@ function result_presentations_teaser_view($node) {
  * Theme pi_results_presentations form
  */
 function theme_pi_result_presentations_node_form($form) {
-
 	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
-
-	//show message prompt in edit status
-	if(arg(2) == 'edit') {
-		drupal_set_message('Click on the View tab to see your data table and chart.');
-	}
 
 	// Header
 	$header = array(
@@ -812,10 +751,9 @@ function theme_pi_result_presentations_node_form($form) {
 
 	// Rows for the tabledrag
 	$rows = array();
-
 	$tree = &$form['onepageprofile_categories'];
-
-	foreach (element_children($tree) as $key) {
+	foreach (element_children($tree) as $key)
+	{
 		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
 
 		$row = array();
@@ -844,23 +782,20 @@ function theme_pi_result_presentations_node_form($form) {
  * Load the user edit form and grab all of the fieldsets
  */
 function pi_result_presentations_get_choice($node) {
+	$query = "SELECT * FROM pi_result_presentations " .
+		"WHERE nid = %d AND vid = %d " .
+		"ORDER BY status DESC, weight ASC";
+	$result = db_query($query, $node->nid, $node->vid);
 
-	global $user;
 	$categories = array();
-
-	$result = db_query("SELECT * FROM pi_result_presentations WHERE nid = '" . $node->nid . "' AND vid = '" . $node->vid . "' ORDER BY status DESC, weight ASC");
-
-	while ($row = db_fetch_object($result))
+	while($row = db_fetch_object($result))
 	{
-
-		$loaded_node = node_load($row->available_measure, NULL, TRUE);
-		$categories[$row->available_measure] = array(	'#weight' => $row->weight,
+		$loaded_node = node_load($row->available_measure);
+		$categories[$row->available_measure] = array(	'#weight' => count($categories),
             											'#title'  => t($loaded_node->title),
-            											'#status'  => $row->status				);
+            											'#status'  => $row->status
+													);
 	}
-
-	// uasort($categories, "my_weight_compare");
-
 	return $categories;
 }
 
@@ -869,26 +804,28 @@ function pi_result_presentations_get_choice($node) {
  * Load the user edit form and grab all of the fieldsets
  */
 function pi_result_presentations_get_options() {
-
 	global $user;
 	$details = get_inquiry_details_from_current_path();
 
-	$categories = array();
 
 	$measures = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
 	$measures_obj = node_load($measures);
 
-	if(count($measures_obj->categories) > 0) {
-		foreach($measures_obj->categories as $key => $measure) {
+	$categories = array();
+	if(count($measures_obj->categories) > 0)
+	{
+		foreach($measures_obj->categories as $key => $measure)
+		{
 			$measure_node = node_load($key);
-			if($measure['#status'] == 'key' || $measure['#status'] == 'selected') {
+			if($measure['#status'] == 'key' || $measure['#status'] == 'selected')
+			{
 				$categories[$key] = array (
-            '#weight' => 1,
-            '#title'  => t($measure_node->title),
-            '#status'  => 'none'
-            );
+		            '#weight' => 1,
+		            '#title'  => t($measure_node->title),
+		            '#status'  => 'none'
+	            );
 			}
-		};
+		}
 	}
 
 	return $categories;
