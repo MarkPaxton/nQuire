@@ -13,14 +13,14 @@
 function pi_key_answers_node_info() {
 	return array(
 		'pi_key_answers' => array(
-		'name' => t('Inquiry key answers'), // Required.
-		'module' => 'pi_key_answers',  // Required.
-		'description' => t('What are the answers to the key questions of your inquiry?'), // Required.
-    'has_title' => TRUE,
-    'title_label' => t('Short title'),
-    'has_body' => TRUE,
-    'body_label' => t('Key question answer'),
-    'locked' => TRUE
+			'name' => t('Key answer'), // Required.
+			'module' => 'pi_key_answers',  // Required.
+			'description' => t('What are the answers to the key questions of your inquiry?'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t('Short title'),
+		    'has_body' => TRUE,
+		    'body_label' => t('Key question answer'),
+		    'locked' => TRUE
 		)
 	);
 }
@@ -69,97 +69,69 @@ function pi_key_answers_access($op, $node) {
  * Implementation of hook_form().
  */
 function pi_key_answers_form(&$node) {
-
-  global $user;
-  $uid = $user->uid;
+	global $user;
 	$node_details = get_inquiry_details_from_current_path();
-	if (is_numeric($node_details->activity_id)) {
-		$current_activity = load_activity($node_details->activity_id);
-  }
-  	
-    // Add the categories of existing nodes and the options list for new nodes
-    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
-    if(isset($key_questions_nid)) {
-    		$key_questions_node = node_load(key_questions_nid);
-    		$node_categories = $key_questions_node->categories;
-    }
-    else {
-        $node_categories = array();
-    }
-    
-		$option_categories = pi_sort_key_questions_get_options();
-		$categories = array();
-		
-		foreach ($option_categories as $key => $category) {
-			$categories[$key]['#title'] = $category['#title'];
-			$categories[$key]['#weight'] = $node_categories[$key]['#weight'];
+
+	// Add the categories of existing nodes and the options list for new nodes
+	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+
+	$sorted_key_questions = array();
+	if(isset($key_questions_nid))
+	{
+		$key_questions_node = node_load($key_questions_nid);
+		if($key_questions_node)
+		{
+			$sorted_key_questions = $key_questions_node->categories;
 		}
-
-		if (count($categories) > 1) {
-			uasort($categories, "my_weight_compare");
-		}
-  	$key_question_categories = array();
-  	foreach($categories as $key => $category) {
-  		$key_question_categories[$key] = $category['#title'];
-  	}
-  		
-  /*
-  $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
-  //**should look for the key questions not the sort nid*********
-  
-  // Add the categories of existing nodes and the options list for new nodes
-  if(isset($key_questions_nid)) {
-    $key_questions_node = node_load($key_questions_nid);
-    $categories = $key_questions_node->categories;
-  }
-    
-  $key_question_options = array();
-  if(count($categories) > 0) {
-  foreach ($categories as $key => $category) {
-    $key_question = node_load($key);
-    $key_question_options[$key] = $key_question->title;
-  }
-  }
-  */
-  
-  if (count($key_question_categories) > 0) {
-  
-	$form['key_question_id'] = array(
-		'#type' => 'select',
-		'#title' => t('Key question'),
-		'#required' => TRUE,
-		'#default_value' => $node->key_question_id,
-		'#description' => t('Select a key question to answer'),
-		'#options' => $key_question_categories,
-		'#weight' => -6
-	);
-
-	$form['title'] = array(
-        '#type' => 'hidden',
-        '#value' => t('Key answer')
-	);
-    
-	$form['body_filter']['body'] = array(
-		'#type' => 'textarea',
-		'#title' => t('Answer'),
-		'#required' => TRUE,
-		'#default_value' => check_plain($node->body),
-		'#description' => t('Enter an answer to your selected key question'),
-		'#resizable' => FALSE,
-		'#rows' => 4,
-		'#cols' => 40,
-		'#weight' => -2
-	);
-  /*
-  if($current_activity->description) {
-  	$prefix = "<p>" . $current_activity->description . "</p>";
-  }
-  else {
-		$prefix = "<p>Use your findings to answer a key question.</p>";
 	}
+    
+    $all_key_questions = pi_sort_key_questions_get_options();
+    $key_questions_to_show = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
 
-	$form['#prefix'] = $prefix;*/
-	}
+    if (count($key_questions_to_show) > 0)
+    {
+    	$key_question_options = array();
+    	foreach($key_questions_to_show as $question_nid => $question)
+    	{
+    		$key_question_options[$question_nid] = $question['#title']; 
+    	}
+  
+    	$form['key_question_id'] = array(
+			'#type' => 'select',
+			'#title' => t('Key question'),
+			'#required' => TRUE,
+			'#default_value' => $node->key_question_id,
+			'#description' => t('Select a key question to answer'),
+			'#options' => $key_question_options,
+			'#weight' => -6
+    	);
+
+    	$form['title'] = array(
+	        '#type' => 'hidden',
+	        '#value' => t('Key answer')
+    	);
+
+    	$form['body_filter']['body'] = array(
+			'#type' => 'textarea',
+			'#title' => t('Answer'),
+			'#required' => TRUE,
+			'#default_value' => $node->body,
+			'#description' => t('Enter an answer to your selected key question'),
+			'#resizable' => FALSE,
+			'#rows' => 4,
+			'#cols' => 40,
+			'#weight' => -2
+    	);
+    	/*
+    	 if($current_activity->description) {
+    	 $prefix = "<p>" . $current_activity->description . "</p>";
+    	 }
+    	 else {
+    	 $prefix = "<p>Use your findings to answer a key question.</p>";
+    	 }
+
+    	 $form['#prefix'] = $prefix;*/
+    }
 	return $form;
 }
 

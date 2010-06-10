@@ -96,55 +96,50 @@ function pi_sort_key_answers_form(&$node) {
 
     // Add the categories of existing nodes and the options list for new nodes
     if(isset($node->nid)) {
-        $node_categories = $node->categories;
+        $sorted_key_answers = $node->categories;
     }
     else {
-        $node_categories = array();
+        $sorted_key_answers = array();
     }
 		
-    $option_categories = pi_sort_key_answers_get_options();
-    $categories = array();
-    
-    foreach ($option_categories as $key => $category)
-    {
-    	$categories[$key]['#title'] = $category['#title'];
-    		
-    	//get weight from navigation
-    	$answer_activity_id = get_activity_id_for_nid($key);
-    	$answer_phase_id = get_phase_id_for_activity_id($answer_activity_id);
-    	$pos_result = db_result(db_query("SELECT pi_stage_phase_activity.position FROM pi_stage_phase_activity, pi_stage_phase WHERE pi_stage_phase.phase_id = '" . $answer_phase_id . "' AND pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id AND pi_stage_phase_activity.activity_id = '" . $answer_activity_id . "' LIMIT 1"));
-    		
-    		
-    	$categories[$key]['#weight'] = $pos_result;//$node_categories[$key]['#weight'];
-    }
+    $all_key_answers = pi_sort_key_answers_get_options();
 
-    if (count($categories) > 1) {
-    	uasort($categories, "my_weight_compare");
+    // don't do a normal merge as weights are dependant on the questions first...
+    foreach($all_key_answers as $answer_nid => $answer)
+    {
+    	if(!array_key_exists($answer_nid, $sorted_key_answers))
+    	{
+    		$sorted_key_answers[$answer_nid] = $answer;
+    	}
     }
-		
+    
+	
     // set $tree to point to the above $form['onepageprofile_categories'] object
     $tree = &$form['onepageprofile_categories'];
-    foreach($categories as $key => $category) {
-				
+    foreach($sorted_key_answers as $key => $answer)
+    {
         $key_answer = node_load($key);
-
-        // add $tree entries for current category (i.e. $key)
-        $tree[$key]['title'] = array(
-            '#value' => t($category['#title']),
-        );
-				
-        $tree[$key]['weight'] = array(
-            '#type'          => 'weight',
-            '#delta'         => max(10, count($categories)),
-            '#default_value' => $node_categories[$key]['#weight'],
-        );
+		if($key_answer)
+		{
+	        // add $tree entries for current category (i.e. $key)
+	        $tree[$key]['title'] = array(
+	            '#value' => check_plain($answer['#title']),
+	        );
+					
+	        $tree[$key]['weight'] = array(
+	            '#type'          => 'weight',
+	            '#delta'         => count($sorted_key_answers),
+	            '#default_value' => $answer['#weight'],
+	        );
+		}
     }
     return $form;
 }
 
 function pi_sort_key_answers_insert($node) {
 	$details  = get_inquiry_details_from_current_path();
-    while ($key_answer = current($node->onepageprofile_categories)) {
+    while ($key_answer = current($node->onepageprofile_categories))
+    {
         db_query("INSERT INTO pi_sort_key_answers (nid, vid, key_answer, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->onepageprofile_categories) . "', '" . $key_answer['weight'] . "')");
         pi_activity_update_weight_from_node(key($node->onepageprofile_categories), $key_answer['weight']);
         next($node->onepageprofile_categories);
@@ -478,7 +473,7 @@ function theme_pi_sort_key_answers_node_form($form) {
  * @return array [key question node id] #weight=> 1, #title = key question title
  */
 function pi_sort_key_answers_get_choice($node) {
-    $query = "SELECT key_answer FROM {pi_sort_key_answers} pi_sort_key_answers " .
+    $query = "SELECT key_answer, weight FROM {pi_sort_key_answers} pi_sort_key_answers " .
     	"WHERE pi_sort_key_answers.nid = %d " .
     	"AND pi_sort_key_answers.vid = %d " .
     	"ORDER BY weight ASC";
@@ -487,11 +482,11 @@ function pi_sort_key_answers_get_choice($node) {
     $answers = array();
     while($row = db_fetch_object($result))
     {
-    	$loaded_node = node_load($row->data);
+    	$loaded_node = node_load($row->key_answer);
         if($loaded_node!=false)
         {
 	        $answers[$row->key_answer] = array(
-	            '#weight' => count($answers),
+	            '#weight' => $row->weight,
 	            '#title'  => check_plain($loaded_node->title)
 	        );
         }

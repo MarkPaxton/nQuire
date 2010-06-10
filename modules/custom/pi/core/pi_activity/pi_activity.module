@@ -609,28 +609,30 @@ function pi_activity_load($activity_id)
  * $activity_array->destination
  * $activity_array->audience
  */
-function save_activity($activity_array) {
-	$set = "name = '" . $activity_array["name"] . "' ";
-	$set .= ", description = '" . $activity_array["description"] . "' ";
-	$set .= ", activity_type = '" . $activity_array["activity_type"] . "' ";
-	$set .= ", node_type = '" . $activity_array["node_type"] . "' ";
-	$set .= ", parameters = '" . $activity_array["parameters"] . "' ";
-	$set .= ", destination = '" . $activity_array["destination"] . "' ";
-	$set .= ", audience = '" . $activity_array["audience"] . "' ";
-
-	$query = "";
-	if ($activity_array["activity_id"] != NULL){
+function save_activity($activity_array)
+{
+	
+	$set = "name = '%s', description = '%s', activity_type = '%s', " .
+	"node_type = '%s', parameters = '%s', destination = '%s', audience = '%s' ";
+	
+	if ($activity_array["activity_id"] != NULL)
+	{
 		//update
-		$query = "UPDATE pi_activity SET ";
-		$query .= $set;
-		$query .= "WHERE pi_activity.activity_id = '" . $activity_array["activity_id"] . "'";
+		$query = "UPDATE {pi_activity} SET " . $set . " WHERE activity_id = %d";
+		db_query($query, $activity_array["name"], $activity_array["description"], 
+			$activity_array["activity_type"], $activity_array["node_type"], 
+			$activity_array["parameters"], $activity_array["destination"], 
+			$activity_array["audience"], $activity_array["activity_id"]);
 	}
-	else{
+	else
+	{
 		//insert
-		$query .= "INSERT INTO pi_activity SET ";
-		$query .= $set;
+		$query = "INSERT INTO {pi_activity} SET " . $set;
+		db_query($query, $activity_array["name"], $activity_array["description"], 
+			$activity_array["activity_type"], $activity_array["node_type"], 
+			$activity_array["parameters"], $activity_array["destination"], 
+			$activity_array["audience"]);
 	}
-	db_query($query);
 }
 
 /**
@@ -1067,13 +1069,10 @@ function pi_activity_map_fields_from_nids($nids, $field_mapping)
 		$node = node_load($nid);
 		if($node)
 		{
-			if($item_node)
+			$node_fields = array();
+			foreach($field_mapping as $field => $mapping)
 			{
-				$node_fields = array();
-				foreach($field_mapping as $field => $mapping)
-				{
-					$node_fields[$mapping] = $item_node->$field;
-				}
+				$node_fields[$mapping] = $node->$field;
 			}
 		}
 		$result[$nid] = $node_fields;
