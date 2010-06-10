@@ -4,86 +4,89 @@
 define( 'NQUIRE_VERSION', 'BETA1 2010-05-12 23:39' );
 
 function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
+	global $user;
+	switch ($op)
+	{
+		case 'list':
+			$blocks[0]['info'] = t('Activity guide header');
+			return $blocks;
 
-    switch ($op) {
+		case 'view':
+			$path = drupal_get_path('module', 'pi_header');
+			$image_path = $path . '/images';
+			drupal_add_css( $path .'/pi_header.css' );
 
-        case 'list':
-            $blocks[0]['info'] = t('Activity guide header');
-            return $blocks;
+			$details = get_inquiry_details_from_current_path();
+			$inquiry = node_load($details->inquiry_id);
 
-        case 'view':
+			//$block['subject'] = "nQuire";
+			if( arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' )
+			{
+				//$home_icon = l(t("<h1 class=\"nquire_home\">home</h1>"), t("inquiry/" . $details->inquiry_id), array('html' => TRUE));
+				$home_icon = l('<img src="' . $image_path . '/octagon.png" height="50px" >', 'inquiry/' . $details->inquiry_id, array('html' => TRUE) ) ;
+			}
+			else
+			{
+				$home_icon = l( '<img src="' . $image_path . '/logo.png" height="50px" >', 'http://www.nquire.org.uk', array('html' => TRUE) ) ;
+			}
 
-            global $user;
-            
-            $path = drupal_get_path('module', 'pi_header');
-            $image_path = $path . '/images';
-            
-            drupal_add_css( $path .'/pi_header.css' );
-            $details = get_inquiry_details_from_current_path();
+			$output = '';
 
-            $inquiry = node_load($details->inquiry_id);
-
-            //$block['subject'] = "nQuire";
-            if( arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' ) {
-            	
-            	//$home_icon = l(t("<h1 class=\"nquire_home\">home</h1>"), t("inquiry/" . $details->inquiry_id), array('html' => TRUE));
-                $home_icon = l( '<img src="' . $image_path . '/octagon.png" height="50px" >', t("inquiry/" . $details->inquiry_id), array('html' => TRUE) ) ;
-            }
-            else {
-                $home_icon = l( '<img src="' . $image_path . '/logo.png" height="50px" >', 'http://www.nquire.org.uk', array('html' => TRUE) ) ;
-            }
-            
-            $output = "";
-            $output .= "<div class=\"nquire_home\">" . $home_icon . "</div>";
-            
-            $output .= "<div class=\"nquire\">";
-            
-            if ($inquiry->title) {
-            	$output .= "<div style='float: left;'><h1 class=\"nquire\">" . t($inquiry->title) . "</h1></div>";
-			};
+			$output .= "<div class='nquire_home'>" . $home_icon . "</div>";
 			
-            if(arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage') {  
-            	$output .= "<div style='clear: both;'>" . pi_stage_bar($details) . "</div>";
-            }
-            
-            $output .= "</div>";
-          	
-          	if(NQUIRE_VERSION)
-            {
-            	$output .= "<div style='float: left; margin-top: 0.6em;'>" . NQUIRE_VERSION . "</div>";
-            }
-            
-            if ($user->uid) {
-                $link_att = array( 'attributes' => array( 'class' => 'logout' ) );
-                $output .= "<div style='float:left; width:100%'><div style='float:right'><div class=\"logout\">" . t($user->name) . "</div><div style='clear:both; float:right;'>" . l("logout","logout", $link_att ) . "</div></div>";
-            }
+			$output .= "<div class='nquire'>";
+			if ($inquiry->title)
+			{
+				$output .= "<div style='float: left;'><h1 class='nquire'>" . check_plain($inquiry->title) . '</h1></div>';
+			}
+				
+			if(arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage')
+			{
+				$output .= "<div style='clear: both;'>" . pi_stage_bar($details) . '</div>';
+			}
+			$output .= "</div>";
+			 
+			if(NQUIRE_VERSION)
+			{
+				$output .= "<div style='float:right;clear:right;'>" . t('Version ID') . ':&nbsp;' . NQUIRE_VERSION . "</div>";
+			}
 
-            $block['content'] = $output;
+			if ($user->uid)
+			{
+				$output .= "<div style='float:right;clear:right;'>";
+				$output .= "<div class='logout'>" . check_plain($user->name) . "</div>";
+				$link_att = array( 'attributes' => array( 'class' => 'logout' ) );
+				$output .= "<div style='clear:both; float:right;'>" . l("logout", "logout", $link_att ) . "</div>";
+				$output .= "</div>";
+			}
 
-            return $block;
-    };
+			$block['content'] = $output;
+			return $block;
+	}
 }
 
 
 function pi_stage_bar($details) {
 	global $user;
-	$uid = $user->uid;
+	
 	$stage_list = array();
 	$count = 1;
-	$stages = get_stages_of_inquiry_and_user($details->inquiry_id, $uid);
+	$stages = get_stages_of_inquiry_and_user($details->inquiry_id, $user->uid);
+
 	$stage_list = array();
 	foreach($stages as $stage_nid)
 	{
 		$stage = node_load($stage_nid);
-		if ($stage->nid == $details->stage_id) {
-			$stage_list[] = t('<b>' . $count++ . '</b>');
+		if ($stage->nid == $details->stage_id)
+		{
+			$stage_list[] = '<b>' . $count++ . '</b>';
 		}
 		else
 		{
-			$stage_list[] = t($count++);
+			$stage_list[] = $count++;
 		}
 	}
-	$output = '<p><b>My progress:</b> ' . implode(' &rarr; ', $stage_list) . '</p>';
+	$output = '<p><strong>' . t('My progress') . ':</strong> ' . implode(' &rarr; ', $stage_list) . '</p>';
 	return $output;
 }
 
