@@ -130,16 +130,17 @@ function pi_sort_result_presentations_form(&$node) {
 }
 
 function pi_sort_result_presentations_insert($node) {
-		$details  = get_inquiry_details_from_current_path();
-    while ($result_presentations = current($node->onepageprofile_categories)) {
-        
-        db_query("INSERT INTO pi_sort_result_presentations (nid, vid, result_presentations, weight) VALUES ('" . $node->nid . "', '" . $node->vid . "', '" . key($node->onepageprofile_categories) . "', '" . $result_presentations['weight'] . "')");
-        
-        pi_activity_update_weight_from_node(key($node->onepageprofile_categories), $result_presentations['weight']);
-
-        next($node->onepageprofile_categories);
-    }
-    reset($node->onepageprofile_categories);
+	$details  = get_inquiry_details_from_current_path();
+	if(is_array($node->onepageprofile_categories))
+	{
+		foreach($result_presentations as $key => $result_presentations)
+		{
+			$query = "INSERT INTO pi_sort_result_presentations (nid, vid, result_presentations, weight) " .
+				"VALUES (%d, %d, %d, %d)"; 
+			db_query($query, $node->nid, $node->vid, $key, $result_presentations['weight']);
+			pi_activity_update_weight_from_node($key, $result_presentations['weight']);
+		}
+	}
 }
 
 function pi_sort_result_presentations_update($node) {
@@ -272,11 +273,11 @@ function theme_pi_sort_result_presentations_node_form($form) {
     //only display form and submit button if there are some entries
     if (count($rows) > 0) {
     	$output .= theme('table', $NULL, $rows, array('id' => 'onepageprofile-categories'));
-    	$output .= drupal_render($form);
     }
    	else {
    		$output .= "<p>No result presentations are available.</p>";
    	}
+    	$output .= drupal_render($form);
    	
     //$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
     //$output .= drupal_render($form);
