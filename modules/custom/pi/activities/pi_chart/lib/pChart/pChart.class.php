@@ -247,14 +247,17 @@ class pChart
 			$this->VMax = $Data[0][$DataDescription["Values"][0]];
 			foreach ( $Data as $Key => $Values )
 			{
-				foreach ( $DataDescription["Values"] as $Key2 => $ColName )
+				if(is_array($DataDescription["Values"] ))
 				{
-					if (isset($Data[$Key][$ColName]))
+					foreach ( $DataDescription["Values"] as $Key2 => $ColName )
 					{
-						$Value = $Data[$Key][$ColName];
+						if (isset($Data[$Key][$ColName]))
+						{
+							$Value = $Data[$Key][$ColName];
 
-						if ( $Value > $this->VMax ) { $this->VMax = $Value; }
-						if ( $Value < $this->VMin ) { $this->VMin = $Value; }
+							if ( $Value > $this->VMax ) { $this->VMax = $Value; }
+							if ( $Value < $this->VMin ) { $this->VMin = $Value; }
+						}
 					}
 				}
 			}
@@ -1166,7 +1169,7 @@ class pChart
 				{
 					$Value = $Data[$Key][$ColName];
 					$YPos = $this->GArea_Y2 - (($Value-$this->VMin) * $this->DivisionRatio);
-					 
+
 					if ( $Shadow )
 					$this->drawRectangle($XPos+1,$YZero,$XPos+$SeriesWidth-1,$YPos,25,25,25);
 					$this->drawFilledRectangle($XPos+1,$YZero,$XPos+$SeriesWidth-1,$YPos,$this->Palette[$ColorID]["R"],$this->Palette[$ColorID]["G"],$this->Palette[$ColorID]["B"]);

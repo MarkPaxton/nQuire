@@ -40,8 +40,8 @@
 /* pData class definition */
 class pData
 {
-	var $Data;
-	var $DataDescription;
+	var $Data = array();
+	var $DataDescription = array();
 
 	function pData()
 	{
@@ -123,19 +123,19 @@ class pData
 
 	function AddPoint($Value,$Serie="Serie1",$Description="")
 	{
-		if (is_array($Value) && count($Value) == 1)
+		if(is_array($Value) && count($Value) == 1)
 		$Value = $Value[0];
 
 		$ID = 0;
 		for($i=0;$i<=count($this->Data);$i++)
-		{ 
-			if(isset($this->Data[$i][$Serie])) 
-			{ 
-				$ID = $i+1; 
-			} 
+		{
+			if(isset($this->Data[$i][$Serie]))
+			{
+				$ID = $i+1;
+			}
 		}
 
-		if ( count($Value) == 1 )
+		if(count($Value) == 1)
 		{
 			$this->Data[$ID][$Serie] = $Value;
 			if ( $Description != "" )
@@ -145,12 +145,15 @@ class pData
 		}
 		else
 		{
-			foreach($Value as $key => $Val)
+			if(is_array($Value))
 			{
-				$this->Data[$ID][$Serie] = $Val;
-				if (!isset($this->Data[$ID]["Name"]))
-				$this->Data[$ID]["Name"] = $ID;
-				$ID++;
+				foreach($Value as $key => $Val)
+				{
+					$this->Data[$ID][$Serie] = $Val;
+					if (!isset($this->Data[$ID]["Name"]))
+					$this->Data[$ID]["Name"] = $ID;
+					$ID++;
+				}
 			}
 		}
 	}

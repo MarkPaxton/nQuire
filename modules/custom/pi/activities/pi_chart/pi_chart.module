@@ -29,9 +29,9 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 	$selected_measures = "";
 	$delim = "";
 
-	$measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid .
-    								"' AND vid = '" . $node->vid . 
-    								"' AND status = '1' ORDER BY weight ASC");
+	$SQL = "SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
+	
+	$measures = db_query($SQL, $node->nid , $node->vid);
 
 	while ($measure = db_fetch_object($measures))
 	{
@@ -73,19 +73,23 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 
 	$x_axis_labels = shorten_lables($x_axis_labels, 5);
 	$x_axis_labels = check_labels($x_axis_labels);
-	
+
 	foreach($data as $data_row)
 	{
 		$text_data = FALSE;
 		foreach ($data_row as $data_item)
 		{
-			if (!(is_numeric($data_item)))
+			if(empty($data_item))
+			{
+				$data_item = 0;
+			}
+			else if(!(is_numeric($data_item)))
 			{
 				$text_data = TRUE;
 				break;
 			}
 		}
-		
+
 		if($text_data === FALSE)
 		{
 			$data_set->AddPoint($data_row, 'Serie_' . $counter );
@@ -97,7 +101,7 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 		}
 	}
 
-	if( $scatter_graph_check === TRUE)
+	if($scatter_graph_check === TRUE)
 	{
 		$chart['title'] = t($header[0] . ' versus ' . $x_axis_labels_heading);
 		$graph_type = 'line_graph';
@@ -123,11 +127,11 @@ function shorten_lables($labels, $length)
 		{
 			if(strlen($labels[$i])>$length)
 			{
-				$labels[$i] = substr( $labels[$i], 0, $length ). "."; 
+				$labels[$i] = substr( $labels[$i], 0, $length ). ".";
 			}
 		}
 	}
-	
+
 	return $labels;
 }
 
@@ -146,20 +150,20 @@ function check_labels($labels)
 			}
 		}
 	}
-	
+
 	if(is_array($renamed_labels))
 	{
 		foreach( $renamed_labels as $renamed_label )
 		{
 			$key = array_search($renamed_label, $labels);
-			
+
 			if($key !== FALSE && $key !== NULL)
 			{
 				$labels[$key] = $labels[$key] . " (1)";
 			}
 		}
 	}
-	
+
 	return $labels;
 }
 
@@ -207,7 +211,10 @@ function pi_chart_generate( $graph_type, $chart, $data_set, $serie_names, $x_axi
 
 	$data_set->SetAbsciseLabelSerie('x_label');
 
-	//$data_set->sort( 'x_label' );
+	if($graph_type==='line_graph')
+	{
+		$data_set->sort( 'x_label' );
+	}
 
 	$graph->drawScale($data_set->GetData(),$data_set->GetDataDescription(),5,0,0,0,TRUE,0,0,TRUE);
 
@@ -218,30 +225,20 @@ function pi_chart_generate( $graph_type, $chart, $data_set, $serie_names, $x_axi
 	$graph->drawTreshold(0,143,55,72,TRUE,TRUE);
 
 	// Draw the bar graph
-
-	switch( $graph_type )
+	if(count($serie_names)>0)
 	{
-		case 'bar_graph' : 	$graph->drawBarGraph($data_set->GetData(),$data_set->GetDataDescription(),TRUE);
-		$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',10);
-		$counter = 0;
-		foreach($serie_names as $serie => $label_info)
+		switch( $graph_type )
 		{
-			$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
-			$graph->writeValues($data_set->GetData(),$data_set->GetDataDescription(), $serie);
-			$counter++;
+			case 'bar_graph' : 	$graph->drawBarGraph($data_set->GetData(),$data_set->GetDataDescription(),TRUE);
+			//_pi_chart_drwa_datapoint_label($graph, $serie_names);
+			break;
+			case 'line_graph' :	$graph->drawPlotGraph($data_set->GetData(),$data_set->GetDataDescription(),3,1,0,0,0);
+			_pi_chart_drwa_datapoint_label($graph, $data_set, $serie_names);
+			break;
+			default:	$graph->drawPlotGraph($data_set->GetData(),$data_set->GetDataDescription(),3,1,0,0,0);
+			_pi_chart_drwa_datapoint_label($graph, $data_set, $serie_names);
+			break;
 		}
-		break;
-		default:			$graph->drawPlotGraph($data_set->GetData(),$data_set->GetDataDescription(),3,1,0,0,0);
-		$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',10);
-		$counter = 0;
-		foreach($serie_names as $serie => $label_info)
-		{
-			$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
-			$graph->writeValues($data_set->GetData(),$data_set->GetDataDescription(), $serie);
-			$counter++;
-		}
-			
-		break;
 	}
 
 	// Finish the graph
@@ -251,6 +248,18 @@ function pi_chart_generate( $graph_type, $chart, $data_set, $serie_names, $x_axi
 	$graph->drawTitle(50,22,$chart['title'],50,50,50,585);
 
 	return $graph;
+}
+
+function _pi_chart_drwa_datapoint_label($graph, $data_set, $serie_names)
+{
+	$graph->setFontProperties(dirname( __FILE__) . '/lib/Fonts/tahoma.ttf',10);
+	$counter = 0;
+	foreach($serie_names as $serie => $label_info)
+	{
+		$graph->setColorPalette($counter,$label_info['color']['red'], $label_info['color']['green'], $label_info['color']['blue']);
+		$graph->writeValues($data_set->GetData(),$data_set->GetDataDescription(), $serie);
+		$counter++;
+	}
 }
 
 ?>
