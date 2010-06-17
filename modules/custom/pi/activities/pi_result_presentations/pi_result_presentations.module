@@ -13,7 +13,7 @@
 function pi_result_presentations_node_info() {
 	return array(
     'pi_result_presentations' => array(
-		'name' => t('Inquiry result '), // Required.
+		'name' => t('Inquiry result presentations'), // Required.
 		'module' => 'pi_result_presentations',  // Required.
 		'description' => t('A presentation for exploring part of a collected dataset?'), // Required.
 		'has_title' => TRUE,
@@ -200,23 +200,91 @@ function pi_result_presentations_form(&$node) {
 	return $form;
 
 }
+/**
+ * This function validates the presentaion the user wants to create.
+ * It checks that non of the selected y axis measures are non numeric.
+ * Additionally it checks if at least 2 measures are selected (x+y)
+ * @param $form
+ * @param $form_state
+ */
+function pi_result_presentations_validate(&$form, &$form_state)
+{
+	global $user;
+	$details = get_inquiry_details_from_current_path();
 
+	$is_y_scale_numeric = TRUE;
+	$is_numeric = TRUE;
+	$selectedMeasure = 0;
+	$measure_weight = -99999;
+	$measure_id = -1;
+	$non_numerics = array();
+	
+	$categories = $form->onepageprofile_categories;
 
+	if(is_array($categories))
+	{
+		foreach($categories as $measure_id => $category)
+		{
+			if($category['status'] != 0 )
+			{
+				$selectedMeasure++;
+				$weights[$selectedMeasure] = $category['weight'];
+
+				$x_axis_labels = get_data_for_inquiry_measure_and_user($details->inquiry_id, $measure_id, $user->uid);
+
+				$is_numeric = TRUE;
+				
+				foreach($x_axis_labels as $x_axis_label)
+				{
+					
+					if(!empty($x_axis_label) && !is_numeric($x_axis_label))
+					{
+						$is_numeric = FALSE;						
+					}
+				}
+				
+				if($is_numeric == FALSE)
+				{
+					$non_numeric[] = intval($category['weight']);
+					$is_y_scale_numeric = FALSE;
+				}
+			}
+		}
+	}
+	
+	if(count($non_numeric)==1)
+	{
+		//Check if the non numeric selected measure is the first one (x axis)
+		//In case it is, the selection is OK.
+		if($non_numeric[0] <= min($weights))
+		{
+			$is_y_scale_numeric = TRUE;
+		}
+	}
+	
+	if($is_y_scale_numeric == FALSE)
+	{
+		form_set_error('Selected Measure',t('One or more measues can not be displayed because they are not numeric. Only the first selection can be non numeric.'));
+	}
+
+	if($selectedMeasure < 2)
+	{
+		form_set_error('Selected Measure',t('At least two measures have to be selected'));
+	}
+}
 
 /**
  * Implementation of hook_insert().
  */
-function pi_result_presentations_insert($node) {
-	while ($measure = current($node->onepageprofile_categories)) {
-
-		db_query("INSERT INTO pi_result_presentations
-        (nid, vid, key_question_id, available_measure, status, weight) 
-        VALUES ('" . $node->nid . "', '" . $node->vid . "', 
-        '" . $node->key_question_id . "', 
-        '" . key($node->onepageprofile_categories) . "', 
-        '" . $measure['status'] . "', 
-        '" . $measure['weight'] . "')");
-
+function pi_result_presentations_insert($node) 
+{
+	while ($measure = current($node->onepageprofile_categories)) 
+	{
+		$sql = "INSERT INTO pi_result_presentations (nid, vid, key_question_id, available_measure, status, weight) 
+        		VALUES ( %d, %d, %d, %d, '%s', %d )";  
+				
+		db_query($sql, $node->nid, $node->vid, $node->key_question_id, key($node->onepageprofile_categories), $measure['status'], $measure['weight']);
+		
 		next($node->onepageprofile_categories);
 	}
 	reset($node->onepageprofile_categories);
@@ -225,13 +293,16 @@ function pi_result_presentations_insert($node) {
 /**
  * Implementation of hook_update().
  */
-function pi_result_presentations_update($node) {
+function pi_result_presentations_update($node) 
+{
 	// if this is a new node or we're adding a new revision,
-	if ($node->revision) {
+	if ($node->revision) 
+	{
 		pi_result_presentations_insert($node);
 	}
-	else {
-		db_query("DELETE FROM pi_result_presentations WHERE vid = '" . $node->vid . "' ");
+	else 
+	{
+		db_query("DELETE FROM pi_result_presentations WHERE vid = %d", $node->vid);
 		pi_result_presentations_insert($node);
 	}
 }
@@ -239,8 +310,9 @@ function pi_result_presentations_update($node) {
 /**
  * Implementation of hook_delete().
  */
-function pi_result_presentations_delete(&$node) {
-	db_query("DELETE FROM pi_result_presentations WHERE nid = '" . $node->nid . "' ");
+function pi_result_presentations_delete(&$node) 
+{
+	db_query("DELETE FROM pi_result_presentations WHERE nid = %d", $node->nid);
 }
 
 /**
@@ -319,11 +391,7 @@ function theme_pi_result_presentations($node, $teaser) {
 	$selected_measures = "";
 	$delim = "";
 
-	$query = "SELECT available_measure FROM pi_result_presentations " .
-				"WHERE nid = %d " .
-				"AND vid = %d " . 
-				"AND status = '1' " .
-				"ORDER BY weight ASC";
+	$query = "SELECT available_measure FROM pi_result_presentations WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
 	$measures = db_query($query, $node->nid, $node->vid);
 	while ($measure = db_fetch_object($measures))
 	{
@@ -595,9 +663,9 @@ function result_presentations_teaser_view($node) {
 	$selected_measures = "";
 	$delim = "";
 
-	$measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid .
-    								"' AND vid = '" . $node->vid . 
-    								"' AND status = '1' ORDER BY weight ASC");
+	$sql = "SELECT available_measure FROM pi_result_presentations WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
+	
+	$measures = db_query($sql, $node->nid, $node->vid);
 
 	while ($measure = db_fetch_object($measures))
 	{
@@ -802,10 +870,9 @@ function theme_pi_result_presentations_node_form($form) {
 /**
  * Load the user edit form and grab all of the fieldsets
  */
-function pi_result_presentations_get_choice($node) {
-	$query = "SELECT * FROM pi_result_presentations " .
-		"WHERE nid = %d AND vid = %d " .
-		"ORDER BY status DESC, weight ASC";
+function pi_result_presentations_get_choice($node) 
+{
+	$query = "SELECT * FROM pi_result_presentations WHERE nid = %d AND vid = %d ORDER BY status DESC, weight ASC";
 	$result = db_query($query, $node->nid, $node->vid);
 
 	$categories = array();
@@ -852,13 +919,6 @@ function pi_result_presentations_get_options() {
 	return $categories;
 }
 
-
-
-
-
-
-
-
 function pi_data_export_csv () {
 
 	global $user;
@@ -870,9 +930,8 @@ function pi_data_export_csv () {
 	$selected_measures = "";
 	$delim = "";
 
-	$measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid .
-    								"' AND vid = '" . $node->vid . 
-    								"' AND status = '1' ORDER BY weight ASC");
+	$sql = "SELECT available_measure FROM pi_result_presentations WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
+	$measures = db_query($sql, $node->nid, $node->vid);
 
 	while ($measure = db_fetch_object($measures)) {
 		$selected_measures .= $delim . $measure->available_measure;
