@@ -561,6 +561,7 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
     	array('units_short_test', 'units_short', 'Units symbol / short name'),
     	array('data_type_test', 'data_type', 'Data type'),
     	array('list_options_test', 'list_options', 'Menu options'),
+    	array('content_options_test', 'content_options', 'Content options'),
     	array('measurement_device_name_test', 'measurement_device_name', 'Device name'),
     	array('measurement_device_description_test', 'measurement_device_description', 'Device description'),
     );
@@ -677,6 +678,10 @@ function theme_pi_available_measures($node, $measures_parameters) {
 			case 'list_options':
 				$print_value = theme('item_list', $parameter['value']);
 				break;
+			case 'content_options':
+				$print_value = theme('item_list', get_node_teasers_by_type($measures_parameters['content_options']['value']));
+				
+				break;				
 			default:
 				$print_value = check_plain($parameter['value']);
 		}
@@ -730,8 +735,15 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 				break;
 			case 'menu':
 				$title = t('Choose from');
-				$value = implode(', ', $measures_parameters['list_options']['value']);
-				$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+				if($measures_parameters['list_options']['value']) {
+					$value = implode(', ', $measures_parameters['list_options']['value']);
+					$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+				}
+				elseif($measures_parameters['content_options']['value']) {
+					$value = implode(', ', get_node_titles_by_type($measures_parameters['content_options']['value']));
+					
+					$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+				}
 				unset($measures_parameters['data_type']);
 				unset($measures_parameters['list_options']);
 			break;
@@ -761,6 +773,36 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 	}	
 	
 	return $output;
+}
+
+function get_node_nids_by_type($content_type) {
+	$nids = array();
+	$query = "SELECT nid, title FROM node WHERE type = '" . $content_type . "' ORDER BY nid ASC";
+	$result = db_query($query);
+	while($content_node = db_fetch_object($result)) {
+		$nids[] = $content_node->nid;
+	}
+	return $nids;
+}
+
+function get_node_titles_by_type($content_type) {
+	$titles = array();
+	$query = "SELECT nid, title FROM node WHERE type = '" . $content_type . "' ORDER BY nid ASC";
+	$result = db_query($query);
+	while($content_node = db_fetch_object($result)) {
+		$titles[] = $content_node->title;
+	}
+	return $titles;
+}
+
+function get_node_teasers_by_type($content_type) {
+	$titles = array();
+	$query = "SELECT nid, title FROM node WHERE type = '" . $content_type . "' ORDER BY nid ASC";
+	$result = db_query($query);
+	while($content_node = db_fetch_object($result)) {
+		$titles[] = t($content_node->title).node_view(node_load($content_node->nid), TRUE, TRUE);
+	}
+	return $titles;
 }
 
 /**

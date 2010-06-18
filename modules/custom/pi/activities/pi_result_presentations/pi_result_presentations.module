@@ -388,6 +388,8 @@ function theme_pi_result_presentations($node, $teaser) {
 		}
 	}
 	
+
+	
 	$selected_measures = "";
 	$delim = "";
 
@@ -399,6 +401,7 @@ function theme_pi_result_presentations($node, $teaser) {
 		if ($delim == "")
 		{
 			$delim = ",";
+			$first_measure = $measure->available_measure;
 		}
 	}
 	$header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
@@ -573,6 +576,11 @@ function theme_pi_result_presentations($node, $teaser) {
 	if(!$teaser) 
 	{
 		$output  .= '<p>' . l('Download (csv) data file', 'export/' . $details->activity_id . '/csv') . '</p>';
+		
+		$first_measure_node = node_load($first_measure);
+		if($first_measure_node->content_options == 'pi_location_lat_long') {
+			$output  .= '<p>' . l('Download (kml) data file', 'export/' . $details->activity_id . '/kml') . '</p>';
+		}
 	}
 
 	return $output;
@@ -988,4 +996,90 @@ function create_csv_from_table ($header, $rows) {
 }
 
 
+function pi_data_export_kml () {
+
+
+    global $user;
+    $details = get_inquiry_details_from_current_path();
+   
+    $nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $user->uid);
+    $node = node_load($nid);
+    
+    
+    $selected_measures = "";
+    $delim = "";
+    
+    $measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid . 
+    								"' AND vid = '" . $node->vid . 
+    								"' AND status = '1' ORDER BY weight ASC");
+    								
+    while ($measure = db_fetch_object($measures)) {
+    	$selected_measures .= $delim . $measure->available_measure;
+    	if ($delim == "") {
+    		$delim = ",";
+    		$first_measure = $measure->available_measure;
+    	};
+    };
+    
+    
+    $header = get_selected_measures_headings_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
+    $rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
+    
+    $name = str_replace (' ', '_', $node->title);
+    $filename = 'kml_data-' . $name . '.kml';
+    
+    $lat = array();
+    $long = array();
+    
+    $first_measure_node = node_load($first_measure);
+        
+    header('Content-type: text/kml');
+    header('Content-Disposition: attachment; filename=' . $filename);
+    
+    // print_r($location_nids);
+    echo create_kml_from_table ($header, $rows, $first_measure_node->content_options);
+    module_invoke_all('exit');
+    exit();
+
+}
+
+function create_kml_from_table ($header, $rows, $content_type) {
+	$output = "";
+		$output .= '<?xml version="1.0" encoding="UTF-8"?>';
+		$output .= '<kml xmlns="http://earth.google.com/kml/2.2">';
+		$output .= '<Document>';
+		$x = 0;
+		$y = 0;
+		$loc_count = 1;
+		foreach ($rows as $row) {
+			$x = 0;
+			
+			$query = "SELECT nid FROM node WHERE type = '" . $content_type . "' AND title = '" . $row[0] . "' ORDER BY nid DESC LIMIT 1";
+			$location_nid = db_result(db_query($query));
+			
+			$loc = node_load($location_nid);
+    	if ($loc->field_location_latitude && $loc->field_location_longitude) {
+    		$lat = $loc->field_location_latitude;
+    		$long = $loc->field_location_longitude;
+    	}
+			
+			$output .= '<Placemark>';
+			$output .= '<name>' . $loc_count . '. ' . $row[0] . '</name>';
+			$output .= '<description>';
+			foreach ($row as $item) {
+				$output .= '<strong>' . $header[$x] . '</strong>: ' . $item . '<br />';
+				$x = $x + 1;
+			}
+			$output .= '</description>';
+			$output .= '<Point>';
+			$output .= '<coordinates>' . $long[0]['value'] . ',' . $lat[0]['value'] . ',0</coordinates>';
+			$output .= '</Point>';
+			$output .= '</Placemark>';
+			$y = $y + 1;
+			$loc_count = $loc_count + 1;
+		};
+		$output .= '</Document>';
+		$output .= '</kml>';
+	return $output;
+}
 
