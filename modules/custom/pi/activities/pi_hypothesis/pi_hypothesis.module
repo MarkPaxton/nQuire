@@ -89,12 +89,11 @@ function pi_hypothesis_form(&$node) {
         '#weight' => -5
     );
     
-		$hypothesis_with_line_breaks = str_replace("<br/>", "\n", $node->hypothesis);
     $form['hypothesis'] = array(
         '#type' => 'textarea',
         '#title' => t('My hypothesis is'),
         '#required' => TRUE,
-        '#default_value' => $hypothesis_with_line_breaks,
+        '#default_value' => $node->hypothesis,
         '#description' => t('Type your hypothesis into the above box and click on the Save button when you are finished'),
         '#resizable' => TRUE,
         '#rows' => 5,
@@ -119,9 +118,8 @@ function pi_hypothesis_form(&$node) {
  * Implementation of hook_insert().
  */
 function pi_hypothesis_insert($node) {
-		$hypothesis = str_replace("\n", "<br/>", $node->hypothesis); 
     db_query("INSERT INTO {pi_hypothesis} (nid, vid, hypothesis) VALUES ('%d', '%d', '%s')",
-        $node->nid, $node->vid, $hypothesis);
+        $node->nid, $node->vid, $node->hypothesis);
 }
 
 /**
@@ -133,8 +131,7 @@ function pi_hypothesis_update($node) {
     }
 
     else {
-    		$hypothesis = str_replace("\n", "<br/>", $node->hypothesis); 
-        db_query("UPDATE {pi_hypothesis} SET hypothesis = '%s' WHERE vid = %d", $hypothesis, $node->vid);
+        db_query("UPDATE {pi_hypothesis} SET hypothesis = '%s' WHERE vid = %d", $node->hypothesis, $node->vid);
     }
 }
 
@@ -221,6 +218,6 @@ function theme_pi_hypothesis($node, $current_activity=NULL, $teaser) {
     {
     	$output .= "<p>" . t('A hypothesis is a prediction that you can test') . ".</p>";
     }
-    $output .= '<p>' . t($node->hypothesis). '</p>';
+    $output .= '<p>' . nl2br($node->hypothesis). '</p>';
     return $output;
 }
