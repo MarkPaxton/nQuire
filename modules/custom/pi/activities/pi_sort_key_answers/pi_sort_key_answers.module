@@ -138,14 +138,13 @@ function pi_sort_key_answers_form(&$node) {
 
 function pi_sort_key_answers_insert($node) {
 	$details  = get_inquiry_details_from_current_path();
-    if(is_array($node->onepageprofile_categories))
+    if(count($node->onepageprofile_categories) > 0)
     {
     	foreach($node->onepageprofile_categories as $nid =>$key_answer)
     	{
     		$query = "INSERT INTO pi_sort_key_answers (nid, vid, key_answer, weight) " .
     			"VALUES (%d, %d, %d, %d)";
     		db_query($query, $node->nid,$node->vid, $nid, $key_answer['weight']);
-    		pi_activity_update_weight_from_node($nid, $key_answer['weight']);
     	}
     }
 }
@@ -460,8 +459,13 @@ function theme_pi_sort_key_answers_node_form($form) {
 	}
 	else
 	{
-		$output .= "<p>No key questions are available.</p>";
+	  $output .= "<p>No key questions are available.</p>";
 	}
+	
+  if($answer_flag == 0)
+  {
+    $output  .= '<p> Press <strong>Save</strong> to start adding your answers.</p>';
+  }	
 
 	//if($answer_flag == 1) {
 		$output .= drupal_render($form);
