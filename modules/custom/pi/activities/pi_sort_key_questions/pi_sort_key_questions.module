@@ -134,11 +134,14 @@ function pi_sort_key_questions_form(&$node) {
 function pi_sort_key_questions_insert($node) {
 	$details  = get_inquiry_details_from_current_path();
 	$question_weights = array();
-	foreach($node->onepageprofile_categories as $question_nid => $question_weight)
+	if(count($node->onepageprofile_categories) > 0)
 	{
+	  foreach($node->onepageprofile_categories as $question_nid => $question_weight)
+	  {
 		$question_weights[$question_nid] = $question_weight['weight'];
+	  }
+	  asort($question_weights);
 	}
-	asort($question_weights);
 	
 	$query = "INSERT INTO {pi_sort_key_questions} (nid, vid, key_question, weight) VALUES (%d, %d, %d, %d)"; 
 	$weight_count = 0;
@@ -146,7 +149,6 @@ function pi_sort_key_questions_insert($node) {
 	{
 		$key_question = $node->onepageprofile_categories[$key_question_nid];
 		db_query($query, $node->nid, $node->vid, $key_question_nid, $weight_count);
-		pi_activity_update_weight_from_node($key_question_nid, $weight_count, $details);
 		$weight_count++;
 	}
 }
@@ -312,7 +314,14 @@ function theme_pi_sort_key_questions_node_form($form) {
     	$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
     }
    	else {
-   		$output .= "<p>" . t('No key questions are available') . ".</p>";
+   	  if(arg(2) == 'add')
+      {
+        $output  .= '<p> Press <strong>Save</strong> to start adding your key questions.</p>';
+      }
+      else
+      {
+        $output .= "<p>" . t('No key questions are available') . ".</p>";
+      }
    	}
    	$output .= drupal_render($form);
     return $output;

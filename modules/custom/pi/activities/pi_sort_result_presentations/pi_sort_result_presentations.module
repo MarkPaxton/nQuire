@@ -131,13 +131,12 @@ function pi_sort_result_presentations_form(&$node) {
 
 function pi_sort_result_presentations_insert($node) {
 	$details  = get_inquiry_details_from_current_path();
-	if(is_array($node->onepageprofile_categories))
+	if(count($node->onepageprofile_categories) > 0)
 	{
 		foreach($node->onepageprofile_categories as $key => $result_presentations)
 		{
 			$query = "INSERT INTO {pi_sort_result_presentations} (nid, vid, result_presentations, weight) VALUES (%d, %d, %d, %d)"; 
 			db_query($query, $node->nid, $node->vid, $key, $result_presentations['weight']);
-			pi_activity_update_weight_from_node($key, $result_presentations['weight']);
 		}
 	}
 }
@@ -274,7 +273,14 @@ function theme_pi_sort_result_presentations_node_form($form) {
     	$output .= theme('table', $NULL, $rows, array('id' => 'onepageprofile-categories'));
     }
    	else {
-   		$output .= "<p>No result presentations are available.</p>";
+   	  if(arg(2) == 'add')
+      {
+        $output  .= '<p> Press <strong>Save</strong> to start adding your results.</p>';
+      }
+      else
+      {
+        $output .= "<p>No result presentations are available.</p>";
+      }
    	}
     	$output .= drupal_render($form);
    	
