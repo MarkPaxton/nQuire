@@ -163,7 +163,7 @@ function pi_sort_data_insert($node) {
   {
     foreach($node->onepageprofile_categories as $key => $measure)
     {
-      db_query("INSERT INTO pi_sort_data (nid, vid, data, weight) VALUES (%d, %d, '%s', %d)",
+      db_query("INSERT INTO {pi_sort_data} (nid, vid, data, weight) VALUES (%d, %d, '%s', %d)",
 			$node->nid, $node->vid, $key, $measure['weight']);
     }
   }
@@ -177,13 +177,13 @@ function pi_sort_data_update($node) {
 	}
 	else
 	{
-		db_query("DELETE FROM pi_sort_data WHERE vid = %d", $node->vid);
+		db_query("DELETE FROM {pi_sort_data} WHERE vid = %d", $node->vid);
 		pi_sort_data_insert($node);
 	}
 }
 
 function pi_sort_data_delete(&$node) {
-	db_query("DELETE FROM pi_sort_data WHERE nid = %d", $node->nid);
+	db_query("DELETE FROM {pi_sort_data} WHERE nid = %d", $node->nid);
 }
 
 
@@ -396,10 +396,10 @@ function theme_pi_sort_data_node_form($form) {
  * Load the user edit form and grab all of the fieldsets
  */
 function pi_sort_data_get_choice($node) {
-	$query = "SELECT * FROM {pi_sort_data} pi_sort_data " .
-		"WHERE pi_sort_data.nid = %d " .
-		"AND pi_sort_data.vid = %d " .
-		"ORDER BY weight ASC";
+	$query = "SELECT * FROM {pi_sort_data} AS pi_sort_data "
+			. "WHERE pi_sort_data.nid = %d "
+			. "AND pi_sort_data.vid = %d "
+			. "ORDER BY weight ASC";
 	$result = db_query($query, $node->nid, $node->vid);
 	$data = array();
 	while ($row = db_fetch_object($result))
