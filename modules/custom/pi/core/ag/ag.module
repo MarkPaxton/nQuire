@@ -44,7 +44,7 @@ function build_link($first, $second, $third, $inquiry_id = 0, $stage_id = 0, $ph
 
 function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) {
     if (!$inquiry_id) {
-        $query = "SELECT inquiry_id FROM pi_current_stage ORDER BY inquiry_id DESC";
+        $query = "SELECT inquiry_id FROM {pi_current_stage} ORDER BY inquiry_id DESC";
         $result = db_fetch_object(db_query($query));
         $inquiry_id = $result->inquiry_id;
     }
@@ -231,9 +231,9 @@ function teacher_only_flag ($gid) {
 }
 
 function new_activities($inquiry_id, $phase_id, $uid) {
-	$query = "SELECT DISTINCT pi_activity_status.activity_id FROM pi_activity_status LEFT JOIN pi_previous_activity_status ON pi_activity_status.pas_id = pi_previous_activity_status.pas_id LEFT JOIN og_uid ON og_uid.nid = pi_activity_status.gid LEFT JOIN pi_stage_phase_activity ON pi_stage_phase_activity.activity_id = pi_activity_status.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase.psp_id =  pi_stage_phase_activity.psp_id WHERE pi_stage_phase.phase_id = '" . $phase_id . "' AND (pi_activity_status.node_function = 'add' OR pi_activity_status.node_function = 'edit' OR pi_activity_status.node_function = 'view') AND (pi_previous_activity_status.node_function = 'unavailable' OR pi_previous_activity_status.node_function IS NULL) AND pi_activity_status.inquiry_id = '" . $inquiry_id . "' AND (pi_activity_status.uid = '" . $uid . "' OR og_uid.uid = '" . $uid . "') ";
+	$query = "SELECT DISTINCT {pi_activity_status}.activity_id FROM {pi_activity_status} LEFT JOIN {pi_previous_activity_status} ON {pi_activity_status}.pas_id = {pi_previous_activity_status}.pas_id LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity_status}.activity_id LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.psp_id =  {pi_stage_phase_activity}.psp_id WHERE {pi_stage_phase}.phase_id = %d AND ( {pi_activity_status}.node_function = 'add' OR {pi_activity_status}.node_function = 'edit' OR {pi_activity_status}.node_function = 'view') AND ( {pi_previous_activity_status}.node_function = 'unavailable' OR {pi_previous_activity_status}.node_function IS NULL) AND {pi_activity_status}.inquiry_id = %d AND ( {pi_activity_status}.uid = %d OR {og_uid}.uid = %d)";
 	
-	$result = db_query($query);
+	$result = db_query($query, $phase_id, $inquiry_id, $uid, $uid );
 	return $result;
 }
 

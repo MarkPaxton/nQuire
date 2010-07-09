@@ -142,7 +142,7 @@ function pi_phase_insert($node) {
 	// Query the database first to set the weight to place the item at the end of lists.
 	// If the query result is NULL then the the field will to default=0 since the weight
 	// column is defined with NOT NULL DEFAULT 0   
-	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 from pi_phase WHERE inquiry_nid=%d", $node->inquiry_nid));
+	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_phase} WHERE inquiry_nid=%d", $node->inquiry_nid));
 	db_query("INSERT INTO {pi_phase} (nid, vid, inquiry_nid, weight) VALUES (%d, %d, %d, %d)",
 	$node->nid, $node->vid, $node->inquiry_nid, $initial_weight);
 }
@@ -234,7 +234,7 @@ function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
  */
 function pi_phase_load_nids($inquiry_nid)
 {
-	$query = "SELECT nid from {pi_phase} WHERE inquiry_nid = %d ORDER BY weight";
+	$query = "SELECT nid FROM {pi_phase} WHERE inquiry_nid = %d ORDER BY weight";
 	$result = db_query($query, $inquiry_nid);
 	$phase_nodes = array();
 	while($nid=db_result($result))

@@ -182,7 +182,7 @@ function pi_sort_measures_insert($node) {
 	$measures_to_save = pi_sort_grouped_item_list($default_region_order, $node->measures_list, 'weight');
 	foreach($measures_to_save as $nid => $measure)
 	{
-		$query = "INSERT INTO pi_selected_measures (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
+		$query = "INSERT INTO {pi_selected_measures} (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
 		db_query($query, $node->nid, $node->vid, $nid, $measure['status'], $measure['weight']);
 		pi_activity_update_weight_from_node($nid, $measure['weight']);
 	}
@@ -199,7 +199,7 @@ function pi_sort_measures_update($node) {
         pi_sort_measures_insert($node);
     }
     else {
-        db_query("DELETE FROM pi_selected_measures WHERE vid = %d", $node->vid);
+        db_query("DELETE FROM {pi_selected_measures} WHERE vid = %d", $node->vid);
         pi_sort_measures_insert($node);
     }
 }
@@ -499,11 +499,7 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
  * @return unknown_type
  */
 function pi_sort_measures_get_choice($node) {
-    $query = "SELECT * FROM {pi_selected_measures} pi_selected_measures " .
-    		"WHERE pi_selected_measures.nid = %d " .
-    		"AND pi_selected_measures.vid = %d " .
-    		"ORDER BY status ASC, weight ASC";
-
+    $query = "SELECT * FROM {pi_selected_measures} WHERE {pi_selected_measures}.nid = %d AND {pi_selected_measures}.vid = %d ORDER BY status ASC, weight ASC";
     $result = db_query($query, $node->nid, $node->vid);
 
     $measures = array();

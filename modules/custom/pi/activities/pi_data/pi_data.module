@@ -196,9 +196,10 @@ function pi_data_form(&$node) {
 						elseif ($measure_info->content_options)
 						{
 							$options = array();
-							$query = "SELECT nid, title FROM node WHERE type = '" . $measure_info->content_options . "' ";
-							$results = db_query($query);
-							while ($result = db_fetch_object($results)) {
+							$query = "SELECT nid, title FROM {node} WHERE type = '%s'";
+							$results = db_query($query, $measure_info->content_options);
+							while ($result = db_fetch_object($results)) 
+							{
 								$options[$result->title] = $result->title;//now use value as key
 							}
 						};
@@ -398,9 +399,8 @@ function pi_data_insert($node) {
 			drupal_set_message(t('There was a problem finding measure data for ') . check_plain($measure_type->title) . ". Check is has saved correctly.", 'warning');
 			$node_data = $measure['value'];
 		}
-		db_query("INSERT INTO pi_collected_data (nid, vid, selected_measures_nid, available_measure_nid, value) " .
-			"VALUES ( %d, %d, %d, %d, '%s')",	$node->nid, $node->vid,
-			$selected_measure_nid, $available_measure_nid, $node_data);
+		db_query("INSERT INTO {pi_collected_data} (nid, vid, selected_measures_nid, available_measure_nid, value) VALUES ( %d, %d, %d, %d, '%s')",
+			$node->nid, $node->vid, $selected_measure_nid, $available_measure_nid, $node_data);
 	}
 }
 
@@ -463,8 +463,8 @@ function pi_data_delete(&$node) {
 
 //needs to be reintroduced
 function is_checkboxes_measure($id) {
-	$query = "SELECT measure_nid FROM pi_selected_measures WHERE psm_id = " . $id . " ";
-	$measure_nid = db_fetch_object(db_query($query));
+	$query = "SELECT measure_nid FROM {pi_selected_measures} WHERE psm_id = %d";
+	$measure_nid = db_fetch_object(db_query($query, $id));
 	$measure_nid = $measure_nid->measure_nid;
 	$measure = node_load($measure_nid);
 	if ($measure->data_type) {

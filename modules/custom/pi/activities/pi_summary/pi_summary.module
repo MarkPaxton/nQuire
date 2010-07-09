@@ -10,9 +10,9 @@
  * Implementation of pi_summary_node_info().
  */
 function pi_summary_node_info() {
-  // We return an array since a module can define multiple node types.
-  // We're only defining one node type, type 'pi_ask_expert'.
-  return array(
+	// We return an array since a module can define multiple node types.
+	// We're only defining one node type, type 'pi_ask_expert'.
+	return array(
     'pi_summary' => array(
       'name' => t('Summary'), // Required.
       'module' => 'pi_summary',  // Required.
@@ -22,30 +22,30 @@ function pi_summary_node_info() {
       'has_body' => TRUE,
       'body_label' => t('Summary'),
       'locked' => '1',
-    )
-  );
+	)
+	);
 }
 
 /**
  * Implementation of pi_summary_perm().
  */
 function pi_summary_perm() {
-  return array('create pi_summary', 'edit own pi_summary');
+	return array('create pi_summary', 'edit own pi_summary');
 }
 
 /**
  * Implementation of pi_summary_access().
  */
 function pi_summary_access($op, $node) {
-  global $user;
+	global $user;
 
-  if ($op == 'create') {
-    return (user_access('create pi_summary'));
-  }
+	if ($op == 'create') {
+		return (user_access('create pi_summary'));
+	}
 
-  if ($op == 'update' || $op == 'delete') {
-    return (user_access('edit own pi_summary'));
-  }
+	if ($op == 'update' || $op == 'delete') {
+		return (user_access('edit own pi_summary'));
+	}
 }
 
 
@@ -54,45 +54,45 @@ function pi_summary_access($op, $node) {
  */
 function pi_summary_form(&$node) {
 
-  drupal_set_title(t('Summary'));
-  
-  global $user;
-  
-  $prefix = "<p>Can you Summarise what you have done.  Summaies help you remember what you have done and allow";
-  $prefix .= " your to reflect on what you have done.  Are there any questions about what you have done so far that";
-  $prefix .= " you would like to find answers to?</p>";
-  $prefix .= "<p>Your summary should be about these activities...</p>";
-  $params = explode('&', arg(7));
-  $summary_of = $params[0];
-  if($summary_of == 'phase'){
-  	$prefix .= get_phase_summary();
-  }
-  else if($summary_of == 'stage'){
-  	$prefix .= get_stage_summary();
-  }
-  else{
-  	$prefix .= "<br> - " . $summary_of;
-  }
-    
-  $form['#prefix'] = $prefix;
-  // Get metadata for this node type
-  // (we use it for labeling title and body fields).
-  // We defined this in pi_ask_expert_node_info().
-  $type = node_get_types('type', $node);
+	drupal_set_title(t('Summary'));
 
-  $form['title'] = array(
+	global $user;
+
+	$prefix = "<p>Can you Summarise what you have done.  Summaies help you remember what you have done and allow";
+	$prefix .= " your to reflect on what you have done.  Are there any questions about what you have done so far that";
+	$prefix .= " you would like to find answers to?</p>";
+	$prefix .= "<p>Your summary should be about these activities...</p>";
+	$params = explode('&', arg(7));
+	$summary_of = $params[0];
+	if($summary_of == 'phase'){
+		$prefix .= get_phase_summary();
+	}
+	else if($summary_of == 'stage'){
+		$prefix .= get_stage_summary();
+	}
+	else{
+		$prefix .= "<br> - " . $summary_of;
+	}
+
+	$form['#prefix'] = $prefix;
+	// Get metadata for this node type
+	// (we use it for labeling title and body fields).
+	// We defined this in pi_ask_expert_node_info().
+	$type = node_get_types('type', $node);
+
+	$form['title'] = array(
     '#type' => 'hidden',
     '#title' => check_plain($type->title_label),
     '#required' => FALSE,
     '#default_value' => $type->title_label,
     '#weight' => -5
-  );
-  
-  $form['summary'] = array(
+	);
+
+	$form['summary'] = array(
     '#type' => 'fieldset'
-  );
-  
-  $form['summarise']['summary'] = array(
+    );
+
+    $form['summarise']['summary'] = array(
     '#type' => 'textarea',
     '#title' => t('My summary... '),
     '#required' => TRUE,
@@ -101,32 +101,33 @@ function pi_summary_form(&$node) {
     '#rows' => 2,
     '#cols' => 40,
     '#weight' => 2
-  );
-  
-  unset($form['delete']);
+    );
 
-  return $form;
+    unset($form['delete']);
+
+    return $form;
 }
 
 
 /**
  * Helper functions get_phase_summary() & get_stage_summary()
- * 
+ *
  * @return string
  */
 function get_phase_summary(){
 	$details =  get_inquiry_details_from_current_path();
 	//get the activities for this stage and phase
-	$query = "SELECT * FROM pi_stage_phase WHERE phase_id = '" . $details->phase_id . "'";
-	$result = db_query($query);
+	$query = "SELECT * FROM {pi_stage_phase} WHERE phase_id = %d";
+	$result = db_query($query, $details->phase_id);
 	//print out the activity descriptions as a guide to the phase description
 	$phase_summary = "";
-	while($object = db_fetch_object($result)){
+	while($object = db_fetch_object($result))
+	{
 		//get activity
-		$query2 = "SELECT * FROM pi_stage_phase_activity";
-		$query2 .= " LEFT JOIN pi_activity ON pi_activity.activity_id = pi_stage_phase_activity.activity_id";
-		$query2 .= " WHERE psp_id = '" . $object->psp_id . "'";
-		$description = db_fetch_object(db_query($query2));
+		$query2 = "SELECT * FROM {pi_stage_phase_activity}"
+		 		. " LEFT JOIN {pi_activity} ON {pi_activity}.activity_id = {pi_stage_phase_activity}.activity_id"
+				. " WHERE psp_id = %d";
+		$description = db_fetch_object(db_query($query2), $object->psp_id );
 		//add decription of activity to phase summary
 		$phase_summary .= "<strong>" . $description->description . "</strong><br>";;
 	}
@@ -135,22 +136,22 @@ function get_phase_summary(){
 
 /**
  * MISSING
- * 
+ *
  * @return string
  */
 function get_stage_summary(){
 	$details =  get_inquiry_details_from_current_path();
 	//get the activities for this stage and phase
-	$query = "SELECT * FROM pi_stage_phase WHERE stage_id = '" . $details->stage_id . "'";
-	$result = db_query($query);
+	$query = "SELECT * FROM {pi_stage_phase} WHERE stage_id = %d";
+	$result = db_query($query, $details->stage_id);
 	//print out the activity descriptions as a guide to the phase description
 	$stage_summary = "";
 	while($object = db_fetch_object($result)){
 		//get activity
-		$query2 = "SELECT * FROM pi_stage_phase_activity";
-		$query2 .= " LEFT JOIN pi_activity ON pi_activity.activity_id = pi_stage_phase_activity.activity_id";
-		$query2 .= " WHERE psp_id = '" . $object->psp_id . "'";
-		$description = db_fetch_object(db_query($query2));
+		$query2 = "SELECT * FROM {pi_stage_phase_activity}"
+		 		. " LEFT JOIN {pi_activity} ON {pi_activity}.activity_id = {pi_stage_phase_activity}.activity_id"
+				. " WHERE psp_id = %d";
+		$description = db_fetch_object(db_query($query2), $object->psp_id);
 		//add decription of activity to phase summary
 		$stage_summary .= "<strong>" . $description->description . "</strong><br>";
 	}
@@ -161,7 +162,7 @@ function get_stage_summary(){
  * Implementation of pi_summary_validate().
  */
 function pi_summary_validate($node) {
-  
+
 }
 
 /**
@@ -169,85 +170,82 @@ function pi_summary_validate($node) {
  */
 function pi_summary_insert($node) {
 	global $user;
-	$insert = "INSERT INTO pi_summary SET";
-	$insert .= " nid = '" . $node->nid . "'";
-	$insert .= ", vid = '" . $node->vid . "'";
-	$insert .= ", summary = '" . $node->summary . "'";
-	db_query($insert);
+	$insert = "INSERT INTO {pi_summary} SET nid = %d, vid = %d, summary = '%s'";
+	db_query($insert, $node->nid, $node->vid, $node->summary);
 }
 
 /**
  * Implementation of pi_summary_update().
  */
 function pi_summary_update($node) {
-  if ($node->revision) {
-    pi_summary_insert($node);
-  }
-  else {
-  	$update = "UPDATE pi_summary SET";
-  	$update .= " summary = '" . $node->summary . "'";
-  	$update .= " WHERE vid = '" . $node->vid . "'";
-  	db_query($update);
-  }
+	if ($node->revision)
+	{
+		pi_summary_insert($node);
+	}
+	else
+	{
+		$update = "UPDATE {pi_summary} SET summary = '%s' WHERE vid = %d";
+		db_query($update, $node->summary, $node->vid);
+	}
 }
 
 /**
  * Implementation of pi_summary_delete().
  */
 function pi_summary_delete(&$node) {
-	$delete = "DELETE FROM pi_summary WHERE nid = '" . $node->nid . "'";
-  	db_query($delete);
+	$delete = "DELETE FROM {pi_summary} WHERE nid = %d";
+	db_query($delete, $node->nid);
 }
 
 /**
  * Implementation of pi_summary_load().
  */
 function pi_summary_load($node) {
-	$load = "SELECT * FROM pi_summary WHERE vid = '" . $node->vid . "'";
-  	return db_fetch_object(db_query($load));
+	$load = "SELECT * FROM {pi_summary} WHERE vid = %d";
+	return db_fetch_object(db_query($load, $node->vid));
 }
 
 /**
  * Implementation of pi_summary_view().
  */
 function pi_summary_view($node, $teaser = FALSE, $page = FALSE) {
-  if (!$teaser) {
-    // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
-    $node->content['pi_summary'] = array(
+	if (!$teaser) {
+		// Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+		$node->content['pi_summary'] = array(
     	'#value' => theme_pi_summary($node),
     	'#weight' => 2
-    );
-  }
+		);
+	}
 
-  if ($teaser) {
-    // Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
-  }
-  return $node;
+	if ($teaser) {
+		// Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+	}
+	return $node;
 }
 
 /**
  * MISSING
- * 
- * @return multitype:multitype:multitype:string   
+ *
+ * @return multitype:multitype:multitype:string
  */
 function pi_summary_theme() {
-  return array(
+	return array(
     'pi_summary' => array(
       'arguments' => array('node'),
-    ),
-  );
+	),
+	);
 }
 
 /**
  * MISSING
- * 
+ *
  * @param unknown_type $node
  * @return string
  */
 function theme_pi_summary($node) {
 	$output = "<strong>Summary:</strong>";
-  	$output .= '<div class="pi_summary">' . check_plain($node->summary). '</div><br />';
-  	return $output;
+	$output .= '<div class="pi_summary">' . check_plain($node->summary). '</div><br />';
+	return $output;
 }

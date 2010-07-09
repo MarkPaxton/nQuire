@@ -175,15 +175,15 @@ function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
  * @param uint $uid The uid of the user that activity belongs to
  */
 function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
-	$query = "SELECT pi_phase.nid as nid FROM pi_phase " .
-		"LEFT JOIN pi_phase_actor ON pi_phase_actor.phase_id = pi_phase.nid " .
-		"LEFT JOIN og_uid ON og_uid.nid = pi_phase_actor.gid " .
-		"LEFT JOIN pi_stage_phase ON pi_stage_phase.phase_id = pi_phase.nid ".
-		"LEFT JOIN pi_stage_phase_activity ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id " .
-		"WHERE pi_phase.inquiry_nid = '" . $inquiry_id . "' " . 
-			"AND (pi_phase_actor.uid = '" . $uid . "' OR og_uid.uid = '" . $uid . "') " .
-			"AND  pi_stage_phase_activity.activity_id = '" . $activity_id . "' ";
-	$result = db_fetch_object(db_query($query));
+	$query = "SELECT {pi_phase}.nid as nid FROM {pi_phase} "
+			. "LEFT JOIN {pi_phase_actor} ON {pi_phase_actor}.phase_id = {pi_phase}.nid "
+			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_phase_actor}.gid "
+			. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.phase_id = {pi_phase}.nid "
+			. "LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
+			. "WHERE {pi_phase}.inquiry_nid = %d "
+			. "AND ( {pi_phase_actor}.uid = %d OR {og_uid}.uid = %d ) "
+			. "AND {pi_stage_phase_activity}.activity_id = %d";
+	$result = db_fetch_object(db_query($query, $inquiry_id, $uid, $uid, $activity_id));
 	return $result;
 }
 
@@ -193,12 +193,11 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
  **/
 function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) {
 	//find if uid is author of the node
-	$query1 = "SELECT `a`.`nid` FROM {pi_activity_node} AS `a` " . 
-			 "LEFT JOIN {node} AS `n` ON `n`.`nid` = `a`.`nid` " . 
-			 "WHERE `a`.`inquiry_id` = %d " . 
-			 "AND `a`.`activity_id` = %d " . 
-			 "AND `n`.`uid` = %d " . 
-			 "ORDER BY `a`.`pan_id` DESC";
+	$query1 = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} " 
+			. "LEFT JOIN {node} ON {node}.nid = {pi_activity_node}.nid "
+			. "WHERE {pi_activity_node}.inquiry_id = %d "
+			. "AND {pi_activity_node}.activity_id = %d AND {node}.uid = %d " 
+			. "ORDER BY {pi_activity_node}.pan_id DESC";
 	
 /*	$query1 = "SELECT pi_activity_node.nid FROM pi_activity_node, node";
 	$query1 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
@@ -218,16 +217,14 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 	}
 
 	//find if uid is member of a group for the node
-	$query2 = "SELECT pi_activity_node.nid FROM pi_activity_node, node_access, og_uid";
-	$query2 .= " WHERE  pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
-	$query2 .= " AND pi_activity_node.activity_id = '" . $activity_id . "' ";
-	$query2 .= " AND node_access.nid = pi_activity_node.nid";
-	$query2 .= " AND ((node_access.gid = gid";
-	$query2 .= " AND node_access.gid = og_uid.nid";
-	$query2 .= " AND og_uid.uid = '" . $uid . "') ";
-	$query2 .= " OR node_access.realm = 'all') ";
+	$query2 = "SELECT {pi_activity_node}.nid FROM {pi_activity_node}, {node_access}, {og_uid} "
+			. "WHERE  {pi_activity_node}.inquiry_id = %d "
+			. "AND {pi_activity_node}.activity_id = %d "
+			. "AND {node_access}.nid = {pi_activity_node}.nid "
+			. "AND ( ( {node_access}.gid = gid AND {node_access}.gid = og_uid.nid AND {og_uid}.uid = %d ) " 
+			. "OR {node_access}.realm = 'all')";
 
-	$result = db_fetch_object(db_query($query2));
+	$result = db_fetch_object(db_query($query2, $inquiry_id, $activity_id, $uid));
 	return $result->nid;
 }
 
@@ -238,7 +235,11 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
  * If more than one returns the one with the highest unique key in pi_stage_phase
  */
 function get_phase_id_for_activity_id($activity_id) {
-	$result = db_fetch_object(db_query("SELECT pi_stage_phase.phase_id FROM pi_stage_phase, pi_stage_phase_activity WHERE pi_stage_phase_activity.activity_id = '" . $activity_id . "' AND pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id ORDER BY pi_stage_phase.psp_id DESC LIMIT 1"));
+	$sql = "SELECT {pi_stage_phase}.phase_id FROM {pi_stage_phase}, {pi_stage_phase_activity} "
+		. "WHERE {pi_stage_phase_activity}.activity_id = %d "
+		. "AND {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
+		. "ORDER BY {pi_stage_phase}.psp_id DESC LIMIT 1";
+	$result = db_fetch_object(db_query($sql, $activity_id));
 	return $result->phase_id; 
 }
 
@@ -258,15 +259,14 @@ function get_inquiry_id_for_activity_id($activity_id) {
  * This uses pi_activity_actor and pi_activity tables.
  */
 function get_activity_ids_for_activity_type($inquiry_id, $activity_type, $uid) {
-	$query = "SELECT pi_activity.activity_id ";
-	$query .= "FROM pi_activity ";
-	$query .= "LEFT JOIN pi_activity_actor ON pi_activity_actor.activity_id = pi_activity.activity_id ";
-	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-	$query .= "WHERE pi_activity_actor.inquiry_id = '" . $inquiry_id . "' ";
-	$query .= "AND pi_activity.activity_type =  '" . $activity_type. "' ";
-	$query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
+	$query = "SELECT {pi_activity}.activity_id FROM {pi_activity} "
+			. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.activity_id = {pi_activity}.activity_id "
+			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+			. "WHERE {pi_activity_actor}.inquiry_id = %d "
+			. "AND {pi_activity}.activity_type =  '%s' "
+			. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
 
-	$result = db_result(db_query($query));
+	$result = db_result(db_query($query, $inquiry_id, $activity_type, $uid, $uid));
 	return $result;
 
 }
@@ -277,24 +277,23 @@ function get_activity_ids_for_activity_type($inquiry_id, $activity_type, $uid) {
  * This uses pi_activity_actor and pi_activity tables.
  */
 function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
-	$query = "SELECT pi_activity_node.nid ";
-	$query .= "FROM pi_activity_node ";
-	$query .= "LEFT JOIN pi_activity ON pi_activity_node.activity_id = pi_activity.activity_id ";
-	$query .= "LEFT JOIN pi_activity_actor ON ((pi_activity_node.inquiry_id = pi_activity_actor.inquiry_id) AND (pi_activity_actor.activity_id = pi_activity.activity_id)) ";
-	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-	$query .= "WHERE pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
-	$query .= "AND pi_activity.activity_type =  '" . $activity_type. "' ";
-	$query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
+	$query = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} "
+			. "LEFT JOIN {pi_activity} ON {pi_activity_node}.activity_id = {pi_activity}.activity_id "
+			. "LEFT JOIN {pi_activity_actor} ON (( {pi_activity_node}.inquiry_id = {pi_activity_actor}.inquiry_id ) AND ( {pi_activity_actor}.activity_id = {pi_activity}.activity_id )) "
+			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+			. "WHERE {pi_activity_node}.inquiry_id = %d "
+			. "AND {pi_activity}.activity_type =  '%s' "
+			. "AND ({pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
 
 	// print $query;
-	$result = db_query($query);
+	$result = db_query($query, $inquiry_id, $activity_type, $uid, $uid);
 	return $result;
 
 }
 
 function get_activity_id_for_nid($nid) {
-	$query = "SELECT activity_id FROM pi_activity_node WHERE nid = '" . $nid . "' ";
-	$result = db_fetch_object(db_query($query));
+	$query = "SELECT activity_id FROM {pi_activity_node} WHERE nid = %d";
+	$result = db_fetch_object(db_query($query, $nid));
 	return $result->activity_id;
 }
 
@@ -304,8 +303,8 @@ function get_activity_id_for_nid($nid) {
 function get_activity_type_of_node_path($path) {
 	$inquiry_details = get_inquiry_details_of_node_path ($path);
 
-	$query = "SELECT activity_type FROM pi_activity WHERE activity_id = '" . $inquiry_details->inquiry_id . "'";
-	$result = db_result(db_query($query));
+	$query = "SELECT activity_type FROM {pi_activity} WHERE activity_id = %d";
+	$result = db_result(db_query($query, $inquiry_details->inquiry_id));
 
 	return $result ;
 }
@@ -336,13 +335,9 @@ function check_activity_type_of_node_path ($path, $activity_type) {
  * This tracks that a node has been created for that particular activity.
  */
 function add_pi_activity_node($inquiry_id, $activity_id, $nid) {
-	$query = "INSERT INTO pi_activity_node ";
-	$query .= "SET inquiry_id = '" . $inquiry_id . "'";
-	$query .= ", activity_id = '" . $activity_id . "'";
-	$query .= ", nid_id = '" . $nid_id . "'";
+	$query = "INSERT INTO {pi_activity_node} SET inquiry_id = %d, activity_id = %d, nid_id = %d";
 
-	db_query($query);
-
+	db_query($query, $inquiry_id, $activity_id, $nid_id);
 }
 
 // ------------------------------------------------------------------------------------
@@ -419,30 +414,23 @@ function set_visible_status_of_activity($inquiry_id, $activity_id, $uid, $status
  * This will be set dependent on the audience in pi_activity.
  */
 function set_visible_status_of_activity_type($inquiry_id, $activity_type, $uid, $status) {
-	$query = "SELECT pi_activity_status.pas_id ";
-	$query .= "FROM pi_activity_status ";
-	$query .= "LEFT JOIN pi_activity ON pi_activity_status.activity_id = pi_activity.activity_id ";
-	$query .= "LEFT JOIN pi_activity_actor ";
-	$query .= "ON pi_activity_actor.inquiry_id = pi_activity_status.inquiry_id ";
-	$query .= "AND pi_activity_actor.activity_id = pi_activity_status.activity_id ";
-	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-	$query .= "WHERE pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
-	$query .= "AND pi_activity_status.activity_id = '" . $activity_id . "' ";
-	$query .= "AND pi_activity.activity_type = '" . $activity_type . "' ";
-	$query .= "AND (pi_activity_actor.uid = '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
+	$query = "SELECT {pi_activity_status}.pas_id FROM {pi_activity_status} "
+			. "LEFT JOIN {pi_activity} ON {pi_activity_status}.activity_id = {pi_activity}.activity_id "
+			. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.inquiry_id = {pi_activity_status}.inquiry_id "
+			. "AND {pi_activity_actor}.activity_id = {pi_activity_status}.activity_id "
+			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+			. "WHERE {pi_activity_status}.inquiry_id = %d "
+			. "AND {pi_activity_status}.activity_id = %d "
+			. "AND {pi_activity}.activity_type = '%s' "
+			. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid =  %d )";
 
-	$items = db_query($query);
+	$items = db_query($query, $inquiry_id, $activity_id, $activity_type, $uid, $uid);
 
-	while ($item = db_fetch_object($items)) {
-
-		$query = "UPDATE pi_activity_status ";
-		$query .= "SET visible_status = '" . $status . "' ";
-		$query .= "WHERE pas_id = '" . $item->pas_id . "'";
-
-		db_query($query);
-
-	};
-
+	while ($item = db_fetch_object($items)) 
+	{
+		$query = "UPDATE {pi_activity_status} SET visible_status = '%s' WHERE pas_id = %d";
+		db_query($query, $status, $item->pas_id);
+	}
 }
 
 /**
@@ -541,30 +529,23 @@ function set_node_function_of_activity($inquiry_id, $activity_id, $uid, $functio
  */
 function set_node_function_of_activity_type($inquiry_id, $activity_type, $uid, $function) {
 
-	$query = "SELECT pi_activity_status.pas_id ";
-	$query .= "FROM pi_activity_status ";
-	$query .= "LEFT JOIN pi_activity ON pi_activity_status.activity_id = pi_activity.activity_id ";
-	$query .= "LEFT JOIN pi_activity_actor ";
-	$query .= "ON pi_activity_actor.inquiry_id = pi_activity_status.inquiry_id ";
-	$query .= "AND pi_activity_actor.activity_id = pi_activity_status.activity_id ";
-	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-	$query .= "WHERE pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
-	$query .= "AND pi_activity_status.activity_id = '" . $activity_id . "' ";
-	$query .= "AND pi_activity.activity_type = '" . $activity_type . "' ";
-	$query .= "AND (pi_activity_actor.uid = '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
+	$query = "SELECT {pi_activity_status}.pas_id FROM {pi_activity_status} "
+			. "LEFT JOIN {pi_activity} ON {pi_activity_status}.activity_id = {pi_activity}.activity_id "
+			. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.inquiry_id = {pi_activity_status}.inquiry_id "
+			. "AND {pi_activity_actor}.activity_id = {pi_activity_status}.activity_id "
+			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+			. "WHERE {pi_activity_status}.inquiry_id = %d "
+			. "AND {pi_activity_status}.activity_id = %d "
+			. "AND {pi_activity}.activity_type = '%s' "
+			. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid =  %d )";
 
-	$items = db_query($query);
+	$items = db_query($query, $inquiry_id, $activity_id, $activity_type, $uid, $uid);
 
-	while ($item = db_fetch_object($items)) {
-
-		$query = "UPDATE pi_activity_status ";
-		$query .= "SET node_function = '" . $function . "' ";
-		$query .= "WHERE pas_id = '" . $item->pas_id . "'";
-
-		db_query($query);
-
-	};
-
+	while ($item = db_fetch_object($items)) 
+	{
+		$query = "UPDATE {pi_activity_status} SET node_function = '%s' WHERE pas_id = %d";
+		db_query($query, $function, $item->pas_id);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -610,8 +591,7 @@ function pi_activity_load($activity_id)
  * $activity_array->audience
  */
 function save_activity($activity_array)
-{
-	
+{	
 	$set = "name = '%s', description = '%s', activity_type = '%s', " .
 	"node_type = '%s', parameters = '%s', destination = '%s', audience = '%s' ";
 	
@@ -644,24 +624,24 @@ function save_activity($activity_array)
  */
 function delete_activity($activity_id) {
 	//delete from pi_activity
-	$query1 = "DELETE FROM pi_activity WHERE activity_id = '" . $activity_id . "'";
-	db_query($query1);
+	$query = "DELETE FROM {pi_activity} WHERE activity_id = %d";
+	db_query($query, $activity_id );
 
 	//delete from pi_activity_actor
-	$query2 = "DELETE FROM pi_activity_actor WHERE activity_id = '" . $activity_id . "'";
-	db_query($query2);
+	$query = "DELETE FROM {pi_activity_actor} WHERE activity_id = %d";
+	db_query($query, $activity_id );
 
 	//delete from pi_activity_status
-	$query3 = "DELETE FROM pi_activity_status WHERE activity_id = '" . $activity_id . "'";
-	db_query($query3);
+	$query = "DELETE FROM {pi_activity_status} WHERE activity_id = %d";
+	db_query($query, $activity_id );
 
 	//delete from pi_phase_activity
-	$query4 = "DELETE FROM pi_stage_phase_activity WHERE activity_id = '" . $activity_id . "'";
-	db_query($query4);
+	$query = "DELETE FROM {pi_stage_phase_activity} WHERE activity_id = %d";
+	db_query($query, $activity_id );
 
 	//delete from pi_activity_node
-	$query5 = "DELETE FROM pi_activity_node WHERE activity_id = '" . $activity_id . "'";
-	db_query($query5);
+	$query = "DELETE FROM {pi_activity_node} WHERE activity_id = %d";
+	db_query($query, $activity_id );
 }
 
 /**
@@ -673,18 +653,26 @@ function delete_activity($activity_id) {
  * @return Ambigous <multitype:, unknown>
  */
 function load_activity_actor($inquiry_id, $activity_id = NULL, $uid = NULL, $gid = NULL) {
-	$query = "SELECT * FROM pi_activity_actor WHERE inquiry_id = '" . $inquiry_id . "'";
-	if ($activity_id) {
-		$query .= " AND activity_id = '" . $activity_id . "'";
-	};
-	if ($uid) {
-		$query .= " AND uid = '" . $uid . "'";
-	};
-	if ($gid) {
-		$query .= " AND gid = '" . $gid . "'";
-	};
+	$query = "SELECT * FROM {pi_activity_actor} WHERE inquiry_id = %d ";
+	$parameters[] = $inquiry_id;
+	
+	if ($activity_id) 
+	{
+		$query .= " AND activity_id = %d";
+		$parameters[] = $activity_id;
+	}
+	if ($uid) 
+	{
+		$query .= " AND uid = %d";
+		$parameters[] = $uid;
+	}
+	if ($gid) 
+	{
+		$query .= " AND gid = %d";
+		$parameters[] = $gid;
+	}
 
-	$items = db_query($query);
+	$items = db_query($query, $parameters);
 
 	$activities = array();
 
@@ -710,17 +698,24 @@ function load_activity_actor($inquiry_id, $activity_id = NULL, $uid = NULL, $gid
  * $activity_actor_array ->gid
  */
 function insert_activity_actor($activity_actor_array) {
-	$query = "INSERT INTO pi_activity_actor SET ";
-	$query .= "inquiry_id = '" . $activity_actor_array["inquiry_id"] . "' ";
-	$query .= ", activity_id = '" . $activity_actor_array["activity_id"] . "' ";
-	if (isset($activity_actor_array["uid"])) {
-		$query .= ", uid = '" . $activity_actor_array["uid"] . "' ";
-	};
-	if (isset($activity_actor_array["gid"])) {
-		$query .= ", gid = '" . $activity_actor_array["gid"] . "' ";
-	};
+	
+	$query = "INSERT INTO {pi_activity_actor} SET inquiry_id = %d, activity_id = %d ";
+	
+	$parameters[] = $activity_actor_array["inquiry_id"];
+	$parameters[] = $activity_actor_array["activity_id"] ;
+			
+	if (isset($activity_actor_array["uid"])) 
+	{
+		$query .= ", uid = %d ";
+		$parameters[] = $activity_actor_array["uid"];
+	}
+	if (isset($activity_actor_array["gid"])) 
+	{
+		$query .= ", gid = %d ";
+		$parameters[] = $activity_actor_array["gid"];
+	}
 
-	db_query($query);
+	db_query($query, $parameters);
 }
 
 /**
@@ -731,14 +726,11 @@ function insert_activity_actor($activity_actor_array) {
  * $activity_actor_array ->uid
  * $activity_actor_array ->gid
  */
-function update_activity_actor ($activity_actor_array) {
-	$query = "UPDATE pi_activity_actor SET ";
-	$query .= "inquiry_id = '" . $activity_actor_array["inquiry_id"] . "' ";
-	$query .= ", activity_id = '" . $activity_actor_array["activity_id"] . "' ";
-	$query .= ", uid = '" . $activity_actor_array["uid"] . "' ";
-	$query .= ", gid = '" . $activity_actor_array["gid"] . "' ";
-	$query .= "WHERE paa_id = '" . $activity_actor_array["paa_id"] . "'"; 
-	db_query($query);
+function update_activity_actor($actor) {
+	
+	$query = "UPDATE {pi_activity_actor} SET inquiry_id = %d , activity_id = %d , uid = %d , gid = %d WHERE paa_id = %d";
+
+	db_query($query, $actor["inquiry_id"], $actor["activity_id"], $actor["uid"], $actor["gid"], $actor["paa_id"]);
 }
 
 /**
@@ -749,31 +741,36 @@ function update_activity_actor ($activity_actor_array) {
  * @return unknown|number
  */
 function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
-	$query = "SELECT pi_activity_status.pas_id FROM pi_activity_status ";
-	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_status.gid ";
-	$query .= "WHERE inquiry_id = '" . $inquiry_id . "' ";
+	
+	$newitems = 0;
+	$query = "SELECT {pi_activity_status}.pas_id FROM {pi_activity_status} "
+			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid "
+			. "WHERE inquiry_id = %d ";
+	$parameters[] = $inquiry_id;
+	
 	if ($activity_id)
 	{
-		$query .= "AND activity_id = '" . $activity_id . "' ";
+		$query .= "AND activity_id = %d ";
+		$parameters[] = $activity_id;
 	}
 	if ($uid)
 	{
-		$query .= "AND (pi_activity_status.uid = '" . $uid . "' OR og_uid.uid = " . $uid . ") ";
+		$query .= "AND ( {pi_activity_status}.uid = %d OR {og_uid}.uid = %d ) ";
+		$parameters[] = $uid;
+		$parameters[] = $uid;
 	}
+	
 	$query .= "ORDER BY pi_activity_status.pas_id DESC";
 
-	$items = db_fetch_object(db_query($query));
+	$items = db_fetch_object(db_query($query, $parameters));
 
 	if ($items->pas_id)
 	{
-		$newquery = "SELECT * FROM pi_activity_status WHERE pas_id = " . $items->pas_id . ";";
-		$newitems = db_fetch_object(db_query($newquery));
-		return $newitems;
+		$newquery = "SELECT * FROM {pi_activity_status} WHERE pas_id = %d";
+		$newitems = db_fetch_object(db_query($newquery, $items->pas_id));
 	}
-	else
-	{
-		return 0;
-	}
+	
+	return $newitems;
 }
 
 /**
@@ -786,35 +783,43 @@ function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
  * $activity_status_array ->visible_status
  */
 function save_activity_status($activity_status) {
-	$set = "inquiry_id = '" . $activity_status->inquiry_id . "' ";
-	$set .= ", activity_id = '" . $activity_status->activity_id . "' ";
+	
+	$set = "inquiry_id = %d , activity_id = %d ";
+	$parameters[] = $activity_status->inquiry_id;
+	$parameters[] = $activity_status->activity_id;
 
 	if ($activity_status->uid)
 	{
-		$set .= ", uid = '" . $activity_status->uid . "' ";
+		$set .= ", uid = %d ";
+		$parameters[] = $activity_status->uid;
 	}
 	if ($activity_status->gid)
 	{
-		$set .= ", gid = '" . $activity_status->gid . "' ";
+		$set .= ", gid = %d ";
+		$parameters[] = $activity_status->gid;
 	}
-	$set .= ", node_function = '" . $activity_status->node_function . "' ";
-	$set .= ", visible_status = '" . $activity_status->visible_status . "' ";
+	
+	$set .= ", node_function = %d , visible_status = %d ";
+	$parameters[] = $activity_status->node_function;
+	$parameters[] = $activity_status->visible_status;
 
 	$query = "";
-	if ($activity_status->pas_id != NULL){
+	if ($activity_status->pas_id != NULL)
+	{
 		//update
-		$query = "UPDATE pi_activity_status SET ";
+		$query = "UPDATE {pi_activity_status} SET ";
 		$query .= $set;
-		$query .= "WHERE pi_activity_status.pas_id = '" . $activity_status->pas_id . "'";
+		$query .= "WHERE {pi_activity_status}.pas_id = %d";
+		$parameters[] = $activity_status->pas_id;
 	}
 	else
 	{
 		//insert
-		$query .= "INSERT INTO pi_activity_status SET ";
+		$query .= "INSERT INTO {pi_activity_status} SET ";
 		$query .= $set;
 	}
 
-	db_query($query);
+	db_query($query, $parameters);
 }
 
 /**
@@ -827,29 +832,31 @@ function save_activity_status($activity_status) {
  * @return unknown_type
  */
 function delete_activity_type_for_user($activity_type, $user) {
+	
 	//get all activity id's for $activity_type
-	$activity_ids = "SELECT * FROM pi_activity WHERE activity_type = '" . $activity_type . "'";
-	$results = db_result(db_query($query));
+	$activity_ids = "SELECT * FROM {pi_activity} WHERE activity_type = '%s'";
+	$results = db_result(db_query($query, $activity_type));
 
-	foreach($results as $r){
-		$query1 = "DELETE FROM pi_activity WHERE activity_id = '" . $r->activity_id . "'";
-		db_query($query1);
+	foreach($results as $r)
+	{
+		$query = "DELETE FROM {pi_activity} WHERE activity_id = %d";
+		db_query($query, $r->activity_id );
 
 		//delete from pi_activity_actor
-		$query2 = "DELETE FROM pi_activity_actor WHERE activity_id = '" . $r->activity_id . "'";
-		db_query($query2);
+		$query = "DELETE FROM {pi_activity_actor} WHERE activity_id = %d";
+		db_query($query,$r->activity_id );
 
 		//delete from pi_activity_status
-		$query3 = "DELETE FROM pi_activity_status WHERE activity_id = '" . $r->activity_id . "'";
-		db_query($query3);
+		$query3 = "DELETE FROM {pi_activity_status} WHERE activity_id = %d";
+		db_query($query,$r->activity_id );
 
 		//delete from pi_phase_activity
-		$query4 = "DELETE FROM pi_phase_activity WHERE activity_id = '" . $r->activity_id . "'";
-		db_query($query4);
+		$query4 = "DELETE FROM {pi_phase_activity} WHERE activity_id = %d'";
+		db_query($query,$r->activity_id );
 
 		//delete from pi_activity_node
-		$query5 = "DELETE FROM pi_activity_node WHERE activity_id = '" . $r->activity_id . "'";
-		db_query($query5);
+		$query5 = "DELETE FROM {pi_activity_node} WHERE activity_id = %d";
+		db_query($query,$r->activity_id );
 	}
 }
 
@@ -1036,7 +1043,7 @@ function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
 {
 	$return_nids = array();
 
-	$query = "SELECT DISTINCT node.nid as nid FROM {node} node " .
+	$query = "SELECT DISTINCT {node}.nid as nid FROM {node} AS node " .
 		"LEFT JOIN {node_access} node_access ON node.nid = node_access.nid " .
 		"LEFT JOIN {og_uid} og_uid ON node_access.gid = og_uid.nid " .
 		"LEFT JOIN {pi_activity_node} pi_activity_node ON pi_activity_node.nid =  node.nid  " .
