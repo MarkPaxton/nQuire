@@ -280,7 +280,7 @@ function pi_result_presentations_insert($node)
 {
 	while ($measure = current($node->onepageprofile_categories)) 
 	{
-		$sql = "INSERT INTO pi_result_presentations (nid, vid, key_question_id, available_measure, status, weight) 
+		$sql = "INSERT INTO {pi_result_presentations} (nid, vid, key_question_id, available_measure, status, weight) 
         		VALUES ( %d, %d, %d, %d, '%s', %d )";  
 				
 		db_query($sql, $node->nid, $node->vid, $node->key_question_id, key($node->onepageprofile_categories), $measure['status'], $measure['weight']);
@@ -302,7 +302,7 @@ function pi_result_presentations_update($node)
 	}
 	else 
 	{
-		db_query("DELETE FROM pi_result_presentations WHERE vid = %d", $node->vid);
+		db_query("DELETE FROM {pi_result_presentations} WHERE vid = %d", $node->vid);
 		pi_result_presentations_insert($node);
 	}
 }
@@ -312,7 +312,7 @@ function pi_result_presentations_update($node)
  */
 function pi_result_presentations_delete(&$node) 
 {
-	db_query("DELETE FROM pi_result_presentations WHERE nid = %d", $node->nid);
+	db_query("DELETE FROM {pi_result_presentations} WHERE nid = %d", $node->nid);
 }
 
 /**
@@ -393,7 +393,7 @@ function theme_pi_result_presentations($node, $teaser) {
 	$selected_measures = "";
 	$delim = "";
 
-	$query = "SELECT available_measure FROM pi_result_presentations WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
+	$query = "SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
 	$measures = db_query($query, $node->nid, $node->vid);
 	while ($measure = db_fetch_object($measures))
 	{
@@ -671,7 +671,7 @@ function result_presentations_teaser_view($node) {
 	$selected_measures = "";
 	$delim = "";
 
-	$sql = "SELECT available_measure FROM pi_result_presentations WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
+	$sql = "SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
 	
 	$measures = db_query($sql, $node->nid, $node->vid);
 
@@ -880,7 +880,7 @@ function theme_pi_result_presentations_node_form($form) {
  */
 function pi_result_presentations_get_choice($node) 
 {
-	$query = "SELECT * FROM pi_result_presentations WHERE nid = %d AND vid = %d ORDER BY status DESC, weight ASC";
+	$query = "SELECT * FROM {pi_result_presentations} WHERE nid = %d AND vid = %d ORDER BY status DESC, weight ASC";
 	$result = db_query($query, $node->nid, $node->vid);
 
 	$categories = array();
@@ -938,7 +938,7 @@ function pi_data_export_csv () {
 	$selected_measures = "";
 	$delim = "";
 
-	$sql = "SELECT available_measure FROM pi_result_presentations WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
+	$sql = "SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
 	$measures = db_query($sql, $node->nid, $node->vid);
 
 	while ($measure = db_fetch_object($measures)) {
@@ -1009,9 +1009,8 @@ function pi_data_export_kml () {
     $selected_measures = "";
     $delim = "";
     
-    $measures = db_query("SELECT available_measure FROM pi_result_presentations WHERE nid = '" . $node->nid . 
-    								"' AND vid = '" . $node->vid . 
-    								"' AND status = '1' ORDER BY weight ASC");
+    $measures = db_query("SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC", 
+    					$node->nid, $node->vid);
     								
     while ($measure = db_fetch_object($measures)) {
     	$selected_measures .= $delim . $measure->available_measure;
@@ -1054,8 +1053,8 @@ function create_kml_from_table ($header, $rows, $content_type) {
 		foreach ($rows as $row) {
 			$x = 0;
 			
-			$query = "SELECT nid FROM node WHERE type = '" . $content_type . "' AND title = '" . $row[0] . "' ORDER BY nid DESC LIMIT 1";
-			$location_nid = db_result(db_query($query));
+			$query = "SELECT nid FROM {node} WHERE type = '%s' AND title = '%s' ORDER BY nid DESC LIMIT 1";
+			$location_nid = db_result(db_query($query, $content_type, $row[0]));
 			
 			$loc = node_load($location_nid);
     	if ($loc->field_location_latitude && $loc->field_location_longitude) {

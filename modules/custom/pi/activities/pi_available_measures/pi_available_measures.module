@@ -280,7 +280,7 @@ if ($filter_node->units_short_test) {
   else {
   	$default = $filter_node->content_options_value;
   }
-  $query = "SELECT node_type.type, node_type.name FROM node_type, pi_available_content_types WHERE node_type.type = pi_available_content_types.type";
+  $query = "SELECT {node_type}.type, {node_type}.name FROM {node_type}, {pi_available_content_types} WHERE {node_type}.type = {pi_available_content_types}.type";
   $results = db_query($query);
   $node_types = array();
   $node_types[0] = "";
@@ -777,9 +777,10 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 
 function get_node_nids_by_type($content_type) {
 	$nids = array();
-	$query = "SELECT nid, title FROM node WHERE type = '" . $content_type . "' ORDER BY nid ASC";
-	$result = db_query($query);
-	while($content_node = db_fetch_object($result)) {
+	$query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
+	$result = db_query($query, $content_type);
+	while($content_node = db_fetch_object($result)) 
+	{
 		$nids[] = $content_node->nid;
 	}
 	return $nids;
@@ -787,9 +788,10 @@ function get_node_nids_by_type($content_type) {
 
 function get_node_titles_by_type($content_type) {
 	$titles = array();
-	$query = "SELECT nid, title FROM node WHERE type = '" . $content_type . "' ORDER BY nid ASC";
-	$result = db_query($query);
-	while($content_node = db_fetch_object($result)) {
+	$query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
+	$result = db_query($query, $content_type);
+	while($content_node = db_fetch_object($result)) 
+	{
 		$titles[] = $content_node->title;
 	}
 	return $titles;
@@ -797,9 +799,10 @@ function get_node_titles_by_type($content_type) {
 
 function get_node_teasers_by_type($content_type) {
 	$titles = array();
-	$query = "SELECT nid, title FROM node WHERE type = '" . $content_type . "' ORDER BY nid ASC";
-	$result = db_query($query);
-	while($content_node = db_fetch_object($result)) {
+	$query = "SELECT nid, title FROM node WHERE type = '%s' ORDER BY nid ASC";
+	$result = db_query($query, $content_type);
+	while($content_node = db_fetch_object($result)) 
+	{
 		$titles[] = t($content_node->title).node_view(node_load($content_node->nid), TRUE, TRUE);
 	}
 	return $titles;
@@ -827,18 +830,3 @@ function theme_pi_available_measures_image($image_node_nid, $teaser)
 	$output .= '</div>';
 	return $output;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

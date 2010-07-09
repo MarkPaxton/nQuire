@@ -65,17 +65,17 @@ function pi_selected_measures_node_form(&$node) {
 	$uid = $user->uid;
 
 	//get pi_key_measure_nid
-	$pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
+	$pi_key_measures_query = db_query("SELECT {pi_key_measures}.nid FROM {pi_key_measures} LEFT JOIN {node} ON {pi_key_measures}.nid = {node}.nid LEFT JOIN {node_access} ON {pi_key_measures}.nid = {node_access}.nid LEFT JOIN {og_uid} ON {node_access}.gid = {og_uid}.nid LEFT JOIN {pi_activity_node} ON {pi_key_measures}.nid = {pi_activity_node}.nid WHERE ( {og_uid}.uid = %d OR {node}.uid = %d) AND {pi_activity_node}.inquiry_id = %d", $uid, $uid, $details->inquiry_id);
 	$pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
 
 	//get pi_selected_measure_nid
-	$pi_selected_measures_query = db_query("SELECT pi_selected_measures.nid FROM pi_selected_measures LEFT JOIN node_access ON pi_selected_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_selected_measures.nid = pi_activity_node.nid WHERE og_uid.uid = '" . $uid . "' AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
+	$pi_selected_measures_query = db_query("SELECT {pi_selected_measures}.nid FROM {pi_selected_measures} LEFT JOIN {node_access} ON {pi_selected_measures}.nid = {node_access}.nid LEFT JOIN {og_uid} ON {node_access}.gid = {og_uid}.nid LEFT JOIN {pi_activity_node} ON {pi_selected_measures}.nid = {pi_activity_node}.nid WHERE {og_uid}.uid = %d AND {pi_activity_node}.inquiry_id = %d ", $uid, $details->inquiry_id );
 	$pi_selected_measures_nid = db_fetch_object($pi_selected_measures_query);
 
 	//change to only get public and og nids
 	/*
 	$required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid LEFT JOIN pi_selected_measures ON pi_key_measures.measure_nid = pi_selected_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' AND  pi_selected_measures.nid = '" . $pi_selected_measures_nid->nid . "' ORDER BY pi_selected_measures.weight ASC");*/
-	$required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
+	$required_results = db_query("SELECT {node}.nid, {node}.title FROM {node} LEFT JOIN {pi_key_measures} ON {node}.nid = {pi_key_measures}.measure_nid WHERE {pi_key_measures}.nid = %d", $pi_key_measures_nid->nid);
 
 	$compulsory = array();
 	$compulsory_default = array();
@@ -85,7 +85,7 @@ function pi_selected_measures_node_form(&$node) {
 	}
 
 	//change to only get public and og nids
-	$results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN node_access ON node.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND (node_access.realm =  'all' OR og_uid.uid =  '" . $uid . "') ");
+	$results = db_query("SELECT {node}.nid, {node}.title FROM {node} LEFT JOIN {node_access} ON {node}.nid = {node_access}.nid LEFT JOIN {og_uid} ON {node_access}.gid = {og_uid}.nid WHERE TYPE = 'pi_available_measures' AND STATUS = '1' AND ( {node_access}.realm =  'all' OR {og_uid}.uid =  %d ) ", $uid);
 
 	$options = array();
 	while ($result = db_fetch_array($results))
@@ -157,8 +157,8 @@ function pi_selected_measures_node_form(&$node) {
  */
 function find_default_measures($nid) {
 	$measure_array = array();
-	$prev_query = "SELECT measure_nid FROM pi_selected_measures WHERE nid = '" . $nid . "' ORDER BY weight ASC";
-	$db_result = db_query($prev_query);
+	$prev_query = "SELECT measure_nid FROM {pi_selected_measures} WHERE nid = %d ORDER BY weight ASC";
+	$db_result = db_query($prev_query, $nid);
 	while ($prev_result = db_fetch_object($db_result)) {
 		$prev_result2 = $prev_result->measure_nid;
 		$measure_array[] = $prev_result2;
@@ -177,10 +177,10 @@ function find_default_measures($nid) {
 function find_default_optional_measures($nid, $uid) {
 	$details = get_inquiry_details_from_current_path();
 	//get pi_key_measure_nid
-	$pi_key_measures_query = db_query("SELECT pi_key_measures.nid FROM pi_key_measures LEFT JOIN node ON pi_key_measures.nid = node.nid LEFT JOIN node_access ON pi_key_measures.nid = node_access.nid LEFT JOIN og_uid ON node_access.gid = og_uid.nid LEFT JOIN pi_activity_node ON pi_key_measures.nid = pi_activity_node.nid WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "') AND pi_activity_node.inquiry_id = '" . $details->inquiry_id . "' ");
+	$pi_key_measures_query = db_query("SELECT {pi_key_measures}.nid FROM {pi_key_measures} LEFT JOIN {node} ON {pi_key_measures}.nid = {node}.nid LEFT JOIN {node_access} ON {pi_key_measures}.nid = {node_access}.nid LEFT JOIN {og_uid} ON {node_access}.gid = {og_uid}.nid LEFT JOIN {pi_activity_node} ON {pi_key_measures}.nid = {pi_activity_node}.nid WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) AND {pi_activity_node}.inquiry_id = %d", $uid, $uid, $details->inquiry_id);
 	$pi_key_measures_nid = db_fetch_object($pi_key_measures_query);
 
-	$required_results = db_query("SELECT node.nid, node.title FROM node LEFT JOIN pi_key_measures ON node.nid = pi_key_measures.measure_nid WHERE pi_key_measures.nid = '" . $pi_key_measures_nid->nid ."' ");
+	$required_results = db_query("SELECT {node}.nid, {node}.title FROM {node} LEFT JOIN {pi_key_measures} ON {node}.nid = {pi_key_measures}.measure_nid WHERE {pi_key_measures}.nid = %d", $pi_key_measures_nid->nid);
 
 	$compulsory = array();
 	$compulsory_default = array();
@@ -189,11 +189,13 @@ function find_default_optional_measures($nid, $uid) {
 	}
 
 	$measure_array = array();
-	$prev_query = "SELECT pi_selected_measures.measure_nid FROM pi_selected_measures WHERE pi_selected_measures.nid = '" . $nid . "' ORDER BY pi_selected_measures.weight ASC";
-	$db_result = db_query($prev_query);
-	while ($prev_result = db_fetch_object($db_result)) {
+	$prev_query = "SELECT {pi_selected_measures}.measure_nid FROM {pi_selected_measures} WHERE {pi_selected_measures}.nid = %d ORDER BY {pi_selected_measures}.weight ASC";
+	$db_result = db_query($prev_query, $nid);
+	while ($prev_result = db_fetch_object($db_result)) 
+	{
 		$prev_result2 = $prev_result->measure_nid;
-		if (!in_array($prev_result2, $compulsory_default)) {
+		if (!in_array($prev_result2, $compulsory_default)) 
+		{
 			$measure_array[] = $prev_result2;
 		}
 	}
@@ -215,8 +217,8 @@ function find_default_optional_measures_old($nid , $inquiry_id, $activity_id) {
 		return array();
 	}
 	$measure_array = array();
-	$prev_query = "SELECT pi_selected_measures.measure_nid FROM pi_selected_measures, pi_key_measures WHERE pi_selected_measures.nid = '" . $nid . "' AND NOT (pi_key_measures.measure_nid = pi_selected_measures.measure_nid AND pi_key_measures.inquiry_id = '" . $inquiry_id . "')  ORDER BY pi_selected_measures.weight ASC";
-	$db_result = db_query($prev_query);
+	$prev_query = "SELECT {pi_selected_measures}.measure_nid FROM {pi_selected_measures}, {pi_key_measures} WHERE {pi_selected_measures}.nid = %d AND NOT ( {pi_key_measures}.measure_nid = {pi_selected_measures}.measure_nid AND {pi_key_measures}.inquiry_id = %d)  ORDER BY {pi_selected_measures}.weight ASC";
+	$db_result = db_query($prev_query, $nid, $inquiry_id);
 	while ($prev_result = db_fetch_object($db_result)) {
 		$prev_result2 = $prev_result->measure_nid;
 		$measure_array[] = $prev_result2;
@@ -232,8 +234,8 @@ function find_default_optional_measures_old($nid , $inquiry_id, $activity_id) {
  */
 function find_default_measure_rows($nid) {
 	$measure_array = array();
-	$prev_query = "SELECT * FROM pi_selected_measures WHERE nid = '" . $nid . "' ORDER BY weight ASC";
-	$db_result = db_query($prev_query);
+	$prev_query = "SELECT * FROM {pi_selected_measures} WHERE nid = %d ORDER BY weight ASC";
+	$db_result = db_query($prev_query, $nid);
 	while ($prev_result = db_fetch_object($db_result)) {
 		$measure_array[] = $prev_result;
 	}
@@ -265,7 +267,7 @@ function pi_selected_measures_insert($node) {
 		{
 			$measure_node = node_load($measure);
 			$weight = 0;
-			db_query("INSERT INTO pi_selected_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
+			db_query("INSERT INTO {pi_selected_measures} (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
 		}
 	}
 	foreach ($node->selected_measures as $measure)
@@ -274,7 +276,7 @@ function pi_selected_measures_insert($node) {
 		{
 			$measure_node = node_load($measure);
 			$weight = 1;
-			db_query("INSERT INTO pi_selected_measures (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
+			db_query("INSERT INTO {pi_selected_measures} (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
 		}
 	}
 }
@@ -372,8 +374,8 @@ function theme_pi_selected_measures($node) {
 	drupal_set_title(t($current_activity->name));
 	$output = "<p>" . $current_activity->description . "</p>";
 
-	$query = "SELECT node.title FROM node, pi_selected_measures WHERE pi_selected_measures.nid = '" . $node->nid . "' AND pi_selected_measures.measure_nid = node.nid ORDER BY pi_selected_measures.weight";
-	$result = db_query($query);
+	$query = "SELECT {node}.title FROM {node}, {pi_selected_measures} WHERE {pi_selected_measures}.nid = %d AND {pi_selected_measures}.measure_nid = {node}.nid ORDER BY {pi_selected_measures}.weight";
+	$result = db_query($query, $node->nid);
 	$output .= "<ul>";
 	while($measure = db_fetch_object($result)) {
 		$output .= "<li>" . $measure->title . "</li>";

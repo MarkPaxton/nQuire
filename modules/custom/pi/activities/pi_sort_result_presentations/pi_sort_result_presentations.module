@@ -135,8 +135,7 @@ function pi_sort_result_presentations_insert($node) {
 	{
 		foreach($node->onepageprofile_categories as $key => $result_presentations)
 		{
-			$query = "INSERT INTO pi_sort_result_presentations (nid, vid, result_presentations, weight) " .
-				"VALUES (%d, %d, %d, %d)"; 
+			$query = "INSERT INTO {pi_sort_result_presentations} (nid, vid, result_presentations, weight) VALUES (%d, %d, %d, %d)"; 
 			db_query($query, $node->nid, $node->vid, $key, $result_presentations['weight']);
 		}
 	}
@@ -148,13 +147,13 @@ function pi_sort_result_presentations_update($node) {
         pi_sort_result_presentations_insert($node);
     }
     else {
-        db_query("DELETE FROM pi_sort_result_presentations WHERE vid = '" . $node->vid . "' ");
+        db_query("DELETE FROM {pi_sort_result_presentations} WHERE vid = %d", $node->vid);
         pi_sort_result_presentations_insert($node);
     }
 }
 
 function pi_sort_result_presentations_delete(&$node) {
-    db_query("DELETE FROM pi_sort_result_presentations WHERE nid = '" . $node->nid . "' ");
+    db_query("DELETE FROM {pi_sort_result_presentations} WHERE nid = %d", $node->nid);
 }
 
 
@@ -305,10 +304,7 @@ function table_activity_link($activity_id, $status, $destination) {
  * Load all the already sorted rows for results presentations
  */
 function pi_sort_result_presentations_get_choice($node) {
-	$query = "SELECT * FROM {pi_sort_result_presentations} pi_sort_result_presentations " .
-    		"WHERE pi_sort_result_presentations.nid = %d " .
-    		"AND pi_sort_result_presentations.vid = %d " .
-    		"ORDER BY weight ASC";					
+	$query = "SELECT * FROM {pi_sort_result_presentations} WHERE {pi_sort_result_presentations}.nid = %d AND {pi_sort_result_presentations}.vid = %d ORDER BY weight ASC";					
     $result = db_query($query, $node->nid, $node->vid);
     
     $results = array();

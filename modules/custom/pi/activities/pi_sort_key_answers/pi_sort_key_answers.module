@@ -142,8 +142,7 @@ function pi_sort_key_answers_insert($node) {
     {
     	foreach($node->onepageprofile_categories as $nid =>$key_answer)
     	{
-    		$query = "INSERT INTO pi_sort_key_answers (nid, vid, key_answer, weight) " .
-    			"VALUES (%d, %d, %d, %d)";
+    		$query = "INSERT INTO {pi_sort_key_answers} (nid, vid, key_answer, weight) VALUES (%d, %d, %d, %d)";
     		db_query($query, $node->nid,$node->vid, $nid, $key_answer['weight']);
     	}
     }
@@ -155,13 +154,13 @@ function pi_sort_key_answers_update($node) {
         pi_sort_key_answers_insert($node);
     }
     else {
-        db_query("DELETE FROM pi_sort_key_answers WHERE vid = '" . $node->vid . "' ");
+        db_query("DELETE FROM {pi_sort_key_answers} WHERE vid = %d", $node->vid);
         pi_sort_key_answers_insert($node);
     }
 }
 
 function pi_sort_key_answers_delete(&$node) {
-    db_query("DELETE FROM pi_sort_key_answers WHERE nid = '" . $node->nid . "' ");
+    db_query("DELETE FROM {pi_sort_key_answers} WHERE nid = %d", $node->nid);
 }
 
 
@@ -480,10 +479,7 @@ function theme_pi_sort_key_answers_node_form($form) {
  * @return array [key question node id] #weight=> 1, #title = key question title
  */
 function pi_sort_key_answers_get_choice($node) {
-    $query = "SELECT key_answer, weight FROM {pi_sort_key_answers} pi_sort_key_answers " .
-    	"WHERE pi_sort_key_answers.nid = %d " .
-    	"AND pi_sort_key_answers.vid = %d " .
-    	"ORDER BY weight ASC";
+    $query = "SELECT key_answer, weight FROM {pi_sort_key_answers} WHERE {pi_sort_key_answers}.nid = %d AND {pi_sort_key_answers}.vid = %d ORDER BY weight ASC";
     $result = db_query($query, $node->nid, $node->vid);
 	
     $answers = array();
