@@ -84,10 +84,10 @@ function theme_pi_activity_admin_view_node($activity, $node_view_page)
 
 function pi_activity_get_activity_content_group_access($activity_content_nid)
 {
-	$query = "SELECT * FROM {node_access} AS `na` " . 
-		"LEFT JOIN {og} AS `og` ON `na`.`gid`=`og`.`nid` " .
-		"LEFT JOIN {node} AS `n` ON `na`.`nid`=`n`.`nid` " .
-		"WHERE `na`.`nid` = %d";
+	$query = "SELECT * FROM {node_access} "
+			. "LEFT JOIN {og} ON {node_access}.gid = {og}.nid " 
+			. "LEFT JOIN {node} ON {node_access}.nid = {node}.nid " 
+			. "WHERE {node_access}.nid = %d";
 	$result = db_query($query, $activity_content_nid);
 	$data = array();
 	while($row=db_fetch_object($result))
