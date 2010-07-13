@@ -63,6 +63,7 @@ function pi_available_measures_access($op, $node) {
 	}
 }
 
+
 /**
  * Implementation of pi_available_measures_form().
  */
@@ -257,7 +258,7 @@ if ($filter_node->units_short_test) {
   if ($filter_node->list_options_test) {
   $form['list_options'] = array(
     '#type' => 'textarea',
-    '#title' => t('Menu options [for menus only]'),
+    '#title' => t('Menu options list [for menus only]'),
     '#required' => FALSE,
     '#default_value' => $default,
     '#description' => t('Enter the set of menu options (putting each option on a new line).'),
@@ -291,7 +292,7 @@ if ($filter_node->units_short_test) {
   if ($filter_node->content_options_test) {
   $form['content_options'] = array(
     '#type' => 'select',
-    '#title' => t('Menu options from content type [for menus only]'),
+    '#title' => t('Menu options from content type [for menus only - used if menu options list is empty]'),
     '#required' => FALSE,
     '#description' => t('Alternatively, enter the content type from which the menu options will be taken.'),
     '#default_value' => $default,
@@ -456,10 +457,28 @@ if ($filter_node->units_short_test) {
 }
 
 /**
- * Implementation of pi_available_measures_validate().
+ * Implementation of pi_available_measures_valiate().
  */
-function pi_available_measures_validate($node) {
 
+function pi_available_measures_validate($node, &$form) {
+  //If field type is text line then data type must be numeric or text
+  if ($node->field_type == 'textfield' && ($node->data_type !=  'numeric' || $node->data_type !=  'text')) {
+    form_set_error('Single line text field', 'If the field type is a single text line then the data type must be numeric or text');
+  }
+  //If field type is textarea then data type must be text
+  if ($node->field_type == 'textarea' && $node->data_type !=  'text') {
+    form_set_error('Multi-line text field', 'If the field type is multi-line text then the data type must be text');
+  }  
+  
+  //If field type is pull down menu, radio buttons or checkboxes then data type must be menu
+  if ($node->data_type !=  'menu' && ($node->field_type !=  'select' || $node->field_type !=  'radios' || $node->field_type !=  'checkboxes')) {
+    form_set_error('Menu type fields', 'If the field type is pull down menu, radio buttons or checkboxes then the data type must be menu');
+  }
+    
+  //If data type is menu then either menu options list or menu options content type must be set
+  if ($node->data_type ==  'menu' && !$node->list_options && !$node->content_options) {
+    form_set_error('Menu content', 'If the data type is menu then either menu options list or menu options content type must be set');
+  }
 }
 
 /**
