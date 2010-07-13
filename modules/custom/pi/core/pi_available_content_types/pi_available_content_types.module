@@ -79,7 +79,8 @@ function pi_available_content_types_form(&$form_state, $edit = array()) {
   $form['#prefix'] = "Select a content type to add to the list of available content types";
 
   $content_types = array();
-  $query = "SELECT DISTINCT node_type.type FROM node_type, pi_available_content_types WHERE NOT EXISTS (SELECT * FROM pi_available_content_types WHERE node_type.type = pi_available_content_types.type) ORDER BY node_type.type ASC";
+  $query = "SELECT DISTINCT node_type.type FROM node_type LEFT JOIN pi_available_content_types ON pi_available_content_types.type = node_type.type WHERE pi_available_content_types.type IS NULL ";
+  //$query = "SELECT DISTINCT node_type.type FROM node_type, pi_available_content_types WHERE NOT EXISTS (SELECT * FROM pi_available_content_types WHERE node_type.type = pi_available_content_types.type) ORDER BY node_type.type ASC";
   $result = db_query($query);
   while($row = db_fetch_object($result)) {
     $content_types[$row->type] .= $row->type;
