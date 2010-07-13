@@ -375,50 +375,67 @@ function get_inquiry_id_for_phase_id($phase_id) {
 // ----------------------------------------------------------------------------------
 
 /**
- * Functions in this block are for loading inquiries, stages and phases
- */
-
-/**
- * Returns an inquiry node object from the database - use node_load() instead!
- * @param unknown_type $inquiry_id
- */
-/*
- function load_inquiry($inquiry_id) {
- drupal_set_message("load_inquiry depricated, use node_load instead", 'warning', FALSE);
- return node_load($inquiry_id);
- }*/
-
-/**
- * Returns the stage_object from pi_stage table  - use node_load() instead!
- */
-/*
- function load_stage($stage_id) {
- drupal_set_message("load_stage depricated, use node_load instead", 'warning', FALSE);
- return node_load($stage_id);
- }
- */
-
-/**
- * Returns the phase_object from pi_phase table - use node_load() instead!
- */
-/*
- function load_phase($phase_id) {
- drupal_set_message("load_phase depricated, use node_load instead", 'warning', FALSE);
- return node_load($phase_id);
- }
- */
-
-// ----------------------------------------------------------------------------------
-
-/**
  * Functions in this block are for groups
  */
+
+/**
+ * @return array[gid] => db_object An array of published groups indexed by group id
+ */
+function pi_get_all_groups() {
+	$groups = array();
+	$query = "SELECT nid from {og}";
+	$result = db_query($query);
+	while($id_row = db_fetch_array($result))
+	{
+		$id = $id_row['nid'];
+		$group = node_load($id);
+		if($group->status)
+		{
+			$groups[$id] = $group;
+		}  		
+	}
+	return $groups;
+}
+
+/**
+ * Returns an array containing the uids for the members of the group.
+ * The group could be a group, class or multiclass.
+ * @param uint $gid Group id to get members of
+ * @return array(user) array of db_fetch_objects indeced by id
+ */
+function pi_get_members_of_group($gid) {
+	$query = "SELECT uid FROM {og_uid} WHERE nid = %d";
+	$result = db_query($query, $gid);
+	$members = array();
+	while($row = db_fetch_array($result))
+	{
+		$id = $row['uid'];
+		$user = user_load($id);
+		if($user)
+		{
+			$members[$id] = $user;
+		}
+	}
+	return $members;
+}
+
+/**
+ * Returns an array containing the uids for the members of the group.
+ * The group could be a group, class or multiclass.
+ */
+function get_members_of_group($gid) {
+	$query = "SELECT uid FROM {og_uid} WHERE nid = %d";
+	$result = db_query($query, $gid);
+	return $result;
+}
+
+
 
 /**
  * Type can be group, class or multiclass.
  * Returns an array of gid values.
  */
-function get_group_of_type ($uid, $group_type, $inquiry_id, $stage_id = NULL, $phase_id = NULL, $activity_id = NULL)
+function get_group_of_type($uid, $group_type, $inquiry_id, $stage_id = NULL, $phase_id = NULL, $activity_id = NULL)
 {
 	$query = "SELECT {pi_group_type}.gid FROM {pi_group_type} "
 	 		. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_group_type}.gid "
@@ -434,15 +451,6 @@ function get_group_of_type ($uid, $group_type, $inquiry_id, $stage_id = NULL, $p
 	return $result;
 }
 
-/**
- * Returns an array containing the uids for the members of the group.
- * The group could be a group, class or multiclass.
- */
-function get_members_of_group ($gid) {
-	$query = "SELECT uid FROM {og_uid} WHERE nid = %d";
-	$result = db_query($query, $gid);
-	return $result;
-}
 
 /**
  * Returns TRUE or FALSE depending on whether user is member of group.
