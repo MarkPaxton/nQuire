@@ -39,4 +39,8 @@ function pi_authoring_inquiry_groups() {
 	return $content;
 }
 
+function pi_authoring_inquiry_groups_from($all_groups, $selected_groups)
+{
+	
+}
 ?>
