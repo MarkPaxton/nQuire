@@ -379,11 +379,11 @@ function get_inquiry_id_for_phase_id($phase_id) {
  */
 
 /**
- * @return array[gid] => db_object An array of published groups indexed by group id
+ * @return array if nids of published groups
  */
-function pi_get_all_groups() {
+function pi_get_all_group_nids() {
 	$groups = array();
-	$query = "SELECT nid from {og}";
+	$query = "SELECT og.nid FROM {og}";
 	$result = db_query($query);
 	while($id_row = db_fetch_array($result))
 	{
@@ -391,10 +391,78 @@ function pi_get_all_groups() {
 		$group = node_load($id);
 		if($group->status)
 		{
-			$groups[$id] = $group;
+			$groups[] = $id;
 		}  		
 	}
 	return $groups;
+}
+
+
+/**
+ * @return array[nid] => array('nid', 'group_type') An array of arrays with group nids 
+ * and group type defiend as class, multiclass, group and indexed by group nid
+ * group type is indexed as 'group_type' 
+ */
+function pi_get_defined_group_nids() {
+	$groups = array();
+	$groups_seen = array();
+	
+	//First get inquiry actor group
+	$query = "SELECT DISTINCT type FROM {pi_group_type}";
+	$result = db_query($query);
+	while($type_row = db_fetch_array($result))
+	{
+		$type = $type_row['type'];
+		if(!array_key_exists($type, $groups))
+		{
+			$groups[$type] = array();
+		}
+		$type_gids = pi_get_group_nids_of_type($type);
+		foreach($type_gids as $id => $group_data)
+		{
+			$group = array();
+			$group['nid'] = $id;
+			$group['group_type'] = $type;
+			
+			if(array_key_exists($id, $groups_seen))
+			{
+				drupal_set_message(t("Duplicate group definitions found for group ") . check_plain($id) . 
+				t(". Using first value only, which is '") . check_plain($groups_seen[$id]['group_type']) . t("' and not using type '") . check_plain($type) . "'.", 'warning');
+			}
+			else
+			{
+				$groups[$type][$id] = $group;
+				$groups_seen[$id] = $group;
+			}
+		}
+	}
+	return $groups;
+}
+
+/**
+ * 
+ * Returns an array of nids of groups of a given type
+ * @param  string $type type of groups to find: class, multiclass, group
+ * @return array of nids  
+ */
+function pi_get_group_nids_of_type($type)
+{
+	$groups = array();
+	
+	//First get inquiry actor group
+	$query = "SELECT gid, type FROM {pi_group_type} WHERE type= '%s' ORDER BY gid ASC";
+	$result = db_query($query, $type);
+	while($id_row = db_fetch_array($result))
+	{
+		$id = $id_row['gid'];
+		$group['nid'] = $id;
+		$group['group_type'] = $id_row['type'];
+		if(!array_key_exists($id, $groups))
+		{
+			$groups[$id] = $group;
+		}
+	}
+	return $groups;	
 }
 
 /**
@@ -419,6 +487,13 @@ function pi_get_members_of_group($gid) {
 	return $members;
 }
 
+//this funciton needs to move to pi module
+function pi_get_type_of_group($gid) {
+	$query = "SELECT type FROM {pi_group_type} WHERE gid = %d ";
+	$result = db_result(db_query($query, $gid));
+	return $result;
+}
+
 /**
  * Returns an array containing the uids for the members of the group.
  * The group could be a group, class or multiclass.
@@ -429,7 +504,14 @@ function get_members_of_group($gid) {
 	return $result;
 }
 
-
+/* DEPRICATED in favour of pi_get_type_of_group
+//this funciton needs to move to pi module
+function get_type_of_group($gid) {
+	$query = "SELECT type FROM {pi_group_type} WHERE gid = %d ";
+	$result = db_result(db_query($query, $gid));
+	return $result;
+}
+*/
 
 /**
  * Type can be group, class or multiclass.
@@ -1407,7 +1489,7 @@ function pi_merge_content_item_lists($sorted_items, $unsorted_items)
 }
 
 /**
- * This is a function to sort items by first array indext then then by #weight property
+ * This is a function to sort items by first array index then then by #weight property
  * The status order is determined by $group_order, which will set the order for the groups
  * the #weight parameter of the items will be reset to a sequential series starting from 0
  * any groups that are not listed are added to the end of the list in order of occurrence
