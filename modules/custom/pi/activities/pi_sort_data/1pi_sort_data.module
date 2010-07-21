@@ -193,79 +193,6 @@ function pi_sort_data_load($node) {
 	return $result;
 }
 
-function pi_get_titles_of_nodes_of_type($type) {
-  $result = db_query("SELECT title FROM node WHERE type = '%s'", $type);
-  $count = 0;
-  $result_list = array();
-  while($object = db_fetch_object($result)) {
-    $result_list[$object->title] = $count++;
-  }
-  return $result_list;
-}
-
-function pi_get_measure_value_list($measure_node) {
-  if($measure_node->list_options) {
-    $explode = explode("\n", $measure_node->list_options);
-    $measure_values = array();
-    foreach($explode as $key => $value) {
-      $measure_values[rtrim($value)] = $key;
-    }
-  }
-  elseif($measure_node->content_options) {
-    $measure_values = pi_get_titles_of_nodes_of_type($measure_node->content_options);
-  }
-  return $measure_values;
-}
-
-function pi_sort_data_items_around_key_measures($sorted_data_items, $key_measures, $selected_measure_nid) {
-  $key_measure_value_array = array();
-  if($key_measures) {
-    foreach ($key_measures as $key => $key_measure) {
-      $measure_node = node_load($key);
-      if($measure_node->list_options || $measure_node->content_options) {
-        $key_measure_value_array[$key] = pi_get_measure_value_list($measure_node);
-      }
-      else {
-        return $sorted_data_items;
-      }
-    }  
-  }
-
-  $key_measure_data_keys = array();
-  $count = 0;
-  if($key_measures) {
-    foreach ($key_measures as $key => $key_measure) {
-      $key_measure_data_keys[$key] = $selected_measure_nid.'-'.$key;
-      $testnode = node_load($key);
-    }
-  }
-
-  $km_values = array();
-  foreach($sorted_data_items as $data_key => $info) {
-    $data_node = node_load($data_key);
-    //$km_values[$data_key] = array();
-    $km_values['nid'][] = $data_key;
-    foreach($key_measure_data_keys as $key_measure => $key_measure_data_key) {
-      $value = $data_node->categories[$key_measure_data_key]["#value"];
-      //$km_values[$data_key][$key_measure] = $key_measure_value_array[$key_measure][$value];
-      $km_values[$key_measure][] = $key_measure_value_array[$key_measure][$value];
-    }
-  }
-  $eval_string = 'array_multisort(';
-  foreach($key_measures as $key => $value) {
-    $eval_string .= '$km_values[' . $key . '],SORT_ASC,';
-  }
-  $eval_string .= '$km_values[\'nid\'],SORT_ASC);';
-  eval($eval_string);
-
-  $count = 0;
-  foreach($km_values['nid'] as $km_nid) {
-    $sorted_data_items[$km_nid]["#weight"] = $count++;
-  }
-  
-  uasort($sorted_data_items,my_weight_compare);
-  return $sorted_data_items;
-}
 
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	global $user;
@@ -284,35 +211,9 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	
 	// Assemble an array of key questions in the output format (build_activity_link makes this a link with icon)
 	$already_sorted_data_items = $node->categories;
-	
 	$unsorted_data_items = pi_sort_data_get_options();
-
-  $sorted_data_items = pi_merge_content_item_lists($already_sorted_data_items, $unsorted_data_items);
-
-  $node->key_measures = array();
-  
-  $selected_measure_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-  if($selected_measure_nid)
-  {
-    $selected_measures_node = node_load($selected_measure_nid);
-    if($selected_measures_node)
-    {
-      $selected_measures = $selected_measures_node->measures_list;
-      foreach($selected_measures as $key => $measure)
-      {
-        if($measure['#status']=='key')
-        {
-          $node->key_measures[$key] = $measure['#title'];
-        }
-      }
-    }
-  }
-  
-  //sort  combined list according to measures
-  $sorted_data_items = pi_sort_data_items_around_key_measures($sorted_data_items, $node->key_measures, $selected_measure_nid);  
-  
+    $sorted_data_items = pi_merge_content_item_lists($already_sorted_data_items, $unsorted_data_items);
 	$data_items_to_show = array();
-	
 	foreach(array_keys($sorted_data_items) as $sorted_data_items_nid)
 	{
 		$data_item_activity_id = get_activity_id_for_nid($sorted_data_items_nid);
@@ -340,27 +241,25 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
             '#weight' => -3
 		);
 	}	
-/*	
-  $node->key_measures = array();
-  
-  $selected_measure_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-  if($selected_measure_nid)
-  {
-    $selected_measures_node = node_load($selected_measure_nid);
-    if($selected_measures_node)
-    {
-      $selected_measures = $selected_measures_node->measures_list;
-      foreach($selected_measures as $key => $measure)
-      {
-        if($measure['#status']=='key')
-        {
-          $node->key_measures[$key] = $measure['#title'];
-        }
-      }
-    }
-  }
-  
-  pi_sort_data_items_around_key_measures($sorted_data_items, $node->key_measures, $selected_measure_nid);*/
+	
+	$node->key_measures = array();
+	
+	$selected_measure_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	if($selected_measure_nid)
+	{
+		$selected_measures_node = node_load($selected_measure_nid);
+		if($selected_measures_node)
+		{
+			$selected_measures = $selected_measures_node->measures_list;
+			foreach($selected_measures as $measure)
+			{
+				if($measure['#status']=='key')
+				{
+					$node->key_measures[] = $measure['#title'];
+				}
+			}
+		}
+	}
 	
 	$node->content['pi_sort_data'] = array(
             '#value' => theme('pi_sort_data', $node, $teaser, $data_items_to_show),
@@ -378,6 +277,7 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
 	$header = array(
 		t("Data")
 	);
+	
 
 	$rows = array();
 	if (is_array($data_items_to_show))
