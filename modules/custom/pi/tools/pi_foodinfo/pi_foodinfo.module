@@ -1,0 +1,696 @@
+<?php
+
+function pi_foodinfo_node_info()
+{
+	$type=array(
+		'pi_foodinfo' => array(
+		    'name' => t('Food info'), // Required.
+		    'module' => 'pi_foodinfo',  // Required.
+		    'description' => t('Food info data'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t('Food info data'),
+		    'has_body' => TRUE,
+			'body_label' => t('Food info data...'),
+		    'locked' => TRUE )
+	);
+
+	return $type;
+}
+
+/**
+ * Valid permissions for this module
+ * @return array An array of valid permissions for the equip2example module
+ */
+function pi_foodinfo_perm()
+{
+	return array('access foodinfo content');
+}
+
+/**
+ * This function generates the menu entry "foodinfo" and "foodinfo/import".
+ * @return $items The menu items which will be added to the drupal menu system. 
+ */
+function pi_foodinfo_menu()
+{
+	$items = array();
+
+	$items['admin/nquire/foodinfo'] = array(
+    'title' => 'Food Info',
+    'page callback' => 'pi_foodinfo_all',
+    'access arguments' => array('access foodinfo content'),
+    'type' => MENU_NORMAL_ITEM
+	);
+
+	$items['admin/nquire/foodinfo/import'] = array(
+    'title' => 'Food Info',
+    'page callback' => 'pi_foodinfo_import',
+    'access arguments' => array('access foodinfo content'),
+    'type' => MENU_CALLBACK
+	);
+
+	return $items;
+}
+
+/**
+ * Enter description here ...
+ * @param unknown_type $op
+ * @param unknown_type $node
+ * @param unknown_type $account
+ */
+function pi_foodinfo_access($op, $node, $account)
+{
+	$access = TRUE;
+
+	return $access;
+}
+/**
+ * Enter description here ...
+ * @param array $node
+ */
+function pi_foodinfo_form(&$node,$form_state)
+{
+	$info = $node->foodinfo;
+
+	$form['foodinfo'] = array
+	(
+		'#type' 		=> 'fieldset',
+		'#title' 		=> $title,
+		'#collapsible' 	=> TRUE,
+		'#tree' 		=> TRUE,
+	    '#weight' 		=> -5
+	);
+
+	$form['foodinfo']['id'] = array(
+		'#type' => 'hidden',
+		'#value' => $info->chid,
+	);
+
+	$form['foodinfo']['description'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Description of Food'),
+		'#description' => t('e.g. bread - brown'),
+		'#default_value' => $info['description'],
+		'#required'		=> TRUE,
+		'#weight' 		=> -5
+	);
+
+	$form['foodinfo']['portion'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Portion of Food'),
+		'#description' => t('e.g. slice'),
+		'#default_value' => $info['portion'],
+		'#required'		=> TRUE,
+		'#weight' 		=> -4
+	);
+
+	$form['foodinfo']['carb'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Carbs'),
+		'#description' => t('Number in gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['carb']
+	);
+
+	$form['foodinfo']['protein'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Protein'),
+		'#description' => t('Number in gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['protein'],
+	);
+
+	$form['foodinfo']['fats'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Fats'),
+		'#description' => t('Number in gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['fats'],
+	);
+
+	$form['foodinfo']['fibre'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Fibre'),
+		'#description' => t('Number in gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['fibre'],
+	);
+
+	$form['foodinfo']['water'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Water'),
+		'#description' => t('Number in gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['water'],
+	);
+
+	$form['foodinfo']['sodium'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Sodium'),
+		'#description' => t('Number in milli gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['sodium'],
+	);
+
+	$form['foodinfo']['calcium'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Calcium'),
+		'#description' => t('Number in milli gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['calcium'],
+	);
+
+	$form['foodinfo']['iron'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Iron'),
+		'#description' => t('Number in milli gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['iron'],
+	);
+
+	$form['foodinfo']['vita'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Vitamin A'),
+		'#description' => t('Number in milli gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['vita'],
+		'#weight'	=> 1
+	);
+
+	$form['foodinfo']['vitb'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Vitamin B'),
+		'#description' => t('Number in milli gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['vitb'],
+		'#weight'	=> 2
+	);
+
+	$form['foodinfo']['vitc'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Vitamin C'),
+		'#description' => t('Number in milli gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['vitc'],
+		'#weight'	=> 3
+	);
+
+	$form['foodinfo']['vitd'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Vitamin D'),
+		'#description' => t('Number in milli gramm (If you leave it blank it will be assumed as 0)'),
+		'#default_value' => $info['vitd'],
+		'#weight'	=> 4
+	);
+
+	return $form;
+}
+
+/**
+ * Enter description here ...
+ * @param unknown_type $node
+ */
+function pi_foodinfo_load($node)
+{
+	$obj = db_fetch_object(db_query("SELECT * FROM {pi_foodinfo} WHERE vid=%d", $node->vid));
+
+	$foodinfo = array(
+		'description' => $obj->description,
+		'portion' => $obj->portion,
+		'carb' => $obj->carb,
+		'protein' => $obj->protein,
+		'fats' => $obj->fats,
+		'fibre' => $obj->fibre,
+		'water' => $obj->water,
+		'sodium' => $obj->sodium,
+		'calcium' => $obj->calcium,
+		'iron' => $obj->iron,
+		'vita' => $obj->vita,
+		'vitb' => $obj->vitb,
+		'vitc' => $obj->vitc,
+		'vitd' => $obj->vitd
+	);
+
+	$node->foodinfo = $foodinfo;
+
+	return $node;
+}
+
+/**
+ * Enter description here ...
+ * @param unknown_type $node
+ */
+function pi_foodinfo_insert($node)
+{
+	$values = $node->foodinfo;
+
+	db_query("INSERT INTO {pi_foodinfo} (nid,vid,description,portion,carb,protein,fats,fibre,water,sodium,calcium,iron,vita,vitb,vitc,vitd) VALUES (%d,%d,'%s','%s',%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f)",
+	$node->nid,
+	$node->vid,
+	$values['description'],
+	$values['portion'],
+	$values['carb'],
+	$values['protein'],
+	$values['fats'],
+	$values['fibre'],
+	$values['water'],
+	$values['sodium'],
+	$values['calcium'],
+	$values['iron'],
+	$values['vita'],
+	$values['vitb'],
+	$values['vitc'],
+	$values['vitd']
+	);
+
+	drupal_set_message( t('Food info for %description added', array('%description' => $values['description']) ) );
+}
+
+/**
+ * Enter description here ...
+ * @param unknown_type $node
+ */
+function pi_foodinfo_update($node)
+{
+	if($node->revision)
+	{
+		$obj = db_fetch_object(db_query("SELECT chid FROM {pi_foodinfo} WHERE vid=%d", $node->old_vid));
+
+		db_query("INSERT INTO {pi_foodinfo} (chid,nid,vid,description,portion,carb,protein,fats,fibre,water,sodium,calcium,iron,vita,vitb,vitc,vitd) VALUES (%d,%d,%d,'%s','%s',%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f)",
+		$obj->chid,
+		$node->nid,
+		$node->vid,
+		$obj->description,
+		$obj->portion,
+		$obj->carb,
+		$obj->protein,
+		$obj->fats,
+		$obj->fibre,
+		$obj->water,
+		$obj->sodium,
+		$obj->calcium,
+		$obj->iron,
+		$obj->vita,
+		$obj->vitb,
+		$obj->vitc,
+		$obj->vitd
+		);
+	}
+
+	$values = $node->foodinfo;
+
+	db_query("UPDATE {pi_foodinfo} set description='%s', portion='%s', carb=%f,protein=%f,fats=%f,fibre=%f,water=%f,sodium=%f,calcium=%f,iron=%f,vita=%f,vitb=%f,vitc=%f,vitd=%f WHERE vid = %d",
+	$values['description'],
+	$values['portion'],
+	$values['carb'],
+	$values['protein'],
+	$values['fats'],
+	$values['fibre'],
+	$values['water'],
+	$values['sodium'],
+	$values['calcium'],
+	$values['iron'],
+	$values['vita'],
+	$values['vitb'],
+	$values['vitc'],
+	$values['vitd'],
+	$node->vid
+	);
+
+	drupal_set_message("Food info added");
+}
+
+/**
+ * This function removes all data for the nid from the pi_foodinfo table in the database.
+ * @param array $node The node which is deleted.
+ */
+function pi_foodinfo_delete(&$node)
+{
+	db_query("DELETE FROM {pi_foodinfo} WHERE nid=%d", $node->nid);
+}
+
+/**
+ * This function validates the data of the submitted form. It checks if the description exists already in the database.
+ * In case the operation is not delete and the description exists, the function returns an error. Values can be empty,
+ * exept description and portion. The rest of the data have to be numerical (or empty equals zero)  
+ * @param array $node
+ * @param array $form Reference to the submitted form data.
+ */
+function pi_foodinfo_validate($node, &$form)
+{
+	$foodinfo = $node->foodinfo;
+	$type = node_get_types('type', $node);
+
+	if( $form['#post']['op'] != $form['buttons']['delete']['#value'] )
+	{
+		$foodtype = db_fetch_object(db_query("SELECT chid FROM {pi_foodinfo} WHERE description = '%s'",$foodinfo['description']));
+
+		if($foodtype)
+		{			
+			form_set_error('foodinfo][description', t('Description of @type already exists', array('@type' => $type->name)));
+		}
+	}
+
+	if($foodinfo['carb'] < 0 )
+	{
+		form_set_error('foodinfo][carb', t('Carbons of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['protein'] < 0 )
+	{
+		form_set_error('foodinfo][protein', t('Proteins of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['fats'] < 0 )
+	{
+		form_set_error('foodinfo][fats', t('Fats of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['fibre'] < 0 )
+	{
+		form_set_error('foodinfo][fibre', t('Fats of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['water'] < 0 )
+	{
+		form_set_error('foodinfo][water', t('Water of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['sodium'] < 0 )
+	{
+		form_set_error('foodinfo][sodium', t('Sodium of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['calcium'] < 0 )
+	{
+		form_set_error('foodinfo][calcium', t('Calcium of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['iron'] < 0 )
+	{
+		form_set_error('foodinfo][iron', t('Iron of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['vita'] < 0 )
+	{
+		form_set_error('foodinfo][vita', t('Vitamin A of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['vitb'] < 0 )
+	{
+		form_set_error('foodinfo][vitb', t('Vitamin B of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['vitc'] < 0 )
+	{
+		form_set_error('foodinfo][vitc', t('Vitamin C of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+	if($foodinfo['vitd'] < 0 )
+	{
+		form_set_error('foodinfo][vitd', t('Vitamin D of @type is not a number or smaller (equal) zero', array('@type' => $type->name)));
+	}
+}
+
+/**
+ * 
+ * @param unknown_type $node
+ * @param boolean $teaser
+ * @param boolean $page
+ */
+function pi_foodinfo_view($node, $teaser = FALSE, $page = FALSE)
+{
+	if($teaser === FALSE)
+	{
+		$node = node_prepare($node, $teaser);
+
+		$node->content['foodinfo'] = array(
+		 '#value' => theme('pi_foodinfo_view', $node),
+		 '#weight' => 2
+		);
+	}
+	else
+	{
+		$node = node_prepare($node, $teaser);
+	}
+
+	return $node;
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function pi_foodinfo_theme()
+{
+	return array(
+ 		'pi_foodinfo_view' 		=> array(	'arguments' => array('node') ),
+ 		'pi_foodinfo_edit_form'	=> array(	'arguments' => array('form') )
+	);
+}
+
+/**
+ * 
+ * @param unknown_type $node
+ */
+function theme_pi_foodinfo_view($node)
+{
+	$output .= theme('status_messages');
+
+	$foodinfo = $node->foodinfo;
+
+	$table[] = array( 'Description', $foodinfo['description'] );
+	$table[] = array( 'Portion', $foodinfo['portion'] );
+	$table[] = array( 'Carbs (g)', $foodinfo['carb'] );
+	$table[] = array( 'Protein (g)', $foodinfo['protein'] );
+	$table[] = array( 'Fats (g)', $foodinfo['fats'] );
+	$table[] = array( 'Fibre (g)', $foodinfo['fibre'] );
+	$table[] = array( 'Water (g)', $foodinfo['water'] );
+	$table[] = array( 'Sodium (mg)', $foodinfo['sodium'] );
+	$table[] = array( 'Calcuim (mg)', $foodinfo['calcium'] );
+	$table[] = array( 'Iron (mg)', $foodinfo['iron'] );
+	$table[] = array( 'Vit A (mg)', $foodinfo['vita'] );
+	$table[] = array( 'Vit B (mg)', $foodinfo['vitb'] );
+	$table[] = array( 'Vit C (mg)', $foodinfo['vitc'] );
+	$table[] = array( 'Vit D (mg)', $foodinfo['vitd'] );
+
+	$output .=  theme('table', $header, $table);
+
+	return $output;
+}
+
+/**
+ * Enter description here ...
+ */
+function pi_foodinfo_all()
+{
+	//drupal_set_message('function pi_foodinfo_all called');
+
+	$output .= theme('status_messages') ;
+
+	$data = _pi_foodinfo_get_all_nodes();
+
+	$header[] = 'Description';
+	$header[] = 'Portion';
+	$header[] = 'Carbs (g)';
+	$header[] = 'Protein (g)';
+	$header[] = 'Fats (g)';
+	$header[] = 'Fibre (g)';
+	$header[] = 'Water (g)';
+	$header[] = 'Sodium (mg)';
+	$header[] = 'Calcuim (mg)';
+	$header[] = 'Iron (mg)';
+	$header[] = 'Vit A (mg)';
+	$header[] = 'Vit B (mg)';
+	$header[] = 'Vit C (mg)';
+	$header[] = 'Vit D (mg)';
+	$header[] = ' ';
+
+	foreach($data as $foodinfo)
+	{
+		$foodinfo['edit'] = l("edit", 'node/' . $foodinfo['nid'] . '/edit');
+		unset( $foodinfo['chid'] );
+		unset( $foodinfo['nid'] );
+		unset( $foodinfo['vid'] );
+		$rows[] = $foodinfo;
+	}
+
+	$output .=  theme('table', $header, $rows);
+	$output .= l(t("Add food info"), 'node/add/pi-foodinfo');
+	$output .= "<br />";
+	$output .= l(t("Import food info"), 'admin/nquire/foodinfo/import');
+
+	return $output;
+}
+
+/**
+ * 
+ * @param unknown_type $node
+ */
+function pi_foodinfo_import_form($node)
+{
+	$type = node_get_types('type', $node);
+
+	$info = $node->foodinfo;
+
+	$link = drupal_get_path('module','pi_foodinfo') . '/foodinfo_template.csv'; 
+	
+	$form = array();
+
+	$form['#attributes']['enctype'] = 'multipart/form-data';
+	
+	$form['foodinfo_import'] = array
+	(
+		'#type' 		=> 'fieldset',
+		'#title' 		=> 'Import food info ' . $info,
+		'#collapsible' 	=> TRUE,
+		'#tree' 		=> TRUE,
+	    '#weight' 		=> -5
+	);
+
+	$form['foodinfo_import']['csv'] = array(
+			'#type' => 'file',
+			'#title' => t('Upload CSV food info file'),
+			'#required' => FALSE,
+	    	'#size' => 50,
+			'#description' => t("Upload a CSV of the food info"),
+			'#prefix' => '<div>Download the <a href="' . $link . '">CSV template</a>. (Don\'t remove first line)</div>'
+			);
+
+	$form['foodinfo_import']['upload_submit'] = array(
+   			'#type' => 'submit',
+    		'#value' => t('Upload CSV')	);
+
+	return $form;
+}
+
+/**
+ * 
+ */
+function pi_foodinfo_import()
+{
+	$file = file_save_upload('foodinfo_import', array() );
+	
+	if($file->filepath)
+	{
+		$output = pi_foodinfo_import_file($file->filepath);
+	}
+	else 
+	{
+		$output = drupal_get_form('pi_foodinfo_import_form');
+	}
+	
+	return $output;
+}
+
+/**
+ * 
+ * @param unknown_type $filepath
+ */
+function pi_foodinfo_import_file($filepath)
+{
+	global $user;
+	$ouput = '';
+	$first_run = TRUE;
+	$is_csv = TRUE;
+	//$file = 'foodinfo.cvs';
+	//$path = dirname( __FILE__ );
+	//$filepath = $path . '/' . $file;
+
+	if(($handle = fopen($filepath, "r")) !== FALSE)
+	{
+		while(($data = fgetcsv($handle, 1000, ";")) !== FALSE && $is_csv === TRUE)
+		{
+			//Each reading is a new pi_data node.
+			$node_new = new stdClass();
+			$node_new->title = 'Inquiry data from datalogger';
+			$node_new->body = '';;
+			$node_new->uid = $user->uid;
+			$node_new->type = 'pi_foodinfo';
+			$node_new->status = 1;
+			$node_new->promote = 0;
+
+			$values['description'] = $data[0];
+			$values['portion'] = $data[1];
+			$values['carb'] = $data[2];
+			$values['protein'] = $data[3];
+			$values['fats'] = $data[4];
+			$values['fibre'] = $data[5];
+			$values['water'] = $data[6];
+			$values['sodium'] = $data[7];
+			$values['calcium'] = $data[8];
+			$values['iron'] = $data[9];
+			$values['vita'] = $data[10];
+			$values['vitb'] = $data[11];
+			$values['vitc'] = $data[12];
+			$values['vitd'] = $data[13];
+
+			if( $first_run === TRUE && 
+				$values['description'] !== 'Description' &&
+				$values['portion'] !== 'Portion' && 
+				$values['carb'] !== 'Carb (g)' &&
+				$values['protein'] !== 'Protein (g)' )
+			{
+				$ouput = drupal_set_message(t("Are you sure this is a correct CSV file? Remember NOT to remove the first line of the template!"));
+				$is_csv = FALSE; 
+			}
+			
+			if( _pi_foodinfo_get_child_from_description($values['description']) <= 0 && $first_run === FALSE )
+			{
+				$node_new->foodinfo = $values;
+				node_save($node_new);
+			}
+			else
+			{
+				drupal_set_message( t('Food info for %description already in database', array('%description' => $values['description']) ), 'warning' );
+			}
+			
+
+			$first_run = FALSE;
+		}
+		fclose($handle);
+	}
+
+	$node = node_load( 0 );
+
+	return $ouput;
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function _pi_foodinfo_get_all_nodes()
+{
+	$query = db_query("SELECT * FROM {pi_foodinfo} ORDER BY description");
+
+	$data = array();
+
+	while($result = db_fetch_array($query))
+	{
+		if(array_key_exists($result['nid'], $data) === TRUE )
+		{
+			$obj = $data[$result['nid']];
+			if($obj['vid'] < $result['vid'])
+			{
+				$data[$result['nid']] = $result;
+			}
+		}
+		else
+		{
+			$data[$result['nid']] = $result;
+		}
+	}
+
+	return array_values($data);
+}
+
+/**
+ * 
+ * @param unknown_type $description
+ */
+function _pi_foodinfo_get_portion_info_for_chid($description)
+{
+	$chid = _pi_foodinfo_get_child_from_description($description);
+
+	$data = db_fetch_object(db_query("SELECT portion FROM {pi_foodinfo} WHERE chid = %d",$chid));
+
+	$portion_info = $data->portion;
+
+	return $portion_info;
+}
+
+/**
+ * 
+ * @param unknown_type $description
+ */
+function _pi_foodinfo_get_child_from_description($description)
+{
+	$id = -1;
+
+	$foodinfo = db_fetch_object(db_query("SELECT chid FROM {pi_foodinfo} WHERE description = '%s'", $description));
+
+	if($foodinfo)
+	{
+		$id = $foodinfo->chid;
+	}
+
+	return $id;
+}

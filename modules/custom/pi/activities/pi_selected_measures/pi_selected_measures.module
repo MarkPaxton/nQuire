@@ -259,24 +259,29 @@ function pi_selected_measures_validate($node) {
  * @param $node
  * @return unknown_type
  */
-function pi_selected_measures_insert($node) {
+function pi_selected_measures_insert($node) 
+{
 	$required_measures = explode(",", $node->required_measures);
+	
+	$weight = 0;
+	
 	foreach ($required_measures as $measure)
 	{
-		if ($measure != 0)
+		if ($measure > 0)
 		{
-			$measure_node = node_load($measure);
-			$weight = 0;
-			db_query("INSERT INTO {pi_selected_measures} (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
+			$status = 'key';
+			db_query("INSERT INTO {pi_selected_measures} (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d) ", $node->nid, $node->nid, $measure, $status, $weight);
+			$weight++;
 		}
 	}
+	
 	foreach ($node->selected_measures as $measure)
 	{
-		if ($measure != 0)
+		if ($measure > 0)
 		{
-			$measure_node = node_load($measure);
-			$weight = 1;
-			db_query("INSERT INTO {pi_selected_measures} (nid, vid, measure_nid, weight) VALUES (%d, %d, %d, %d) ", $node->nid, $node->nid, $measure, $weight);
+			$status = 'selected';
+			db_query("INSERT INTO {pi_selected_measures} (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d) ", $node->nid, $node->nid, $measure, $status, $weight);
+			$weight++;
 		}
 	}
 }
