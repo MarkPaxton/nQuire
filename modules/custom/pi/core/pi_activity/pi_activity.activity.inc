@@ -114,7 +114,7 @@ function pi_activity_actor_audience_info($inquiry_id, $activity_id) {
 		$loaded_activity_actor = load_activity_actor($inquiry_id, $activity_id);
 		$activity_uid = $activity_actor[0]["uid"];
 		$activity_gid = $activity_actor[0]["gid"];
-		$activity_gid_type = get_type_of_group($gid);
+		$activity_gid_type = pi_get_type_of_group($gid);
 		 
 		$seen_by = $audience;
 		if (($activity_uid && !$activity_gid) || $audience == 'individual')
