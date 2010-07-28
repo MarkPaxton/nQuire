@@ -117,6 +117,18 @@ function pi_menu() {
 	return $items;
 }
 
+/**
+ * hook_theme for the pi module, contains definitions for all the shared themes for nQuire
+ */
+function pi_theme()
+{
+	return array(
+	'pi_region_sort_table' => array(
+		'arguments' => array('header', 'rows', 'regions', 'attributes'),
+		'file' => 'pi_region_sort_themes.inc')
+	);
+}
+
 function pi_nquire_admin() {
   $output = '';
   if(module_exists(pi_available_content_types)) {
@@ -391,7 +403,7 @@ function pi_get_all_group_nids() {
 		$group = node_load($id);
 		if($group->status)
 		{
-			$groups[] = $id;
+			$groups[$id] = $id;
 		}  		
 	}
 	return $groups;
@@ -1562,6 +1574,31 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	}
 	return $sorted_items;
 }
+
+/**
+ * This function takes a flattened array of items and groups them into arrays accouting to 
+ * the values of group_field
+ * @param array or array $items items to sort
+ * @param string $group_field the field of the array by which to group items
+ * @return a nested array, first index is the value of $items['group_field'] and the second index the current
+ * key of $item. 
+ * array('group_field1' => array ('id'=>array(value=>'value, group_field=>'group_field1', .), .. )...)
+ */
+function pi_create_grouped_item_list($items, $group_field)
+{
+	$return_array=array();
+	foreach($items as $key => $item)
+	{
+		$group_key = $item[$group_field];
+		if(!array_key_exists($group_key, $return_array))
+		{
+			$return_array[$group_key]=array();		
+		}
+		$return_array[$group_key][$key] = $item; 
+	}
+	return $return_array;
+}
+
 
 
 /**
