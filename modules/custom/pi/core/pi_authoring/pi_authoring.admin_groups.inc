@@ -8,7 +8,9 @@
  * @return string
  */
 function pi_authoring_admin_groups() {
-	$content = '';
+	$content = '<p>' . t('Use this page to categorise your groups into Multiclass, Class and Group types.  ' .
+	'After this you will then need to assign each groups to a class, and each class to a multiclass (e.g. all the Year 10 classes into the Year 10 group.  ' .
+	"If there are no groups listed, you need to create some using the Groups menu item.</p>");
 	$content .= drupal_get_form('pi_authoring_admin_groups_form');	
 	return $content;
 }
@@ -24,8 +26,6 @@ function pi_authoring_admin_groups_form($form_state)
 	// Build the form
 	$form = array();
 
-	$form['#prefix'] = '';
-	
 	// measures_list and tree used for draggable menu items
 	$form['groups_list'] = array(
         '#tree'   => TRUE,
