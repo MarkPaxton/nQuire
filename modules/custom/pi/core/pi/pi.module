@@ -482,6 +482,52 @@ function pi_get_group_nids_of_type($type)
 	return $groups;	
 }
 
+function pi_get_group_hierarchy($group_id)
+{
+	$hierarchy = array('parent'=>NULL, 'children' => array());
+	
+	// First get the parent id and check for multiples
+	$query = "SELECT pgh_id, parent_gid FROM {pi_group_hierarchy} WHERE gid = %d ORDER BY pgh_id ASC";
+	$result = db_query($query, $group_id);
+	$result_rows = array();
+	$parent_id = NULL;
+	while($result_row = db_fetch_array($result))
+	{
+		$result_rows[$result_row['pgh_id']] = $result_row['parent_gid'];	
+		if($parent_id==NULL)
+		{
+			$parent_id = $result_row['parent_gid'];
+		}
+		else
+		{
+			$print_value = ($result_row['parent_gid'] == NULL) ? "NULL" : "#" . $result_row['parent_gid'];
+			drupal_set_message(t("Group #$group_id has more than one parent set, using first " . 
+				"one which is #$parent_id and not " . $print_value));			
+		}
+	}
+	$hierarchy['parent'] = $parent_id;
+	
+	//now get the child ids and put them into an array
+	$query = "SELECT pgh_id, gid FROM {pi_group_hierarchy} WHERE parent_gid = %d ORDER BY pgh_id ASC";
+	$result = db_query($query, $group_id);
+	$children = array();
+	$seen_children = array();
+	while($result_row = db_fetch_array($result))
+	{
+		if(array_key_exists($result_row['gid'], $seen_children))
+		{
+			drupal_set_message(t("Group " . $result_row['gid'] . " has a duplicate hierarchy entry (" . $result_row['pgh_id'] . ")"));
+		}
+		else
+		{
+			$children[$result_row['pgh_id']] = $result_row['gid'];
+		}	
+	}
+	$hierarchy['children'] = $children;	
+	return $hierarchy;	
+}
+
+
 /**
  * Returns an array containing the uids for the members of the group.
  * The group could be a group, class or multiclass.
