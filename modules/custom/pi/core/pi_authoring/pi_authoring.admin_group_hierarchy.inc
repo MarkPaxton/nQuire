@@ -14,6 +14,16 @@ function pi_authoring_admin_group_hierarchy_view() {
 	// and by type
 	$orphans = array();
 	$groups_by_type = array();
+	
+	$group_order = array(
+		'multiclass'=>'Multiclass groups', 
+		'class'=>'Classes not assigned to a multiclass', 
+		'group'=>'Groups with no class');
+	foreach(array_keys($group_order) as $group_type)
+	{
+		$orphans[$group_type] = array();
+	}
+	
 	foreach($defined_groups as $gid => $group)
 	{
 		if($group['type']==NULL)
@@ -24,62 +34,68 @@ function pi_authoring_admin_group_hierarchy_view() {
 		{
 			$groups_type = $group['type'];
 		}
+		
 		$groups_by_type[$groups_type][] = $gid;								
 		
-		if($group['parent_id'] == NULL)
+		if($group['parent'] == NULL)
 		{
-			$orphans[$groups_type][] = $gid; 
+			$orphans[$groups_type][] = $gid;			
 		}
 	}
-	//pi_debug_message($groups_by_type['class']['119']);
 	
 	// First get every orphan group for the top level groupings
-	$group_order = array(
-		'multiclass'=>'Multiclass groups', 
-		'class'=>'Class groups with no parent', 
-		'group'=>'Groups with no class', 
-		'none'=>'Uncategroised groups');
-
+	$top_level_group_rows = array();
 	foreach($group_order as $group_type_to_list => $group_description)	
 	{
-		foreach($orphans[$group_type_to_list] as $gid)
+		$orphan_group_members = array();		
+		if(count($orphans[$group_type_to_list])>0)
 		{
-			//Check that the group hasn't been deleted before processing it:
-			$group = node_load($gid);
-			if($group)
+			// Pre load all the node names for each orhpan group
+			$node_names = pi_authoring_get_names_from_nids($orphans[$group_type_to_list]);
+			//Now list orphan each group members or name as needed
+			pi_debug_message($group_type_to_list);
+			pi_debug_message($orphans[$group_type_to_list]);
+			$child_data = pi_authoring_generate_child_list($orphans[$group_type_to_list], $defined_groups);
+			pi_debug_message($child_data);
+			if(is_array($child_data))
 			{
-				$group_title = $group->title;
-				//Generate a list of members of the group (if it has children)
-				$orphan_group_members = array();
-				if(count($defined_groups[$gid]['children']) > 0)
-				{		
-					foreach($defined_groups[$gid]['children'] as $child_gid)
-					{
-						if($defined_groups[$child_gid]!='group')
-						{
-							$class_group_rows = pi_authoring_generate_class_group_members_rows($child_gid, $defined_groups[$child_gid]);
-							$orphan_group_members[] = theme_item_list($class_group_rows['rows'], $class_group_rows['title']);
-						}
-						else
-						{
-							$g = load_node($child_gid);
-							$orphan_group_members[] = $g->title;
-						}
-					}					
-				}
-				else
+				foreach($child_data as $child_gid => $child_row)
 				{
-					$orphan_group_members[] = t("None");
+					// get the name or set default
+					if($node_names[$child_gid]!=NULL)
+					{
+						$child_group_name = $node_names[$child_gid] . ' (' . ucfirst($group_type_to_list) . ')';;
+					}
+					else
+					{
+						$child_group_name = t('Unknown name') . ' (' . ucfirst($group_type_to_list) . ')';;
+					}
+
+					pi_debug_message($child_gid . " - " . $child_group_name);
+					
+					// Now work out the members of the orphan groups
+					if(is_array($child_row))
+					{
+						pi_debug_message($child_row);
+						$orphan_group_members[] = theme_item_list($child_row, $child_group_name);
+					}
+					else
+					{
+						$orphan_group_members[] = $child_group_name;
+					}
 				}
 			}
 			else
 			{
-				drupal_set_message("Can't find data for group $gid - it may have been deleted");
+				$orphan_group_members[] = $child_data;
 			}
+		}
+		else
+		{
+			$orphan_group_members[] = t("None");
 		}
 		$output .= theme_item_list($orphan_group_members, $group_description);
 	}
-	//	$content .= drupal_get_form('pi_authoring_admin_group_hierarchy_form');	
 	return $output;
 }
 
@@ -148,57 +164,79 @@ function pi_authoring_admin_group_hierarchy_form($form_state)
 }
 
 
-function pi_authoring_generate_class_group_members_rows($class_gid, $class_hierarchy)
+function pi_authoring_get_names_from_nids($nids)
 {
-	// Check the group exists as a node and that it's got a defined type
-	// and handle it if not.
-	$class = node_load($class_gid);
-	if($class != NULL)
+	$return_data = array();
+	if(is_array($nids))
 	{
-		$class_group_title = check_plain($class->title);
-	}
-	else
-	{
-		$class_group_title = "Unknown";
-		drupal_set_message(t("The class with id $class_gid is referred to but does not exist."));
-	}
-
-	if($class_hierarchy['type']==NULL)
-	{
-		$class_group_type = 'not set';
-	}
-	else
-	{
-		$class_group_type = $class_hierarchy['type'];
-	} 
-	$class_group_title .= check_plain(' (' . ucfirst($class_group_type) . ')');
-	
-	
-	// Check the class for sub groups and generate the list of class members:
-	$class_members = array();
-	foreach($class_hierarchy['children'] as $subgroup_gid)
-	{
-		$subgroup = node_load($subgroup_gid);
-		$subgroup_group_type = pi_get_type_of_group($subgroup_gid);
-		$subgroup_group_title = check_plain($subgroup->title . ' (' . ucfirst($subgroup_group_type) . ')');
-		if($subgroup_group_type != 'group')
+		foreach($nids as $nid)
 		{
-			drupal_set_message("Group " . $subgroup_group_title . " is set as a member of " . $child_group_title . " and is not set as a group.");
+			$n = node_load($nid);
+			if($n!=NULL)
+			{
+				$return_data[$nid] = $n->title;
+			}
+			else
+			{
+				$return_data[$nid] = NULL;
+			}
 		}
-		$class_members[] = $subgroup_group_title;
 	}
-	
-	if((count($class_group_children)==0) && ($class_hierarchy['type']!='group'))
+	return $return_data;
+} 
+
+/*
+ * Create a list of groups and subgroups using the group heirarchy in $defined groups
+ * and the names of the nodes - groups with children will be recursively traversed
+ * @param arrauy(uint) $children array of nids of child nodes
+ * @param array() $defined_groups array of group hierarchy data indexed by nid.
+ * @return array(string, array()) array containing child node name (or unknown if null) or an array
+ * containing node names/child node arrays of the child nodes
+ */
+function pi_authoring_generate_child_list($children, &$defined_groups)
+{
+	$child_list = array();
+	$names = pi_authoring_get_names_from_nids($children);
+		
+	foreach($children as $nid)
 	{
-		$class_members[] = t("No sub-groups");
+		$group_type = $defined_groups[$nid]['type'];
+		if($group_type==NULL)
+		{
+			$group_type=t('None');
+		}
+		if(count($defined_groups[$nid]['children'])>0)
+		{
+			$child_list[$nid] = pi_authoring_generate_child_list($defined_groups[$nid]['children'], $defined_groups);
+		}
+		else
+		{
+			if($names[$nid]!=NULL)
+			{
+				$child_list[$nid] = $names[$nid] . ' (' . ucfirst($group_type) . ')';
+			}
+			else
+			{
+				$child_list[$nid] = t('Unknown') . ' (' . ucfirst($group_type) . ')';
+			}
+		}
+	}
+	return $child_list;
+}
+
+function pi_authoring_render_group_list($group_list)
+{
+	if(is_array($group_list))
+	{
+		
+		return pi_authoring_render_group_list($group_list);
 	}
 	else
 	{
-		$class_members[] = $class_group_title;
-		$class_group_title = null;
+		return $group_list;
 	}
-	return array('title'=> $class_group_title, 'rows'=>$class_members);
-} 
+}
+
 
 function theme_pi_authoring_admin_group_hierarchy_form($form)
 {
