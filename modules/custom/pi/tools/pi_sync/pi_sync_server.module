@@ -1,0 +1,82 @@
+<?php
+	
+function pi_sync_server_xmlrpc()
+{
+	//return array ( 'pi_sync_server'  => "I'm here ;-)" ) ;
+	
+	$functions[ 'pi_sync_server' ]  			= "pi_sync_server_sync";
+	$functions[ 'pi_sync_server.info' ] 		= "pi_sync_server_info";
+	$functions[ 'pi_sync_server.login' ] 		= "pi_sync_server_login";
+	$functions[ 'pi_sync_server.upload_file' ] 	= "pi_sync_server_upload_file";
+	
+	
+	return $functions;
+}
+
+function pi_sync_server_sync()
+{
+	return "OK";
+}
+
+function pi_sync_server_info( $sessionid )
+{
+	if( !isset($_COOKIE[session_name()]) ) 
+	{
+		$_COOKIE[session_name()] = $sessionid;
+	}
+	
+	global $user;
+
+  	// Load session data
+  	session_id( $sessionid );
+  	sess_read( $sessionid );
+	
+	return $user;
+}
+
+function pi_sync_server_upload_file( $file )
+{
+	$file_info[ 'content' ] = base64_decode( $file[ 'file' ] );
+	$file_info[ 'path' ] 	= '/tmp/' . $file[ 'filepath' ];
+	
+	file_save_data( $file_info[ 'content' ], $file_info[ 'path' ] );
+	
+    return $file_info;
+}
+
+
+function pi_sync_server_login( $username, $password )
+{
+	global $user;
+	
+	$result = '-1';
+	$obj = user_load( array( 'name' => $username ) );
+	
+	if( $obj !== FALSE )
+	{
+		if( $obj->pass === strtolower( $password ) )
+		{
+			$user = $obj;
+			$edit = NULL;
+			
+			watchdog('user', 'Session opened for %name.', array('%name' => $user->name));
+			$user->login = time();
+			
+			sess_regenerate();
+    		user_module_invoke( 'login', $edit, $user );
+
+    		$result = new stdClass();
+    		$result->sessid = session_id();
+    		$result->user = $user;
+		}
+		else
+		{
+			$result[] = '-2';
+			$result[] = $user;
+		}
+	}
+	
+	return $result; 
+}
+	
+?>

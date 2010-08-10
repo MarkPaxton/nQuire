@@ -109,12 +109,16 @@ function pi_data_form(&$node) {
 
 		
 	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	
+	print_r($measures_param);
 	if ($measures_param)
 	{
 		$measures_node = node_load($measures_param);
 		$measure_rows = $measures_node->measures_list;
 	}
 
+	print_r($measures_node);
+	
 	$form['onepageprofile_categories'] = array(
         '#tree'   => TRUE,
 	);
@@ -401,6 +405,8 @@ function pi_data_insert($node) {
 		}
 		db_query("INSERT INTO {pi_collected_data} (nid, vid, selected_measures_nid, available_measure_nid, value) VALUES ( %d, %d, %d, %d, '%s')",
 			$node->nid, $node->vid, $selected_measure_nid, $available_measure_nid, $node_data);
+			
+		//echo "\n<br>" . $node->nid . ', ' . $node->vid . ', ' . $selected_measure_nid . ', ' . $available_measure_nid . ', ' . $node_data;
 	}
 }
 
@@ -463,7 +469,7 @@ function pi_data_delete(&$node) {
 
 //needs to be reintroduced
 function is_checkboxes_measure($id) {
-	$query = "SELECT measure_nid FROM {pi_selected_measures} WHERE psm_id = %d";
+	$query = "SELECT measure_nid FROM {pi_sort_measures} WHERE psm_id = %d";
 	$measure_nid = db_fetch_object(db_query($query, $id));
 	$measure_nid = $measure_nid->measure_nid;
 	$measure = node_load($measure_nid);

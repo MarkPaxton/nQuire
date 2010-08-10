@@ -1,0 +1,1717 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ */
+
+
+define( 'FOODDIARY_DATE_TYPE', 		'Fooddiary Date' );
+define( 'FOODDIARY_FOODTYPE_TYPE', 	'Fooddiary Food type' );
+define( 'FOODDIARY_FOODIMAGE_TYPE', 'Fooddiary Image' );
+define( 'FOODDIARY_FOOD_TYPE', 		'Fooddiary Food' );
+define( 'FOODDIARY_PORTION_TYPE', 	'Fooddiary Portion size' );
+
+/**
+ * 
+ * Currently the fooddiary is unable to handle different revisions!
+ * Therefore remove the option from the from to prevent uasers (admins) to enable revisions 
+ * @param $form	Reference of the current from
+ * @param $form_state Reference to the current sate of the from
+ * @param $form_id The drupal id from 
+ */
+function pi_fooddiary_form_alter(&$form, &$form_state, $form_id)
+{
+	$form['workflow']['node_options']['#default_value'] = array( 'status' );
+	$form['workflow']['node_options']['#options'] = array(	'status' => 'Published',
+															'promote' => 'Promoted to front page',
+                            								'sticky' => 'Sticky at top of lists' );
+	
+	$upload = $form['workflow']['upload'];
+	$upload['#disabled'] = TRUE;
+	$upload['#default_value'] = 0;
+	
+	$form['workflow']['upload'] = $upload;
+}
+
+/**
+ * 
+ * This functions returns the information for the fooddiary node
+ * Function used by the drupal system
+ */
+function pi_fooddiary_node_info()
+{
+	$type=array(
+		'pi_fooddiary' => array(
+		    'name' => t('Fooddiary'), // Required.
+		    'module' => 'pi_fooddiary',  // Required.
+		    'description' => t('Fooddiary data'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t('Fooddiary data'),
+		    'has_body' => TRUE,
+			'body_label' => t('Fooddiary data...'),
+		    'locked' => TRUE )
+	);
+
+	return $type;
+}
+
+/*
+ * This function returns an array of the possible settings of permission.
+ * @return Array Array of strings for the drupal permission settings
+ */
+function pi_fooddiary_perm()
+{
+	$permission = array( 'access pi_fooddiary js', 'create pi_fooddiary', 'edit own pi_fooddiary', 'edit any pi_fooddiary', 'delet own pi_fooddiary', 'delete any pi_fooddiary' );
+	 
+	return $permission;
+}
+
+/**
+ * 
+ * This function returns an array of menu items.
+ * @return $items Menu items which will be registered by the drupal system
+ */
+function pi_fooddiary_menu()
+{
+	$items['activity/pi_fooddiary/add_available_measures'] = array(
+    		'page callback' => 'pi_fooddiary_add_available_measures',
+    		'access arguments' => array('access pi_fooddiary'),
+			'file' => 'pi_fooddiary.init.inc',
+    		'type' => MENU_CALLBACK,
+	);
+
+	$items['activity/pi_fooddiary_select_day/js'] = array(
+    		'page callback' => 'pi_fooddiary_select_day_js',
+    		'access arguments' => array('access pi_fooddiary js'),
+			'file' => 'pi_fooddiary.form_select_day.inc',
+    		'type' => MENU_CALLBACK,
+	);
+
+	$items['activity/pi_fooddiary_select_meal_type/js'] = array(
+    		'page callback' => 'pi_fooddiary_select_meal_type_js',
+    		'access arguments' => array('access pi_fooddiary js'),
+  			'file' => 'pi_fooddiary.form_select_meal_type.inc',
+    		'type' => MENU_CALLBACK,
+	);
+
+	$items['activity/pi_fooddiary_upload_photo/js'] = array(
+    		'page callback' => 'pi_fooddiary_upload_photo_js',
+    		'access arguments' => array('access pi_fooddiary js'),
+			'file' => 'pi_fooddiary.form_upload_photo.inc',
+    		'type' => MENU_CALLBACK,
+	);
+
+	$items['activity/pi_fooddiary_add_annotate/js'] = array(
+    	'page callback' => 'pi_fooddiary_add_annotate_js',
+    	'access arguments' => array('access pi_fooddiary js'),
+  		'file' => 'pi_fooddiary.form_add_annotate.inc',
+    	'type' => MENU_CALLBACK,
+	);
+
+	return $items;
+}
+
+/**
+ * This function does perform the check of the access restrictions.
+ * @param unknown_type $op
+ * @param unknown_type $node
+ * @param unknown_type $account
+ * @return Boolean Returns TRUE if permission is granted FALSE otherwise
+ */
+function pi_fooddiary_access($op, $node, $account)
+{
+	/*
+	 $is_author = $account->uid == $node->uid;
+
+	 $access = FALSE;
+
+	 echo $op;
+
+	 switch($op) {
+		case 'create':	$access = user_access('create pi_fooddiary', $account );
+		echo "access -" . ($access===false ? "1" : "0") . "-";
+		break;
+		case 'update':	$access = user_access('edit any pi_fooddiary', $account ) ||
+		user_access('edit own pi_fooddiary', $account ) && $is_author === TRUE ;
+		break;
+		case 'delete':	$access = user_access('create pi_fooddiary', $account );
+		break;
+		}
+
+		return $access;
+		*/
+
+	/*
+	 global $user;
+	 $uid = $user->uid;
+	 $details = get_inquiry_details_from_current_path();
+	 if ($op == 'create')
+	 {
+		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+		}
+		if ($op == 'update')
+		{
+		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		}
+		if ($op == 'delete')
+		{
+		if (arg(0) == 'node' && arg(2) == 'delete')
+		{
+		//get inquiry for session id and activity
+		$nid = arg(1);
+		$sid = get_current_session_id();
+		$inquiry_id = get_current_inquiry_for_session_and_user_id($sid, $uid);
+		$inquiry_id = $inquiry_id->inquiry_id;
+		$activity_id = get_activity_id_for_nid($nid);
+		if($inquiry_id && $activity_id) {
+		return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+		}
+		else
+		{
+		return FALSE;
+		}
+		}
+		else
+		{
+		return check_node_function_of_activity($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		}
+		}
+		*/
+
+	return true;
+}
+
+
+function pi_fooddiary($node)
+{
+	drupal_set_message('function pi_fooddiary called');
+}
+
+/**
+ * This function is inserting the data for a fooddiary module.
+ * It will generate all the pi_data nodes and add a foodiary node and inserting
+ * all the nids of the assosiated pi_data nodes into the fooddiary table
+ * @param Object $node The drupal node ehich should be added
+ */
+function pi_fooddiary_insert($node)
+{
+	global $user;
+
+	$food_diary = $node->food_diary;
+	$food_photo = $node->food_photo;
+	$food_annotate = $node->food_annotate;
+
+	$food_type = strtolower( $food_diary['meal_type_name'] );
+	$fid_type  = strtolower( $food_diary['meal_type_name'] ) . '_fid';
+	$food_data = serialize( $food_annotate['food_portion'] );
+	$fid = $food_photo['fid'];
+
+	$sort_and_available = _pi_fooddiary_get_sort_nid_and_available_measures();
+
+	$available = $sort_and_available[ 'available_measures' ];
+	$sort_measures_nid = $sort_and_available[ 'sort_measures_nid' ];
+
+	$food_date_data = $available[ FOODDIARY_DATE_TYPE ];
+
+	$pi_data_type[ $sort_measures_nid . '-' . $food_date_data[ 'nid' ] ] = array(	'title'	=> $food_date_data[ '#title' ],
+																					'value'	=> $food_diary['day'],
+																					'weight'	=> $food_date_data[ '#weight' ],
+																					'status'	=> $food_date_data[ '#status' ]		);
+
+
+
+	$food_type_data = $available[ FOODDIARY_FOODTYPE_TYPE ];
+
+	$pi_data_type[ $sort_measures_nid . '-' . $food_type_data[ 'nid' ] ] = array(	'title'	=> $food_type_data[ '#title' ],
+																					'value'	=> $food_type,
+																					'weight'	=> $food_type_data[ '#weight' ],
+																					'status'	=> $food_type_data[ '#status' ]		);
+
+	$food_image_data = $available[ FOODDIARY_FOODIMAGE_TYPE ];
+
+	$pi_data_type[ $sort_measures_nid . '-' . $food_image_data[ 'nid' ] ] = array(	'title'	=> $food_image_data[ '#title' ],
+																					'value'	=> $fid,
+																					'weight'	=> $food_image_data[ '#weight' ],
+																					'status'	=> $food_image_data[ '#status' ]		);
+
+
+	if( is_array( $food_annotate['food_portion'] ) )
+	{
+		foreach( $food_annotate['food_portion'] as $cid => $portion )
+		{
+			$food_foodtype_data = $available[ FOODDIARY_FOOD_TYPE ];
+			$food_portion_data = $available[ FOODDIARY_PORTION_TYPE ];
+
+			$pi_cid_type[ $sort_measures_nid . '-' . $food_foodtype_data[ 'nid' ] ] = array(	'title'	=> $food_foodtype_data[ '#title' ],
+																								'value'	=> $cid,
+																								'weight'	=> $food_foodtype_data[ '#weight' ],
+																								'status'	=> $food_foodtype_data[ '#status' ]		);
+
+			$pi_cid_type[ $sort_measures_nid . '-' . $food_portion_data[ 'nid' ] ] = array(	'title'	=> $food_portion_data[ '#title' ],
+																							'value'	=> $portion,
+																							'weight'	=> $food_portion_data[ '#weight' ],
+																							'status'	=> $food_portion_data[ '#status' ]		);
+
+			$node_to_save = new stdClass();
+			$node_to_save->title = 'Inquiry data from datalogger';
+			$node_to_save->body = '';
+			$node_to_save->uid = $user->uid;
+			$node_to_save->type = 'pi_data';
+			$node_to_save->status = 0;
+			$node_to_save->promote = 0;
+
+			$node_to_save->onepageprofile_categories = array_merge( $pi_data_type,  $pi_cid_type );
+
+			node_save( $node_to_save );
+
+			db_query( "INSERT INTO {pi_fooddiary} (fooddiary_nid, pi_collected_data_nid, pi_collected_data_vid ) VALUES ( %d, %d, %d )",
+			$node->nid,	$node_to_save->nid, $node_to_save->vid );
+		}
+	}
+}
+
+/**
+ * This function updates the fooddiary. It removes all assosiated data from the pi_collected 
+ * table and fooddiary table and creates new ones with the current data.
+ * A fooddiary can have several assosiated meal types (Breakfast, Lunch, Dinner, Snack), but
+ * only data of the same type like the current one are deleted, all others are not changed. 
+ * @param unknown_type $node
+ */
+function pi_fooddiary_update($node)
+{
+	//@todo Currently this function removes the pi_collected_data entries, but not the node entries! 
+	
+	$food_diary = $node->food_diary;
+	$food_photo = $node->food_photo;
+	$food_annotate = $node->food_annotate;
+
+	$food_type = strtolower( $food_diary['meal_type_name'] );
+	$fid_type  = strtolower( $food_diary['meal_type_name'] ) . '_fid';
+	$food_data = serialize( $food_annotate['food_portion'] );
+	$fid = $food_photo['fid'];
+
+	$sql = "SELECT * FROM {pi_fooddiary} AS fooddiary, pi_collected_data AS data
+					WHERE fooddiary.pi_collected_data_nid = data.nid 
+					AND fooddiary.pi_collected_data_vid = data.vid 
+					AND fooddiary.fooddiary_nid = %d AND data.value = '%s'"; 
+
+	$result = db_query( $sql, $node->nid, $food_type );
+
+	$vid = -1;
+	$nid = -1;
+
+	while( $obj = db_fetch_object( $result ) )
+	{
+		if( $fid < 0 )
+		{
+			$sort_and_available = _pi_fooddiary_get_sort_nid_and_available_measures();
+			$available = $sort_and_available[ 'available_measures' ];
+			$food_image_data = $available[ FOODDIARY_FOODIMAGE_TYPE ];
+
+			$food_image_available_measure_nid = $food_image_data[ 'nid' ];
+
+			$sql = "SELECT * FROM {pi_collected_data} WHERE nid = %d AND vid = %d AND available_measure_nid = %d";
+
+			$data = db_fetch_object( db_query( $sql, $obj->nid, $obj->vid, $food_image_available_measure_nid ) );
+
+			$node->food_photo['fid'] = $data->value;
+			$fid = $data->value;
+		}
+		
+		$sql = "DELETE FROM {pi_collected_data} WHERE nid = %d AND vid = %s";
+		db_query( $sql, $obj->nid, $obj->vid );
+
+		$sql = "DELETE FROM {pi_fooddiary} WHERE pi_collected_data_nid = %d AND pi_collected_data_vid = %s";
+		db_query( $sql, $obj->nid, $obj->vid );
+	}
+	
+	pi_fooddiary_insert($node);
+}
+
+/**
+ * Enter description here ...
+ * @param $node
+ */
+function pi_fooddiary_delete($node)
+{
+	//@todo Implementing deletion of the collected data 
+	db_query("DELETE FROM {pi_fooddiary} WHERE nid = %d", $node->nid);
+}
+
+/**
+ * This function loads all data associated with a fooddiary.
+ * One fooddiary entry can have several food data entries for the four meal types, at the same day.
+ * @param unknown_type $node
+ */
+function pi_fooddiary_load(&$node)
+{
+	global $user;
+
+	$food = array();
+	$food_data = array();
+
+	$result = db_query( "SELECT * FROM {pi_fooddiary} WHERE fooddiary_nid = %d", $node->nid );
+
+	while( $data = db_fetch_object( $result ) )
+	{
+		$pi_data = node_load( $data->pi_collected_data_nid );
+
+		$pi_data_measures = $pi_data->measures;
+
+		if( is_array( $pi_data_measures ) )
+		{
+			//print_r( $pi_data_measures );
+
+			$pi_collected_data_day = NULL;
+			$pi_collected_data_type = NULL;
+			$pi_collected_data_image_id = NULL;
+			$pi_collected_data_food = NULL;
+			$pi_collected_data_portion = NULL;
+
+
+			//One complete data set....
+			foreach( $pi_data_measures as $measure )
+			{
+				if( $measure['#title'] == FOODDIARY_DATE_TYPE )
+				{
+					$pi_collected_data_day = $measure[ '#value' ];
+				}
+				if( $measure['#title'] == FOODDIARY_FOODTYPE_TYPE )
+				{
+					//Breakfast, Lunch, Dinner, Snack
+					$pi_collected_data_type = $measure[ '#value' ];
+				}
+				if( $measure['#title'] == FOODDIARY_FOODIMAGE_TYPE )
+				{
+					$pi_collected_data_image_id = $measure[ '#value' ];
+				}
+				if( $measure['#title'] == FOODDIARY_FOOD_TYPE )
+				{
+					$pi_collected_data_food = $measure[ '#value' ];
+				}
+				if( $measure['#title'] == FOODDIARY_PORTION_TYPE )
+				{
+					$pi_collected_data_portion = $measure[ '#value' ];
+				}
+			}
+
+			if( $pi_collected_data_type )
+			{
+				$food_data = $food_array[ $pi_collected_data_type ]['food'];
+
+				//if( array_key_exists( $pi_collected_data_food, $food_data ) )
+				if( $food_data[ $pi_collected_data_food ] )
+				{
+					$food_data[ $pi_collected_data_food ] += $pi_collected_data_portion;
+				}
+				else //if( $pi_collected_data_food > 0 )
+				{
+					$food_data[ $pi_collected_data_food ] = $pi_collected_data_portion;
+				}
+
+				$food_array[ $pi_collected_data_type ]['photo'] = $pi_collected_data_image_id;
+				$food_array[ $pi_collected_data_type ]['food'] = $food_data;
+			}
+
+		}
+	}
+
+	if( $food_array[ 'breakfast' ] )
+	{
+		$file = db_fetch_object(db_query("SELECT filepath FROM {files} WHERE fid = %d", $food_array[ 'breakfast' ][ 'photo' ] ) );
+
+		$food_portions = $food_array[ 'breakfast' ][ 'food' ];
+
+		$food['breakfast'] = array(	'title' => t('Breakfast'),
+									'image'	=> $file->filepath,
+									'food'	=> _pi_fooddiary_make_food_data_array($food_portions)	);
+	}
+	else
+	{
+		$food['breakfast'] = array(	'title' => t('Breakfast'),
+									'image'	=> drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png',
+									'food'	=> array()	
+		);
+
+	}
+
+	if( $food_array[ 'lunch' ] )
+	{
+		$file = db_fetch_object(db_query("SELECT filepath FROM {files} WHERE fid = %d", $food_array[ 'lunch' ][ 'photo' ] ) );
+
+		$food_portions = $food_array[ 'lunch' ][ 'food' ];
+
+		$food['lunch'] = array(	'title' => t('Lunch'),
+								'image'	=> $file->filepath,
+								'food'	=> _pi_fooddiary_make_food_data_array($food_portions)	);
+	}
+	else
+	{
+		$food['lunch'] = array(	'title' => t('Lunch'),
+								'image'	=> drupal_get_path( 'module', 'pi_fooddiary' ) .  '/unknown.png',
+								'food'	=> array()	
+		);
+
+	}
+
+	if(  $food_array[ 'dinner' ] )
+	{
+		$file = db_fetch_object(db_query("SELECT filepath FROM {files} WHERE fid = %d", $food_array[ 'dinner' ][ 'photo' ] ) );
+
+		$food_portions = $food_array[ 'dinner' ][ 'food' ];
+
+		$food['dinner'] = array(	'title' => t('Dinner'),
+									'image'	=> $file->filepath,
+									'food'	=> _pi_fooddiary_make_food_data_array($food_portions)	);
+	}
+	else
+	{
+		$food['dinner'] = array(	'title' => t('Dinner'),
+									'image'	=> drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png',
+									'food'	=> array()	
+		);
+
+	}
+
+	if(  $food_array[ 'snack' ] )
+	{
+		$file = db_fetch_object(db_query("SELECT filepath FROM {files} WHERE fid = %d", $food_array[ 'snack' ][ 'photo' ] ) );
+
+		$food_portions = $food_array[ 'snack' ][ 'food' ];
+
+		$food['snack'] = array(	'title' => t('Snack'),
+								'image'	=> $file->filepath,
+								'food'	=> _pi_fooddiary_make_food_data_array($food_portions)	);
+	}
+	else
+	{
+		$food['snack'] = array(	'title' => t('Snack'),
+									'image'	=> drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png',
+									'food'	=> array()	
+		);
+
+	}
+
+	$node->content['food'] = $food;
+
+	$node->content['day'] = $pi_collected_data_day;
+	$node->content['date'] = $pi_collected_data_day;
+
+	$node->title = 'Fooddiary for ' . $pi_collected_data_day;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $node
+ * @param unknown_type $form_state
+ */
+function pi_fooddiary_form(&$node, $form_state)
+{
+	global $user;
+	//drupal_set_message('function pi_fooddiary_form called');
+	
+	drupal_add_js( drupal_get_path('module', 'jquery_ui') .'/jquery.ui/ui/ui.datepicker.js');
+	
+	drupal_add_css( drupal_get_path('module', 'jquery_ui') .'/jquery.ui/themes/base/ui.all.css');
+	
+	drupal_add_css( drupal_get_path('module', 'pi_fooddiary') .'/pi_fooddiary.css');
+	drupal_add_js( drupal_get_path('module', 'pi_fooddiary') .'/pi_fooddiary.js');
+
+
+	$node_details = get_inquiry_details_from_current_path();
+	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+
+	if ($measures_param)
+	{
+		$measures_node = node_load($measures_param);
+		$measure_rows = $measures_node->measures_list;
+	}
+
+	//_pi_fooddiary_get_create_missing_measures_settings();
+
+	$type = node_get_types('type', $node);
+
+	$food_diary_data = $node->content['food'];
+
+	if($node->content['day'])
+	{
+		$day = strtotime($node->content['day'] . ' 12:00');
+		$day_disabled = TRUE;
+		$date = $node->content['day'];
+	}
+	else
+	{
+		$day = time();
+		$day_disabled = FALSE;
+		$date = format_date($day, 'custom', 'd') . '.' . format_date($day, 'custom', 'm') . '.' . format_date($day, 'custom', 'Y');
+	}
+
+	$meal_options = _pi_fooddiary_get_food_type_array($node);
+
+	$meal_options_selected = 0;
+
+	if($form_state['values']['fooddiary']['meal_type'])
+	{
+		$meal_options_selected = $form_state['values']['fooddiary']['meal_type'];
+	}
+
+	$form = array();
+
+	$form['#attributes']['enctype'] = 'multipart/form-data';
+	$form['#validate'][] = 'pi_fooddiary_form_validate';
+	//	$form['#theme'] = 'pi_fooddiary_node_form';
+
+	//This section allows a dynamic list of stages to appear on the form to allow
+	// pi_stage_phase links to be created at the same time as a stage.
+	// This uses the ahah_helper module
+	ahah_helper_register($form, $form_state);
+
+	$form['food_diary'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('Food Diary - Day & Meal type'),
+		'#collapsible' => TRUE,
+		'#tree' => TRUE,
+	    '#weight' => -5,
+	);
+
+	$form['food_diary']['inquiry_id'] = array(
+		'#type' => 'hidden',
+		'#title' => t('inquiry_id'),
+	    '#default_value' => $node_details->inquiry_id
+	);
+	
+	$form['food_diary']['activity_id'] = array(
+		'#type' => 'hidden',
+		'#title' => t('activity_id'),
+	    '#default_value' => $node_details->activity_id
+	);
+
+	$form['food_diary']['date'] = array(
+		'#type' => 'hidden',
+		'#title' => t('date'),
+	    '#default_value' => $date
+	);
+
+/*
+	$form['food_diary']['day'] = array(
+		'#type' => 'date',
+		'#title' => t('Day'),
+		'#required' => FALSE,
+		'#disabled' => $day_disabled,
+	    '#default_value' => array(
+				'day' => format_date($day, 'custom', 'j'),
+				'month' => format_date($day, 'custom', 'n'),
+				'year' => format_date($day, 'custom', 'Y'),
+	)
+	);
+*/
+	$form['food_diary']['day'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Food date'),
+		'#size'	=> 10,
+		'#required' => FALSE,
+		'#disabled' => $day_disabled,
+		'#default_value' => $date,
+		'#attributes' => array( 'class' => 'pi_fooddiary_date' )
+	);
+	
+	$form['food_diary']['day_select'] = array(
+		'#type' => 'submit',
+		'#value' => t('Select day'),
+		'#disabled' => $day_disabled,
+	    '#ahah' => array(
+					'path'    => 'activity/pi_fooddiary_select_day/js',
+					'wrapper' => 'meal-type-wrapper',
+	),
+	);
+
+	if($day_disabled === TRUE)
+	{
+		$form['food_diary']['meal_type'] = array(
+			'#type' => 'select',
+			'#title' => t('Meal type'),
+			'#required' => FALSE,
+			'#multiple' => FALSE,
+		    '#options' => $meal_options,
+			'#default_value' => $meal_options_selected,
+			'#ahah' => array(
+					'path'    => 'activity/pi_fooddiary_select_meal_type/js',
+					'wrapper' => 'food-photo-wrapper',
+		),
+			'#prefix' => "<div>" . _pi_fooddiary_food_photo_preview( $food_diary_data ) . "</div><div id='meal-wrapper' style='min-height:40px;'>",
+			'#suffix' => '</div>'
+			);
+	}
+	else
+	{
+		$form['food_diary']['meal_type'] = array(
+			'#type' => 'select',
+			'#title' => t('Meal type'),
+			'#required' => FALSE,
+			'#multiple' => FALSE,
+		    '#options' => array('Select first a day'), //$meal_options,
+			'#default_value' => $meal_options_selected,		
+			'#ahah' => array(
+					'path'    => 'activity/pi_fooddiary_select_meal_type/js',
+					'wrapper' => 'food-photo-wrapper',
+		),
+			'#prefix' => "<div id='meal-type-wrapper' style='min-height:40px;'><div style='display: none'>",
+			'#suffix' => '</div></div>'
+			);
+
+	}
+
+	$form['food_photo'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('Food Diary - Food photo'),
+		'#collapsible' => TRUE,
+		'#tree' => TRUE,
+		'#theme' => 'pi_fooddiary_form_photo',
+	    '#weight' => -4
+	);
+
+	$form['food_annotate'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('Food Diary - Annotate'),
+		'#collapsible' => TRUE,
+		'#tree' => TRUE,
+	//'#theme' => 'pi_fooddiary_form_annotate',
+	    '#weight' => -3
+	);
+
+	if($form_state['submitted'] === TRUE)
+	{
+		echo "pi_fooddiary_form submitted.....<br>\n";
+
+		//print_r($form_state );
+		//exit();
+
+
+		$form['food_diary']['meal_type'] = array(
+			'#type' => 'select',
+			'#title' => t('Meal type'),
+			'#required' => FALSE,
+			'#multiple' => FALSE,
+		    '#options' => $meal_options,
+			'#default_value' => $meal_options_selected,
+			'#ahah' => array(
+		//'path'    => ahah_helper_path(array('fooddiary')),
+					'path'    => 'activity/pi_fooddiary_select_meal_type/js',
+					'wrapper' => 'food-photo-wrapper',
+		),
+		//this fixes some layout issues with the ahah throbber
+		//'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
+			'#prefix' => "<div id='meal-wrapper' style='min-height:40px;'>",
+			'#suffix' => '</div>'
+			);
+
+
+			$form['food_photo']['upload'] = array(
+			'#type' => 'file',
+			'#title' => t('Food photo'),
+			'#required' => FALSE,
+	    	'#size' => 50,
+			'#description' => "Upload a foto of the food",
+			//this fixes some layout issues with the ahah throbber
+			//'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
+			'#prefix' => "<div id='wrapper' style='min-height:40px;'>",
+			'#suffix' => '</div>'
+			);
+
+			$form['food_photo']['upload_submit'] = array(
+   				 	'#type' => 'submit',
+    				'#value' => t('Upload photo'),
+    				'#submit' => array('node_form_submit_build_node'),//none JS version
+    				'#ahah' => array(
+      					'event' => 'click',
+      					'path' => 'activity/pi_fooddiary_upload_photo/js',
+			//'path' => 'upload/js',
+      					'wrapper' => 'food-photo-wrapper',
+      					'method' => 'replace',
+      					'effect' => 'fade',
+      					'progress' => array(
+        							'type' => 'bar',
+        							'message' => t('Loading...')
+			)
+			)
+			);
+
+	}
+	else
+	{
+
+		$form['food_photo']['upload'] = array(
+			'#type' => 'file',
+			'#title' => t('DUMMY FIELD'),
+			'#required' => FALSE,
+	    	'#size' => 50,
+			'#description' => "Upload a foto of the food",
+		//this fixes some layout issues with the ahah throbber
+		//'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
+			'#prefix' => '<div id="food-photo-wrapper"><div style="display: none">',
+		//'#suffix' => '</div>'
+		);
+
+		$form['food_photo']['upload_submit_skip'] = array(
+   				 	'#type' => 'submit',
+    				'#value' => t('Skip upload and use existing'),
+    				'#submit' => array('node_form_submit_build_node'),//none JS version
+    				'#ahah' => array(
+      					'event' => 'click',
+      					'path' => 'activity/pi_fooddiary_upload_photo/js',
+      					'wrapper' => 'add_choice',
+      					'method' => 'replace'
+			
+      					)
+      					);
+
+      					$form['food_photo']['upload_submit'] = array(
+   				 	'#type' => 'submit',
+    				'#value' => t('Upload photo'),
+    				'#submit' => array('node_form_submit_build_node'),//none JS version
+					'#prefix' => "",
+					'#suffix' => '</div></div>',
+    				'#ahah' => array(
+      					'event' => 'click',
+      					'path' => 'activity/pi_fooddiary_upload_photo/js',
+      					'wrapper' => 'add_choice',
+      					'method' => 'replace',
+      					'effect' => 'fade',
+      					'progress' => array(
+        							'type' => 'bar',
+        							'message' => t('Loading...')
+      					)
+      					)
+      					);
+
+
+      					$form['food_annotate']['placeholder'] = array(
+   				 	'#type' => 'hidden',
+    				'#value' => t(''),
+					'#prefix' => '<div id="add_choice"><div style="display: none;">',
+					'#suffix' => '',
+      					);
+
+      					$form['food_annotate']['add_submit'] = array(
+   				 	'#type' => 'submit',
+    				'#value' => t('Add choice'),
+    				'#submit' => array('node_form_submit_build_node'),//none JS version
+    				'#ahah' => array(
+      					'event' => 'click',
+      					'path' => 'activity/pi_fooddiary_add_annotate/js',
+      					'wrapper' => 'add_choice',
+      					'method' => 'replace',
+      					'effect' => 'fade',
+      					'progress' => array(
+        							'type' => 'throbber',
+      					)
+      					)
+      					);
+
+      					$form['food_annotate']['remove_submit'] = array(
+   				 	'#type' => 'submit',
+    				'#value' => t('Remove choice'),
+    				'#submit' => array('node_form_submit_build_node'),//none JS version
+   	 				'#prefix' => "",
+					'#suffix' => '</div></div>',
+    				'#ahah' => array(
+      					'event' => 'click',
+      					'path' => 'activity/pi_fooddiary_add_annotate/js',
+      					'wrapper' => 'add_choice',
+      					'method' => 'replace',
+      					'effect' => 'fade',
+      					'progress' => array(
+        							'type' => 'throbber',
+      					)
+      					)
+      					);
+
+	}
+
+
+	return $form;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ */
+function pi_fooddiary_node_form_alter(&$form, &$form_state)
+{
+	//$form['menu']['#weight'] = 4;
+	if(isset($form_state['post']))
+	{
+		ahah_helper_register($form, $form_state);
+		if($form_state['submitted'])
+		{
+			$form['fooddiary']['#prefix'] = '';
+			$form['fooddiary']['#suffix'] = '';
+
+			$form['food_diary']['meal_type']['#prefix'] = '';
+			$form['food_diary']['meal_type']['#prefix'] = '';
+
+			$form['fooddiary']['anotate']['#prefix'] = '';
+			$form['fooddiary']['anotate']['#suffix'] = '';
+		}
+	}
+	// ISSUE 2: content cannot be saved by another user
+	/**
+	* @TODO: Figure out the main cause why this happens. It has something
+	* to do with staying on the node form instead of redirecting to the view.
+	**/
+	$form['changed']['#default_value'] = $_SERVER['REQUEST_TIME'];
+}
+
+function pi_fooddiary_view($node, $teaser = FALSE, $page = FALSE)
+{
+	if (!$teaser)
+	{
+		$node->content['#theme'] = 'pi_fooddiary_view';
+	}
+
+	if($teaser)
+	{
+		// Use Drupal's default node view.
+		//$node = node_prepare($node, $teaser);
+		//$node = null;
+		$node->content['#theme'] = 'pi_fooddiary_teaser_view';
+	}
+
+	return $node;
+}
+
+/**
+ * This function is called by the drupal system to validate the from of the fooddiary.
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ */
+function pi_fooddiary_form_validate(&$form, &$form_state)
+{
+	//@todo Check if enties are missing (Upload file, food anotation, day, meal type)
+	
+	//$day = $form_state['storage']['food_diary']['day_select']['day'];
+	//$month = $form_state['storage']['food_diary']['day_select']['month'];
+	//$year = $form_state['storage']['food_diary']['day_select']['year'];
+
+	$date = $form_state['storage']['food_diary']['day'];
+	
+	if( !$date )
+	{
+		//Get it from hidden value (because values of disbaled from elements are not posted) 
+		$date = $form_state['storage']['food_diary']['date'];
+	}
+	
+	$selected_meal_type = $form_state['storage']['food_diary']['meal_type']['#options'];
+
+	$meal_types = $form['food_diary']['meal_type']['#options'];
+	$meal_type = $meal_types[$selected_meal_type];
+
+	$filepath = $form_state['storage']['food_photo']['filepath'];
+	$fid = $form_state['storage']['food_photo']['fid'];
+
+	$food_portions = $form_state['storage']['food_annotate']['food_portion'];
+
+	$form_state['values']['title'] = 'Food diary for ' . $date . ' (' . $meal_type . ')';
+
+	//$form_state['values']['food_diary']['day'] = $day . '.' . $month . '.' . $year;
+	$form_state['values']['food_diary']['day'] = $date;
+	$form_state['values']['food_diary']['date'] = $date;
+	$form_state['values']['food_diary']['meal_type'] = $selected_meal_type;
+	$form_state['values']['food_diary']['meal_type_name'] = $meal_type;
+
+	$form_state['values']['food_photo']['fid'] = $fid;
+
+	//$form_state['values']['food_annotate']['food_portion'] = $food_portions;
+	$form_state['values']['food_annotate']['food_portion'] = _pi_fooddiary_map_option_to_foodinfo($food_portions, $form['food_annotate']['food_choice']['#options']);
+
+	return true;
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function pi_fooddiary_theme()
+{
+	return array(
+		'pi_fooddiary_view' => array(
+			'arguments' => array('node'),
+	),
+		'pi_fooddiary_teaser_view' => array(
+			'arguments' => array('node'),
+	)
+	);
+}
+
+function theme_pi_fooddiary_teaser_view($node)
+{
+	$day = $node['day'];
+	$food = $node['food'];
+
+	$food_breakfast = $food['breakfast']['food'];
+	$food_lunch 	= $food['lunch']['food'];
+	$food_dinner 	= $food['dinner']['food'];
+	$food_snack 	= $food['snack']['food'];
+
+	$element = '';
+
+	if(count($food_breakfast) > 0 )
+	{
+		$element .= t('Breakfast');
+	}
+	if(count($food_lunch) > 0 )
+	{
+		if( strlen($element)>0)
+		{
+			$element .= ', ';
+		}
+		$element .= t('Lunch');
+	}
+	if(count($food_dinner) > 0 )
+	{
+		if( strlen($element)>0)
+		{
+			$element .= ', ';
+		}
+		$element .= t('Dinner');
+	}
+	if(count($food_snack) > 0 )
+	{
+		if( strlen($element)>0)
+		{
+			$element .= ', ';
+		}
+		$element .= t('Snack');
+	}
+
+	//$output .= '<div><strong>You have collected for ' . $day . ' data for this meal types:</strong></div>';
+	//$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
+
+	$output = '<p><strong>' . $day . '</strong>: ' . $element. '</p>';
+
+	return $output;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $node
+ */
+function theme_pi_fooddiary_view($node)
+{
+	drupal_add_css( drupal_get_path('module', 'pi_fooddiary') .'/pi_fooddiary.css');
+
+	$output .= theme('status_messages') ;//. drupal_render($node);
+
+	$food = $node['food'];
+
+	if(!$food['breakfast']['image'])
+	{
+		$food['breakfast']['image'] = drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png';
+	}
+	if(!$food['lunch']['image'])
+	{
+		$food['lunch']['image'] = drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png';
+	}
+	if(!$food['dinner']['image'])
+	{
+		$food['dinner']['image'] = drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png';
+	}
+	if(!$food['snack']['image'])
+	{
+		$food['snack']['image'] = drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png';
+	}
+
+	$output .= "<div class=\"fooddiary_outer_div\">
+					<div class=\"fooddiary_images\">
+						<table>
+							<tr>
+								<td align=\"center\" width=\"50%\">
+									" . t($food['breakfast']['title']) . "<br>
+									<img src='" . _pi_fooddiary_get_image($food['breakfast']['image'], 1) . "'></td>
+								<td align=\"center\">
+									" . t($food['lunch']['title']) . "<br>
+									<img src='" . _pi_fooddiary_get_image($food['lunch']['image'], 1) . "'></td>
+							</tr>
+							<tr>
+								<td align=\"center\" >
+									" . t($food['dinner']['title']) . "<br>
+									<img src='" . _pi_fooddiary_get_image($food['dinner']['image'], 1) . "'></td>
+								<td align=\"center\" >
+									" . t($food['snack']['title']) . "<br>
+									<img src='" . _pi_fooddiary_get_image($food['snack']['image'], 1) . "'></td>
+							</tr>
+						</table>
+					</div>";
+
+	$output .= "	<div class=\"fooddiary_portions\">
+						<div style=\"margin: 10px;\">";
+
+	$nutritional = array();
+
+	foreach( $food as $food_item )
+	{
+		$nutritional = _pi_fooddiary_calcuate_nutritional_info($food_item['food'], $nutritional );
+
+		if(is_array($food_item['food']) && count($food_item['food']) > 0)
+		{
+			$output .= "		<table class=\"fooddiary_portion_table\">
+									<caption>" . t($food_item['title']) . "</caption>
+									<tr>
+										<th class=\"fooddiary_portion_table_th\">" . t('Food') . "</th>
+										<th class=\"fooddiary_portion_table_th\">". t('Portion Size') . "</th>
+									</tr>";	
+			foreach( $food_item['food'] as $food_portion )
+			{
+				$output .= "		<tr>
+										<td class=\"fooddiary_portion_table_td\">" . $food_portion['name'] . "</td>
+										<td class=\"fooddiary_portion_table_td\">" . $food_portion['amount'] . " " . $food_portion['portion'] . "</td>
+									</tr>";
+			}
+
+			$output .= "		</table>";
+		}
+	}
+
+	$output .= "		</div>
+ 					</div>
+ 				</div>";
+
+	$output .= "<div class=\"fooddiary_clear\"></div><div class=\"food_table\">
+					<table class=\"fooddiary_table_table\">
+						<tr class=\"foodannotation_odd\">
+							<td>Carbohydrates (g)</td><td>". $nutritional['carb'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_even\">
+							<td>Protein (g)</td><td>". $nutritional['protein'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_odd\">
+							<td>Fats (g)</td><td>". $nutritional['fats'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_even\">
+							<td>Fibre (g)</td><td>". $nutritional['fibre'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_headline\">
+							<td  colspan=\"2\" ><b>Minerals</b></td>
+						</tr>
+						<tr class=\"foodannotation_even\">							
+							<td>Sodium (g)</td><td>". $nutritional['sodium'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_odd\">
+							<td>Calcium (g)</td><td>". $nutritional['calcium'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_even\">
+							<td>Iron (g)</td><td>". $nutritional['iron'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_headline\">
+							<td colspan=\"2\"><b>Vitamins</b></td>
+						</tr>
+						<tr class=\"foodannotation_even\">
+							<td>Vitamins A (mg)</td><td>". $nutritional['vitamin_a'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_odd\">
+							<td>Vitamins B (mg)</td><td>". $nutritional['vitamin_b'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_even\">
+							<td>Vitamins C (mg)</td><td>". $nutritional['vitamin_c'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_odd\">
+							<td>Vitamins D (mg)</td><td>". $nutritional['vitamin_d'] ."</td>
+						</tr>
+						<tr class=\"foodannotation_even\">
+							<td>Water(g)</td><td>". $nutritional['water'] ."</td>
+						</tr>
+					</table>
+				</div>";
+
+	$output .= "";
+
+
+	//$output .= theme('status_messages') . drupal_render($node);
+	//$output .= "<p><b>THEME VIEW</b></p>";
+
+	return $output;
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function theme_pi_fooddiary_summary_view()
+{
+	$items[] = array();
+	$output = '';
+	$nids = _pi_fooddiary_get_user_nids();
+
+	if(count($nids)>0)
+	{
+		$output = "<div>You have the following food data collected:</div>";
+
+		$nids = _pi_fooddiary_sort_nids($nids);
+
+		foreach($nids as $nid)
+		{
+			$node = node_load($nid);
+
+			$day = $node->content['day'];
+			$food = $node->content['food'];
+
+			$food_breakfast = $food['breakfast']['food'];
+			$food_lunch 	= $food['lunch']['food'];
+			$food_dinner 	= $food['dinner']['food'];
+			$food_snack 	= $food['snack']['food'];
+
+			$element = '';
+
+			if(count($food_breakfast) > 0 )
+			{
+				$element .= t('Breakfast');
+			}
+			if(count($food_lunch) > 0 )
+			{
+				if( strlen($element)>0)
+				{
+					$element .= ', ';
+				}
+				$element .= t('Lunch');
+			}
+			if(count($food_dinner) > 0 )
+			{
+				if( strlen($element)>0)
+				{
+					$element .= ', ';
+				}
+				$element .= t('Dinner');
+			}
+			if(count($food_snack) > 0 )
+			{
+				if( strlen($element)>0)
+				{
+					$element .= ', ';
+				}
+				$element .= t('Snack');
+			}
+
+			$activity_id = get_activity_id_for_nid($nid);
+			$phase_id = get_phase_id_for_activity_id($activity_id);
+
+			$path = 'activity/' . $activity_id . '/view';
+			$destination['query'] = 'destination=phase/' . $phase_id;
+
+			$day_link = l($day, $path, $destination);
+
+			if(strlen($element)>0)
+			{
+				$items[] = '<p><strong>' . $day_link . '</strong>: ' . $element. '</p>';
+			}
+		}
+
+		$output .= theme('item_list', $items, NULL, 'ul', array('style' => 'list-style-type:none'));
+	}
+	else
+	{
+		$output .= "<div class=\"teaser_table_cell\">You have no food diary data collected.</div>";
+	}
+
+	return $output;
+}
+
+
+
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $food
+ * @param unknown_type $nutritional
+ */
+function _pi_fooddiary_calcuate_nutritional_info($food, $nutritional = array())
+{
+	if( is_array($food))
+	{
+		foreach( $food as $food_item)
+		{
+			$nutritional_info = _pi_fooddiary_get_nutritional_info_for_food($food_item['name']);
+
+			$nutritional['carb'] 		+= $nutritional_info['carb'] * $food_item['amount'];
+			$nutritional['protein'] 	+= $nutritional_info['protein'] * $food_item['amount'];
+			$nutritional['fats'] 		+= $nutritional_info['fats'] * $food_item['amount'];
+			$nutritional['fibre'] 		+= $nutritional_info['fibre'] * $food_item['amount'];
+			$nutritional['water'] 		+= $nutritional_info['water'] * $food_item['amount'];
+			$nutritional['sodium'] 		+= $nutritional_info['sodium'] * $food_item['amount'];
+			$nutritional['calcium'] 	+= $nutritional_info['calcium'] * $food_item['amount'];
+			$nutritional['iron'] 		+= $nutritional_info['iron'] * $food_item['amount'];
+			$nutritional['vitamin_a'] 	+= $nutritional_info['vitamin_a'] * $food_item['amount'];
+			$nutritional['vitamin_b'] 	+= $nutritional_info['vitamin_b'] * $food_item['amount'];
+			$nutritional['vitamin_c'] 	+= $nutritional_info['vitamin_c'] * $food_item['amount'];
+			$nutritional['vitamin_d'] 	+= $nutritional_info['vitamin_d'] * $food_item['amount'];
+		}
+	}
+
+
+	return $nutritional;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $food_name
+ */
+function _pi_fooddiary_get_nutritional_info_for_food($food_name)
+{
+	$sql_result = db_query("SELECT * FROM {pi_foodinfo} ORDER BY description");
+
+	while( $obj = db_fetch_object($sql_result) )
+	{
+		$nutritional[$obj->description]['carb'] 	= $obj->carb;
+		$nutritional[$obj->description]['protein'] 	= $obj->protein;
+		$nutritional[$obj->description]['fats'] 	= $obj->fats;
+		$nutritional[$obj->description]['fibre'] 	= $obj->fibre;
+		$nutritional[$obj->description]['water'] 	= $obj->water;
+		$nutritional[$obj->description]['sodium'] 	= $obj->sodium;
+		$nutritional[$obj->description]['calcium'] 	= $obj->calcium;
+		$nutritional[$obj->description]['iron'] 	= $obj->iron;
+		$nutritional[$obj->description]['vitamin_a'] = $obj->vita;
+		$nutritional[$obj->description]['vitamin_b'] = $obj->vitb;
+		$nutritional[$obj->description]['vitamin_c'] = $obj->vitc;
+		$nutritional[$obj->description]['vitamin_d'] = $obj->vitd;
+	}
+
+	return $nutritional[$food_name];
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function _pi_fooddiary_get_food_options()
+{
+	$food = array();
+
+	$foodinfos = _pi_foodinfo_get_all_nodes();
+
+	foreach($foodinfos as $foodinfo)
+	{
+		$food[] = $foodinfo['description'];
+	}
+
+	return $food;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $food_annotate
+ * @param unknown_type $options
+ */
+function _pi_fooddiary_map_option_to_foodinfo($food_annotate, $options)
+{
+	$food = array();
+
+	if(is_array($food_annotate))
+	{
+		foreach($food_annotate as $id => $amount )
+		{
+			$foodinfo_id = _pi_foodinfo_get_child_from_description( $options[$id] );
+
+			if( $foodinfo_id > 0 )
+			{
+				$food[$foodinfo_id] = $amount;
+			}
+		}
+	}
+
+	return $food;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $food_portions
+ */
+function _pi_fooddiary_make_food_data_array($food_portions)
+{
+	$portions = array();
+
+	if(is_array($food_portions))
+	{
+		$foodinfos = _pi_fooddiary_get_foodinfo_array();
+
+		foreach( $food_portions as $id => $food_portion )
+		{
+			$portions[] = array(	'name' => $foodinfos[$id]['description'],
+									'amount' => $food_portion,
+									'portion' => $foodinfos[$id]['portion']
+			);
+		}
+	}
+
+	return $portions;
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function _pi_fooddiary_get_foodinfo_array()
+{
+	$foodinfos = _pi_foodinfo_get_all_nodes();
+
+	$fooddata = array();
+
+	foreach($foodinfos as $foodinfo)
+	{
+		//$fooddata[($foodinfo['chid']-1)] = array(	'description' => $foodinfo['description'],
+		$fooddata[$foodinfo['chid']] = array(	'description' => $foodinfo['description'],
+												'portion' => $foodinfo['portion']			);
+	}
+
+	return $fooddata;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param $node
+ */
+function _pi_fooddiary_get_food_type_array($node)
+{
+	$food_type  = array(	t('Select meal type'),
+	t('Breakfast'),
+	t('Lunch'),
+	t('Dinner'),
+	t('Snack') );
+
+	return $food_type;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $food
+ */
+function _pi_fooddiary_food_photo_preview($food)
+{
+	$output .= "<div style=\"width: 300px;\">
+					<table border=\"1\">
+						<tr>
+							<td align=\"center\">
+								" . t($food['breakfast']['title']) . "<br>
+								<img src='" . _pi_fooddiary_get_image($food['breakfast']['image'], 2) ."'></td>
+							<td align=\"center\">
+								" . t($food['lunch']['title']) . "<br>
+								<img src='" . _pi_fooddiary_get_image($food['lunch']['image'], 2) . "'></td>
+						</tr>
+						<tr>
+							<td align=\"center\" >
+								" . t($food['dinner']['title']) . "<br>
+								<img src='" . _pi_fooddiary_get_image($food['dinner']['image'], 2) . "'></td>
+							<td align=\"center\" >
+								" . t($food['snack']['title']) . "<br>
+								<img src='" . _pi_fooddiary_get_image($food['snack']['image'], 2) . "'></td>
+						</tr>
+					</table>
+				</div>";
+
+	return $output;
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function _pi_fooddiary_get_user_nids()
+{
+	global $user;
+
+	$nids = array();
+
+	$result_set = db_query("SELECT distinct nid FROM {node} AS node, {pi_fooddiary} AS diary WHERE node.type = 'pi_fooddiary' AND node.uid = %d AND node.status = 1 AND node.nid = diary.fooddiary_nid",$user->uid );
+	
+	while($data = db_fetch_object($result_set))
+	{
+		$nids[] = $data->nid;
+	}
+
+	return $nids;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $nids
+ */
+function _pi_fooddiary_sort_nids($nids)
+{
+	$sort_nids = array();
+	//$fooddiary_nids = _pi_fooddiary_get_all_fooddiarys(TRUE);
+	
+	foreach($nids as $nid)
+	{
+		$node = node_load( $nid );
+		$sort_nids[ strtotime( $node->content['day'] ) ] = $nid;
+	}
+
+	ksort($sort_nids);
+
+	return array_values($sort_nids);
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $date
+ * @param unknown_type $inquiry_id
+ */
+function _pi_fooddiary_get_all_fooddiarys_for_date( $date, $inquiry_id )
+{
+	//@todo Currently only user can see there own data! Group can't access it. Implement group permission check
+	
+	global $user;
+	$data = array();
+
+	$sort_and_available = _pi_fooddiary_get_sort_nid_and_available_measures( $inquiry_id );
+
+
+	$available = $sort_and_available[ 'available_measures' ];
+	$available_measures = $available[ FOODDIARY_DATE_TYPE ];
+	
+	$sql = "SELECT * FROM {pi_collected_data} AS data, {pi_fooddiary} AS diary, {node} AS node 
+					WHERE data.available_measure_nid = %d 
+					AND data.nid = pi_collected_data_nid 
+					AND data.vid = pi_collected_data_vid 
+					AND data.value = '%s'  
+					AND data.nid = node.nid 
+					AND node.uid = %d ORDER BY fooddiary_nid DESC";
+		
+	$query = db_query( $sql, $available_measures[ 'nid' ], $date, $user->uid );
+		
+	while( $result = db_fetch_object( $query ) )
+	{
+		$data[] = $result->fooddiary_nid;
+	}
+	
+	return $data;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $nid_as_key
+ */
+function _pi_fooddiary_get_all_fooddiarys($nid_as_key = FALSE)
+{
+	$data = array();
+
+	$query = db_query("SELECT * FROM {pi_fooddiary} ORDER BY nid,vid");
+
+	while($result = db_fetch_object($query))
+	{
+		if(array_key_exists($result->nid, $data) === TRUE )
+		{
+			$obj = $data[$result->nid];
+			if($obj->vid < $result->vid)
+			{
+				$data[$result->nid] = $result;
+			}
+		}
+		else
+		{
+			$data[$result->nid] = $result;
+		}
+	}
+
+	if($nid_as_key === FALSE)
+	{
+		$data = array_values($data);
+	}
+	
+	return $data;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $filename
+ * @param unknown_type $thumb
+ */
+function _pi_fooddiary_get_image($filename, $thumb = 0)
+{
+	if(!$filename)
+	{
+		$filename = drupal_get_path( 'module', 'pi_fooddiary' ) . '/unknown.png';
+	}
+
+	$dot = strrpos($filename, '.');
+
+	switch($thumb)
+	{
+		case 1:		$thumb = '_thumb1';
+		break;
+		case 2:		$thumb = '_thumb2';
+		break;
+		default: 	$thumb = '';
+	}
+
+	if($dot!==FALSE)
+	{
+		$extension = substr($filename, $dot);
+		$filename = substr($filename, 0, $dot);
+
+		$filename = $filename . $thumb . $extension;
+	}
+
+
+	return $filename;
+}
+
+/**
+ * 
+ * Enter description here ...
+ */
+function _pi_fooddiary_get_create_missing_measures_settings()
+{
+	//@todo Check if function works correctly! It should NOT generate activities! 
+	
+	global $user;
+
+	module_load_include('inc', 'pi_fooddiary', 'pi_fooddiary.init');
+
+	$date_available = FALSE;
+	$type_available = FALSE;
+	$image_available = FALSE;
+	$food_available = FALSE;
+	$portion_available = FALSE;
+
+	$details = get_inquiry_details_from_current_path();
+
+	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_available_measures');
+
+	foreach( $nids as $nid )
+	{
+		$pi_available_measure = node_load( $nid );
+
+		switch( $pi_available_measure->title )
+		{
+			case 'Fooddiary Date' :			$date_available = TRUE;
+			break;
+			case 'Fooddiary Food type' :	$type_available = TRUE;
+			break;
+			case 'Fooddiary Image' :		$image_available = TRUE;
+			break;
+			case 'Fooddiary Food' :			$food_available = TRUE;
+			break;
+			case 'Fooddiary Portion size' :	$portion_available = TRUE;
+			break;
+		}
+	}
+
+	$selected_measure_node = new stdClass();
+
+	if( $date_available === FALSE )
+	{
+		$pi_data_node = _pi_fooddiary_add_available_measures_date();
+
+		$measures_list_key[ $pi_data_node->nid ] = array(	'weight' => 0,
+                    										'title' => $pi_data_node->title,
+                    										'status' => 'key' );
+	}
+	if( $type_available === FALSE )
+	{
+		$pi_data_node = _pi_fooddiary_add_available_measures_foodtype();
+
+		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 1,
+                    											'title' => $pi_data_node->title,
+                    											'status' => 'selected' );
+	}
+	if( $image_available === FALSE )
+	{
+		$pi_data_node = _pi_fooddiary_add_available_measures_foodimage();
+
+		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 2,
+                    											'title' => $pi_data_node->title,
+                    											'status' => 'selected' );
+	}
+	if( $food_available === FALSE )
+	{
+		$pi_data_node = _pi_fooddiary_add_available_measures_food();
+
+		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 3,
+                    											'title' => $pi_data_node->title,
+                    											'status' => 'selected' );
+	}
+	if( $portion_available === FALSE )
+	{
+		$pi_data_node = _pi_fooddiary_add_available_measures_potion();
+
+		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 4,
+                    											'title' => $pi_data_node->title,
+                    											'status' => 'selected' );
+	}
+
+	if( is_array( $measures_list_key ) )
+	{
+		$measures_list[ 'key' ] = $measures_list_key;
+	}
+
+	if( is_array( $measures_list_selected ) )
+	{
+		$measures_list[ 'selected' ] = $measures_list_selected;
+	}
+
+	if( is_array( $measures_list ) )
+	{
+
+		$selected_measure_node->type				= 'pi_sort_measures';
+		$selected_measure_node->uid					= $user->uid;
+		$selected_measure_node->measures_list  		= $measures_list;
+
+		_pi_fooddiary_add_selected_measures($selected_measure_node);
+	}
+
+	return $items;
+}
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $inquiry_id
+ */
+function _pi_fooddiary_get_sort_nid_and_available_measures( $inquiry_id = NULL )
+{
+	global $user;
+
+	$sort_and_available = array();
+	$available = array();
+
+	if( !is_numeric( $inquiry_id ) )
+	{
+		$details = get_inquiry_details_from_current_path();
+		$inquiry_id = $details->inquiry_id;
+	}
+	
+	$available_measures_nids = pi_activity_get_available_nids_of_type($user->uid, $inquiry_id, 'pi_available_measures');
+	$sort_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $inquiry_id);
+
+	$sort_measures = node_load( $sort_measures_nid );
+	$sort_measures_list = $sort_measures->measures_list;
+
+	if( is_array( $sort_measures_list ) )
+	{
+		foreach( $sort_measures_list as $key => $available_measures )
+		{
+			$available[ $available_measures['#title'] ] = array_merge( array( 'nid' => $key ), $available_measures );
+		}
+	}
+
+	$sort_and_available[ 'sort_measures_nid' ] = $sort_measures_nid;
+	$sort_and_available[ 'available_measures' ] = $available;
+
+	return $sort_and_available;
+}
+
+

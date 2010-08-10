@@ -1,0 +1,64 @@
+<?php
+
+/**
+ * Implementation of pi_fooddiary_install().
+ */
+function pi_fooddiary_install()
+{
+	// Create tables.
+	drupal_install_schema('pi_fooddiary');
+	variable_set('og_content_type_usage_pi_fooddiary', 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_fooddiary", array('status','revision'));
+	variable_set("comment_pi_fooddiary", COMMENT_NODE_DISABLED);
+	variable_set('upload_pi_fooddiary', 0);
+	
+	drupal_set_message( 'You need to set the permissions for the Food Diary module!', 'error' );
+}
+
+/**
+ * Implementation of pi_fooddiary_uninstall().
+ */
+function pi_fooddiary_uninstall()
+{
+	// Remove tables.
+	drupal_uninstall_schema('pi_fooddiary');
+	variable_del('og_content_type_usage_pi_fooddiary');
+	variable_del("node_options_pi_fooddiary");
+	variable_del("comment_pi_fooddiary");
+	variable_del('upload_pi_fooddiary');
+}
+
+/**
+ * Implementation of pi_fooddiary_schema().
+ */
+function pi_fooddiary_schema()
+{
+	$schema['pi_fooddiary'] = array(
+    'description' => t('Fooddiary data'),
+    'fields' => array(	'fooddiary_nid' => array(			'description' => t(' fooddiary node id'),
+        													'type' => 'int',
+        													'unsigned' => TRUE,
+        													'not null' => TRUE,
+        													'length' => 10,
+        													'default' => 0,				),
+      					'pi_collected_data_nid' => array(	'description' => t('pi collected data nid'),
+        													'type' => 'int',
+        													'unsigned' => TRUE,
+        													'not null' => TRUE,
+        													'length' => 10,
+        													'default' => 0,				),
+						'pi_collected_data_vid' => array(	'description' => t('pi collected data vid'),
+        													'type' => 'int',
+        													'unsigned' => TRUE,
+        													'not null' => TRUE,
+        													'length' => 10,
+        													'default' => 0,				),
+						),
+    'indexes' => array(	'fooddiary_nid' => 	array(	'fooddiary_nid'),
+						'pi_collected_data_nid' => 	array(	'pi_collected_data_nid'), 
+      					'pi_collected_data_vid' => 	array(	'pi_collected_data_vid') 	)
+	);
+
+	return $schema;
+}

@@ -82,7 +82,7 @@ function pi_activity_view($activity, $arg_node_function) {
 				
 			}
 			break;
-		case 'edit':
+		case 'edit':			
 			//get nid
 			$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $activity->activity_id, $uid);
 			//build form

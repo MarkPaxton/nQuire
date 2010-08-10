@@ -1,0 +1,383 @@
+<?php
+
+/**
+ * @file
+ * Implements student import.
+ */
+
+
+/**impor
+ * MISSING
+ *
+ * @param unknown_type $section
+ * @return string
+ */
+function pi_user_export_help($section='')
+{
+	$output = '';
+
+	switch ($section) {
+		case "admin/help#pi_user_export":
+			$output = '<p>'.  t("Export users from the nQuire into a file"). '</p>';
+			break;
+	}
+
+	return $output;
+}
+
+/**
+ * MISSING
+ *
+ * @return multitype:string
+ */
+function pi_user_export_perm()
+{
+	return array('access export content');
+}
+
+/**
+ * MISSING
+ *
+ * @return multitype:string multitype:string  NULL
+ */
+function pi_user_export_menu() {
+	$items = array();
+
+	/*
+	 $items['admin/nquire/user_export'] = array(
+	 'title' => t('PI Tools'),
+	 'page callback' => 'pi_user_export_view',
+	 'type' => MENU_NORMAL_ITEM,
+	 'access arguments' => array('Collection of PI tools'),
+	 );
+	 */
+
+	$items['admin/nquire/export'] = array(
+		'title' => t('Users/groups export'),
+  	  	'page callback' => 'pi_user_export',
+		'access arguments' => array('access export content'),
+		'file' => 'format/formats.inc',
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+
+	return $items;
+}
+
+/**
+ * MISSING
+ *
+ * @return string
+ */
+function pi_user_export_view()
+{
+	print_r( user_search( 'search', 'relay_user' ) );
+
+	return "Export users Info";
+}
+
+/**
+ * MISSING
+ *
+ * @return unknown
+ */
+function pi_user_export()
+{
+	$content = '<p>' . t( "Export users into a file" ) . '</p>';
+
+	$content .= drupal_get_form('pi_user_export_form', $node);
+
+	return $content;
+}
+
+/**
+ * MISSING
+ *
+ * @param unknown_type $form_state
+ * @return multitype:string NULL
+ */
+function pi_user_export_form($form_state)
+{
+	$default_export_value = DEFAULT_FORMAT;
+	$default_groups_value = 'no';
+
+	$export_formats = _pi_user_export_get_formats();
+
+	$form['#attributes'] = array("enctype" => "multipart/form-data");
+
+	if(isset($form_state['values']['export_format']))
+	{
+		$default_export_value = strtolower($form_state['values']['export_format']);
+	}
+
+	if(isset($form_state['values']['export_groups']))
+	{
+		$default_groups_value = strtolower($form_state['values']['export_groups']);
+	}
+
+	$export_groups = array( 'yes' => t( 'Yes' ),
+							'no' => t( 'No' )		);
+
+	$form['export_groups'] = array(
+  		'#type' => 'radios',
+  		'#title' => t('Export OG groups'),
+		'#default_value' => $default_groups_value,
+  		'#options' => $export_groups,
+	);
+
+	$form['export_format'] = array(
+  		'#type' => 'radios',
+  		'#title' => t('Export format'),
+		'#default_value' => $default_export_value,
+  		'#options' => $export_formats,
+	);
+
+	$form['filename'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Export filename'),
+		'#description' => t( "Optinal name for the export file")
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Export'),
+	);
+
+	return $form;
+}
+
+/**
+ * MISSING
+ *
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ * @return unknown_type
+ */
+function pi_user_export_form_submit($form, &$form_state)
+{
+	module_load_include('inc', 'pi_user_export', 'format/' . $form_state['values']['export_format'] );
+
+	$text = '';
+	$users = _get_user_list( array( 'admin') );
+
+	$text .= $form_state['values']['export_format'] . '<br>';
+	$filename = $form_state['values']['filename'];
+
+	if(strlen($filename) <= 0)
+	{
+		$filename = 'user_export';
+	}
+
+	if( is_array( $users ) )
+	{
+		foreach( $users as $user )
+		{
+			if( is_array( $user['user'] ) )
+			{
+				$user = $user['user'];
+
+				if( !empty( $user[ 'name'] ) )
+				{
+					$text .= t( 'Exported: ' );
+					$text .= $user[ 'name'] . '<br>';
+				}
+			}
+			else
+			{
+				$text .= "Unkown..." . $user;
+			}
+		}
+	}
+
+	if( function_exists( 'export_array_to_file' ) )
+	{
+		export_users_to_file( $filename, $users );
+	}
+
+	export_users_to_file( $filename, $users );
+
+	//xml_export_array_to_file( $users );
+
+	//drupal_set_message( $text );
+}
+
+/**
+ * This internal function returns an array of users (as array)
+ * You can include or exclute users specified in $users, depending
+ * on the variable $mode. $mode=include includes the specified users with
+ * the uid specified in the $users array parameter. $mode=exclude exludes the
+ * users with the name specified in the $users array parameter. In case $users
+ * contains a list of user names, it is possible to specfiy wildcards e.x. "stud%".
+ *
+ * @param $users Array of of uid's which should be selected or names to exclude
+ * @param $mode include or exclude (default: exclude)
+ */
+function _get_user_list( $users = NULL, $mode = 'exclude' )
+{
+	$find = array();
+
+	//Only Administrators can export users!
+	if( user_access( 'administer users') )
+	{
+		if( empty( $users ) )
+		{
+			$result = db_query( "SELECT * FROM {users} WHERE uid > 0" );
+			while( $account = db_fetch_array( $result ) )
+			{
+				$og = array();
+
+				if($account->uid == 68)
+				{
+					$og = _pi_user_export_get_organic_group_info_for_user($account->uid);
+				}
+
+				$find[] = array( 'user' => $account,
+            					 'og'	=> $og );
+
+			}
+		}
+		else
+		{
+			if( $mode === 'include' )
+			{
+
+			}
+			else
+			{
+				if( !is_array( $users ) )
+				{
+					$users[] = $users;
+				}
+					
+				foreach( $users as $exlude_user )
+				{
+					if( strpos( $exlude_user, '%' ) !== FALSE )
+					{
+						if( strlen( $sql ) <= 0 )
+						{
+							$sql .= " LOWER(name) LIKE LOWER('%%%s%%')";
+						}
+						else
+						{
+							$sql .= " OR LOWER(name) LIKE LOWER('%%%s%%')";
+						}
+					}
+					else
+					{
+						if( strlen( $sql ) <= 0 )
+						{
+							$sql .= " LOWER(name) = LOWER('%s')";
+						}
+						else
+						{
+							$sql .= " OR LOWER(name) = LOWER('%s')";
+						}
+					}
+				}
+					
+				$sql = "SELECT * FROM {users} WHERE uid > 0 AND NOT ( " . $sql . ")";
+					
+				$result = db_query( $sql, $users );
+				while( $account = db_fetch_array( $result ) )
+				{
+					$og = array();
+
+					if($account['uid'] == 68)
+					{
+						$og = _pi_user_export_get_organic_group_info_for_user($account['uid']);
+					}
+
+					$find[] = array( 	'user' => $account,
+            					 		'og'	=> $og );
+				}
+			}
+		}
+	}
+
+	return $find;
+}
+
+function _pi_user_export_get_organic_group_info_for_user($uid)
+{
+	$og = array();
+
+	$result = db_query( "SELECT * FROM {og_uid} WHERE uid = %d", $uid);
+
+	while( $og_uid = db_fetch_array( $result ) )
+	{
+		$og_uid_info[0] = $og_uid['og_role'];
+		$og_uid_info[1] = $og_uid['is_active'];
+		$og_uid_info[2] = $og_uid['is_admin'];
+		$og_uid_info[3] = $og_uid['uid'];
+
+		$info = array(	'og'				=> _pi_user_export_get_og_for_nid($og_uid['nid']),
+						'og_uid'			=> $og_uid_info, );
+		//'og_access_post'	=> _pi_user_export_get_og_access_post_for_nid($og_uid['nid']),
+		//'og_ancestry'		=> _pi_user_export_get_og_ancestry_for_nid($og_uid['nid'])		);
+		$og[] = $info;
+	}
+
+	return $og;
+}
+
+function _pi_user_export_get_og_for_nid($nid)
+{
+	$organic_groups = array();
+
+	/*
+	 $result = db_query( "SELECT * FROM {og} WHERE nid = %d", $nid);
+
+	 if( $og = db_fetch_array( $result ) )
+	 {
+		$organic_groups= $og;
+		}
+		*/
+
+	$organic_groups = node_load($nid);
+
+	if(is_object($organic_groups))
+	{
+		$og[0] 	= $organic_groups->nid;
+		$og[1] 	= $organic_groups->title;
+		$og[2] 	= $organic_groups->status;
+		$og[3] 	= $organic_groups->promote;
+		$og[4] 	= $organic_groups->sticky;
+		$og[5] 	= $organic_groups->og_selective;
+		$og[6] 	= $organic_groups->og_description;
+		$og[7] 	= $organic_groups->og_theme;
+		$og[8] 	= $organic_groups->og_register;
+		$og[9] 	= $organic_groups->og_directory;
+		$og[10]	= $organic_groups->og_language;
+		$og[11]	= $organic_groups->og_private;
+	}
+
+	return $og;
+}
+
+function _pi_user_export_get_og_access_post_for_nid($nid)
+{
+	$organic_groups_access_post = array();
+
+	$result = db_query( "SELECT * FROM {og_access_post} WHERE nid = %d", $nid);
+
+	while( $og_access_post = db_fetch_array( $result ) )
+	{
+		$organic_groups_access_post[] = $og_access_post;
+	}
+
+	return $organic_groups_access_post;
+}
+
+function _pi_user_export_get_og_ancestry_for_nid($nid)
+{
+	$organic_groups_ancestry = array();
+
+	$result = db_query( "SELECT * FROM {og_ancestry} WHERE nid = %d", $nid);
+
+	while( $og_ancestry = db_fetch_array( $result ) )
+	{
+		$organic_groups_ancestry[] = $og_ancestry;
+	}
+
+	return $organic_groups_ancestry;
+}
+

@@ -24,7 +24,8 @@ function pi_inquiry_phase_view($phase) {
 	$output .= "</div>";
 	
 
-	$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
+	$hidden_created_activity_types = get_hidden_summary_activities($phase->inquiry_nid);
+	//$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers');
 	//$hidden_created_activity_types = array('pi_measure_filter');
 	
 	
