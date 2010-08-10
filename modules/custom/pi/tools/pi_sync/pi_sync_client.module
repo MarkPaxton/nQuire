@@ -1,0 +1,87 @@
+<?php
+
+/**
+ * MISSING
+ * 
+ * @return multitype:string multitype:string  NULL 
+ */
+function pi_sync_client_menu() {
+	$items = array();
+
+	$items['admin/nquire/sync'] = array(
+      'title' => t('PI Tools'),
+  	  'page callback' => 'pi_sync_client_view',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('Collection of PI tools'),
+	);
+	
+	$items['admin/nquire/sync/sync_client'] = array(
+      'title' => t('Remote Sync'),
+  	  'page callback' => 'pi_sync_client_sync',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access student import content'),
+	);
+	
+	return $items;
+}
+
+/**
+ * MISSING
+ * 
+ * @return string
+ */
+function pi_sync_client_view(){
+	
+	echo "=====>";
+	
+	print_r( user_search( 'search', 'relay_user' ) );
+	
+	return "Import Student Info";
+}
+
+/**
+ * MISSING
+ * 
+ * @return unknown
+ */
+function pi_sync_client_sync(){
+
+	$organisation 	= 'Haddenpark';
+	$url			= 'http://192.168.56.101/xmlrpc.php';
+	$method_1		= 'pi_sync_server.login';
+	$method_2		= 'pi_sync_server.info';
+	$method_3		= 'pi_sync_server.upload_file';
+	
+	$content = '<p>' . t( "Student Info Import for !organisation", array( '!organisation' => $organisation ) ) . '</p>';
+	
+	
+	/*
+	$result = xmlrpc( $url, $method_1, "mafies", md5( "willkeins" ) );
+	
+	print_r( $result );
+	
+	$result = xmlrpc( $url, $method_2, $result[ 'sessid' ] );
+	
+	print_r( $result );
+	*/
+	
+	$file[ 'filepath' ]	= 'test.txt';
+	$file[ 'file' ]		= base64_encode( "Das ist ein Test....\nmit 2 Zeilen..." );
+	
+	
+	$result = xmlrpc( $url, $method_3, $file );
+	
+	print_r( $result );
+	
+	
+	
+	$content .= xmlrpc_errno();
+	$content .= xmlrpc_error_msg();
+	
+	//$content .= drupal_get_form('pi_user_import_form', $node);
+	
+	return $content;
+}
+
+
+?>

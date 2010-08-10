@@ -1,0 +1,557 @@
+<?php
+
+/**
+ * @file
+ * Implements student import.
+ */
+
+include( drupal_get_path('module', 'pi_user_import') .'/format/formats.inc');
+
+define( 'USER_SAVE_FAILED', 				0 );
+define( 'USER_UPDATED_NOT_DONE',			1 );
+define( 'USER_ADDED_WITH_ORIGINAL_ID', 		2 );
+define( 'USER_ADDED_WITH_NEW_ID', 			3 );
+define( 'USER_UPDATED_WITH_ORIGINAL_ID',	4 );
+define( 'USER_UPDATED_WITH_NEW_ID', 		5 );
+
+define( 'GROUP_UPDATED_FAILED', 0 );
+define( 'GROUP_UPDATED', 		1 );
+define( 'GROUP_ADDED', 			2 );
+
+/**
+ * MISSING
+ *
+ * @param unknown_type $section
+ * @return string
+ */
+function pi_user_import_help($section='')
+{
+	$output = '';
+
+	switch ($section)
+	{
+		case "admin/help#pi_user_import":
+			$output = '<p>'.  t("Import Students into the Toolkit from a CSV file"). '</p>';
+			break;
+	}
+
+	return $output;
+}
+
+/**
+ * MISSING
+ *
+ * @return multitype:string
+ */
+function pi_user_import_perm()
+{
+	return array('access student import content');
+}
+
+/**
+ * MISSING
+ *
+ * @return multitype:string multitype:string  NULL
+ */
+function pi_user_import_menu()
+{
+	$items = array();
+
+	$items['admin/nquire/import'] = array(
+		'title' => t('Users/groups import'),
+  	  	'page callback' => 'pi_user_import',
+		'access arguments' => array('access import content'),
+		'file' => 'format/formats.inc',
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+
+	return $items;
+}
+
+/**
+ * MISSING
+ *
+ * @return string
+ */
+function pi_user_import_view()
+{
+	echo "=====>";
+
+	print_r( user_search( 'search', 'relay_user' ) );
+
+	return "Import Student Info";
+}
+
+/**
+ * MISSING
+ *
+ * @return unknown
+ */
+function pi_user_import()
+{
+	$content = '<p>' . t( 'Import user/group from file' ) . '</p>';
+
+	$content .= drupal_get_form('pi_user_import_form', $node);
+
+	return $content;
+}
+
+/**
+ * MISSING
+ *
+ * @param unknown_type $form_state
+ * @return multitype:string NULL
+ */
+function pi_user_import_form($form_state)
+{
+	$default_import_value = DEFAULT_FORMAT;
+
+	$import_formats = _pi_user_import_get_formats();
+
+	$form['#attributes'] = array("enctype" => "multipart/form-data");
+
+	$form['general'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('General settings'),
+		'#collapsible' => TRUE,
+		'#tree' => TRUE,
+	    '#weight' => -5
+	);
+
+	$form['general']['import_format'] = array(
+  		'#type' => 'radios',
+  		'#title' => t('Import format'),
+		'#default_value' => $default_import_value,
+  		'#options' => $import_formats
+	);
+
+	$form['general']['update_user'] = array(
+  		'#type' => 'checkbox',
+  		'#title' => t('Update existing users'),
+		'#description' => t( 'In case a user with the same email address exists, the datails will be updated' ),
+		'#default_value' => TRUE
+	);
+
+	$form['general']['update_group'] = array(
+  		'#type' => 'checkbox',
+  		'#title' => t('Update existing organic groups'),
+		'#description' => t( 'In case an organic group with the same description exists, users will be added to this group rather than to a new group' ),
+		'#default_value' => TRUE
+	);
+
+	$form['general']['force_new_group'] = array(
+  		'#type' => 'checkbox',
+  		'#title' => t('Force adding a new organic group'),
+		'#description' => t( 'In case an organic group with the same description exists, it will generate a new one by appending the date to the group description. (This option may brake later data import!)' ),
+		'#default_value' => FALSE
+	);
+
+	$form['option1'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('Upload a new file'),
+		'#collapsible' => TRUE,
+		'#tree' => TRUE,
+	    '#weight' => -4
+	);
+
+	$form['option1']['file'] = array(
+        '#type' => 'file',
+        '#title' => t('Upload File'),
+		'#description' => t( "Click 'Browse...' to select an file to upload.")
+	);
+
+	$form['option2'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('Use an existing file'),
+		'#collapsible' => TRUE,
+		'#tree' => TRUE,
+	    '#weight' => -3
+	);
+
+	$form['option2']['import_users'] = array(
+  		'#type' => 'radios',
+  		'#title' => t('Import users from existing file'),
+		'#default_value' => NULL,
+  		'#options' => _pi_user_import_get_files()
+	);
+
+	$form['option2']['import_groups'] = array(
+  		'#type' => 'radios',
+  		'#title' => t('Import groups from existing file'),
+		'#default_value' => NULL,
+  		'#options' => _pi_user_import_get_files()
+	);
+
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Submit'),
+	);
+
+	return $form;
+}
+
+function pi_user_import_form_validate(&$form, &$form_state)
+{
+	$file = file_save_upload('option1', array() );
+
+	$option2 = $form['option2'];
+
+	if(!$file->filepath && !$option2['import_users'] )
+	{
+		form_set_error('option1][file', t('You have either to upload a new file'));
+		form_set_error('option2][import_users', t('Or select an exiting file'));
+	}
+
+}
+
+/**
+ * MISSING
+ *
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ * @return unknown_type
+ */
+function pi_user_import_form_submit($form, &$form_state)
+{
+	module_load_include('inc', 'pi_user_import', 'format/' . $form_state['values']['general']['import_format'] );
+
+	$user_id_map = array();
+
+	$added_same_uid  		= 0;
+	$added_new_uid  		= 0;
+	$update_same_uid  		= 0;
+	$update_new_uid  		= 0;
+	$save_failed  			= 0;
+	$update_failed  		= 0;
+	$passwd_update_failed  	= 0;
+
+	$filepath_users 		=  $form_state['values']['option2']['import_users'];
+	$filepath_groups		=  $form_state['values']['option2']['import_groups'];
+	$update_existing_users	=  $form_state['values']['general']['update_user'];
+	$update_existing_groups	=  $form_state['values']['general']['update_group'];
+	$force_new_group		=  $form_state['values']['general']['force_new_group'];
+
+
+	if( $update_existing_users == 1 )
+	{
+		$update_existing_users = TRUE;
+	}
+	else
+	{
+		$update_existing_users = FALSE;
+	}
+
+	if( $update_existing_groups == 1 )
+	{
+		$update_existing_groups = TRUE;
+	}
+	else
+	{
+		$update_existing_groups = FALSE;
+	}
+	
+	if( $force_new_group == 1 )
+	{
+		$force_new_group = TRUE;
+	}
+	else
+	{
+		$force_new_group = FALSE;
+	}
+
+	$data = import_users_from_file( $filepath_users );
+
+	$users = $data['users'];
+
+	$is_password_md5 = $data['is_md5'];;
+
+	foreach( $users as $user )
+	{
+		$save_result = _pi_user_save_user_data($user,$update_existing_users);
+
+		switch( $save_result['status'] )
+		{
+			case USER_ADDED_WITH_NEW_ID:		$added_new_uid++;
+			$user_id_map[$user->uid] = $save_result['uid'];
+			break;
+			case USER_ADDED_WITH_ORIGINAL_ID:	$added_same_uid++;
+			$user_id_map[$user->uid] = $save_result['uid'];
+			break;
+			case USER_UPDATED_WITH_NEW_ID:		$update_new_uid++;
+			$user_id_map[$user->uid] = $save_result['uid'];
+			break;
+			case USER_UPDATED_WITH_ORIGINAL_ID:	$update_same_uid++;
+			$user_id_map[$user->uid] = $save_result['uid'];
+			break;
+			case USER_UPDATED_NOT_DONE: 		$update_not_done++;
+			$user_id_map[$user->uid] = -1;
+			break;
+			default:							$save_failed++;
+		}
+
+		if( $is_password_md5 )
+		{
+			if( _pi_user_update_user_password($user->uid, $user->pass) === FALSE )
+			{
+				$passwd_update_failed++;
+			}
+		}
+	}
+
+	//echo $filepath_groups;
+
+	if( $update_existing_groups === TRUE )
+	{
+		$ogs = import_og_from_file( $filepath_groups );
+
+		foreach( $ogs as $og )
+		{
+			_pi_user_import_save_og( $user_id_map[ $og-uid ] , $og, $force_new_group, $filepath_groups );
+		}
+	}
+
+	$text = "Added succefully (kept UID) " . $added_same_uid . "<br>";
+	$text .= "Added succefully (new UID) " . $added_new_uid . "<br>";
+	$text .= "Update succefully (kept UID) " . $update_same_uid . "<br>";
+	$text .= "Update succefully (new UID) " . $update_new_uid . "<br>";
+
+	drupal_set_message( $text );
+
+	if( $update_not_done > 0 )
+	{
+		$text_warning .= "Update not performed " . $update_not_done . "<br>";
+	}
+
+	drupal_set_message( $text_warning, 'warning' );
+
+	if( $save_failed > 0 || $update_failed > 0 || $passwd_update_failed > 0)
+	{
+		$text_error = "Added failed " . $save_failed . "<br>";
+		$text_error .= "Update failed " . $update_failed . "<br>";
+		$text_error .= "Update passwd failed " . $passwd_update_failed . "<br>";
+	}
+
+	drupal_set_message( $text_error, 'error' );
+}
+
+function _pi_user_save_user_data($user,$update_existing_users)
+{
+	$user_saved_status = USER_SAVE_FAILED;
+
+	$existing_user = _pi_user_user_exists($user);
+	$existing_user_id = _pi_user_user_id_exists($user);
+
+	if($existing_user !== NULL)
+	{
+		if( $update_existing_users === TRUE )
+		{
+			//User exists, make sure we don't use the UID from the file!
+			$uid_from_import = $user->uid;
+			$user->uid = $existing_user->uid;
+
+			$new_user = user_save( $existing_user, (array)($user) );
+
+			//print_r($new_user);
+
+			if( is_object( $new_user ) )
+			{
+				if($uid_from_import == $existing_user->uid)
+				{
+					$user_id = $existing_user->uid;
+					$user_saved_status = USER_UPDATED_WITH_ORIGINAL_ID;
+				}
+				else
+				{
+					$user_id = $new_user->uid;
+					$user_saved_status = USER_UPDATED_WITH_NEW_ID;
+				}
+			}
+		}
+		else
+		{
+			$user_saved_status = USER_UPDATED_NOT_DONE;
+		}
+	}
+	else
+	{
+		echo "user does not exists...<br>";
+		//User does not exists, check if we can keep the original UID
+		if($existing_user_id)
+		{
+			unset( $user->uid );
+			$new_user = user_save( $user, (array)($user) );
+
+			if( is_object( $new_user ) )
+			{
+				$user_id = $new_user->uid;
+				$user_saved_status = USER_ADDED_WITH_NEW_ID;
+			}
+		}
+		else
+		{
+			$new_user = user_save( $user, (array)($user) );
+
+			if( is_object( $new_user ) )
+			{
+				$user_id = $new_user->uid;
+				$user_saved_status = USER_ADDED_WITH_ORIGINAL_ID;
+			}
+		}
+	}
+
+	$info = array(	'status'	=> 	$user_saved_status,
+					'uid'		=> 	$user_id		);
+
+	return $info;
+}
+
+/**
+ * This function checks if a user with the same name (login) exists.
+ * @param $user The user object of the user to search for.
+ * @return $loaded_user	In case a user is found, the user object is returned, otherwise NULL
+ */
+function _pi_user_user_exists($user)
+{
+	$loded_user = NULL;
+
+	$criteria['name']	= $user->name;
+	$loaded_user = user_load($criteria);
+
+	if( !is_object($loaded_user) || $loaded_user->uid == 0 )
+	{
+		$loaded_user = NULL;
+	}
+
+	return $loaded_user;
+}
+
+function _pi_user_user_id_exists($user)
+{
+	$loded_user = NULL;
+
+	$criteria['uid']	= $user->uid;
+
+	$loaded_user = user_load($criteria);
+
+	if( $loaded_user === FALSE || $loaded_user->uid == 0 )
+	{
+		$loaded_user = NULL;
+	}
+
+	return $loaded_user;
+}
+
+function _pi_user_update_user_password($uid, $password)
+{
+	$update_success = FALSE;
+
+	if( db_query( "UPDATE {users} SET pass='%s' WHERE uid = %d", $password ,$uid ) )
+	{
+		$update_success = TRUE;
+	}
+
+	return $update_success;
+}
+
+function _pi_user_import_save_og($user_id, $og, $force_new_group, $filename)
+{
+	global $user;
+
+	$og_nid = _pi_user_import_get_og_nid($og);
+
+	if( $og_nid < 0 || $force_new_group === TRUE )
+	{
+		$og_description_add = '';
+		
+		//Force to add a new group...
+		if( $force_new_group === TRUE )
+		{
+			$og_description_add =  ' ' . t('(Imported from @filename)', array( '@filename' => $filename ) ) ;
+		}
+
+		$node_new = new stdClass();
+		$node_new->title 			= $og->title;
+		$node_new->uid 				= $user->uid;
+		$node_new->type 			= 'group';
+		$node_new->status 			= $og->status;
+		$node_new->promote 			= $og->promote;
+		$node_new->sticky 			= $og->sticky;
+			
+		$node_new->og_selective 	= $og->og_selective;
+		$node_new->og_description 	= $og->og_description . $og_description_add;
+		$node_new->og_register 		= $og->og_register;
+		$node_new->og_directory 	= $og->og_directory;
+		$node_new->og_language 		= $og->og_language;
+		$node_new->og_private 		= $og->og_private;
+
+		//print_r($node_new);
+		
+		node_save($node_new);
+
+		$gid 		= $node_new->nid;
+		$uid_old 	= $node_new->uid;
+		$uid_new 	= $user_id;
+
+		$og_uid = array(	'og_role' 	=> $og->og_role,
+    						'is_active' => $og->is_active,
+    						'is_admin' 	=> $og->is_admin 	);
+
+		og_delete_subscription($gid, $uid_old);
+		og_save_subscription($gid, $uid_new, $og_uid);
+
+	}
+	else if( $og_nid >= 0 )
+	{
+		//Update existing group
+		$node_new = node_load( $og_nid );
+
+		$node_new = new stdClass();
+		$node_new->title 			= $og->title;
+		$node_new->uid 				= $user->uid;
+		$node_new->status 			= $og->status;
+		$node_new->promote 			= $og->promote;
+		$node_new->sticky 			= $og->sticky;
+
+		$node_new->og_selective 	= $og->og_selective;
+		$node_new->og_description 	= $og->og_description;
+		$node_new->og_register 		= $og->og_register;
+		$node_new->og_directory 	= $og->og_directory;
+		$node_new->og_language 		= $og->og_language;
+		$node_new->og_private 		= $og->og_private;
+
+		node_save($node_new);
+
+		$gid = $node_new->nid;
+		$uid_old = $node_new->uid;
+		$uid_new = $user_id;
+
+		$og_uid = array( 	'og_role' 	=> $og->og_role,
+    						'is_active' => $og->is_active,
+    						'is_admin' 	=> $og->is_admin 	);
+
+		og_delete_subscription($gid, $uid_old);
+		og_save_subscription($gid, $uid_new, $og_uid);
+	}
+
+}
+
+function _pi_user_import_get_og_nid($og)
+{
+	$og_nid = -1;
+
+	//$sql = "SELECT * FROM {og} WHERE og_description = '%s'";
+	//$obj = db_fetch_array( db_query( $sql, $og->og_description ) );
+
+	$criteria['type'] = 'group';
+	$criteria['title'] = $og->title;
+
+	$obj = node_load( $criteria );
+
+	if( $obj->nid >= 0 && $obj->og_description == $og->og_description )
+	{
+		$og_nid = $obj->nid;
+	}
+
+	return $og_nid;
+}

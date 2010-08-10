@@ -112,7 +112,7 @@ $(document).ready(function() {
     // hides the slickbox as soon as the DOM is ready
     // (a little sooner than page load)
     $('#ag_guide #ag_pullout').hide();
-    $('#sidebar-right div.block-pi_selected_measures div.block-inner').hide();
+    $('#sidebar-right div.block-pi_sort_measures div.block-inner').hide();
   
     // set tabs to select currentstage tab
     reset_stages();

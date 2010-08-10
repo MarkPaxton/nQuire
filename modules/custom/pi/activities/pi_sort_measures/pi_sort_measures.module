@@ -182,7 +182,7 @@ function pi_sort_measures_insert($node) {
 	$measures_to_save = pi_sort_grouped_item_list($default_region_order, $node->measures_list, 'weight');
 	foreach($measures_to_save as $nid => $measure)
 	{
-		$query = "INSERT INTO {pi_selected_measures} (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
+		$query = "INSERT INTO {pi_sort_measures} (nid, vid, available_measure, status, weight) VALUES (%d, %d, %d, '%s', %d)";
 		db_query($query, $node->nid, $node->vid, $nid, $measure['status'], $measure['weight']);
 	}
 }
@@ -198,7 +198,7 @@ function pi_sort_measures_update($node) {
         pi_sort_measures_insert($node);
     }
     else {
-        db_query("DELETE FROM {pi_selected_measures} WHERE vid = %d", $node->vid);
+        db_query("DELETE FROM {pi_sort_measures} WHERE vid = %d", $node->vid);
         pi_sort_measures_insert($node);
     }
 }
@@ -214,7 +214,7 @@ function pi_sort_measures_delete(&$node) {
 
 /**
  * hook_load() for pi_sort_measures
- * @param uobject(node) $node
+ * @param object $node
  * @return object
  */
 function pi_sort_measures_load($node) {
@@ -232,6 +232,7 @@ function pi_sort_measures_load($node) {
 			$selected_measures[$measure_to_check_nid] = $measure_to_check;
 		}
 	}
+	
 	$node->measures_list = $selected_measures;	
 	//To maintain compatability with older code
 	$node->categories = $node->measures_list;	
@@ -255,7 +256,7 @@ function pi_sort_measures_view($node, $teaser, $page = FALSE) {
             '#value' => theme('pi_sort_measures', $node, $teaser),
             '#weight' => 2
 	);
-
+	
 	return $node;
 }
 
@@ -376,9 +377,9 @@ function theme_pi_sort_measures_node_form($form) {
 	// Rows for the tabledrag
 	$rows = array();
 
-	$tree = &$form['measures_list'];
+	//$tree = &$form['measures_list'];
 	
-	//print_r($tree);
+	print_r($tree);
 	
 	$rows = array();		
 	foreach (element_children($tree) as $region)
@@ -505,7 +506,7 @@ function pi_sort_measures_display_table($header, $rows, $attributes) {
  * @return unknown_type
  */
 function pi_sort_measures_get_choice($node) {
-    $query = "SELECT * FROM {pi_selected_measures} WHERE {pi_selected_measures}.nid = %d AND {pi_selected_measures}.vid = %d ORDER BY status ASC, weight ASC";
+    $query = "SELECT * FROM {pi_sort_measures} WHERE {pi_sort_measures}.nid = %d AND {pi_sort_measures}.vid = %d ORDER BY status ASC, weight ASC";
     $result = db_query($query, $node->nid, $node->vid);
 
     $measures = array();
