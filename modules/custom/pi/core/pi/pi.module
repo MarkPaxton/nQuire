@@ -117,6 +117,18 @@ function pi_menu() {
 	return $items;
 }
 
+/**
+ * hook_theme for the pi module, contains definitions for all the shared themes for nQuire
+ */
+function pi_theme()
+{
+	return array(
+	'pi_region_sort_table' => array(
+		'arguments' => array('header', 'rows', 'regions', 'attributes'),
+		'file' => 'pi_region_sort_themes.inc')
+	);
+}
+
 function pi_nquire_admin() {
   $output = '';
   if(module_exists(pi_available_content_types)) {
@@ -423,7 +435,7 @@ function pi_get_all_group_nids() {
 		$group = node_load($id);
 		if($group->status)
 		{
-			$groups[] = $id;
+			$groups[$id] = $id;
 		}  		
 	}
 	return $groups;
@@ -495,18 +507,140 @@ function pi_get_group_nids_of_type($type)
 		}
 		else
 		{
-			drupal_set_message(t("Duplicate group definitions found for group ") . check_plain($id) . 
+			drupal_set_message(t("Duplicate group definitions found for group #") . check_plain($id) . 
 				t(" as type '") . check_plain($groups[$id]['group_type']) . "'.", 'warning');
 		}
 	}
 	return $groups;	
 }
 
+
+/**
+ * Gets the heirarchy data for a particular group and returns it in an array
+ * @param unknown_type $group_id
+ */
+function pi_get_group_hierarchy($group_id)
+{
+	$hierarchy = array('parent'=>NULL, 'children' => array());
+	
+	// First get the parent id and check for multiples
+	$query = "SELECT pgh_id, parent_gid FROM {pi_group_hierarchy} WHERE gid = %d ORDER BY pgh_id ASC";
+	$result = db_query($query, $group_id);
+	$result_rows = array();
+	$parent_id = NULL;
+	while($result_row = db_fetch_array($result))
+	{
+		$result_rows[$result_row['pgh_id']] = $result_row['parent_gid'];	
+		if($parent_id==NULL)
+		{
+			$parent_id = $result_row['parent_gid'];
+		}
+		else
+		{
+			$print_value = ($result_row['parent_gid'] == NULL) ? "NULL" : "#" . $result_row['parent_gid'];
+			drupal_set_message(t("Group #$group_id has more than one parent set, using first " . 
+				"one which is #$parent_id and not " . $print_value));			
+		}
+	}
+	$hierarchy['parent'] = $parent_id;
+	
+	//now get the child ids and put them into an array
+	$query = "SELECT pgh_id, gid FROM {pi_group_hierarchy} WHERE parent_gid = %d ORDER BY pgh_id ASC";
+	//pi_debug_message(sprintf($query, $group_id));
+	$result = db_query($query, $group_id);
+	$children = array();
+	$seen_children = array();
+	while($result_row = db_fetch_array($result))
+	{
+		if(in_array($result_row['gid'], $seen_children))
+		{
+			drupal_set_message(t("Group " . $result_row['gid'] . " has a duplicate hierarchy entry (" . $result_row['pgh_id'] . ")"));
+		}
+		else
+		{
+			$children[$result_row['pgh_id']] = $result_row['gid'];
+			$seen_children[] = $result_row['gid'];
+		}	
+	}
+	$hierarchy['children'] = $children;	
+	//pi_debug_message($children);
+	return $hierarchy;	
+}
+
+function pi_get_all_group_hierarchy_and_types()
+{
+	$return_data = array();
+	$query = "SELECT pgh.*, pi_group_type.type FROM {pi_group_hierarchy} AS pgh " . 
+			"LEFT JOIN {pi_group_type} as pi_group_type ON pi_group_type.gid = pgh.gid ORDER BY pgh.pgh_id ASC";
+	$result = db_query($query);
+	while($row = db_fetch_array($result))
+	{
+		$gid = $row['gid'];
+		if($gid!=null)
+		{
+			if(!array_key_exists($gid, $return_data))
+			{
+				$return_data[$gid] = array('children'=>array());
+			}
+				
+			if($row['parent_gid']!= NULL)
+			{
+				if(array_key_exists('parent', $return_data[$gid]))
+				{
+					if($return_data[$gid]['parent']!= $row['parent_gid'])
+					{
+						$message = "Group #$gid has more than one parent setting, using first " .
+								"one which is #" . $return_data[$gid]['parent'] . " and not #" . $row['parent_gid'];
+					}
+					else
+					{
+						$message = "Group #$gid has a duplicate parent setting for group #" . $return_data[$gid]['parent'];
+					}
+					drupal_set_message(t($message));
+				}
+				else
+				{
+					$return_data[$gid]['parent'] = $row['parent_gid'];
+					// Add it as a child to parent's children array
+
+					//Create the children array if needed
+					if(!array_key_exists($gid, $return_data))
+					{
+						$return_data[$row['parent_gid']] = array('children'=>array());
+					}
+
+					if(in_array($gid, $return_data[$gid]['children']))
+					{
+						drupal_set_message(t("Group $gid has a duplicate hierarchy entry for belonging to " . $row['parent_gid']));
+					}
+					else
+					{
+						$return_data[$row['parent_gid']]['children'][] = $gid;
+					}
+				}
+			}
+			if(array_key_exists('group_type', $return_data[$gid]))
+			{
+				if($row['type']!= $return_data[$gid]['group_type'])
+				{
+					drupal_set_message(t("Group #$gid has conflicting type settings " .
+						"one which is " . $return_data[$gid]['group_type'] . " and not " . $row['type']));	
+				}
+			}
+			else
+			{
+				$return_data[$gid]['group_type'] = $row['type'];
+			}
+		}
+	}
+	return $return_data;
+}
+
 /**
  * Returns an array containing the uids for the members of the group.
  * The group could be a group, class or multiclass.
  * @param uint $gid Group id to get members of
- * @return array(user) array of db_fetch_objects indeced by id
+ * @return array(user) array of db_fetch_array indeced by id
  */
 function pi_get_members_of_group($gid) {
 	$query = "SELECT uid FROM {og_uid} WHERE nid = %d";
@@ -1594,6 +1728,31 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	}
 	return $sorted_items;
 }
+
+/**
+ * This function takes a flattened array of items and groups them into arrays accouting to 
+ * the values of group_field
+ * @param array or array $items items to sort
+ * @param string $group_field the field of the array by which to group items
+ * @return a nested array, first index is the value of $items['group_field'] and the second index the current
+ * key of $item. 
+ * array('group_field1' => array ('id'=>array(value=>'value, group_field=>'group_field1', .), .. )...)
+ */
+function pi_create_grouped_item_list($items, $group_field)
+{
+	$return_array=array();
+	foreach($items as $key => $item)
+	{
+		$group_key = $item[$group_field];
+		if(!array_key_exists($group_key, $return_array))
+		{
+			$return_array[$group_key]=array();		
+		}
+		$return_array[$group_key][$key] = $item; 
+	}
+	return $return_array;
+}
+
 
 
 /**
