@@ -11,23 +11,42 @@
  * Implementation of pi_measure_filter_install().
  */
 function pi_measure_filter_install() {
-  // Create tables.
-  drupal_install_schema('pi_measure_filter');
+	// Create tables.
+	drupal_install_schema('pi_measure_filter');
+
+	variable_set("og_content_type_usage_pi_measure_filter", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_measure_filter", array('status','revision'));
+	variable_set("comment_pi_measure_filter", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_measure_filter", 0);
+
+	$activities = variable_get('pi_activities', array() );
+	$activities['pi_measure_filter'] = 'Measure filter';
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_measure_filter_uninstall().
  */
 function pi_measure_filter_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_measure_filter');
+	// Remove tables.
+	drupal_uninstall_schema('pi_measure_filter');
+
+	variable_del("og_content_type_usage_pi_measure_filter");
+	variable_del("node_options_pi_measure_filter");
+	variable_del("comment_pi_measure_filter");
+	variable_del("upload_pi_measure_filter");
+
+	$activities = variable_get('pi_activities', array() );
+	unset( $activities['pi_measure_filter'] );
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_questions_schema().
  */
 function pi_measure_filter_schema() {
-  $schema['pi_measure_filter'] = array(
+	$schema['pi_measure_filter'] = array(
     'description' => 'PI measure filter.',
     'fields' => array(
       'nid' => array(
@@ -181,10 +200,10 @@ function pi_measure_filter_schema() {
         'description' => 'Default value for the image_filename field.',
         'type' => text,
         'not null' => FASLE),
-      ),
+	),
     'primary key' => array('nid','vid'),
     'unique keys' => array('vid'	=> array('vid')),
     'indexes' => array('nid'	=> array('nid')) 
-  );
-  return $schema;
+	);
+	return $schema;
 }

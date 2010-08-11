@@ -5,29 +5,44 @@
 /**
  * Implementation of pi_data_install().
  */
- 
+
 function pi_data_install() {
-  // Create tables.
-  drupal_install_schema('pi_data');
+	// Create tables.
+	drupal_install_schema('pi_data');
+
+	variable_set("og_content_type_usage_pi_data", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_data", array('status','revision'));
+	variable_set("comment_pi_data", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_data", 0);
+	
+	$activities = variable_get('pi_activities', array() );
+	$activities['pi_data'] = 'Collected data';
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_data_uninstall().
  */
- 
+
 function pi_data_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_data');
-  variable_del('pi_data');
+	// Remove tables.
+	drupal_uninstall_schema('pi_data');
+	variable_del('pi_data');
+	
+	variable_del("og_content_type_usage_pi_data");
+	variable_del("node_options_pi_data");
+	variable_del("comment_pi_data");
+	variable_del("upload_pi_data");
 }
 
 /**
  * Implementation of pi_data_schema().
  */
- 
+
 function pi_data_schema() {
 
-  $schema['pi_collected_data'] = array(
+	$schema['pi_collected_data'] = array(
     'description' => t('PI data'),
     'fields' => array(
       'nid' => array(
@@ -37,7 +52,7 @@ function pi_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'vid' => array(
         'description' => t('The current vid version identifier'),
         'type' => 'int',
@@ -45,7 +60,7 @@ function pi_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'selected_measures_nid' => array(
         'description' => t('The nid of a selected measure'),
         'type' => 'int',
@@ -53,7 +68,7 @@ function pi_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'available_measure_nid' => array(
         'description' => t('The nid of an available measure'),
         'type' => 'int',
@@ -61,20 +76,20 @@ function pi_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'value' => array(
         'description' => t('Value of the data entry'),
         'type' => 'text',
         'size' => 'normal',
         'not null' => TRUE,
-      ),
-    ),
+	),
+	),
     'indexes' => array(
       'nid' => array('nid'),
       'vid' => array('vid'),
-    ),
-  );
-  
-  return $schema;
+	),
+	);
+
+	return $schema;
 
 }

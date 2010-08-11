@@ -10,23 +10,42 @@
  * Implementation of hook_install().
  */
 function pi_selected_photographs_install() {
-  // Create tables.
-  drupal_install_schema('pi_selected_photographs');
+	// Create tables.
+	drupal_install_schema('pi_selected_photographs');
+
+	variable_set("og_content_type_usage_pi_selected_photographs", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_selected_photographs", array('status','revision'));
+	variable_set("comment_pi_selected_photographs", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_selected_photographs", 0);
+
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_selected_photographs'] = 'Selected photographs';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_selected_photographs_uninstall().
  */
 function pi_selected_photographs_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_selected_photographs');
+	// Remove tables.
+	drupal_uninstall_schema('pi_selected_photographs');
+
+	variable_del("og_content_type_usage_pi_selected_photographs");
+	variable_del("node_options_pi_selected_photographs");
+	variable_del("comment_pi_selected_photographs");
+	variable_del("upload_pi_selected_photographs");
+
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_selected_photographs'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of hook_schema().
  */
 function pi_selected_photographs_schema() {
-  $schema['pi_selected_photographs'] = array(
+	$schema['pi_selected_photographs'] = array(
     'description' => 'PI selected photographs',
     'fields' => array(
       'nid' => array(
@@ -35,7 +54,7 @@ function pi_selected_photographs_schema() {
         'not null' => TRUE,
 	'default' => '0',
         'description' => 'Primary Key: Unique ID.',
-      ),
+	),
       'vid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
@@ -69,7 +88,7 @@ function pi_selected_photographs_schema() {
         'not null' => FALSE,
         'description' => 'Caption for image',
 	),
- ),
+	),
 
     'primary key' => array('nid','vid'),
 
@@ -79,7 +98,7 @@ function pi_selected_photographs_schema() {
 
     'indexes' => array(
 	'nid'	=> array('nid'),
-	), 
-  );
-  return $schema;
+	),
+	);
+	return $schema;
 }

@@ -5,29 +5,48 @@
 /**
  * Implementation of pi_sort_result_presentations_install().
  */
- 
+
 function pi_sort_result_presentations_install() {
-  // Create tables.
-  drupal_install_schema('pi_sort_result_presentations');
+	// Create tables.
+	drupal_install_schema('pi_sort_result_presentations');
+
+	variable_set("og_content_type_usage_pi_sort_result_presentations", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_sort_result_presentations", array('status','revision'));
+	variable_set("comment_pi_sort_result_presentations", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_sort_result_presentations", 0);
+
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_sort_result_presentations'] = 'Sort result presentations';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_sort_result_presentations_uninstall().
  */
- 
+
 function pi_sort_result_presentations_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_sort_result_presentations');
-  variable_del('pi_sort_result_presentations');
+	// Remove tables.
+	drupal_uninstall_schema('pi_sort_result_presentations');
+	variable_del('pi_sort_result_presentations');
+
+	variable_del("og_content_type_usage_pi_sort_result_presentations");
+	variable_del("node_options_pi_sort_result_presentations");
+	variable_del("comment_pi_sort_result_presentations");
+	variable_del("upload_pi_sort_result_presentations");
+
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_sort_result_presentations'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_sort_result_presentations_schema().
  */
- 
+
 function pi_sort_result_presentations_schema() {
 
-  $schema['pi_sort_result_presentations'] = array(
+	$schema['pi_sort_result_presentations'] = array(
     'description' => t('PI draggable result presentations'),
     'fields' => array(
       'nid' => array(
@@ -37,7 +56,7 @@ function pi_sort_result_presentations_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'vid' => array(
         'description' => t('The current vid version identifier'),
         'type' => 'int',
@@ -45,7 +64,7 @@ function pi_sort_result_presentations_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'result_presentations' => array(
         'description' => t('The nid of a result presentations'),
         'type' => 'int',
@@ -53,7 +72,7 @@ function pi_sort_result_presentations_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'weight' => array(
         'description' => t('The position of the result presentations'),
         'type' => 'int',
@@ -61,14 +80,14 @@ function pi_sort_result_presentations_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ), 
-    ),
+	),
+	),
     'indexes' => array(
       'nid' => array('nid'),
       'vid' => array('vid'),
-    ),
-  );
-  
-  return $schema;
+	),
+	);
+
+	return $schema;
 
 }

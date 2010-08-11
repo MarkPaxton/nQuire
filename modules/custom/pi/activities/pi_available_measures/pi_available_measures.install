@@ -11,23 +11,43 @@
  * Implementation of pi_available_measures_install().
  */
 function pi_available_measures_install() {
-  // Create tables.
-  drupal_install_schema('pi_available_measures');
+	// Create tables.
+	drupal_install_schema('pi_available_measures');
+
+	variable_set("og_content_type_usage_pi_available_measures", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_available_measures", array('status','revision'));
+	variable_set("comment_pi_available_measures", COMMENT_NODE_DISABLED);
+	variable_set('upload_pi_available_measures', 0);
+
+	$activities = variable_get('pi_activities', array() );
+	$activities['pi_available_measures'] = 'Available measures';
+	variable_set('pi_activities', $activities);
+
 }
 
 /**
  * Implementation of pi_available_measures_uninstall().
  */
 function pi_available_measures_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_available_measures');
+	// Remove tables.
+	drupal_uninstall_schema('pi_available_measures');
+	
+	variable_del("og_content_type_usage_pi_available_measures");
+	variable_del("node_options_pi_available_measures");
+	variable_del("comment_pi_available_measures");
+	variable_del("upload_pi_available_measures");
+	
+	$activities = variable_get('pi_activities', array() );
+	unset( $activities['pi_available_measures'] );
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_available_measures_schema().
  */
 function pi_available_measures_schema() {
-  $schema['pi_available_measures'] = array(
+	$schema['pi_available_measures'] = array(
     'description' => 'PI available measures to choose from',
     'fields' => array(
       'nid' => array(
@@ -36,7 +56,7 @@ function pi_available_measures_schema() {
         'not null' => TRUE,
 	'default' => '0',
         'description' => 'Primary Key: Unique ID.',
-      ),
+	),
       'vid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
@@ -49,49 +69,49 @@ function pi_available_measures_schema() {
         'not null' => FALSE,
 	'length' => 64,
         'description' => 'What symbol.',
-      ),
+	),
       'units' => array(
         'type' => 'varchar',
         'not null' => FALSE,
 	'length' => 255,
         'description' => 'What units.',
-      ),
+	),
       'units_short' => array(
         'type' => 'varchar',
         'not null' => FALSE,
 	'length' => 64,
         'description' => 'What units (short version).',
-      ),
+	),
       'data_type' => array(
         'type' => 'int',
 	'unsigned' => TRUE,
         'not null' => TRUE,
 	'default' => '0',
         'description' => 'What type.',
-      ),
+	),
       'options' => array(
         'type' => 'text',
         'not null' => FALSE,
         'description' => 'Text description.',
-      ),
+	),
       'measurement_device_name' => array(
         'type' => 'varchar',
         'not null' => FALSE,
 	'length' => 255,
         'description' => 'Measurement device name.',
-      ),
+	),
       'measurement_device_description' => array(
         'type' => 'text',
         'not null' => FALSE,
         'description' => 'Measurement device description.',
-      ),
+	),
       'image_id' => array(
         'type' => 'int',
 	'unsigned' => TRUE,
         'not null' => FALSE,
         'description' => 'Image illustrating the measurement device',
-      ),
-    ),
+	),
+	),
 
     'primary key' => array('nid','vid'),
 
@@ -101,7 +121,7 @@ function pi_available_measures_schema() {
 
     'indexes' => array(
 	'nid'	=> array('nid'),
-	), 
-  );
-  return $schema;
+	),
+	);
+	return $schema;
 }

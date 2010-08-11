@@ -5,29 +5,48 @@
 /**
  * Implementation of pi_sort_data_install().
  */
- 
+
 function pi_sort_data_install() {
-  // Create tables.
-  drupal_install_schema('pi_sort_data');
+	// Create tables.
+	drupal_install_schema('pi_sort_data');
+
+	variable_set("og_content_type_usage_pi_sort_data", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_sort_data", array('status','revision'));
+	variable_set("comment_pi_sort_data", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_sort_data", 0);
+
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_sort_data'] = 'Sort data';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_sort_data_uninstall().
  */
- 
+
 function pi_sort_data_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_sort_data');
-  variable_del('pi_sort_data');
+	// Remove tables.
+	drupal_uninstall_schema('pi_sort_data');
+	variable_del('pi_sort_data');
+	
+	variable_del("og_content_type_usage_pi_sort_data");
+	variable_del("node_options_pi_sort_data");
+	variable_del("comment_pi_sort_data");
+	variable_del("upload_pi_sort_data");
+
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_sort_data'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_sort_data_schema().
  */
- 
+
 function pi_sort_data_schema() {
 
-  $schema['pi_sort_data'] = array(
+	$schema['pi_sort_data'] = array(
     'description' => t('PI sort data'),
     'fields' => array(
       'nid' => array(
@@ -37,7 +56,7 @@ function pi_sort_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'vid' => array(
         'description' => t('The current vid version identifier'),
         'type' => 'int',
@@ -45,7 +64,7 @@ function pi_sort_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'data' => array(
         'description' => t('The nid of the data'),
         'type' => 'int',
@@ -53,7 +72,7 @@ function pi_sort_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'weight' => array(
         'description' => t('The position of the data'),
         'type' => 'int',
@@ -61,14 +80,14 @@ function pi_sort_data_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ), 
-    ),
+	),
+	),
     'indexes' => array(
       'nid' => array('nid'),
       'vid' => array('vid'),
-    ),
-  );
-  
-  return $schema;
+	),
+	);
+
+	return $schema;
 
 }

@@ -10,21 +10,40 @@
 
 /**
  * Implementation of pi_wiki_notes_install().
- * 
+ *
  * @return unknown_type
  */
 function pi_wiki_notes_install() {
-  // Create tables.
-  drupal_install_schema('pi_wiki_notes');
+	// Create tables.
+	drupal_install_schema('pi_wiki_notes');
+
+	variable_set("og_content_type_usage_pi_wiki_notes", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_wiki_notes", array('status','revision'));
+	variable_set("comment_pi_wiki_notes", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_wiki_notes", 0);
+
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_wiki_notes'] = 'Wiki notes';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_wiki_notes_uninstall().
  */
 function pi_wiki_notes_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_wiki_notes');
-  variable_del('pi_wiki_notes');
+	// Remove tables.
+	drupal_uninstall_schema('pi_wiki_notes');
+	variable_del('pi_wiki_notes');
+
+	variable_del("og_content_type_usage_pi_wiki_notes");
+	variable_del("node_options_pi_wiki_notes");
+	variable_del("comment_pi_wiki_notes");
+	variable_del("upload_pi_wiki_notes");
+
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_wiki_notes'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
@@ -32,7 +51,7 @@ function pi_wiki_notes_uninstall() {
  */
 function pi_wiki_notes_schema() {
 
-  $schema['pi_wiki_notes'] = array(
+	$schema['pi_wiki_notes'] = array(
     'description' => t('Group notes'),
     'fields' => array(
       'nid' => array(
@@ -42,7 +61,7 @@ function pi_wiki_notes_schema() {
         'not null' => TRUE,
         'size' => 'small',
         'default' => 0,
-      ),
+	),
       'vid' => array(
         'description' => t('The current vid version identifier'),
         'type' => 'int',
@@ -50,20 +69,20 @@ function pi_wiki_notes_schema() {
         'not null' => TRUE,
         'size' => 'small',
         'default' => 0,
-      ),
+	),
       'notes' => array(
         'description' => t('Notes text'),
         'type' => 'text',
         'size' => 'normal',
         'not null' => TRUE,
-      ),
-    ),
+	),
+	),
     'primary key' => array('vid'),
     'indexes' => array(
       'nid' => array('nid'),
-    ),
-  );
-  
-  return $schema;
+	),
+	);
+
+	return $schema;
 
 }
