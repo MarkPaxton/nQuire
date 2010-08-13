@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz_question.module,v 1.1.2.7 2009/05/27 19:45:36 sivaji Exp $
+// $Id: quiz_question.module,v 1.1.2.8 2009/06/07 23:05:33 sivaji Exp $
 
 /**
  * Quiz Question module.
@@ -243,18 +243,16 @@ function quiz_question_evaluate_question($question, $rid, $answer = NULL) {
     //$answer = is_array($_POST['tries']) ? $_POST['tries'] : array($_POST['tries']);
   }
   unset($_POST['tries']);
-
   $response = _quiz_question_response_get_instance($rid, $question, $answer);
   $response->score();
 
   // If a rid is set, we are taking a quiz.
-  if ($rid && !empty($answer)) {
+  if ($rid && isset($answer)) {
     // We don't know whether or not the user has gone back a question. However,
     // we do know that deleting a question for this result set should be safe in
     // the case where the user has not gone back (since there will be no entries
     // to delete). So we always run the delete.
     $response->delete();
-
     $response->save();
   }
 
@@ -331,15 +329,13 @@ function quiz_question_render_question($node) {
 function quiz_question_get_report($nid, $vid, $rid) {
   $node = node_load($nid, $vid);
   $result = _quiz_question_response_get_instance($rid, $node)->getReport();
-
   $node->answers[$result['answer_id']] = $result;
-
   // If this has been evaluated, we mark it as correct.
   // FIXME: This needs to be improved substantially.
   //if ($result && $result['is_evaluated'] && $result['score'] > 0) {
   //  $node->correct = TRUE;
   //}
-  $node->correct = $result['is_correct'];
+  $node->correct = $result['score'];//$result['is_correct'];
   return $node;
 }
 

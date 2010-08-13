@@ -5,91 +5,159 @@
  * Implementation of hook_install().
  */
 function pi_phase_install() {
-  // Create tables.
-  drupal_install_schema('pi_phase');
+	// Create tables.
+	drupal_install_schema('pi_phase');
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function pi_phase_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_phase');
+	// Remove tables.
+	drupal_uninstall_schema('pi_phase');
 }
 
 /**
  * Implementation of hook_schema().
  */
 function pi_phase_schema() {
+	
+	$schema = array();
+	
 	$schema['pi_phase'] = array(
-		'description' => 'PI Inquiry Phase',
-		'fields' => array(
-			'nid' => array(
-		        'description' => 'node id',
-		        'type' => 'int',
-		        'unsigned' => TRUE,
-		        'not null' => TRUE,
-		        'default' => 0,
-			),
-			'vid' => array(
-		        'description' => 'The current vid version identifier',
-		        'type' => 'int',
-		        'unsigned' => TRUE,
-		        'not null' => TRUE,
-		      	'default' => 0,
-			),
-			'inquiry_nid' => array(
-		        	'description' => 'The nid for the inquiry this phase is attached to.',
-					'type' => 'int',
-		        	'unsigned' => TRUE,
-					'not null' => TRUE,
-		    	  	'default' => 0,
-			),
-			'weight' => array(
-		        	'description' => 'The default layout order of the phase in the inquiry.',
-					'type' => 'int',
-		        	'unsigned' => TRUE,
-					'not null' => TRUE,
-		    	  	'default' => 0,
-			),		
-		),
-		'primary key' => array('nid', 'vid'),
-		'unique keys' => array(
-			'vid' => array('vid')
-		),
-		'indexes' => array(
-			'nid' => array('nid')
-		),
+	'description' => 'PI Inquiry Phase',
+	'fields' => array(
+		'nid' => array(
+			'description' => 'node id',
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => 0 ),
+		'vid' => array(
+			'description' => 'The current vid version identifier',
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => 0 ),
+		'inquiry_nid' => array(
+			'description' => 'The nid for the inquiry this phase is attached to.',
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => 0 ),
+		'weight' => array(
+			'description' => 'The default layout order of the phase in the inquiry.',
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => 0 ) ),
+	'primary key' => array('nid', 'vid'),
+	'unique keys' => array( 'vid' => array('vid') ),
+	'indexes' => array( 'nid' => array('nid') )
 	);
 	
+	$schema['pi_phase_actor'] = array(
+    'description' => 'PI Phase actor.',
+    	'fields' => array(
+      		'ppa_id' => array(
+        	'type' => 'serial',
+        	'unsigned' => TRUE,
+       	 	'not null' => TRUE,
+        	'description' => 'Primary Key: Unique category ID.'	),
+      	'inquiry_id' => array(
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+	        'not null' => TRUE,
+    	    'description' => 'PI Inquiry id.'	),
+      	'phase_id' => array(
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => TRUE,
+        	'description' => 'PI Phase id.'	),
+      	'uid' => array(
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => FALSE,
+        	'default' => NULL,
+        	'description' => 'user id.'	),
+      	'gid' => array(
+        	'type' => 'int',		
+        	'unsigned' => TRUE,
+        	'not null' => FALSE,
+        	'default' => NULL,
+        	'description' => 'group id.'	)		),
+    
+	'primary key' => array('ppa_id'),
+    'indexes' => array(	'inquiry_id' => array('inquiry_id'),
+						'phase_id' => array('phase_id')			)
+	);
 	
+/*
 	$schema['pi_phase_preference'] = array(
 	'description' => 'PI Phase Preference.',
-	'fields' =>			array(	'ppp_id' =>	array(			'type' => 'int',
-															'unsigned' => TRUE,
-															'not null' => TRUE,
-															'default' => NULL,
-															'length' => 10,
-	 														'description' => '' ),
-      							'show_phase' => array(		'type' => 'blob',
-  															'mysql_type' => 'binary',
-															'description' => '' ),
-								'uid' => array(				'type' => 'int',
-															'unsigned' => TRUE,
-															'not null' => TRUE,
-															'default' => NULL,
-															'length' => 10,
-															'description' => 'User id.' ),
-								'gid' => array(      	  	'type' => 'int',
-															'unsigned' => TRUE,
-															'not null' => TRUE,
-															'default' => NULL,
-															'length' => 10,
-															'description' => 'Group id.' )	),
+	'fields' =>	array( 
+		'plp_id' =>	array( 
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => NULL,
+			'length' => 10,
+	 		'description' => '' ),
+      	'layout' => array(
+      		'type' => 'varchar',
+			'length' => 255,
+			'not null' => TRUE,
+			'description' => '' ),
+		'inquiry_id' => array(
+        	'type' => 'int',
+			'length' => 10,	
+        	'unsigned' => TRUE,
+	        'not null' => FALSE,
+    	    'description' => 'PI Inquiry id'	),
+		'uid' => array(
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => FALSE,
+			'default' => NULL,
+			'description' => 'User id' ),
+		'gid' => array(
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => FALSE,
+			'default' => NULL,
+			'description' => 'Group id' )	),
+	'primary key' =>	array(	'plp_id')
+	);
+*/
+	$schema['pi_phase_preference'] = array(
+	'description' => 'PI Phase Preference.',
+	'fields' =>	array( 
+		'ppp_id' =>	array( 
+			'type' => 'serial',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => NULL,
+	 		'description' => '' ),
+      	'show_phase' => array(
+      		'type' => 'blob',
+  			'mysql_type' => 'binary',
+			'description' => '' ),
+		'uid' => array(
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => NULL,
+			'description' => 'User id' ),
+		'gid' => array(
+			'type' => 'int',
+			'unsigned' => TRUE,
+			'not null' => TRUE,
+			'default' => NULL,
+			'description' => 'Group id' )	),
 	'primary key' =>	array(	'ppp_id'),
     'indexes' => 		array(	'uid' => array('uid'),
       							'gid' => array('gid') 	),
-  );
+	);
 	
 	return $schema;
 }

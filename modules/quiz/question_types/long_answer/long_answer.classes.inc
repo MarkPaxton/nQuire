@@ -1,5 +1,5 @@
 <?php
-// $Id: long_answer.classes.inc,v 1.1.2.3 2009/06/03 19:57:43 mbutcher Exp $
+// $Id: long_answer.classes.inc,v 1.1.2.5 2009/12/09 10:44:19 sivaji Exp $
 
 /**
  * Long answer classes.
@@ -208,7 +208,8 @@ class LongAnswerResponse extends AbstractQuizQuestionResponse {
   public function isCorrect() {
     $possible = _quiz_question_get_instance($this->question)->getMaximumScore();
     $actual = $this->score;
-
+    // To prevent Division by zero warning
+    $possible = ($possible == 0) ? 1 : $possible;
     return (($actual / $possible) * 100 > 50);
   }
 
@@ -217,8 +218,8 @@ class LongAnswerResponse extends AbstractQuizQuestionResponse {
   }
 
   public function formatReport($showpoints = TRUE, $showfeedback = TRUE) {
-    
-    $slug = '<div class="quiz_summary_question"><span class="quiz_question_bullet">Q:</span> '.
+
+    $slug = '<div class="quiz_summary_question"><span class="quiz_question_bullet">'. t('Q:') . '</span> '.
       check_markup($this->question->body, $this->question->filter) .
       '</div>';
 

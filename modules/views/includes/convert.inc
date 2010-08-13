@@ -1,5 +1,5 @@
 <?php
-// $Id: convert.inc,v 1.14 2009/04/07 23:21:00 merlinofchaos Exp $
+// $Id: convert.inc,v 1.17 2009/09/25 17:06:14 merlinofchaos Exp $
 /**
  * @file convert.inc
  *
@@ -67,7 +67,57 @@ function views_ui_admin_convert() {
   }
   $output = t('The table below lists Views version 1 views that are stored in the database. You can either convert them to work in Views version 2, or delete them. The views are convertible only if there is no Views 2 view with the same name.');
   $output .= theme('table', $header, $i);
+
+  $output .= drupal_get_form('views_ui_convert_cleanup_form');
   return $output;
+}
+
+/**
+ * Provide form to clean up Views 1 tables.
+ */
+function views_ui_convert_cleanup_form() {
+  $form['verify'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Remove all Views 1 tables'),
+    '#description' => t('Check this box and then click clean up to drop all Views 1 tables. Warning: this operation will not be reversible! Do this only if you are sure you no longer need this data.'),
+    '#required' => TRUE,
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Clean up'),
+  );
+
+  return $form;
+}
+
+function views_ui_convert_cleanup_form_submit($form, $form_state) {
+  if (empty($form_state['values']['verify'])) {
+    drupal_set_message('Please check the box to verify you want to destroy your Views 1 table data.');
+    return;
+  }
+
+  $ret = array();
+  if (db_table_exists('view_view')) {
+    db_drop_table($ret, 'view_view');
+  }
+  if (db_table_exists('view_sort')) {
+    db_drop_table($ret, 'view_sort');
+  }
+  if (db_table_exists('view_argument')) {
+    db_drop_table($ret, 'view_argument');
+  }
+  if (db_table_exists('view_tablefield')) {
+    db_drop_table($ret, 'view_tablefield');
+  }
+  if (db_table_exists('view_filter')) {
+    db_drop_table($ret, 'view_filter');
+  }
+  if (db_table_exists('view_exposed_filter')) {
+    db_drop_table($ret, 'view_exposed_filter');
+  }
+
+  drupal_set_message(t('All Views 1 tables have been removed.'));
 }
 
 /**
@@ -130,7 +180,7 @@ function views1_import($imported) {
   $view->name = $imported->name;
   $view->description = $imported->description;
 
-  if (!empty($imported->page)) {
+  if (!empty($imported->page) && !empty($imported->url)) {
     $page_display = $view->add_display('page');
   }
   if (!empty($imported->block)) {
@@ -159,7 +209,7 @@ function views1_import($imported) {
   }
 
   $handler->set_option('access', $access);
-  if (!empty($imported->page)) {
+  if (!empty($imported->page) && !empty($imported->url)) {
     $handler = &$view->display[$page_display]->handler;
     $url = str_replace('$arg', '%', $imported->url);
     $handler->set_option('path', $url);
@@ -171,7 +221,7 @@ function views1_import($imported) {
       if ($imported->menu_tab_default) {
         $menu['type'] = 'default tab';
       }
-      $menu['title'] = $imported->menu_title;
+      $menu['title'] = $imported->menu_title ? $imported->menu_title : $imported->page_title;
       $handler->set_option('menu', $menu);
 
       if ($menu['type'] == 'default tab') {
@@ -187,14 +237,14 @@ function views1_import($imported) {
       $tab_options['weight'] = $imported->menu_parent_tab_weight;
       $handler->set_option('tab_options', $tab_options);
     }
-
-    views1_convert_style($view, $handler, $imported->page_type);
   }
+
+  views1_convert_style($view, $handler, $imported->page_type);
 
   if (!empty($imported->block)) {
     $handler = &$view->display[$block_display]->handler;
 
-    if ($imported->block_title) {
+    if (!empty($imported->block_title)) {
       if (!empty($imported->page)) {
         $handler->set_override('title');
       }
@@ -207,9 +257,6 @@ function views1_import($imported) {
     $handler->set_option('use_pager', FALSE);
 
     if ($imported->nodes_per_block != $imported->nodes_per_page) {
-      if (!empty($imported->page)) {
-        $handler->set_override('items_per_page');
-      }
       $handler->set_option('items_per_page', $imported->nodes_per_block);
       $handler->set_option('offset', 0);
     }
@@ -218,25 +265,31 @@ function views1_import($imported) {
       if (!empty($imported->page)) {
         $handler->set_override('header');
       }
-      $handler->set_option('header', $imported->block_header);
-      $handler->set_option('header_format', $imported->block_header_format);
+      if (!empty($imported->block_header)) {
+        $handler->set_option('header', $imported->block_header);
+        $handler->set_option('header_format', $imported->block_header_format);
+      }
     }
     if (empty($imported->block_use_page_footer)) {
       if (!empty($imported->page)) {
         $handler->set_override('footer');
       }
-      $handler->set_option('footer', $imported->block_footer);
-      $handler->set_option('footer_format', $imported->block_footer_format);
+      if (!empty($imported->block_footer)) {
+        $handler->set_option('footer', $imported->block_footer);
+        $handler->set_option('footer_format', $imported->block_footer_format);
+      }
     }
     if (empty($imported->block_use_page_empty)) {
       if (!empty($imported->page)) {
         $handler->set_override('empty');
       }
-      $handler->set_option('empty', $imported->block_empty);
-      $handler->set_option('empty_format', $imported->block_empty_format);
+      if (!empty($imported->block_empty)) {
+        $handler->set_option('empty', $imported->block_empty);
+        $handler->set_option('empty_format', $imported->block_empty_format);
+      }
     }
 
-    $handler->set_option('more', $imported->block_more);
+    $handler->set_option('use_more', $imported->block_more);
 
     if (!empty($imported->page)) {
       $handler->set_override('style_plugin');
@@ -249,37 +302,50 @@ function views1_import($imported) {
   // then see if any other modules want to adapt it using hook_views_convert().
 
   foreach ($imported->field as $field) {
-    $id = $view->add_item('default', 'field', $field['tablename'], $field['field']);
+    $id = $view->add_item('default', 'field', $field['tablename'], $field['field'], array('label' => $field['label']));
     if ($view->display_handler->get_option('style_plugin') == 'table') {
       $options = $view->display_handler->get_option('style_options');
-      if (!empty($field['defaultsort'])) {
-        $options['default'] = $id;
-      }
       if (!empty($field['sortable'])) {
         $options['info'][$id]['sortable'] = TRUE;
+        if (!empty($field['defaultsort'])) {
+          $options['default'] = $id;
+        }
       }
       $view->display_handler->set_option('style_options', $options);
-    }
-
-    if (!empty($field['label'])) {
-    $item = $view->get_item('default', 'field', $id);
-      $item['label'] = $field['label'];
-      $view->set_item('default', 'field', $id, $item);
     }
     foreach (module_implements('views_convert') as $module) {
       module_invoke($module, 'views_convert', 'default', 'field', $view, $field, $id);
     }
   }
   foreach ($imported->sort as $field) {
-    $id = NULL;
-    if (views_get_handler($field['tablename'], $field['field'], 'sort')) {
-      $id = $view->add_item('default', 'sort', $field['tablename'], $field['field']);
-    }
+    $id = $view->add_item('default', 'sort', $field['tablename'], $field['field'], array('order' => $field['sortorder']));
     foreach (module_implements('views_convert') as $module) {
       module_invoke($module, 'views_convert', 'default', 'sort', $view, $field, $id);
     }
   }
-  foreach ($imported->argument as $field) {
+  $actions = array('ignore', 'not found', 'ignore', 'summary asc', 'summary asc', 'summary desc', 'summary asc', 'empty');
+  foreach ($imported->argument as $id => $field) {
+    if (!empty($imported->view_args_php)) {
+      $field['argoptions']['default_action'] = 'default';
+      $field['argoptions']['default_argument_type'] = 'php';
+      $field['argoptions']['default_argument_php'] = '$args = eval(\''. str_replace("'", "\\'", $imported->view_args_php) .'\');'."\n";
+      $field['argoptions']['default_argument_php'] .= 'if (isset($args['. $field['position'] .'])) {'."\n";
+      $field['argoptions']['default_argument_php'] .= '  return $args['. $field['position'] .'];'."\n";
+      $field['argoptions']['default_argument_php'] .= '}';
+      $field['argoptions']['validate_fail'] = $actions[$field['argdefault']];
+    }
+    else {
+      $field['argoptions']['default_action'] = $actions[$field['argdefault']];
+    }
+    if (!empty($field['title'])) {
+      $field['argoptions']['title'] = $field['title'];
+    }
+    if (!empty($field['wildcard'])) {
+      $field['argoptions']['wildcard'] = $field['wildcard'];
+    }
+    if (!empty($field['wildcard_substitution'])) {
+      $field['argoptions']['wildcard_substitution'] = $field['wildcard_substitution'];
+    }
     // Arguments didn't used to be identified by table.name so we just have to
     // leave that out.
     foreach (module_implements('views_convert') as $module) {
@@ -287,10 +353,8 @@ function views1_import($imported) {
     }
   }
   foreach ($imported->filter as $field) {
-    $id = NULL;
-    if (views_get_handler($field['tablename'], $field['field'], 'filter')) {
-      $id = $view->add_item('default', 'filter', $field['tablename'], $field['field']);
-    }
+    $options = $field['value'] == '' ? array() : array('value' => $field['value']);
+    $id = $view->add_item('default', 'filter', $field['tablename'], $field['field'], $options);
     foreach (module_implements('views_convert') as $module) {
       module_invoke($module, 'views_convert', 'default', 'filter', $view, $field, $id);
     }
@@ -301,7 +365,7 @@ function views1_import($imported) {
     list(, $id) = explode('.', $field['field'], 2);
     $item = $view->get_item('default', 'filter', $id);
     if (views_get_handler($item['table'], $item['field'], 'filter')) {
-      $item['exposed'] = 1;
+      $item['exposed'] = TRUE;
 
       // Use the count to emulate the old, hardcoded filter naming.
       $item['expose']['identifier'] = 'filter' . $count;
@@ -467,7 +531,7 @@ function views1_delete($arg) {
     return NULL;
   }
 
-  
+
 
   $result = db_query("DELETE FROM {view_sort} WHERE vid = $view->vid");
   $result = db_query("DELETE FROM {view_argument} WHERE vid = $view->vid");

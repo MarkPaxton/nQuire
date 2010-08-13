@@ -117,18 +117,6 @@ function pi_menu() {
 	return $items;
 }
 
-/**
- * hook_theme for the pi module, contains definitions for all the shared themes for nQuire
- */
-function pi_theme()
-{
-	return array(
-	'pi_region_sort_table' => array(
-		'arguments' => array('header', 'rows', 'regions', 'attributes'),
-		'file' => 'pi_region_sort_themes.inc')
-	);
-}
-
 function pi_nquire_admin() {
   $output = '';
   if(module_exists(pi_available_content_types)) {
@@ -435,7 +423,7 @@ function pi_get_all_group_nids() {
 		$group = node_load($id);
 		if($group->status)
 		{
-			$groups[$id] = $id;
+			$groups[] = $id;
 		}  		
 	}
 	return $groups;
@@ -443,8 +431,6 @@ function pi_get_all_group_nids() {
 
 
 /**
- * Get an array describing all groups defined as multiclass/class/group in nquire
- * array is indexed by group nid (aka gid) and contains an array of elements for group id and type 
  * @return array[nid] => array('nid', 'group_type') An array of arrays with group nids 
  * and group type defiend as class, multiclass, group and indexed by group nid
  * group type is indexed as 'group_type' 
@@ -509,233 +495,18 @@ function pi_get_group_nids_of_type($type)
 		}
 		else
 		{
-			drupal_set_message(t("Duplicate group definitions found for group #") . check_plain($id) . 
+			drupal_set_message(t("Duplicate group definitions found for group ") . check_plain($id) . 
 				t(" as type '") . check_plain($groups[$id]['group_type']) . "'.", 'warning');
 		}
 	}
 	return $groups;	
 }
 
-
-/**
- * Gets the heirarchy data for a particular group and returns it in an array
- * @param uint $group_id nid of the group to get heirarchy data from 
- * @return array('parent'=>NULL/nid, 'children' => array(nids))
- */
-function pi_get_group_hierarchy($group_id)
-{
-	$hierarchy = array('parent'=>NULL, 'children' => array());
-	
-	// First get the parent id and check for multiples
-	$query = "SELECT pgh_id, parent_gid FROM {pi_group_hierarchy} WHERE gid = %d ORDER BY pgh_id ASC";
-	$result = db_query($query, $group_id);
-	$result_rows = array();
-	$parent_id = NULL;
-	while($result_row = db_fetch_array($result))
-	{
-		$result_rows[$result_row['pgh_id']] = $result_row['parent_gid'];	
-		if($parent_id==NULL)
-		{
-			$parent_id = $result_row['parent_gid'];
-		}
-		else
-		{
-			$print_value = ($result_row['parent_gid'] == NULL) ? "NULL" : "#" . $result_row['parent_gid'];
-			drupal_set_message(t("Group #$group_id has more than one parent set, using first " . 
-				"one which is #$parent_id and not " . $print_value));			
-		}
-	}
-	$hierarchy['parent'] = $parent_id;
-	
-	//now get the child ids and put them into an array
-	$query = "SELECT pgh_id, gid FROM {pi_group_hierarchy} WHERE parent_gid = %d ORDER BY pgh_id ASC";
-	//pi_debug_message(sprintf($query, $group_id));
-	$result = db_query($query, $group_id);
-	$children = array();
-	$seen_children = array();
-	while($result_row = db_fetch_array($result))
-	{
-		if(in_array($result_row['gid'], $seen_children))
-		{
-			drupal_set_message(t("Group " . $result_row['gid'] . " has a duplicate hierarchy entry (" . $result_row['pgh_id'] . ")"));
-		}
-		else
-		{
-			$children[$result_row['pgh_id']] = $result_row['gid'];
-			$seen_children[] = $result_row['gid'];
-		}	
-	}
-	$hierarchy['children'] = $children;	
-	//pi_debug_message($children);
-	return $hierarchy;	
-}
-
-/**
- * Returns group heirarchy as defined in the pi_group_hewirarchy table in an array indexed by group node id, with another
- * array containing key/values for 'parent' as nid, 'children' array of nids and group_type from pi_group_types if set
- * @return array('gid' => array('parent'=>'gid', 'children'=>array('gid' ... ), 'group_type'=> string)
- */
-function pi_get_all_group_hierarchy_and_types()
-{
-	$return_data = array();
-	$query = "SELECT pgh.*, pi_group_type.type FROM {pi_group_hierarchy} AS pgh " . 
-			"LEFT JOIN {pi_group_type} as pi_group_type ON pi_group_type.gid = pgh.gid ORDER BY pgh.pgh_id ASC";
-	$result = db_query($query);
-	
-	// initialise an array to hold the ids of any parent nodes that have been added
-	// if the parent node isn'tr returned in the query it's type needs to be retreived afterwards	 
-	$parents_added = array();
-	
-	while($row = db_fetch_array($result))
-	{
-		$gid = $row['gid'];
-		if($gid!=null)
-		{
-			// Add the initial structure if it's not already been mentioned by another heirarchy entry
-			if(!array_key_exists($gid, $return_data))
-			{
-				$return_data[$gid] = array('children'=>array());
-			}
-			
-			// If this row has been pre-set from another row's parent data it can now be updated to contain the type
-			// information and removed from parents added array 
-			//(the remaining ones in here will be updated specifically at the end)
-			if(array_key_exists($gid, $parents_added))
-			{
-				unset($parents_added[$gid]);
-			}
-			
-			// if the group specifices a parent group nid that hasn't yet been seen, then add it to the results
-			if($row['parent_gid']!= NULL)
-			{
-				if(array_key_exists('parent', $return_data[$gid]))
-				{
-					if($return_data[$gid]['parent']!= $row['parent_gid'])
-					{
-						$message = "Group #$gid has more than one parent setting, using first " .
-								"one which is #" . $return_data[$gid]['parent'] . " and not #" . $row['parent_gid'];
-					}
-					else
-					{
-						$message = "Group #$gid has a duplicate parent setting for group #" . $return_data[$gid]['parent'];
-					}
-					drupal_set_message(t($message));
-				}
-				else
-				{
-					$return_data[$gid]['parent'] = $row['parent_gid'];
-
-					// Add it as a child to parent's children array
-					//Create the children array if needed
-					if(!array_key_exists($row['parent_gid'], $return_data))
-					{
-						$parents_added[] = $row['parent_gid'];
-						$return_data[$row['parent_gid']] = array('children'=>array());
-					}
-
-					if(in_array($gid, $return_data[$row['parent_gid']]['children']))
-					{
-						drupal_set_message(t("Group $gid has a duplicate hierarchy entry for belonging to " . $row['parent_gid']));
-					}
-					else
-					{
-						$return_data[$row['parent_gid']]['children'][] = $gid;
-					}
-				}
-			}
-			if(array_key_exists('group_type', $return_data[$gid]))
-			{
-				if($row['type']!= $return_data[$gid]['group_type'])
-				{
-					drupal_set_message(t("Group #$gid has conflicting type settings " .
-						"one which is " . $return_data[$gid]['group_type'] . " and not " . $row['type']));	
-				}
-			}
-			else
-			{
-				$return_data[$gid]['group_type'] = $row['type'];
-			}
-			foreach($parents_added as $gid)
-			{
-				$return_data[$gid]['group_type'] = pi_get_type_of_group($gid);
-			}
-		}
-	}
-	return $return_data;
-}
-
-/**
- * 
- * Fill the given parameters with arrays, one containing all groups, with title, parent, children and type data
- * the second an array of all the top level 'tree root' groups in sub arrays buy group type
- * @param $all_groups_by_id array(nid=>group data, ...)
- * @param $tree_roots array contaiing the ids of all the groups with no parents
- */
-function pi_get_group_data_and_root_groups(&$all_groups_by_id, &$tree_roots)
-{
-	// Get all the groups that are organised in pi_group_hierarchy
-	//array('gid' => array('parent'=>'gid', 'children'=>array('gid' ... ), 'group_type'=> string)
-	$groups_with_hierarchy = pi_get_all_group_hierarchy_and_types();
-
-	// Get all the groups that are defined as a type in pi_group_types
-	//  array(
-	// 'class' => 
-	//  	array('gid' => array('gid'=>'gid', 'group_type'=> string) ...)
-	// 'group' => 
-	//  	array('gid' => array('gid'=>'gid', 'group_type'=> string) ...)
-	//  .... etc
-	$groups_by_type = pi_get_defined_group_nids();
-	
-	//Create an array to hold pointers to all group info
-	$all_groups_by_id = array();
-	
-	// Organise the groups into ones with parents and no parents and sort by type
-	// also add the names of nodes/groups if they're available 
-	$tree_roots = array();	
-	foreach(array_keys($groups_by_type) as $group_type)
-	{
-		// this will be an array of group type, then an array of nids and a pointer to the group details
-		$tree_roots[$group_type] = array();
-		foreach(array_keys($groups_by_type[$group_type]) as $gid)
-		{
-			$all_groups_by_id[$gid] = &$groups_by_type[$group_type][$gid];
-		}
-	}
-		
-	// Create list of organised groups with pointers so groups_by_type and groups_by_id
-	//  work with the same data. 
-	// if a group had no type information (will be NULL) then set to 'none'
-	// Sort ids of all tree root organised groups (ones with no parents) into another array for listing
-	foreach($groups_with_hierarchy as $group_id => $group)
-	{
-		$group_type = $group['group_type'];
-		if($group_type==NULL)
-		{
-			$group_type = 'none';
-			$groups_with_hierarchy[$group_id]['group_type'] = $group_type;			
-		}
-		$groups_by_type[$group_type][$group_id] = &$groups_with_hierarchy[$group_id];	
-		$all_groups_by_id[$group_id] = &$groups_by_type[$group_type][$group_id];	
-	}
-	$groups_names = pi_authoring_get_names_from_nids(array_keys($all_groups_by_id));
-	foreach(array_keys($groups_by_type) as $group_type)
-	{
-		foreach($groups_by_type[$group_type] as $gid => $group)
-		{
-			$groups_by_type[$group_type][$gid]['title'] = $groups_names[$gid];			
-			if($groups_with_hierarchy[$gid]['parent'] == NULL)
-			{
-				$tree_roots[$group_type][] = $gid;				
-			}
-		}
-	}
-}
-
 /**
  * Returns an array containing the uids for the members of the group.
  * The group could be a group, class or multiclass.
  * @param uint $gid Group id to get members of
- * @return array(user) array of db_fetch_array indeced by id
+ * @return array(user) array of db_fetch_objects indeced by id
  */
 function pi_get_members_of_group($gid) {
 	$query = "SELECT uid FROM {og_uid} WHERE nid = %d";
@@ -753,17 +524,9 @@ function pi_get_members_of_group($gid) {
 	return $members;
 }
 
-/**
- * 
- * Return the type of the group as defined in pi_group_type
- * if the group type is not set it will return null
- * if the group has duplicate type definitions it will returnt the one with the lowest id
- * which is probably the original definition.
- * @param $gid group nid to get the type of
- * @return string group_type:{multiclass,class,group} or NULL
- */
+//this funciton needs to move to pi module
 function pi_get_type_of_group($gid) {
-	$query = "SELECT type FROM {pi_group_type} WHERE gid = %d ORDER BY pgt_id ASC";
+	$query = "SELECT type FROM {pi_group_type} WHERE gid = %d ";
 	$result = db_result(db_query($query, $gid));
 	return $result;
 }
@@ -1729,30 +1492,6 @@ function my_weight_compare($x, $y) {
 }
 
 /**
- * 
- * Sort an array of arrays by one of their elements - e.g. a list of set result rows to be 
- * sorted by a column.  Key and value associations are maintained.
- * @param $array Array of arrays to be sorted
- * @param $element the name of the array key to sort by
- */
-function pi_sort_arrays_by_element(&$array, $element)
-{
-	$return_array = array();
-	$element_array = array();
-	foreach($array as $key => $value)
-	{
-		$element_array[$key] = $value[$element];
-	}
-	asort($element_array);
-	foreach($element_array as $key)
-	{
-		$return_array[$key] = $array[$key];
-	}
-	$array = $return_array;
-}
-
-
-/**
  * This is a utility function to merge two content item lists which have '#weight' elements
  * e.g. item[x]['#weight'].  Weight elements in the second list are ignored and this list is
  * appended to the ordrered items in their default order.
@@ -1855,31 +1594,6 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	}
 	return $sorted_items;
 }
-
-/**
- * This function takes a flattened array of items and groups them into arrays accouting to 
- * the values of group_field
- * @param array or array $items items to sort
- * @param string $group_field the field of the array by which to group items
- * @return a nested array, first index is the value of $items['group_field'] and the second index the current
- * key of $item. 
- * array('group_field1' => array ('id'=>array(value=>'value, group_field=>'group_field1', .), .. )...)
- */
-function pi_create_grouped_item_list($items, $group_field)
-{
-	$return_array=array();
-	foreach($items as $key => $item)
-	{
-		$group_key = $item[$group_field];
-		if(!array_key_exists($group_key, $return_array))
-		{
-			$return_array[$group_key]=array();		
-		}
-		$return_array[$group_key][$key] = $item; 
-	}
-	return $return_array;
-}
-
 
 
 /**

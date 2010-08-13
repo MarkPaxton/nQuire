@@ -1,6 +1,6 @@
 <?php
 
-// $Id: quiz_question.core.inc,v 1.1.2.2 2009/05/21 19:02:13 sivaji Exp $
+// $Id: quiz_question.core.inc,v 1.1.2.4 2009/08/26 08:22:47 falcon Exp $
 
 /**
  * Classes used in the Quiz Question module.
@@ -137,7 +137,7 @@ interface QuizQuestionResponse {
    * @param $answer
    *  The answer (dependent on question type).
    */
-  public function __construct($rid, $question, $answer);
+  public function __construct($rid, $question, $answer = NULL);
 
   /**
    * Save the current response.
@@ -186,7 +186,7 @@ interface QuizQuestionResponse {
    * @return
    *  An HTML string.
    */
-  public function formatReport($showPoints, $showFeedback);
+  public function formatReport($showPoints = TRUE, $showFeedback = TRUE);
 
   /**
    * Get the integer score.
@@ -210,7 +210,7 @@ interface QuizQuestionResponse {
  * A base implementation of QuizQuestionResponse.
  *
  */
-abstract class AbstractQuizQuestionResponse {
+abstract class AbstractQuizQuestionResponse implements QuizQuestionResponse{
   // These are only public until we can
   // adjust all of Quiz. DO NOT EXPECT THESE
   // TO BE ACCESSIBLE!

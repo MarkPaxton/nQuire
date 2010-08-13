@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz.admin.inc,v 1.2.2.29 2009/06/03 19:57:42 mbutcher Exp $
+// $Id: quiz.admin.inc,v 1.2.2.35 2010/04/05 10:44:00 sivaji Exp $
 
 /**
  * Administrator interface for Quiz module.
@@ -138,7 +138,7 @@ function quiz_questions_form($context, $quiz) {
   // Display questions 'always' on this quiz.
   $form['filtered_question_list_always'] = array(
     '#type' => 'fieldset',
-    '#title' => t("Questions always on this quiz"),
+    '#title' => t('Questions always on this quiz'),
  //   '#theme' => 'quiz_filtered_questions',
     '#theme' => 'question_selection_table',
     '#collapsible' => TRUE,
@@ -185,7 +185,7 @@ function quiz_questions_form($context, $quiz) {
   // Display questions 'random' on this quiz.
   $form['filtered_question_list_random'] = array(
     '#type' => 'fieldset',
-    '#title' => t("Pool of questions randomly selected for this quiz"),
+    '#title' => t('Pool of questions randomly selected for this quiz'),
     '#theme' => 'question_selection_table',
     '#collapsible' => TRUE,
     '#collapsed' => FALSE, // Setting this to TRUE breaks tableDrag. What a drag.
@@ -315,6 +315,9 @@ function quiz_questions_form_validate($form, $form_state) {
   $placeholders = db_placeholders($question_types, 'varchar');
   $sql = 'SELECT COUNT(nid) FROM {node} WHERE type IN (' . $placeholders . ') AND nid = %d';
   $already_checked = array();
+  if (empty($form_state['values']['weights'])) {
+    return;
+  }
   foreach ($form_state['values']['weights'] as $id => $weight) {
     if (in_array($id, $removed)) {
       // Ignore items that are going to be removed anyway.
@@ -542,9 +545,9 @@ function quiz_admin_settings() {
 
   $form['quiz_global_settings']['quiz_email_results'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Enable Sending Quiz Results to User Email ID', array('@quiz' => strtolower(QUIZ_NAME))),
+    '#title' => t('E-mail users their quiz results at the end of a quiz.', array('@quiz' => strtolower(QUIZ_NAME))),
     '#default_value' => variable_get('quiz_email_results', 1),
-    '#description' => t('Check this to send users quiz results over email at the end of quiz.')
+    '#description' => t('Check this to send users quiz results over email at the end of a quiz.')
   );
 
 
@@ -572,6 +575,7 @@ function quiz_admin_settings() {
     '#type' => 'select',
     '#title' => t('Remove Incomplete Quiz Records (older than)'),
     '#options' => quiz_remove_partial_quiz_record_value(),
+    '#default_value' => variable_get('quiz_remove_partial_quiz_record', '0'),
     '#description' => t('Number of days that you like to keep the incomplete quiz records'),
   );
 
@@ -702,12 +706,12 @@ function quiz_admin_result_delete_form() {
 }
 
 function quiz_admin_result_delete_form_submit($form, &$form_state) {
+  $nid = db_result(db_query("SELECT nid FROM {quiz_node_results} WHERE result_id = %d",$form_state['values']['del_rid']));
   db_query("DELETE FROM {quiz_node_results} WHERE result_id = %d", $form_state['values']['del_rid']);
   db_query("DELETE FROM {quiz_node_results_answers} WHERE result_id = %d", $form_state['values']['del_rid']);
-  drupal_set_message(t('Result.'));
-  //$form_state['redirect'] = 'admin/quiz/results';
-  $form_state['redirect'] = 'admin/quiz/reports/results';
-  $form_state['nid'] = $node->nid;
+  drupal_set_message(t('Result has been Deleted.'));
+  $form_state['redirect'] = 'admin/quiz/'. intval($nid) .'/view';
+  $form_state['nid'] = $nid;
 }
 
 
@@ -760,26 +764,31 @@ function theme_quiz_admin_quizzes($results) {
  */
 function theme_quiz_admin($results) {
   $output = '';
-  $rows = array();
-
+  $current = current($results);
+  drupal_set_title(t('@current Results', array('@current' => check_plain($current['title']))));
   while (list($key, $result) = each($results)) {
     $rows[] = array(
-      l(t('View'), 'admin/quiz/reports/' . $result['result_id'] . '/results') . ' | ' . l(t('Delete'), 'admin/quiz/' . $result['result_id'] . '/delete'),
-      check_plain($result['title']),
+      l(theme('image', drupal_get_path('module', 'quiz') . '/images/view.png', t('View')), 'admin/quiz/reports/' . $result['result_id'] . '/results', array('html' => TRUE)) . ' | ' . l(theme('image', drupal_get_path('module', 'quiz') . '/images/delete.png', t('View')), 'admin/quiz/' . $result['result_id'] . '/delete', array('html' => TRUE)),
+      //check_plain($result['title']),
       check_plain($result['name']),
       $result['result_id'],
       format_date($result['time_start'], 'small'),
       ($result['time_end'] > 0) ? format_date($result['time_end'], 'small') : t('In Progress'),
+      //($result['time_end'] > 0) ? date('i:s', $result['time_end']) - date('i:s', $result['time_start']) : 0,
+      ($result['time_end']) ? $result['score'] : t('In Progress'),
     );
   }
 
   $header = array(
     t('Action'),
-    t('@quiz Title', array('@quiz' => QUIZ_NAME)),
+    //t('@quiz Title', array('@quiz' => QUIZ_NAME)),
     t('Username'),
     t('Result<br />ID'),
     t('Time Started'),
-    t('Finished?'));
+    t('Finished?'),
+    //t('Time Taken <br /> (in sec)'),
+    t('Score'),
+  );
 
   if (!empty($rows)) {
     $output .= theme('table', $header, $rows);
@@ -816,7 +825,10 @@ function theme_quiz_admin_summary($quiz, $questions, $score, $summary) {
 
   // Display overall result.
   $output = '';
-  $params = array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score']);
+  $params = array(
+    '%num_correct' => $score['numeric_score'],
+    '%question_count' => $score['possible_score'],
+  );
   $output .= '<div id="quiz_score_possible">'. t('This person got %num_correct of %question_count possible points.', $params) .'</div>'."\n";
   $output .= '<div id="quiz_score_percent">'. t('Total score: @score%', array('@score' => $score['percentage_score'])) .'</div><br />'."\n";
   $output .= '<div id="quiz_summary">'. check_markup($summary, $quiz->format) .'</div><br />'."\n";

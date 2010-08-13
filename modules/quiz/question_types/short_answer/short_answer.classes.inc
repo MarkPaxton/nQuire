@@ -1,6 +1,6 @@
 <?php
 
-// $Id: short_answer.classes.inc,v 1.1.2.3 2009/06/03 19:57:43 mbutcher Exp $
+// $Id: short_answer.classes.inc,v 1.1.2.5 2009/12/09 10:44:19 sivaji Exp $
 
 /**
  * The main classes for the short answer question type.
@@ -337,19 +337,22 @@ class ShortAnswerResponse extends AbstractQuizQuestionResponse {
     $this->score = $score;
     return $score;
   }
+
   public function isCorrect() {
     $possible = _quiz_question_get_instance($this->question)->getMaximumScore();
     $actual = $this->score;
-
+    // To prevent Division by zero warning
+    $possible = ($possible == 0) ? 1 : $possible;
     return (($actual / $possible) > 0.5);
   }
+
   public function getResponse() {
     return $this->answer;
   }
 
   public function formatReport($showpoints = TRUE, $showfeedback = TRUE) {
 
-    $slug = '<div class="quiz_summary_question"><span class="quiz_question_bullet">Q:</span> '.
+    $slug = '<div class="quiz_summary_question"><span class="quiz_question_bullet">'. t('Q:') . '</span> '.
       check_markup($this->question->body) .
       '</div>';
 

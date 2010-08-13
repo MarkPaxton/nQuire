@@ -1,6 +1,6 @@
 <?php
 
-// $Id: quiz_question.truefalse.inc,v 1.1.2.6 2009/06/03 19:57:43 mbutcher Exp $
+// $Id: quiz_question.truefalse.inc,v 1.1.2.9 2010/03/03 13:20:53 sivaji Exp $
 
 /**
  * Defines the classes necessary for a True/False quiz.
@@ -89,7 +89,7 @@ class TrueFalseQuestion implements QuizQuestion {
         0 => t('False'),
       ),
       //'#default_value' => 1,
-      '#required' => TRUE,
+      '#required' => FALSE,
     );
 
 
@@ -153,10 +153,8 @@ class TrueFalseResponse extends AbstractQuizQuestionResponse {
   public function __construct($rid, $question, $answer = NULL) {
     $this->rid = $rid;
     $this->question = $question;
-
     if (!isset($answer)) {
-      $sql = "SELECT answer, score FROM {quiz_truefalse_user_answers} WHERE question_vid = %d AND result_id = %d";
-      $r = db_fetch_object(db_query($sql, $question->vid, $rid));
+      $r = $this->getCorrectAnswer();
       if (!empty($r)) {
         $this->answer = $r->answer;
         $this->score = $r->score;
@@ -168,22 +166,32 @@ class TrueFalseResponse extends AbstractQuizQuestionResponse {
   }
 
   public function save() {
-    $sql = "INSERT INTO {quiz_truefalse_user_answers} (question_nid, question_vid, result_id, answer, score)
-      VALUES (%d, %d, %d, %d, %d)";
+    $sql = "INSERT INTO {quiz_truefalse_user_answers} (question_nid, question_vid, result_id, answer, score) VALUES (%d, %d, %d, %d, %d)";
     db_query($sql, $this->question->nid, $this->question->vid, $this->rid, (int)$this->answer, (int)$this->score);
   }
+
   public function delete() {
-    $sql = 'DELETE FROM {quiz_truefalse_user_answers} WHERE question_nid = %d AND question_vid = %d AND result_id = %d';
+    $sql = "DELETE FROM {quiz_truefalse_user_answers} WHERE question_nid = %d AND question_vid = %d AND result_id = %d";
     db_query($sql, $this->question->nid, $this->question->vid, $this->rid);
   }
+
   public function score() {
     $tfQuestion = new TrueFalseQuestion($this->question);
-    $this->score = (int)($this->getResponse() == $tfQuestion->getCorrectAnswer());
+    $this->score = ($this->getResponse() == $tfQuestion->getCorrectAnswer()) ? 1 : 0;
     return $this->score;
   }
 
   public function getResponse() {
+    if (!isset($this->answer)) {
+      $correct_answer = $this->getCorrectAnswer();
+      $this->answer = $correct_answer->answer;
+    }
     return $this->answer;
+  }
+
+  public function getCorrectAnswer() {
+    $sql = "SELECT answer, score FROM {quiz_truefalse_user_answers} WHERE question_vid = %d AND result_id = %d";
+    return db_fetch_object(db_query($sql, $this->question->vid, $this->rid));
   }
 
   public function formatReport($showpoints = TRUE, $showfeedback = TRUE) {
@@ -214,7 +222,7 @@ class TrueFalseResponse extends AbstractQuizQuestionResponse {
     }
 
     // Add the cell with the question and the answers.
-    $q_output = '<div class="quiz_summary_question"><span class="quiz_question_bullet">Q:</span> '. check_markup($this->question->body, $this->question->format) .'</div>';
+    $q_output = '<div class="quiz_summary_question"><span class="quiz_question_bullet">'. t('Q:') . '</span> '. check_markup($this->question->body, $this->question->format) .'</div>';
     $q_output .= theme('table', $innerheader, $rows) .'<br />';
     return $q_output;
   }

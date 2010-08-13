@@ -1,5 +1,5 @@
 <?php
-// $Id: matching.classes.inc,v 1.1.2.12 2009/06/03 19:57:43 mbutcher Exp $
+// $Id: matching.classes.inc,v 1.1.2.20 2010/01/03 17:52:30 sivaji Exp $
 /**
  * quiz_directions.classes
  *
@@ -92,24 +92,20 @@ class MatchingQuestion implements QuizQuestion {
   // This is called whenever a question is rendered, either
   // to an administrator or to a quiz taker.
   public function getQuestionForm($node, $context = NULL) {
+    $form = array();
+    $form['question'] = array(
+      '#type' => 'markup',
+      '#value' => check_markup($this->node->body, $this->node->format, FALSE),
+    );
     list($questions, $select_option) = $this->getQuestion($node);
-     /* $form['tries'] = array(
-      '#type' => 'hidden',
-      '#value' => 1
-    ); */
-
     foreach ($questions as $question) {
-      //srand((float)microtime() * 1000000);
-      //shuffle($select_option);
-      //print_r($select_option);
-      // yes we need this dirty form index to get users answers as as array to $_POST['tries'].
-      $form['tries[' . $question['match_id'] . ']'] = array(
+      $form['subquestion']['tries[' . $question['match_id'] . ']'] = array(
         '#type' => 'select',
         '#title' => $question['question'],
         '#options' => $this->customShuffle($select_option),
       );
     }
-    return $this->customShuffle($form);
+    return array($form['question'], $this->customShuffle($form['subquestion']));
   }
 
   public function customShuffle($array = array()) {
@@ -143,8 +139,8 @@ class MatchingQuestion implements QuizQuestion {
       '#type' => 'fieldset',
       '#title' => t('Matching Settings'),
       '#description' => t('Matching Questions Settings and Configuration'),
-      'collapsible' => TRUE,
-      'collapsed' => TRUE,
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
     );
     $form['matching']['quiz_matching_form_size'] = array(
       '#type' => 'textfield',
@@ -159,7 +155,7 @@ class MatchingQuestion implements QuizQuestion {
 
     $form['match'] = array(
       '#type' => 'fieldset',
-      '#title' => t('Match Question')
+      '#title' => t('Match Question'),
     );
 
     for ($i = 1; $i <= variable_get('quiz_matching_form_size', 5); ++$i) {
@@ -194,7 +190,7 @@ class MatchingQuestion implements QuizQuestion {
         '#type' => 'textarea',
         '#title' => t('Feedback / Reason'),
         '#rows' => 2,
-        '#default_value' => isset($feeback) ? $feeback : ''
+        '#default_value' => isset($feedback) ? $feedback : ''
       );
     }
     return $form;
@@ -253,22 +249,22 @@ class MatchingResponse extends AbstractQuizQuestionResponse {
   }
 
   public function score() {
-    //$MatchingQuestion = new MatchingQuestion($this->question);
-    //$correct_answers = $MatchingQuestion->getCorrectAnswer();
+    $wrong_answer = 0;
     $user_answers = isset($this->answer) ? $this->answer : $this->getUserAnswers();
-    //print_r($correct_answers);
-    //echo "-------------------------\n\n\n";
     foreach ($user_answers as $key => $value) {
-      $this->score = ($key == $value) ? 1 : 0;
+      if ($key != $value) {
+        $wrong_answer++;
+      }
     }
+    $this->score = (!empty($user_answers) && !$wrong_answer) ? 1 : 0;
     return $this->score;
   }
 
-  /*
-    public function getResponse() {
-      return $this->answer;
+
+  public function getResponse() {
+    return $this->answer;
   }
-  */
+
 
   public function getUserAnswers() {
     $user_answers = array();
@@ -329,7 +325,7 @@ class MatchingResponse extends AbstractQuizQuestionResponse {
     //}
 
     // Add the cell with the question and the answers.
-    $q_output = '<div class="quiz_summary_question"><span class="quiz_question_bullet">Q:</span> '. check_markup($this->question->body) .'</div>';
+    $q_output = '<div class="quiz_summary_question"><span class="quiz_question_bullet">'. t('Q:') . '</span> '. check_markup($this->question->body) .'</div>';
     $q_output .= theme('table', $innerheader, $rows) .'<br />';
     return $q_output;
   }
