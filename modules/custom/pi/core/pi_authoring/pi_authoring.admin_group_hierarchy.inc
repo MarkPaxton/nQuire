@@ -3,6 +3,9 @@
  *  @file PI authoring functions - hierarchy editing pages
  */
 
+/**
+ * Generate a list of all groups defined in nQuire and show them in a tree based on group hierarchy.
+ */
 function pi_authoring_admin_group_hierarchy_view() {
 	$output = '<p>' . t('Use this page to assign your groups into their respective parents: e.g. all the Year 10 classes into the Year 10 group.  ' .
 	"If there are no groups listed, you need to create some using the Groups menu item, then categorise them on the nQurire groups page.</p>");
@@ -28,6 +31,14 @@ function pi_authoring_admin_group_hierarchy_view() {
 	return $output;
 }
 
+function pi_authoring_admin_group_hierarchy_edit() {
+	$output = ''; 
+	$output .= drupal_get_form('pi_authoring_admin_group_hierarchy_form');
+	return $output;
+}
+
+
+
 function pi_authoring_admin_group_hierarchy_form($form_state)
 {
 	$form = array();
@@ -52,6 +63,148 @@ function pi_authoring_admin_group_hierarchy_form($form_state)
 		'none' => t('Groups not categorised')
 	);
 	
+	$multiclass_groups = pi_get_group_nids_of_type('multiclass');
+	$class_groups = pi_get_group_nids_of_type('class');
+	$group_groups = pi_get_group_nids_of_type('group');
+	$undefined_groups = array();
+	// Collect together all groups that are not yet allocated group types
+	foreach(array_keys($all_groups_by_id) as $gid)
+	{
+		if(!(array_key_exists($gid, $multiclass_groups) ||
+			array_key_exists($gid, $class_groups) || 
+			array_key_exists($gid, $group_groups)))
+		{
+			$undefined_groups[] = $gid;
+		}
+	}
+	$undefined_names = pi_authoring_get_names_from_nids($undefined_groups);
+	if(count($undefined_groups)>0)
+	{
+		drupal_set_message(t('Some groups have not yet been defined as multiclass, class or group; please do this before sorting them.'));
+	}
+
+	//Add 'none' groups for items that don't have parents (but should)
+	$all_groups_by_id['multiclass-null'] = array(
+		'title'=>'No multiclass', 
+		'group_type'=>'multiclass',
+		'parent' => null,
+		'children' => $tree_roots['class']
+	);
+	
+	$all_groups_by_id['class-null'] = array(
+		'title'=>'No class',
+		'group_type'=>'class',
+		'parent' => 'multiclass-null',
+		'children' => $tree_roots['group']
+	);
+	
+	//This drops 'none' grouped items into the above placeholder multiclass/class items
+	// and adds those placeholder items to the form data structure
+	$form_data_structure = array();
+	foreach($tree_roots['multiclass'] as $multiclass_group_id)
+	{		
+		$form_data_structure[] = $multiclass_group_id;
+	}
+	
+	foreach($tree_roots['class'] as $class_group_id)
+	{		
+		//$form_data_structure[] = $class_group_id;
+		$all_groups_by_id[$class_group_id]['parent'] = 'multiclass-null';
+	}
+	$form_data_structure[] = 'multiclass-null';
+	
+	foreach($tree_roots['group'] as $group_group_id)
+	{		
+		//$form_data_structure[] = $group_group_id;
+		$all_groups_by_id[$group_group_id]['parent'] = 'class-null';
+	}
+	$form_data_structure[] = 'class-null';
+	
+	// Finally generate the group hierarchy for the form data structure
+	$group_hierarchy = pi_authoring_generate_child_list($form_data_structure, $all_groups_by_id);
+
+	// These are the region options for the respective subgroups (
+	//  e.g multiclass groups for class groups to be put in)
+	$multiclass_options = array();
+	foreach(array_keys($multiclass_groups) as $nid)
+	{
+		$multiclass_options[$nid] = $all_groups_by_id[$nid]['title'];		
+	}
+	$multiclass_options['multiclass-null'] = $all_groups_by_id['multiclass-null']['title'];
+	
+	$class_options = array();
+	foreach(array_keys($class_groups) as $nid)
+	{
+		$class_options[$nid] = $all_groups_by_id[$nid]['title'];		
+	}
+	$class_options['class-null'] = $all_groups_by_id['class-null']['title'];
+	
+	$form['group_hierarchy'] = array('#tree'=>TRUE);
+	
+	/* Top level : Multiclass */
+	// Set up a region for each multiclass group
+	foreach($group_hierarchy as $multiclass_group_nid => $multiclass_decendants)
+	{
+		$form['group_hierarchy'][$multiclass_group_nid] = array('#tree'=>TRUE);
+		/* Second level: Class */
+		foreach($multiclass_decendants as $multiclass_child_nid => $multiclass_child_decendants)
+		{
+			$form['group_hierarchy'][$multiclass_group_nid][$multiclass_child_nid] = array();
+			//Use a pointer to keep things readable
+			$class_form_element = &$form['group_hierarchy'][$multiclass_group_nid][$multiclass_child_nid];
+			
+			$class_form_element['title'] = array(
+				'#value' => $all_groups_by_id[$multiclass_child_nid]['title']
+			);
+
+			$class_form_element['description'] = array(
+				'#value' => 'Test'
+			);
+			
+			
+			$class_form_element['region'] = array(
+				'#type'          => 'select',
+				'#default_value' => $multiclass_group_nid,
+				'#options' => $multiclass_options
+			);
+			
+			$class_form_element['weight'] = array(
+				'#type'          => 'weight',
+				'#delta'         => count($class_groups),
+				'#default_value' => count($form['group_hierarchy'][$multiclass_group_nid]),
+			);
+			
+			/* Third (last) level: Groups */
+	/*		$class_decendants = pi_authoring_generate_child_list($all_groups_by_id[$multiclass_child_nid]['children'], $all_groups_by_id);
+			$form['group_heirarchy'][$multiclass_group_nid]['children'][$multiclass_child_nid]['children'] = array();
+			foreach(array_keys($class_decendants) as $class_child_nid)
+			{
+				$class_form_element['children'][$class_child_nid] = array();
+				//Another pointer to keep code readable
+				$group_form_element = &$class_form_element['children'][$class_child_nid];
+				
+				$group_form_element['title'] = array(
+					'#value' => $all_groups_by_id[$class_child_nid]['title']
+				);
+								
+				$group_form_element['region'] = array(
+					'#type'          => 'select',
+					'#default_value' => $multiclass_child_nid,
+					'#options' => $class_options
+				);
+				
+				$group_form_element['weight'] = array(
+					'#type'          => 'weight',
+					'#delta'         => count($group_groups),
+					'#default_value' => count($group_form_element['children']),
+				);
+			}*/
+		}
+	}
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+	);
 	return $form;
 }
 
@@ -83,11 +236,11 @@ function pi_authoring_get_names_from_nids($nids)
 	return $return_data;
 } 
 
-/*
+/**
  * Create a list of groups and subgroups ids using the group hierarchy in $defined groups
  * and the names of the nodes - groups with children will be recursively traversed
- * @param arrauy(uint) $children array of nids of child nodes
- * @param array() $groups_with_hierarchy array of group hierarchy data indexed by nid.
+ * @param array $parents array of nids
+ * @param array $groups_with_hierarchy pointer to array of group hierarchy data indexed by nid
  * @return array($nid=>array(...)) array with key parent nid and value null or array if it has children
  */
 function pi_authoring_generate_child_list($parents, &$group_data)
@@ -162,18 +315,83 @@ function pi_authoring_render_group_tree($group_list, &$group_data)
 	return $rows_to_return;
 }
 
+function pi_authoring_admin_group_hierarchy_elements($group_list, &$group_data)
+{
+	$form_data = array();
+	
+	
+	return $form_data;
+}
+
 
 function theme_pi_authoring_admin_group_hierarchy_form($form)
 {
-	$output  ='';
-	$output .= drupal_render($form);
+	$output = '';
+		
+	// Create the region and the rows for the region sort form
+	$group_heirarchy_elements = &$form['group_hierarchy'];
+	
+	// Region-sort form header
+	$header = array(	array( 'theading' => t('Group'), 'class' => '' ),
+						array( 'theading' => t('Description'), 'class' => '' ),
+						array( 'theading' => t('Group Type'), 'class' => 'sort_theading_region' ),
+						array( 'theading' => t('Weight'), 'class' => 'sort_theading_weight' )
+	);
+	
+	$rows = array();	
+	foreach (element_children($group_heirarchy_elements) as $region)
+	{
+		foreach (element_children($group_heirarchy_elements[$region]) as $key => $element)
+		{
+			$group_heirarchy_elements[$region][$key]['weight']['#attributes']['class'] = 'sort_list-weight sort_list-weight-'. $region;
+			$group_heirarchy_elements[$region][$key]['region']['#attributes']['class'] = 'sort_list-region-select sort_list-region-'. $region;
+
+			$group_heirarchy_elements[$region][$key]['title'] = drupal_render($tree[$region][$key]['title']);
+			$group_heirarchy_elements[$region][$key]['description'] = drupal_render($tree[$region][$key]['description']);
+			
+			$group_heirarchy_elements[$region][$key]['region'] = drupal_render($tree[$region][$key]['region']);
+			$group_heirarchy_elements[$region][$key]['weight'] = drupal_render($tree[$region][$key]['weight']);
+
+			$rows[] = drupal_render($group_heirarchy_elements[$region][$key]);
+		}
+	}
+
+	if(count($rows) == 0)
+	{
+		drupal_set_message(t("No groups available to organise, check they have been set up correctly."));
+	}
+	else
+	{
+		$regions = array();
+		$names = pi_authoring_get_names_from_nids(element_children($form['group_hierarchy']));
+		
+		foreach($names as $group_id => $details)
+		{
+			switch($group_id)
+			{
+				case 'multiclass-null':
+					$regions[$group_id] = 'multiclass-null';
+					break;
+				case 'class-null':
+					$regions[$group_id] = 'class-null';
+					break;
+				default:
+					$regions[$group_id] = $details['title'];
+			}
+		}
+		// $output .= theme('table', $header, $rows, array('id' => 'measures_list'));
+		$output .= theme('pi_region_sort_table', $header, $rows, $regions, array('id' => 'sort_list'));
+		$output .= drupal_render($form);
+	}
+	
 	return $output;
 }
 
+
 /**
  * 
- * Theme function to render the group heirarchy
- * @param $group_order array with group names as key and values as desriptions of each group type 
+ * Theme function to render the group hierarchy
+ * @param $group_order array with group names as key and values as descriptions of each group type 
  * @param $group_list_by_type
  * @param $all_groups
  */
