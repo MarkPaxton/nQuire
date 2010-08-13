@@ -1,6 +1,6 @@
 <?php
-/** @file Theme functions for sortable regions forms within nQuire
- * 
+/** 
+ * @file Theme functions for sortable regions forms within nQuire
  */
 
 
@@ -21,7 +21,6 @@ function theme_pi_region_sort_table($header, $rows, $regions, $attributes) {
 
 	foreach (array_keys($regions) as $region)
 	{
-		//drupal_add_tabledrag('sort_list', 'match', 'sibling', 'sort_list-element', 'sort_list-region-' . $region, NULL, FALSE);
 		drupal_add_tabledrag('sort_list', 'match', 'sibling', 'sort_list-region-select', 'sort_list-region-' . $region, NULL, FALSE);
 		drupal_add_tabledrag('sort_list', 'order', 'sibling', 'sort_list-weight', 'sort_list-weight-' . $region, NULL, FALSE);
 	}
