@@ -11,24 +11,43 @@
  * Implementation of pi_hypothesis_conclusion_install().
  */
 function pi_hypothesis_conclusion_install() {
-  // Create tables.
-  drupal_install_schema('pi_hypothesis_conclusion');
+	// Create tables.
+	drupal_install_schema('pi_hypothesis_conclusion');
+
+	variable_set("og_content_type_usage_pi_hypothesis", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_hypothesis", array('status','revision'));
+	variable_set("comment_pi_hypothesis", COMMENT_NODE_DISABLED);
+	variable_set("uploadpi_hypothesis", 0);
+	
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_hypothesis_conclusion'] = 'Hypothesis conclusion';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_hypothesis_conclusion_uninstall().
  */
 function pi_hypothesis_conclusion_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_hypothesis_conclusion');
-  variable_del('pi_hypothesis_conclusion');
+	// Remove tables.
+	drupal_uninstall_schema('pi_hypothesis_conclusion');
+	variable_del("pi_hypothesis_conclusion");
+	
+	variable_del("og_content_type_usage_pi_hypothesis_conclusion");
+	variable_del("node_options_pi_hypothesis_conclusion");
+	variable_del("comment_pi_hypothesis_conclusion");
+	variable_del("upload_pi_hypothesis_conclusion");
+	
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_hypothesis_conclusion'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_hypothesis_conclusion_schema().
  */
 function pi_hypothesis_conclusion_schema() {
-  $schema['pi_hypothesis_conclusion'] = array(
+	$schema['pi_hypothesis_conclusion'] = array(
     'description' => 'PI hypothesis conclusion.',
     'fields' => array(
       'nid' => array(
@@ -38,7 +57,7 @@ function pi_hypothesis_conclusion_schema() {
         'not null' => TRUE,
         'size' => 'small',
         'default' => 0,
-      ),
+	),
       'vid' => array(
         'description' => t('The current vid version identifier'),
         'type' => 'int',
@@ -46,20 +65,20 @@ function pi_hypothesis_conclusion_schema() {
         'not null' => TRUE,
         'size' => 'small',
         'default' => 0,
-      ),
+	),
       'conclusion' => array(
         'description' => t('Hypothesis conclusion text'),
         'type' => 'text',
         'size' => 'normal',
         'not null' => TRUE,
-      ),
-    ),
+	),
+	),
     'primary key' => array('vid'),
     'indexes' => array(
       'nid' => array('nid'),
-    ),
-  );
-  
-  return $schema;
+	),
+	);
+
+	return $schema;
 
 }

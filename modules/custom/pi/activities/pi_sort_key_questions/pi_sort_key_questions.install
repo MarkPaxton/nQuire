@@ -5,29 +5,48 @@
 /**
  * Implementation of pi_sort_key_questions_install().
  */
- 
+
 function pi_sort_key_questions_install() {
-  // Create tables.
-  drupal_install_schema('pi_sort_key_questions');
+	// Create tables.
+	drupal_install_schema('pi_sort_key_questions');
+
+	variable_set("og_content_type_usage_pi_sort_key_questions", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_sort_key_questions", array('status','revision'));
+	variable_set("comment_pi_sort_key_questions", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_sort_key_questions", 0);
+
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_sort_key_questions'] = 'Sort key questions';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_sort_key_questions_uninstall().
  */
- 
+
 function pi_sort_key_questions_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_sort_key_questions');
-  variable_del('pi_sort_key_questions');
+	// Remove tables.
+	drupal_uninstall_schema('pi_sort_key_questions');
+	variable_del('pi_sort_key_questions');
+
+	variable_del("og_content_type_usage_pi_sort_key_questions");
+	variable_del("node_options_pi_sort_key_questions");
+	variable_del("comment_pi_sort_key_questions");
+	variable_del("upload_pi_sort_key_questions");
+
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_key_answers'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_sort_key_questions_schema().
  */
- 
+
 function pi_sort_key_questions_schema() {
 
-  $schema['pi_sort_key_questions'] = array(
+	$schema['pi_sort_key_questions'] = array(
     'description' => t('PI draggable key questions'),
     'fields' => array(
       'nid' => array(
@@ -35,25 +54,22 @@ function pi_sort_key_questions_schema() {
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'vid' => array(
         'description' => t('The current vid version identifier'),
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'key_question' => array(
         'description' => t('The nid of a key question'),
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'weight' => array(
         'description' => t('The position of the key question'),
         'type' => 'int',
@@ -61,14 +77,14 @@ function pi_sort_key_questions_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ), 
-    ),
+	),
+	),
     'indexes' => array(
       'nid' => array('nid'),
       'vid' => array('vid'),
-    ),
-  );
-  
-  return $schema;
+	),
+	);
+
+	return $schema;
 
 }

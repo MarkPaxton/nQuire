@@ -1,5 +1,5 @@
 <?php
-// $Id: node.views.inc,v 1.93 2009/04/08 20:54:57 merlinofchaos Exp $
+// $Id: node.views.inc,v 1.97.2.7 2010/03/25 01:14:22 merlinofchaos Exp $
 /**
  * @file
  * Provide views data and handlers for node.module
@@ -228,6 +228,9 @@ function node_views_data() {
     'field' => array(
       'handler' => 'views_handler_field_boolean',
       'click sortable' => TRUE,
+      'output formats' => array(
+        'sticky' => array('', t('Sticky')),
+      ),
     ),
     'filter' => array(
       'handler' => 'views_handler_filter_boolean_operator',
@@ -236,6 +239,7 @@ function node_views_data() {
     ),
     'sort' => array(
       'handler' => 'views_handler_sort',
+      'help' => t('Whether or not the node is sticky. To list sticky nodes first, set this to descending.'),
     ),
   );
 
@@ -264,6 +268,15 @@ function node_views_data() {
       'handler' => 'views_handler_field_node_link_delete',
     ),
   );
+
+  $data['node']['path'] = array(
+    'field' => array(
+      'title' => t('Path'),
+      'help' => t('The aliased path to this node.'),
+      'handler' => 'views_handler_field_node_path',
+    ),
+  );
+
 
   // Bogus fields for aliasing purposes.
 
@@ -321,6 +334,60 @@ function node_views_data() {
     ),
   );
 
+  $data['node']['changed_fulldate'] = array(
+    'title' => t('Updated date'),
+    'help' => t('In the form of CCYYMMDD.'),
+    'argument' => array(
+      'field' => 'changed',
+      'handler' => 'views_handler_argument_node_created_fulldate',
+    ),
+  );
+
+  $data['node']['changed_year_month'] = array(
+    'title' => t('Updated year + month'),
+    'help' => t('In the form of YYYYMM.'),
+    'argument' => array(
+      'field' => 'changed',
+      'handler' => 'views_handler_argument_node_created_year_month',
+    ),
+  );
+
+  $data['node']['changed_year'] = array(
+    'title' => t('Updated year'),
+    'help' => t('In the form of YYYY.'),
+    'argument' => array(
+      'field' => 'changed',
+      'handler' => 'views_handler_argument_node_created_year',
+    ),
+  );
+
+  $data['node']['changed_month'] = array(
+    'title' => t('Updated month'),
+    'help' => t('In the form of MM (01 - 12).'),
+    'argument' => array(
+      'field' => 'changed',
+      'handler' => 'views_handler_argument_node_created_month',
+    ),
+  );
+
+  $data['node']['changed_day'] = array(
+    'title' => t('Updated day'),
+    'help' => t('In the form of DD (01 - 31).'),
+    'argument' => array(
+      'field' => 'changed',
+      'handler' => 'views_handler_argument_node_created_day',
+    ),
+  );
+
+  $data['node']['changed_week'] = array(
+    'title' => t('Updated week'),
+    'help' => t('In the form of WW (01 - 53).'),
+    'argument' => array(
+      'field' => 'changed',
+      'handler' => 'views_handler_argument_node_created_week',
+    ),
+  );
+
   // ----------------------------------------------------------------------
   // Node revisions table
 
@@ -351,7 +418,7 @@ function node_views_data() {
     'relationship' => array(
       'handler' => 'views_handler_relationship',
       'base' => 'users',
-      'field' => 'uid',
+      'base field' => 'uid',
       'label' => t('user'),
     ),
   );
@@ -419,7 +486,7 @@ function node_views_data() {
      // Information for displaying a title as a field
     'field' => array(
       'field' => 'title', // the real field
-      'handler' => 'views_handler_field_node',
+      'handler' => 'views_handler_field_node_revision',
       'click sortable' => TRUE,
      ),
     'sort' => array(
@@ -463,6 +530,39 @@ function node_views_data() {
     ),
   );
 
+  // input format id
+  $data['node_revisions']['format'] = array(
+    'title' => t('Input format id'), // The item it appears as on the UI,
+    'help' => t('The numeric input format of the node revision. !default means the default input format.', array('!default' => FILTER_FORMAT_DEFAULT)), // The help that appears on the UI,
+     // Information for displaying an input format as a field
+    'field' => array(
+      'handler' => 'views_handler_field_numeric',
+      'click sortable' => TRUE,
+    ),
+    // Information for sorting on input format
+    'sort' => array(
+      'handler' => 'views_handler_sort',
+    ),
+    // Information for accepting input format as a filter
+    'filter' => array(
+      'handler' => 'views_handler_filter_numeric',
+    ),
+  );
+
+  // input format name
+  // A (numeric) format of 0 means the default; Drupal also applies the default
+  // if the format specifed for a node revision has been deleted.
+  // This complexity makes sorting and filtering by format name tricky,
+  // hence these are not yet supported.
+  $data['node_revisions']['format_name'] = array(
+    'title' => t('Input format'), // The item it appears as on the UI,
+    'help' => t('The name of the input format of the node revision.'), // The help that appears on the UI,
+     // Information for displaying an input format as a field
+    'field' => array(
+      'handler' => 'views_handler_field_filter_format_name',
+    ),
+  );
+
   $data['node_revisions']['revert_revision'] = array(
     'field' => array(
       'title' => t('Revert link'),
@@ -476,6 +576,31 @@ function node_views_data() {
       'title' => t('Delete link'),
       'help' => t('Provide a simple link to delete the node revision.'),
       'handler' => 'views_handler_field_node_revision_link_delete',
+    ),
+  );
+
+  // ----------------------------------------------------------------------
+  // Node access table
+
+  // Define the base group of this table. Fields that don't
+  // have a group defined will go into this field by default.
+  $data['node_access']['table']['group']  = t('Node access');
+
+  // For other base tables, explain how we join
+  $data['node_access']['table']['join'] = array(
+    // Directly links to node table.
+    'node' => array(
+      'left_field' => 'nid',
+      'field' => 'nid',
+    ),
+  );
+  // nid field
+  $data['node_access']['nid'] = array(
+    'title' => t('Access'),
+    'help' => t('Filter by access.'),
+    'filter' => array(
+      'handler' => 'views_handler_filter_node_access',
+      'help' => t('Filter for nodes by view access. <strong>Not necessary if you are using node as your base table.</strong>'),
     ),
   );
 
@@ -534,6 +659,9 @@ function node_views_handlers() {
       'views_handler_field_node_link' => array(
         'parent' => 'views_handler_field',
       ),
+      'views_handler_field_node_path' => array(
+        'parent' => 'views_handler_field',
+      ),
       'views_handler_field_node_type' => array(
         'parent' => 'views_handler_field_node',
       ),
@@ -552,7 +680,9 @@ function node_views_handlers() {
       'views_handler_field_history_user_timestamp' => array(
         'parent' => 'views_handler_field_node',
       ),
-
+      'views_handler_field_node_revision' => array(
+        'parent' => 'views_handler_field_node',
+      ),
       // argument handlers
       'views_handler_argument_node_type' => array(
         'parent' => 'views_handler_argument',
@@ -604,7 +734,9 @@ function node_views_handlers() {
       'views_handler_filter_node_status' => array(
         'parent' => 'views_handler_filter',
       ),
-
+      'views_handler_filter_node_access' => array(
+        'parent' => 'views_handler_filter',
+      ),
     ),
   );
 }
@@ -691,7 +823,6 @@ function template_preprocess_views_view_row_node(&$vars) {
  * Implementation of hook_views_query_substitutions().
  */
 function node_views_query_substitutions() {
-  global $language;
   return array(
     '***ADMINISTER_NODES***' => intval(user_access('administer nodes')),
   );
@@ -717,6 +848,13 @@ function node_views_analyze($view) {
           }
           $ret[] = views_ui_analysis(t('Display %display has no access control but does not contain a filter for published nodes.', array('%display' => $display->display_title)), 'warning');
         }
+      }
+    }
+  }
+  foreach ($view->display as $id => $display) {
+    if ($display->display_plugin == 'page') {
+      if ($display->handler->get_option('path') == 'node/%') {
+        $ret[] = views_ui_analysis(t('Display %display has set node/% as path. This will not produce what you want. If you want to have multiple versions of the node view, use panels.', array('%display' => $display->display_title)), 'warning');
       }
     }
   }

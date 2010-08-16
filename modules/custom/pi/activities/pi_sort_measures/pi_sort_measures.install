@@ -6,17 +6,36 @@
  * Implementation of hook_install()
  */
 function pi_sort_measures_install() {
-  // Create tables.
-  drupal_install_schema('pi_sort_measures');
+	// Create tables.
+	drupal_install_schema('pi_sort_measures');
+
+	variable_set("og_content_type_usage_pi_sort_measures", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_sort_measures", array('status','revision'));
+	variable_set("comment_pi_sort_measures", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_sort_measures", 0);
+
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_sort_measures'] = 'Sort measures';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_sort_measures_uninstall().
  */
 function pi_sort_measures_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_sort_measures');
-  variable_del('pi_sort_measures');
+	// Remove tables.
+	drupal_uninstall_schema('pi_sort_measures');
+	variable_del('pi_sort_measures');
+
+	variable_del("og_content_type_usage_pi_sort_measures");
+	variable_del("node_options_pi_sort_measures");
+	variable_del("comment_pi_sort_measures");
+	variable_del("upload_pi_sort_measures");
+
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_sort_measures'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
@@ -24,8 +43,8 @@ function pi_sort_measures_uninstall() {
  */
 function pi_sort_measures_schema() {
 
-  //$schema['pi_selected_measures'] = array(
-  $schema['pi_sort_measures'] = array(
+	//$schema['pi_selected_measures'] = array(
+	$schema['pi_sort_measures'] = array(
     'description' => t('PI selected measures'),
     'fields' => array(
       'nid' => array(
@@ -35,7 +54,7 @@ function pi_sort_measures_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'vid' => array(
         'description' => t('The current vid version identifier'),
         'type' => 'int',
@@ -43,7 +62,7 @@ function pi_sort_measures_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'available_measure' => array(
         'description' => t('The nid of an available measure'),
         'type' => 'int',
@@ -51,13 +70,13 @@ function pi_sort_measures_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ),
+	),
       'status' => array(
         'description' => t('Either key, selected or none'),
         'type' => 'text',
         'size' => 'normal',
         'not null' => TRUE,
-      ),
+	),
       'weight' => array(
         'description' => t('The position of the available measure'),
         'type' => 'int',
@@ -65,14 +84,14 @@ function pi_sort_measures_schema() {
         'not null' => TRUE,
         'size' => 'medium',
         'default' => 0,
-      ), 
-    ),
+	),
+	),
     'indexes' => array(
       'nid' => array('nid'),
       'vid' => array('vid'),
-    ),
-  );
-  
-  return $schema;
+	),
+	);
+
+	return $schema;
 
 }

@@ -43,7 +43,8 @@ function pi_fooddiary_upload_photo_js()
 	if($submit == 'Upload photo' || $submit == 'Skip upload and use existing' )
 	{
 		//Build our new form element.
-		$form_elements = _pi_fooddiary_add_js_form_element();
+		//$form_elements = _pi_fooddiary_add_js_form_element();
+		$form_elements = _pi_fooddiary_add_anotate_js_form_element();
 		drupal_alter('form', $form_elements, array(), 'pi_fooddiary_node_form');
 
 		// Build the new form.
@@ -135,16 +136,15 @@ function _pi_fooddiary_add_js_form_element()
 	$food_choice = 	_pi_fooddiary_get_food_options();
 		
 	$food_portion = array( 	t('1'),
-	t('2'),
-	t('3'),
-	t('4'),
-	t('5'),
-	t('6'),
-	t('7'),
-	t('8'),
-	t('9'),
-	t('10')
-	);
+							t('2'),
+							t('3'),
+							t('4'),
+							t('5'),
+							t('6'),
+							t('7'),
+							t('8'),
+							t('9'),
+							t('10')	);
 
 	$form['food_choice'] = array(
 			'#type' => 'select',
@@ -155,8 +155,7 @@ function _pi_fooddiary_add_js_form_element()
 			'#default_value' => ''
 			);
 
-
-			$form['food_portion'] = array(
+	$form['food_portion'] = array(
 			'#type' => 'select',
 			'#title' => t('Food portion'),
 			'#required' => FALSE,
@@ -165,12 +164,10 @@ function _pi_fooddiary_add_js_form_element()
 			'#default_value' => ''
 			);
 
-			$form['add_submit'] = array(
+	$form['add_submit'] = array(
    		'#type' => 'submit',
     	'#value' => t('Add choice'),
     	'#submit' => array('node_form_submit_build_node'),//none JS version
-   	 	'#prefix' => "",
-		'#suffix' => '</div>',
     	'#ahah' => array(
       			'event' => 'click',
       			'path' => 'activity/pi_fooddiary_add_annotate/js',
@@ -179,11 +176,11 @@ function _pi_fooddiary_add_js_form_element()
       			'effect' => 'fade',
       			'progress' => array(
         		'type' => 'throbber',
-			)
-			)
+					)
+				)
 			);
 
-			$form['remove_submit'] = array(
+	$form['remove_submit'] = array(
    		'#type' => 'submit',
     	'#value' => t('Remove choice'),
     	'#submit' => array('node_form_submit_build_node'),//none JS version

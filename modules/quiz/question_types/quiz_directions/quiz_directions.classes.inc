@@ -1,6 +1,6 @@
 <?php
 
-// $Id: quiz_directions.classes.inc,v 1.1.2.3 2009/06/03 19:57:43 mbutcher Exp $
+// $Id: quiz_directions.classes.inc,v 1.1.2.5 2010/03/20 18:24:28 sivaji Exp $
 /**
  * quiz_directions.classes
  *
@@ -28,8 +28,8 @@ class QuizDirectionsQuestion implements QuizQuestion {
 
   public function __construct($node) {
     $this->node = $node;
-    $this->node->no_skip_button = TRUE; // No skip button
-    $this->node->not_a_question = TRUE;
+    //$this->node->no_skip_button = TRUE; // No skip button
+    //$this->node->not_a_question = TRUE;
   }
 
   public function save($is_new = FALSE) {}
@@ -114,7 +114,7 @@ class QuizDirectionsResponse extends AbstractQuizQuestionResponse {
     return TRUE;
   }
   public function getResponse() {
-    return $answer;
+    return $this->answer;
   }
   public function formatReport($showpoints = TRUE, $showfeedback = TRUE) {
     return '';

@@ -3,6 +3,82 @@
 module_load_include('module', 'pi_foodinfo');
 
 /**
+ * This function generates the form elements which is dynamically added via 
+ * JavaScript (AHAH helper) for the "Fooddiary Anotate"
+ */
+function _pi_fooddiary_add_anotate_js_form_element()
+{	
+	$form = array( '#tree' => TRUE );
+  	
+	$food_choice = 	_pi_fooddiary_get_food_options();
+
+	$food_portion = array( 	t('1'),
+							t('2'),
+							t('3'),
+							t('4'),
+							t('5'),
+							t('6'),
+							t('7'),
+							t('8'),
+							t('9'),
+							t('10')	);
+	
+	$form['food_choice'] = array(
+			'#type' => 'select',
+			'#title' => t('Food choice'),
+			'#required' => FALSE,
+			'#multiple' => FALSE,
+		    '#options' => $food_choice,
+			'#default_value' => ''
+			);
+	
+	$form['food_portion'] = array(
+			'#type' => 'select',
+			'#title' => t('Food portion'),
+			'#required' => FALSE,
+			'#multiple' => FALSE,
+		    '#options' => $food_portion,
+			'#default_value' => ''
+			);
+
+  	$form['add_submit'] = array(
+   		'#type' => 'submit',
+    	'#value' => t('Add choice'),
+    	'#submit' => array('node_form_submit_build_node'),//none JS version
+    	'#ahah' => array(
+      			'event' => 'click',
+      			'path' => 'activity/pi_fooddiary_add_annotate/js',
+      			'wrapper' => 'add_choice',
+      			'method' => 'replace',
+      			'effect' => 'fade',
+      			'progress' => array(
+        		'type' => 'throbber',
+      				)     
+   	 			)
+   	 		);
+   	
+   	$form['remove_submit'] = array(
+   		'#type' => 'submit',
+    	'#value' => t('Remove choice'),
+    	'#submit' => array('node_form_submit_build_node'),//none JS version
+   	 	'#prefix' => "",
+		'#suffix' => '</div>',
+    	'#ahah' => array(
+      			'event' => 'click',
+      			'path' => 'activity/pi_fooddiary_add_annotate/js',
+      			'wrapper' => 'add_choice',
+      			'method' => 'replace',
+      			'effect' => 'fade',
+      			'progress' => array(
+        		'type' => 'throbber',
+      				)     
+   	 		)
+   	 	);		
+
+  	return $form;
+}
+
+/**
  * This function generates the HTML code for the food anotation in the food diary from.
  * @param array $form The drupal from variable. 
  * @param array $form_state The drupal form_state variable

@@ -1,5 +1,5 @@
 <?php
-// $Id: short_answer.theme.inc,v 1.1.2.2 2009/06/03 19:57:43 mbutcher Exp $
+// $Id: short_answer.theme.inc,v 1.1.2.3 2009/12/09 10:44:19 sivaji Exp $
 
 /**
  * @file
@@ -16,7 +16,7 @@ function theme_short_answer_report($question, $show_points, $show_feedback) {
     $question = (object)$question;
   }
   
-  $slug = '<div class="quiz_summary_question"><span class="quiz_question_bullet">Q:</span> '. 
+  $slug = '<div class="quiz_summary_question"><span class="quiz_question_bullet">'. t('Q:') . '</span> '. 
     check_markup($question->body, $question->format) .
     '</div>';
     

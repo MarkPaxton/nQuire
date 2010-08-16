@@ -11,17 +11,36 @@
  * Implementation of pi_hypothesis_install().
  */
 function pi_hypothesis_install() {
-  // Create tables.
-  drupal_install_schema('pi_hypothesis');
+	// Create tables.
+	drupal_install_schema('pi_hypothesis');
+
+	variable_set("og_content_type_usage_pi_hypothesis", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_hypothesis", array('status','revision'));
+	variable_set("comment_pi_hypothesis", COMMENT_NODE_DISABLED);
+	variable_set("uploadpi_hypothesis", 0);
+
+	//$activities = variable_get('pi_activities', array() );
+	//$activities['pi_hypothesis'] = 'Hypothesis';
+	//variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_hypothesis_uninstall().
  */
 function pi_hypothesis_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_hypothesis');
-  variable_del('pi_hypothesis');
+	// Remove tables.
+	drupal_uninstall_schema('pi_hypothesis');
+	variable_del('pi_hypothesis');
+
+	variable_del("og_content_type_usage_pi_hypothesis");
+	variable_del("node_options_pi_hypothesis");
+	variable_del("comment_pi_hypothesis");
+	variable_del("upload_pi_hypothesis");
+
+	//$activities = variable_get('pi_activities', array() );
+	//unset( $activities['pi_hypothesis'] );
+	//variable_set('pi_activities', $activities);
 }
 
 /**
@@ -29,38 +48,31 @@ function pi_hypothesis_uninstall() {
  */
 function pi_hypothesis_schema() {
 
-  $schema['pi_hypothesis'] = array(
+	$schema['pi_hypothesis'] = array(
     'description' => t('PI hypothesis'),
     'fields' => array(
-      'nid' => array(
-        'description' => t('node id'),
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'size' => 'small',
-        'default' => 0,
-      ),
-      'vid' => array(
-        'description' => t('The current vid version identifier'),
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'size' => 'small',
-        'default' => 0,
-      ),
-      'hypothesis' => array(
-        'description' => t('Hypothesis text'),
-        'type' => 'text',
-        'size' => 'normal',
-        'not null' => TRUE,
-      ),
-    ),
-    'primary key' => array('vid'),
-    'indexes' => array(
-      'nid' => array('nid'),
-    ),
-  );
-  
-  return $schema;
+		'nid' => array(
+        	'description' => t('node id'),
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => TRUE,
+        	'default' => 0 ),
+		'vid' => array(
+			'description' => t('The current vid version identifier'),
+			'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => TRUE,
+        	'default' => 0 ),
+		'hypothesis' => array(
+			'description' => t('Hypothesis text'),
+			'type' => 'text',
+        	'size' => 'big',
+        	'not null' => TRUE ) ),
+    'primary key' => array( 'nid', 'vid' ),
+	'unique keys' => array( 'vid' => array('vid') ),
+    'indexes' => array( 'nid' => array('nid') ) 
+	);
+
+	return $schema;
 
 }

@@ -1,5 +1,5 @@
 <?php
-// $Id: multichoice.module,v 1.1.2.10 2009/06/03 19:57:43 mbutcher Exp $
+// $Id: multichoice.module,v 1.1.2.16 2010/01/03 16:36:18 sivaji Exp $
 
 /**
  * @file
@@ -591,7 +591,7 @@ function multichoice_update($node) {
       $value['result_option'] = 0;
     }
 
-    if ($value['answer_id']) {
+    if ($value['answer_id'] && empty($node->revision)) {
       $value['answer'] = trim($value['answer']);
       if ($value['delete'] == 1 || !isset($value['answer']) || $value['answer'] == '') {
         // Delete this entry.
@@ -603,7 +603,7 @@ function multichoice_update($node) {
           $value['answer'], $value['feedback'], $value['correct'], $value['result_option'], $value['answer_id']);
       }
     }
-    elseif (trim($value['answer']) != '') {
+    elseif (trim($value['answer']) != '' && empty($value['delete'])) {
       // If there is an answer, insert a new row. // Removed answer_id
       db_query("INSERT INTO {quiz_multichoice_answers} (nid, vid, answer, feedback, is_correct, result_option) " .
               "VALUES(%d, %d, '%s', '%s', %d, %d)",
@@ -675,18 +675,12 @@ function multichoice_load($node) {
  * Implementation of hook_view().
  */
 function multichoice_view($node, $teaser = FALSE, $page = FALSE) {
-  if (!$teaser /*&& user_access('create multichoice')*/) {
-    // This is not necessary:
-    //$mynode = node_prepare($node, $teaser);
-    $node->content['body'] = array('#value' => multichoice_render_question($node));
-    return $node;
-  }
-  elseif ($teaser) {
-    $node = node_prepare($node, $teaser);
-    return $node;
+  if ($teaser) {
+    return node_prepare($node, $teaser);
   }
   else {
-    drupal_access_denied();
+    $node->content['body'] = array('#value' => multichoice_render_question($node));
+    return $node;
   }
 }
 
@@ -1054,6 +1048,7 @@ function multichoice_get_report($nid, $vid, $rid) {
     $question->teaser = $row['teaser'];
     $question->correct = $row['question_correct'];
     $question->type = $row['type'];
+    $question->format = $row['format'];
   }
   return $question;
 }
@@ -1205,7 +1200,7 @@ function theme_multichoice_report($question, $showpoints, $showfeedback) {
   }
 
   // Add the cell with the question and the answers.
-  $q_output = '<div class="quiz_summary_question"><span class="quiz_question_bullet">Q:</span> '. check_markup($question->body) .'</div>';
+  $q_output = '<div class="quiz_summary_question"><span class="quiz_question_bullet">'. t('Q:') . '</span> '. check_markup($question->body, $question->format) .'</div>';
   $q_output .= theme('table', $innerheader, $rows) .'<br />';
   return $q_output;
 }
@@ -1235,7 +1230,7 @@ function theme_multichoice_feedback($quiz, $report) {
       $corrects[] = check_markup($answer['answer'], $answer['format']);
     }
   }
-  
+
   $label_answers = format_plural(count($answers), 'Your answer', 'Your answers');
   $label_correct = format_plural(count($corrects), 'Correct answer', 'Correct answers');
   $output .= '<span class="quiz_summary_header">' .
@@ -1283,15 +1278,16 @@ function theme_multichoice_feedback($quiz, $report) {
 function theme_multichoice_generate_title($node) {
   $title = '';
   // Get the first taxonomy term if available.
-  $taxonomy = $node->taxonomy;
-  while (is_array($taxonomy)) {
-    $taxonomy = current($taxonomy);
-  }
+  if (!empty($node->taxonomy)) {
+    $taxonomy = $node->taxonomy;
+    while (is_array($taxonomy)) {
+      $taxonomy = current($taxonomy);
+    }
 
-  if (!empty($taxonomy)) {
     $taxonomy = taxonomy_get_term($taxonomy);
     $title .= $taxonomy->name .' - ';
   }
+
 
   // Append a numeric sequence.
   $qnum = variable_get('multichoice_qnum', 0);

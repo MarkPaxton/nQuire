@@ -1,11 +1,26 @@
 <?php
-// $Id: quiz.install,v 1.22.2.13 2009/05/28 21:04:06 sivaji Exp $
+// $Id: quiz.install,v 1.22.2.15 2009/08/25 19:25:52 sivaji Exp $
 
 /**
  * @file
  * Quiz install schema for installing the quiz module
  *
  */
+
+/**
+ * Implementation of hook_update_N().
+ * Adding a new field to save timer status for a timed quiz.
+ */
+function quiz_update_6307() {
+  $result = array();
+  if (!db_column_exists('quiz_node_results', 'time_left')) {
+    db_add_field($result, 'quiz_node_results', 'time_left', array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0));
+  }
+  if (!db_column_exists('quiz_node_properties', 'time_left')) {
+    db_add_field($result, 'quiz_node_properties', 'time_left', array('type' => 'int', 'size' => 'small', 'not null' => TRUE, 'default' => 0));
+  }
+  return $result;
+}
 
 /**
  * Implementation of hook_update_N().
@@ -211,6 +226,12 @@ function quiz_schema() {
         'not null' => TRUE,
         'default' => 0
       ),
+      'time_left' => array(
+        'type' => 'int',
+        'size' => 'small',
+        'not null' => TRUE,
+        'default' => 0
+      ),
     ),
     'primary key' => array('property_id'),
     // 'unique keys' => array('vid'),
@@ -346,6 +367,12 @@ function quiz_schema() {
         'type' => 'int',
         'size' => 'tiny',
         'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'time_left' => array(
+        'type' => 'int',
+        'size' => 'small',
         'not null' => TRUE,
         'default' => 0
       ),

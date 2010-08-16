@@ -1,5 +1,5 @@
 <?php
-// $Id: admin.inc,v 1.154 2009/04/07 20:48:28 merlinofchaos Exp $
+// $Id: admin.inc,v 1.161.2.12 2010/06/17 02:45:36 merlinofchaos Exp $
 /**
  * @file admin.inc
  * Provides the Views' administrative interface.
@@ -49,6 +49,9 @@ function template_preprocess_views_ui_list_views(&$vars) {
   $sorts = array();
 
   $views = views_get_all_views();
+
+  $token_enable = drupal_get_token('views-enable');
+  $token_disable = drupal_get_token('views-disable');
 
   // Respond to a reset command by clearing session and doing a drupal goto
   // back to the base URL.
@@ -116,10 +119,10 @@ function template_preprocess_views_ui_list_views(&$vars) {
     }
     else {
       if (empty($view->disabled)) {
-        $item->ops[] = l(t('Disable'), "admin/build/views/disable/$view->name", array('query' => drupal_get_destination()));
+        $item->ops[] = l(t('Disable'), "admin/build/views/disable/$view->name", array('query' => drupal_get_destination() . '&token=' . $token_disable));
       }
       else {
-        $item->ops[] = l(t('Enable'), "admin/build/views/enable/$view->name", array('query' => drupal_get_destination()));
+        $item->ops[] = l(t('Enable'), "admin/build/views/enable/$view->name", array('query' => drupal_get_destination() . '&token=' . $token_enable));
       }
     }
 
@@ -398,7 +401,7 @@ function views_ui_preview($js, $view) {
           if ($queries) {
             $queries .= "\n";
           }
-          $queries .= t('[@time ms]', array('@time' => intval($query[1] * 100000) / 100)) . ' ' . $query[0];
+          $queries .= t('[@time ms]', array('@time' => intval($query[1] * 100000) / 100)) . ' ' . check_plain($query[0]);
         }
 
         $rows[] = array('<strong>' . t('Other queries') . '</strong>', '<pre>' . $queries . '</pre>');
@@ -498,6 +501,13 @@ function views_ui_preview_form(&$form_state) {
     '#type' => 'submit',
     '#value' => t('Preview'),
     '#id' => 'preview-submit',
+  );
+
+
+  $form['live_preview'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Automatic live preview'),
+    '#default_value' => !variable_get('views_ui_disable_live_preview', 0),
   );
 
   $form['#action'] = url("admin/build/views/nojs/preview/$view->name");
@@ -745,6 +755,7 @@ function views_ui_import_page(&$form_state) {
   $form['view'] = array(
     '#type' => 'textarea',
     '#title' => t('Paste view code here'),
+    '#required' => TRUE,
   );
 
   $form['submit'] = array(
@@ -760,13 +771,14 @@ function views_ui_import_page(&$form_state) {
  * Validate handler to import a view
  */
 function views_ui_import_validate($form, &$form_state) {
+  $view = '';
   views_include('view');
   ob_start();
   eval($form_state['values']['view']);
   ob_end_clean();
 
   if (!is_object($view)) {
-    form_error($form['view'], t('Unable to interpret view code.'));
+    return form_error($form['view'], t('Unable to interpret view code.'));
   }
 
   if (empty($view->api_version) || $view->api_version < 2) {
@@ -779,6 +791,11 @@ function views_ui_import_validate($form, &$form_state) {
     else {
       form_error($form['view'], t('That view is not compatible with this version of Views.'));
     }
+  }
+  elseif ($view->api_version > views_api_version()) {
+    form_error($form['view'], t('That view is created for the version @import_version of views, but you only have @api_version', array(
+      '@import_version' => $view->api_version,
+      '@api_version' => views_api_version())));
   }
 
   // View name must be alphanumeric or underscores, no other punctuation.
@@ -872,7 +889,7 @@ function views_ui_edit_view_form(&$form_state, $view) {
   if (is_numeric($view->vid)) {
     $form['buttons']['delete'] = array(
       '#type' => 'submit',
-      '#value' => t('Delete'),
+      '#value' => $view->type == t('Overridden') ? t('Revert') : t('Delete'),
       '#submit' => array('views_ui_edit_view_form_delete'),
     );
   }
@@ -885,7 +902,7 @@ function views_ui_edit_view_form(&$form_state, $view) {
  * Validate that a view is complete and whole.
  */
 function views_ui_edit_view_form_validate($form, &$form_state) {
-  // Do not validate cancel or delete.
+  // Do not validate cancel or delete or revert.
   if (empty($form_state['clicked_button']['#value']) || $form_state['clicked_button']['#value'] != t('Save')) {
     return;
   }
@@ -910,7 +927,7 @@ function views_ui_edit_view_form_submit($form, &$form_state) {
   }
 
   $form_state['view']->save();
-  drupal_set_message(t('The view has been saved.'));
+  drupal_set_message(t('The view %name has been saved.', array('%name' => $form_state['view']->name)));
 
   // Make sure menu items get rebuilt as neces
   menu_rebuild();
@@ -1020,7 +1037,7 @@ function template_preprocess_views_ui_edit_view(&$vars) {
       $path = $display->handler->get_path();
       if (strpos($path, '%') === FALSE && !isset($paths[$path])) {
         $vars['quick_links_raw'][] = array(
-          'title' => t('View "!display"', array('!display' => $display->display_title)),
+          'title' => t('View "@display"', array('@display' => $display->display_title)),
           'alt' => t("Go to the real page for this display"),
           'href' => $path,
         );
@@ -1032,7 +1049,6 @@ function template_preprocess_views_ui_edit_view(&$vars) {
 
   $vars['quick_links'] = theme('links', $vars['quick_links_raw']);
   views_add_css('views-admin');
-  views_add_css('views');
   views_add_js('ajax');
   drupal_add_js('misc/jquery.form.js');
 
@@ -1088,7 +1104,7 @@ function template_preprocess_views_ui_edit_tab(&$vars) {
   }
 
   $tag = empty($view->tag) ? t('None') : $view->tag;
-  $vars['details'] = t('Tag') . ': ' . l($tag, "admin/build/views/nojs/details/$view->name", array('attributes' => array('class' => 'views-ajax-link')));
+  $vars['details'] = t('Description') . '/' . t('Tag') . ': ' . l($tag, "admin/build/views/nojs/details/$view->name", array('attributes' => array('class' => 'views-ajax-link')));
 
   // Calculate options from display plugin.
   $options = $categories = array();
@@ -1241,7 +1257,8 @@ function template_preprocess_views_ui_edit_item(&$vars) {
     $handler = views_get_handler($field['table'], $field['field'], $type);
     if (empty($handler)) {
       $fields[$id]['class'] = 'broken';
-      $fields[$id]['title'] = t("Error: handler for @table > @field doesn't exist!", array('@table' => $field['table'], '@field' => $field['field']));
+      $field_name = t('Broken/missing handler: @table > @field', array('@table' => $field['table'], '@field' => $field['field']));
+      $fields[$id]['title'] = l($field_name, "admin/build/views/nojs/config-item/$view->name/$display->id/$type/$id", array('attributes' => array('class' => 'views-ajax-link'), 'html' => TRUE));
       $fields[$id]['info'] = '';
       continue;
     }
@@ -1314,7 +1331,7 @@ function views_ui_regenerate_tabs(&$view, $display_id = NULL, $object = NULL) {
   foreach ($displays as $id) {
     list($title, $body) = views_ui_display_tab($view, $view->display[$id]);
     $object->replace['#views-tab-' . $id] = $body;
-    $object->replace['#views-tab-title-' . $id] = $title;
+    $object->replace['#views-tab-title-' . $id] = check_plain($title);
   }
 
   if (!empty($view->changed)) {
@@ -1554,7 +1571,7 @@ function views_ui_add_form_to_stack($key, &$view, $display_id, $args, $top = FAL
  * and $display_id, so we have a couple of ajax forms that we don't
  * use with this system.
  */
-function views_ui_ajax_form($js, $key, &$view, $display_id) {
+function views_ui_ajax_form($js, $key, $view, $display_id) {
   $form = views_ui_ajax_forms($key);
   if (empty($form)) {
     return drupal_not_found();
@@ -2027,7 +2044,7 @@ function views_ui_rearrange_form(&$form_state) {
     $form[$id] = array('#tree' => TRUE);
     $form[$id]['weight'] = array(
       '#type' => 'weight',
-      '#delta' => 25,
+      '#delta' => 200,
       '#default_value' => ++$count,
     );
     $handler = views_get_handler($field['table'], $field['field'], $type);
@@ -2171,18 +2188,28 @@ function views_ui_add_item_form(&$form_state) {
       '#default_value' => 'all',
     );
 
+    // Group options first to simplify the DOM objects that Views
+    // dependent JS will act upon.
+    $grouped_options = array();
     foreach ($options as $key => $option) {
       $group = preg_replace('/[^a-z0-9]/', '-', strtolower($option['group']));
       $groups[$group] = $option['group'];
-      $form['name'][$key] = array(
-        '#prefix' => '<div class="views-dependent-all views-dependent-' . $group . '">',
-        '#suffix' => '</div>',
-        '#type' => 'checkbox',
-        '#title' => t('!group: !field', array('!group' => $option['group'], '!field' => $option['title'])),
-        '#description' => $option['help'],
-        '#return_value' => $key,
-      );
+      $grouped_options[$group][$key] = $option;
     }
+
+    foreach ($grouped_options as $group => $group_options) {
+      $form['name'][$group . '_start'] = array('#type' => 'markup', '#value' => '<div class="views-dependent-all views-dependent-' . $group . '">');
+      foreach ($group_options as $key => $option) {
+        $form['name'][$key] = array(
+          '#type' => 'checkbox',
+          '#title' => t('!group: !field', array('!group' => $option['group'], '!field' => $option['title'])),
+          '#description' => $option['help'],
+          '#return_value' => $key,
+        );
+      }
+      $form['name'][$group . '_end'] = array('#type' => 'markup', '#value' => '</div>');
+    }
+
     $form['group']['#options'] = $groups;
   }
   else {
@@ -2643,24 +2670,34 @@ function views_ui_item_css($item) {
  * Page callback for the Views enable page.
  */
 function views_ui_enable_page($view) {
-  $views_status = variable_get('views_defaults', array());
-  $views_status[$view->name] = FALSE; // false is enabled
-  variable_set('views_defaults', $views_status);
-  views_invalidate_cache();
-  menu_rebuild();
-  drupal_goto('admin/build/views');
+  if (isset($_GET['token']) && drupal_valid_token($_GET['token'], 'views-enable')) {
+    $views_status = variable_get('views_defaults', array());
+    $views_status[$view->name] = FALSE; // false is enabled
+    variable_set('views_defaults', $views_status);
+    views_invalidate_cache();
+    menu_rebuild();
+    drupal_goto('admin/build/views');
+  }
+  else {
+    return drupal_access_denied();
+  }
 }
 
 /**
  * Page callback for the Views enable page
  */
 function views_ui_disable_page($view) {
-  $views_status = variable_get('views_defaults', array());
-  $views_status[$view->name] = TRUE; // True is disabled
-  variable_set('views_defaults', $views_status);
-  views_invalidate_cache();
-  menu_rebuild();
-  drupal_goto('admin/build/views');
+  if (isset($_GET['token']) && drupal_valid_token($_GET['token'], 'views-disable')) {
+    $views_status = variable_get('views_defaults', array());
+    $views_status[$view->name] = TRUE; // True is disabled
+    variable_set('views_defaults', $views_status);
+    views_invalidate_cache();
+    menu_rebuild();
+    drupal_goto('admin/build/views');
+  }
+  else {
+    return drupal_access_denied();
+  }
 }
 
 /**
@@ -2701,6 +2738,13 @@ function views_ui_admin_tools() {
     '#default_value' => variable_get('views_ui_query_on_top', FALSE),
   );
 
+  $form['views_ui_disable_live_preview'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Disable automatic live preview'),
+    '#description' => t("Don't automatically update the preview. This can speed up the editing of views a bit.'"),
+    '#default_value' => variable_get('views_ui_disable_live_preview', 0),
+  );
+
   $form['views_show_additional_queries'] = array(
     '#type' => 'checkbox',
     '#title' => t('Show other queries run during render during live preview'),
@@ -2730,6 +2774,7 @@ function views_ui_admin_tools() {
   );
 
   $regions = system_region_list(variable_get('theme_default', 'garland'));
+  $regions['watchdog'] = t('Watchdog');
 
   $form['views_devel_region'] = array(
     '#type' => 'select',
@@ -2741,7 +2786,7 @@ function views_ui_admin_tools() {
   $form['views_exposed_filter_any_label'] = array(
     '#type' => 'select',
     '#title' => t('Label for "Any" value on optional single-select exposed filters'),
-    '#options' => array('old_any' => t('<Any>'), 'new_any' => t('- Any -')),
+    '#options' => array('old_any' => '<Any>', 'new_any' => t('- Any -')),
     '#default_value' => variable_get('views_exposed_filter_any_label', 'old_any'),
   );
 
@@ -2761,8 +2806,6 @@ function views_ui_tools_clear_cache() {
  * a templates rescan).
  */
 function views_ui_config_item_form_rescan($form, &$form_state) {
-  // Clear *all* theme registry entries:
-  cache_clear_all('theme_registry:', 'cache', TRUE);
   drupal_rebuild_theme_registry();
 
   // The 'Theme: Information' page is about to be shown again. That page
@@ -2774,6 +2817,18 @@ function views_ui_config_item_form_rescan($form, &$form_state) {
   unset($GLOBALS['theme']);
   init_theme();
 
+  $form_state['rerender'] = TRUE;
+  $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * Override handler for views_ui_edit_display_form
+ */
+function views_ui_edit_display_form_change_theme($form, &$form_state) {
+  // This is just a temporary variable.
+  $form_state['view']->theme = $form_state['values']['theme'];
+
+  views_ui_cache_set($form_state['view']);
   $form_state['rerender'] = TRUE;
   $form_state['rebuild'] = TRUE;
 }

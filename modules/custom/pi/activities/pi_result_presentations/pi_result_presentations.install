@@ -11,80 +11,84 @@
  * Implementation of pi_result_presentations_install().
  */
 function pi_result_presentations_install() {
-// Create tables.
-    drupal_install_schema('pi_result_presentations');
+	// Create tables.
+	drupal_install_schema('pi_result_presentations');
+
+	variable_set("og_content_type_usage_pi_result_presentations", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_result_presentations", array('status','revision'));
+	variable_set("comment_pi_result_presentations", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_result_presentations", 0);
+
+	$activities = variable_get('pi_activities', array() );
+	$activities['pi_result_presentations'] = 'Result presentations';
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_result_presentations_uninstall().
  */
 function pi_result_presentations_uninstall() {
-// Remove tables.
-    drupal_uninstall_schema('pi_result_presentations');
+	// Remove tables.
+	drupal_uninstall_schema('pi_result_presentations');
+
+	variable_del("og_content_type_usage_pi_result_presentations");
+	variable_del("node_options_pi_result_presentations");
+	variable_del("comment_pi_result_presentations");
+	variable_del("upload_pi_result_presentations");
+
+	$activities = variable_get('pi_activities', array() );
+	unset( $activities['pi_result_presentations'] );
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_questions_schema().
  */
 function pi_result_presentations_schema() {
-    $schema['pi_result_presentations'] = array(
-
-        // TDC - YOU ARE HERE - database defn
-        // nid, vid, inquiry_id, short_title, key_question_nid, presentation_measures, weight
-
-        'description' => t('PI result presentations'),
-        'fields' => array(
-        'nid' => array(
-        'description' => t('node id'),
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'size' => 'small',
-        'default' => 0,
-        ),
-        'vid' => array(
-        'description' => t('The current vid version identifier'),
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'size' => 'small',
-        'default' => 0,
-        ),
-      'key_question_id' => array(
-        'description' => 'The nid of the related key question node.',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'size' => 'small',
-        'default' => 0
-        ),
+	
+	$schema['pi_result_presentations'] = array(
+	'description' => t('PI result presentations'),
+	'fields' => array(
+		'nid' => array(
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => TRUE,
+        	'default' => 0,
+			'description' => 'node id' ),
+        'vid' => array(        	
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => TRUE,
+        	'default' => 0,
+			'description' => 'The current vid version identifier' ),
+      	'key_question_id' => array(        	
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => TRUE,
+        	'size' => 'small',
+        	'default' => 0,
+			'description' => 'The nid of the related key question node.' ),
       'available_measure' => array(
-        'description' => t('The nid of an available measure'),
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'size' => 'medium',
-        'default' => 0,
-      ),
+        	'type' => 'int',
+        	'unsigned' => TRUE,
+        	'not null' => TRUE,
+        	'size' => 'medium',
+        	'default' => 0,
+			'description' => 'The nid of an available measure' ),
       'status' => array(
-        'description' => t('Either selected or unselected'),
-        'type' => 'text',
-        'size' => 'normal',
-        'not null' => TRUE,
-      ),
+        	'type' => 'text',
+        	'size' => 'normal',
+        	'not null' => TRUE,
+			'description' => 'Either selected or unselected' ),
       'weight' => array(
-        'description' => t('The position of the available measure'),
-        'type' => 'int',
-        'unsigned' => FALSE,
-        'not null' => TRUE,
-        'size' => 'medium',
-        'default' => 0,
-		), 
-    ),
-	'indexes' => array(
-		'nid' => array('nid'),
-		'vid' => array('vid'),
-		),
+        	'type' => 'int',
+			'size' => 'medium',
+        	'unsigned' => FALSE,
+        	'not null' => TRUE,        	
+        	'default' => 0,
+			'description' => 'The position of the available measure') ),
+	'indexes' => array( 'nid' => array('nid'), 'vid' => array('vid') ) 
 	);
 
 	return $schema;

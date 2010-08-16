@@ -1,6 +1,6 @@
 <?php
 
-// $Id: quiz.module,v 1.137.2.71 2009/06/03 19:57:42 mbutcher Exp $
+// $Id: quiz.module,v 1.137.2.85 2010/04/05 11:58:17 sivaji Exp $
 
 /**
  * @file
@@ -90,6 +90,8 @@ function quiz_perm() {
     'view user results', 'view own results',
     // Allow a quiz question to be viewed outside of a test.
     'view quiz question outside of a quiz',
+    'assign action',
+    // Allows to use drupal actions and trigger feature
   );
 }
 
@@ -262,7 +264,7 @@ function quiz_menu() {
 
   // USER //
   $items['user/%/myresults'] = array(
-    'title' => t('My results'),
+    'title' => t('Quiz results'),
     'page callback' => 'quiz_get_user_results',
     'page arguments' => array(1),
     'access arguments' => array('view own results'),
@@ -395,14 +397,14 @@ function quiz_insert($node) {
   quiz_translate_form_date($node, 'quiz_close');
 
   $tid = (isset($node->tid) ? $node->tid : 0);
-  
+
   if (!isset($node->has_userpoints)) {
     $node->has_userporints = 0;
   }
 
   $sql = "INSERT INTO {quiz_node_properties}
     (vid, nid, aid, number_of_random_questions, shuffle,
-      backwards_navigation, quiz_open, quiz_close, takes, time_limit, pass_rate, summary_pass, summary_default, quiz_always, feedback_time, tid, has_userpoints)
+      backwards_navigation, quiz_open, quiz_close, takes, time_limit, pass_rate, summary_pass, summary_default, quiz_always, feedback_time, has_userpoints, tid)
     VALUES(%d, %d, '%s', %d, %d, %d, %d, %d, %d, %d, %d, '%s', '%s', %d, %d, %d, %d)";
   db_query($sql, $node->vid, $node->nid, $node->aid, $node->number_of_random_questions, $node->shuffle, $node->backwards_navigation, $node->quiz_open, $node->quiz_close, $node->takes, $node->time_limit, $node->pass_rate, $node->summary_pass, $node->summary_default, $node->quiz_always, $node->feedback_time, $node->has_userpoints, $tid);
   _quiz_insert_resultoptions($node);
@@ -530,10 +532,10 @@ function quiz_load($node) {
  */
 function quiz_view($node, $teaser = FALSE, $page = FALSE) {
   drupal_alter('quiz_view', $node, $teaser, $page);
-  if (!$teaser) {
+  if (!$teaser && $page) {
     //load the questions in the view page
     //$node->content['body']['#value'] = quiz_take_quiz($node);
-    $node->content = quiz_take_quiz($node);
+    $node->content['quiz'] = quiz_take_quiz($node);
   }
   else {
     $node = node_prepare($node, $teaser);
@@ -579,22 +581,24 @@ function quiz_form(&$node) {
    * This allows you to choose a defined action from the actions module for use when
    * a user completes the quiz.
    */
-  $form['aid'] = array(
-    '#title' => t('Assign Action'),
-    '#description' => t('Select an action to be preformed after a user has completed this @quiz.', array('@quiz' => QUIZ_NAME)),
-    '#type' => 'select',
-    /*
-     * An idea here would be to add a system conf variable into the quiz_action_options() function that
-     * could filter the type of actions you could display on your quizzes.  For Example: you create
-     * a custom module that defines some actions that you only want a user to choose when creating
-     * a quiz and selecting an action from the dropdown.  You setup your actions with type 'quiz' and
-     * then add in that variable into the function and it will automatically filter and show only
-     * those specific actions.  @note:  In doing this you loose your default "Choose an Action"
-     * option.  Review actions and the quiz_action_options() function for further explaination.
-     */
-    '#options' => quiz_action_options(variable_get('quiz_action_type', 'all')),
-    '#default_value' => MD5($node->aid),
-  );
+  if (user_access('assign action') || user_access('administer actions')) {
+    $form['aid'] = array(
+      '#title' => t('Assign Action'),
+      '#description' => t('Select an action to be preformed after a user has completed this @quiz.', array('@quiz' => QUIZ_NAME)),
+      '#type' => 'select',
+      /*
+       * An idea here would be to add a system conf variable into the quiz_action_options() function that
+       * could filter the type of actions you could display on your quizzes.  For Example: you create
+       * a custom module that defines some actions that you only want a user to choose when creating
+       * a quiz and selecting an action from the dropdown.  You setup your actions with type 'quiz' and
+       * then add in that variable into the function and it will automatically filter and show only
+       * those specific actions.  @note:  In doing this you loose your default "Choose an Action"
+       * option.  Review actions and the quiz_action_options() function for further explaination.
+       */
+      '#options' => quiz_action_options(variable_get('quiz_action_type', 'all')),
+      '#default_value' => MD5($node->aid),
+    );
+  }
 
   $form['backwards_navigation'] = array(
     '#type' => 'checkbox',
@@ -1032,6 +1036,7 @@ function quiz_take_quiz($quiz) {
       $_SESSION['quiz_'. $quiz->nid]['question_number'] = 0;
       $_SESSION['quiz_'. $quiz->nid]['question_start_time'] = time();
       $_SESSION['quiz_'. $quiz->nid]['question_duration'] = $quiz->time_limit;
+      $_SESSION['quiz_'. $quiz->nid]['previous_quiz_questions'] = array();
     }
 
     else {
@@ -1166,11 +1171,6 @@ function quiz_take_quiz($quiz) {
       }*/
       $time = ($_SESSION['quiz_'. $quiz->nid]['question_duration'] > 0) ? $_SESSION['quiz_'. $quiz->nid]['question_duration'] : 1;
       db_query("UPDATE {quiz_node_results} SET time_left = %d WHERE result_id = %d", $time, $_SESSION['quiz_'. $quiz->nid]['result_id']);
-      if (function_exists('jquery_countdown_add') && variable_get('quiz_has_timer', 1)) {
-        jquery_countdown_add('.countdown', array('until' => $time, 'onExpiry' => 'finished'));
-        drupal_add_js('function finished() { alert("time up!"); window.location = window.location.href; }', 'inline');
-        //window.location.reload() method doesn't works here.
-      }
 
       if ($time == 1) {
         /* Quiz has been timed out, run a loop to mark the remaining questions
@@ -1190,19 +1190,38 @@ function quiz_take_quiz($quiz) {
         }
         $_SESSION['quiz_'. $quiz->nid]['quiz_questions'] = array();
         // empty the quiz questions
+        // We're at the end of the quiz, so set a flag saying so.
+        $quiz_end = TRUE;
+        drupal_set_message(t('You have run out of time.'), 'error');
+      }
+      else {
+        // There is still time left, so let's go ahead and insert the countdown javascript.
+        if (function_exists('jquery_countdown_add') && variable_get('quiz_has_timer', 1)) {
+          jquery_countdown_add('.countdown', array('until' => $time, 'onExpiry' => 'finished'));
+          drupal_add_js('function finished() { window.location = window.location.href; }', 'inline');
+          //window.location.reload() method doesn't works here.
+        }
       }
       $_SESSION['quiz_'. $quiz->nid]['question_start_time'] = time();
     }
-    // Basically, we store the results of what would normally be a node_view() of the question node in
-    // the $content for the quiz node. Since we want to override the default theme, we use the
-    // quiz_node_view() function, which performs the steps in node_view(), but in a way more
-    // specific to our needs.
-    $content['body']['#value'] = quiz_node_view($question_node, TRUE, FALSE);
-    drupal_set_title(check_plain($quiz->title));
-    unset($_SESSION['quiz_'. $quiz->nid]['feedback']);
+    // If we're not yet at the end.
+    if (empty($quiz_end)) {
+      // Basically, we store the results of what would normally be a node_view() of the question node in
+      // the $content for the quiz node. Since we want to override the default theme, we use the
+      // quiz_node_view() function, which performs the steps in node_view(), but in a way more
+      // specific to our needs.
+      $content['body']['#value'] = quiz_node_view($question_node, TRUE, FALSE);
+      drupal_set_title(check_plain($quiz->title));
+      unset($_SESSION['quiz_'. $quiz->nid]['feedback']);
+    }
   }
   // Else we're at the end of quiz.
   else {
+    $quiz_end = TRUE;
+  }
+
+  // If we're at the end of the quiz.
+  if (!empty($quiz_end)) {
     $score = quiz_end_actions($quiz, $_SESSION['quiz_'. $quiz->nid]['result_id']);
     //print_r($score);exit;Array ( [question_count] => 2 [possible_score] => 2 [numeric_score] => 2 [percentage_score] => 100 [is_evaluated] => 1 )
 
@@ -1259,7 +1278,7 @@ function quiz_store_question_result($result, $options) {
 
   if (isset($result->is_skipped) && $result->is_skipped == TRUE) {
     if ($options['set_msg']) {
-      drupal_set_message('Last question skipped.', 'status');
+      drupal_set_message(t('Last question skipped.'));
     }
     $result->is_correct = FALSE;
     $result->score = 0;
@@ -1338,6 +1357,7 @@ function quiz_quiz_finished($quiz, $score, $rid) {
   //function to send results over email
   if ($user->uid && variable_get('quiz_email_results', 1) && variable_get('quiz_use_passfail', 1)) { // email can be sent only for registered users
     drupal_mail('quiz', 'notice', $user->mail, NULL, array($quiz, $score, $rid));
+    drupal_set_message(t('Your results have been sent to your e-mail address.'));
   }
 
   //calls userpoints functions to credit user point based on number of correct answers
@@ -1350,7 +1370,7 @@ function quiz_quiz_finished($quiz, $score, $rid) {
     );
     $params = array(
       'points' => $score['numeric_score'],
-      'description' => t('Attened @title @quiz on @time', $variables),
+      'description' => t('Attended @title @quiz on @time', $variables),
     );
     userpoints_userpointsapi($params);
   }
@@ -1376,7 +1396,7 @@ function quiz_mail($key, &$message, $params) {
     '!correct' => isset($score['numeric_score']) ? $score['numeric_score'] : 0,
     '!total' => $score['possible_score'],
     '!percentage' => $score['percentage_score'],
-    '!url' => url('user/quiz/' . $rid . '/userresults'),
+    '!url' => url('user/quiz/' . $rid . '/userresults', array('absolute' => TRUE)),
   );
 
   switch ($key) {
@@ -1975,6 +1995,11 @@ function quiz_update_questions(&$quiz, $submitted_questions, $revision = FALSE) 
  *   The result ID found for the current quiz.
  */
 function _quiz_resume_existing_quiz($quiz, $uid, $rid) {
+  // Anonymous users cannot resume quizzes.
+  if ($uid == 0) {
+    return;
+  }
+
   // Create question list.
   $questions = quiz_build_question_list($quiz);
   $already_answered = array();
@@ -1982,7 +2007,7 @@ function _quiz_resume_existing_quiz($quiz, $uid, $rid) {
   // Now we need to make sure to set previous questions to be correct.
   // This includes corrections for cases where questions were shuffled.
 
-  $answered_questions = db_query("SELECT question_nid AS nid, question_vid AS vid     FROM {quiz_node_results_answers} WHERE result_id = %d ORDER BY answer_timestamp", $rid);
+  $answered_questions = db_query("SELECT question_nid AS nid, question_vid AS vid FROM {quiz_node_results_answers} WHERE result_id = %d ORDER BY answer_timestamp", $rid);
   while ($answered = db_fetch_object($answered_questions)) {
     foreach ($questions as $question) {
       if ($question['vid'] == $answered->vid) {
@@ -2035,6 +2060,12 @@ function _quiz_resume_existing_quiz($quiz, $uid, $rid) {
  *   If no quiz is in progress, this will return 0.
  */
 function _quiz_active_result_id($uid, $nid, $vid, $now = NULL) {
+
+  // Do not get active result IDs for anonymous users.
+  if ($uid == 0) {
+    return 0;
+  }
+
   if (!isset($now)) {
     $now = time();
   }
@@ -2491,7 +2522,7 @@ function _quiz_get_results($nid = '', $uid = 0) {
             AND qnrs.nid = qnp.nid
             AND u.uid = qnrs.uid";
   */
-  $sql = "SELECT n.nid, n.title, u.name, qnrs.result_id, qnrs.time_start, qnrs.time_end
+  $sql = "SELECT n.nid, n.title, u.name, qnrs.result_id, qnrs.score, qnrs.time_start, qnrs.time_end
           FROM {node} n
           INNER JOIN {quiz_node_results} qnrs ON qnrs.nid = n.nid
           INNER JOIN {users} u ON u.uid = qnrs.uid

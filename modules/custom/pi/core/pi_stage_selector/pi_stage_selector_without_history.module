@@ -215,16 +215,17 @@ function pi_update_stage($node) {
  * @return unknown_type
  */
 function find_new_status($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
-	$query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND (prior_nf = \"" . $node_function . "\" OR prior_nf IS NULL) AND (prior_vs = \"" . $visible_status . "\" OR prior_vs IS NULL) ";
+	
+	$query = "SELECT node_function, visible_status FROM {" . $table . "} WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND (prior_nf = \"" . $node_function . "\" OR prior_nf IS NULL) AND (prior_vs = \"" . $visible_status . "\" OR prior_vs IS NULL) ";
 	$result = db_fetch_object(db_query($query));
 	if (!$result->node_function)
 	{
-		$query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
+		$query = "SELECT node_function, visible_status FROM {" . $table . "} WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
 		$result = db_fetch_object(db_query($query));
 
 		if (!$result->node_function) 
 		{
-			$query = "SELECT node_function, visible_status FROM " . $table . " WHERE activity_id IS NULL AND activity_type IS NULL AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
+			$query = "SELECT node_function, visible_status FROM {" . $table . "} WHERE activity_id IS NULL AND activity_type IS NULL AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
 			$result = db_fetch_object(db_query($query));
 		}
 	}

@@ -1,3 +1,5 @@
+var disabledDays = ["22.08.2010","14.08.2010"];
+
 
 jQuery(function($){
 	$.datepicker.regional['en-GB'] = {
@@ -25,6 +27,4 @@ jQuery(function($){
 $(function() {
 	$("#edit-food-diary-day").datepicker();
 	$('#edit-food-diary-day').datepicker( 'option', 'en-GB' );
-	$("#edit-food-diary-food-date").datepicker();
-	$('#edit-food-diary-food-date').datepicker( 'option', 'en-GB' );
 });

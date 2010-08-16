@@ -1,5 +1,5 @@
 <?php
-// $Id: path_redirect.install,v 1.2.2.6.2.19 2009/03/17 20:51:28 davereid Exp $
+// $Id: path_redirect.install,v 1.2.2.6.2.26 2009/12/01 05:40:09 davereid Exp $
 
 /**
  * @file
@@ -7,29 +7,7 @@
  */
 
 /**
- * Implementation of hook_install().
- */
-function path_redirect_install() {
-  drupal_install_schema('path_redirect');
-}
-
-/**
- * Implementation of hook_uninstall().
- */
-function path_redirect_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('path_redirect');
-
-  // Remove variables.
-  drupal_load('module', 'path_redirect');
-  $variables = array_keys(path_redirect_variables());
-  foreach ($variables as $variable) {
-    variable_del($variable);
-  }
-}
-
-/**
- * Implementation of hook_schema().
+ * Implement hook_schema().
  */
 function path_redirect_schema() {
   $schema['path_redirect'] = array(
@@ -40,7 +18,7 @@ function path_redirect_schema() {
         'not null' => TRUE,
         'description' => 'Primary Key: Unique path redirect ID.',
       ),
-      'path' => array(
+      'source' => array(
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
@@ -86,10 +64,33 @@ function path_redirect_schema() {
       ),
     ),
     'primary key' => array('rid'),
-    'unique keys' => array('path_language' => array('path', 'language')),
+    'unique keys' => array('source_language' => array('source', 'language')),
   );
 
   return $schema;
+}
+
+/**
+ * Implement hook_install().
+ */
+function path_redirect_install() {
+  drupal_install_schema('path_redirect');
+}
+
+/**
+ * Implement hook_uninstall().
+ */
+function path_redirect_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('path_redirect');
+
+  // Remove variables.
+  variable_del('path_redirect_redirect_warning');
+  variable_del('path_redirect_allow_bypass');
+  variable_del('path_redirect_auto_redirect');
+  variable_del('path_redirect_purge_inactive');
+  variable_del('path_redirect_default_status');
+  variable_del('path_redirect_nodeapi_enabled');
 }
 
 /**
@@ -163,12 +164,17 @@ function path_redirect_update_5100() {
 }
 
 /**
+ * @defgroup updates-6.x-extra Extra path_redirect updates for 6.x
+ * @{
+ */
+
+/**
  * Add a last used timestamp field.
  */
 function path_redirect_update_6100() {
   $ret = array();
   db_add_field($ret, 'path_redirect', 'last_used', array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0));
-  $ret[] = update_sql("UPDATE {path_redirect} SET last_used = ". REQUEST_TIME);
+  $ret[] = update_sql("UPDATE {path_redirect} SET last_used = " . time());
   return $ret;
 }
 
@@ -182,3 +188,29 @@ function path_redirect_update_6101() {
   db_add_unique_key($ret, 'path_redirect', 'path_language', array('path', 'language'));
   return $ret;
 }
+
+/**
+ * Replace frontpage paths with '<front>'.
+ */
+function path_redirect_update_6102() {
+  $ret = array();
+  $frontpage = variable_get('site_frontpage', 'node');
+  $ret[] = update_sql("UPDATE {path_redirect} SET redirect = '<front>' WHERE redirect = '$frontpage'");
+  return $ret;
+}
+
+/**
+ * Rename the path field to source.
+ */
+function path_redirect_update_6103() {
+  $ret = array();
+  db_drop_unique_key($ret, 'path_redirect', 'path_language');
+  db_change_field($ret, 'path_redirect', 'path', 'source', array('type' => 'varchar', 'length' => 255, 'not null' => TRUE));
+  db_add_unique_key($ret, 'path_redirect', 'source_language', array('source', 'language'));
+  return $ret;
+}
+
+/**
+ * @} End of "defgroup updates-6.x-extra"
+ * The next series of updates should start at 7000.
+ */
