@@ -33,8 +33,9 @@ function pi_inquiry_phase_view($phase) {
 	if ($activities)
 	{
 		// $headings = array('Activity', 'You can...', 'Description');
-		$headings = array('Activity', 'Description');
-		$table = array();
+		// $headings = array('Activity', 'Description');
+		// $table = array();
+		$list = array();
 
 		$active_activity_flag = 0;
 
@@ -93,22 +94,22 @@ function pi_inquiry_phase_view($phase) {
 				{
 					$active_activity_flag = 1;
 				}
-
-				// $table[] = array($activity_link , ucwords(t($loaded_activity_status->visible_status)), t($loaded_activity->description));
+				
 				$nid = get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
 				$loaded_actvity_node = node_load($nid);
 				$activity_desc = pi_activity_teaser($loaded_actvity_node, $loaded_activity, $link_node_function);
-				$table[] = array(
-						array('data' => '<div class="teaser_table_cell">'. $activity_link['data'].'</div>', 'valign' => 'top'),
-						array('data' => $activity_desc, 'valign' => 'top')
-						//array('data' => $activity_link, 'valign' => 'top'),
-						//t($activity_desc)
-					);
-				//$table[] = array($activity_link , t($loaded_activity->description));
+								
+				$list[] = array('data' => $activity_link['data'] . $activity_desc, 'class' => 'phase');
+				
 			}
 		}
 
-		$output .= theme('table', $headings, $table);
+		$title = NULL;
+		$type = 'ul';
+		$attributes = array('class' => 'phase');
+		
+		// $output .= theme('table', $headings, $table);
+		$output .= theme_item_list($list, $title, $type, $attributes);
 		
 		if ($active_activity_flag == 0) {
 			drupal_set_message(t('None of the above activities can be accessed at this stage.'));
