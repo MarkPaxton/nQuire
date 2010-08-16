@@ -14,69 +14,106 @@
  */
 function theme_pi_region_sort_table($header, $rows, $regions, $attributes) {
 
- // Add table javascript.
+	$output = '';
 
+	// Add table javascript for draggable tables
     drupal_add_js('misc/tableheader.js');
     drupal_add_js(drupal_get_path('module', 'pi') .'/lib/pi_region_sort.js');
 
+    // Set up the regions:
 	foreach (array_keys($regions) as $region)
 	{
 		drupal_add_tabledrag('sort_list', 'match', 'sibling', 'sort_list-region-select', 'sort_list-region-' . $region, NULL, FALSE);
 		drupal_add_tabledrag('sort_list', 'order', 'sibling', 'sort_list-weight', 'sort_list-weight-' . $region, NULL, FALSE);
 	}
 
-	$output = "";
-	$output .= '<table id="' . $attributes['id'] . '" class="sticky-enabled">';
-
-	/* //don't show the table header
-	$output .= '<thead>';
-	$output .= '<tr>';
-	foreach($header as $heading) {
-    	$output .= '<th class="' . $heading['class'] . '">' . $heading['theading'] . '</th>';
+	//Set up table attributes
+	// add the extra classes if classes are already set
+	$table_attributes = $attributes;
+	$class_to_add = 'sticky-enabled';
+	if(array_key_exists('class', $table_attributes))
+	{
+		$table_attributes['class'] .= " $class_to_add"; 
 	}
-	$output .= '</tr>';
-  	$output .= '</thead>';*/
-  	
+	else
+	{
+		$table_attributes['class'] = $class_to_add;	
+	}
+
+	// Copy the header given
+	//don't show the table header
+	//$table_header = $header;
+	$table_header = NULL;
 	
-  	$output .= '<tbody>';
-    foreach ($regions as $region => $region_data) {
-		$output .= '<tr class="region region-' . $region . '">';
-		$output .= '<td class="region" colspan="' . count($header) . '"><span style="font-size:130%;font-weight:bold;margin-right:15px;">' . $region_data['title'] . '</span>';
-		$output .= '<span style="font-size:90%;font-weight:normal">' . $region_data['description'] . '</span></td>';
-		$output .= '</tr>';
+	//Now set up the individual rows for regions and elements	
+	$table_rows[] = array();
+    foreach ($regions as $region => $region_data) 
+    {
+    	//Add the region heading
+    	$table_rows[] = array( 'class'=> "region region-$region",    		
+			'data' => array(
+    			array('class' => 'region', 'colspan'=> count($header), 'header' => true,
+	    		'data'=> 
+	    			'<span style="font-size:130%;font-weight:bold;margin-right:15px;">' . $region_data['title'] . '</span>' .
+					'<span style="font-size:90%;font-weight:normal">' . $region_data['description'] . '</span>')
+    		)
+    	);
 		
+    	// Add the heading 'empty' message row - hidden or not as needed
 		$region_style = empty($rows[$region]) ? 'region-empty' : 'region-populated';
-        $output .= '<tr class="region-message region-' . $region . '-message ' . $region_style . '">';
-        $output .= '<td colspan="' . count($header) . '"><em>' . t($region_data['empty']) . '</em></td>';
-        $output .= '</tr>';
+    	$table_rows[] = array('class'=> "region-message region-$region-message $region_style",
+        	'data' => array(
+    			array('colspan'=> count($header), 'header' => true,
+    				'data'=>'<em>' . $region_data['empty'] . '</em>')
+    			)
+    	);
+        
       
 		$row = 0;
-		
-		//print_r($rows[$region]);
-		
 		if (is_array($rows[$region]))
 		{
 			foreach ($rows[$region] as $key => $data)
 			{
+				$style = $row % 2 == 0 ? 'odd' : 'even';
+				$row++;
+				
+				$row_class = 'draggable';
+				if($data->row_class!=NULL)
+				{	
+					$row_class .= ' ' . $data->row_class;
+				}
+				
+				// Set up the row
+				$table_row = array('data'=>array(), 'class'=>$row_class, 'style'=>$style);
+
+				// Add the cells
+				$table_row['data'][] = array(
+					'class'=>"sort_item_title", 
+					'data' => '<span style="font-size:115%;font-weight:bold;">' 
+							. $data['title'] . '</span>');
+
 				$modified_description = str_replace(
 					array('<div', '</div', 'class="submitted"'), 
 					array('<span', '</span', 'class="submitted" style="display:none"'),  
-					$data['description']);
-				$style = $row % 2 == 0 ? 'odd' : 'even';
-				$row_class = $data->row_class ? ' '. $data->row_class : '';
-				$output .= '<tr class="draggable ' . $style . $row_class . '">';
-				$output .= '<td class="sort_item_title"><span style="font-size:115%;font-weight:bold;">' . $data['title'] . '</td>';
-				$output .= '<td class="sort_item_description">' .  $modified_description . '</td>';
-				$output .= '<td class="sort_item_region">' . $data['region'] . '</td>';
-				$output .= '<td class="sort_item_weight">' . $data['weight'] . '</td>';
-				$output .= '</tr>';
-				$row++;
+					$data['description']);							
+				$table_row['data'][] = array(
+					'class'=>"sort_item_description", 
+					'data' => $modified_description);
+
+				$table_row['data'][] = array(
+					'class'=>"sort_item_region", 
+					'data' => $data['region']);
+							
+				$table_row['data'][] = array(
+					'class'=>"sort_item_weight", 
+					'data' => $data['weight']);
+				
+				$table_rows[] = $table_row;
 			}
 		}
 	}
-    $output .= '</tbody>';
-	$output .= '</table>';
-
+	
+	$output .= theme('table', $table_header, $table_rows, $table_attributes);
 	return $output;
 }
 

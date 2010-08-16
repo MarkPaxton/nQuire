@@ -256,7 +256,7 @@ function pi_authoring_admin_groups_form_submit($form, &$form_state) {
 			}
 		}
 	}
-	drupal_set_message(t('When you have set up the group types, go to the ') . l('group heirarchy page', '/admin/nquire/group_heirarchy') . t(' to link groups and classes.'));
+	drupal_set_message(t('When you have set up the group types, go to the ') . l('group hierarchy page', '/admin/nquire/group_hierarchy') . t(' to link groups and classes.'));
 }
 
 
