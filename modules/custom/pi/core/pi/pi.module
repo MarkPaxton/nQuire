@@ -117,6 +117,18 @@ function pi_menu() {
 	return $items;
 }
 
+/**
+ * hook_theme for the pi module, contains definitions for all the shared themes for nQuire
+ */
+function pi_theme()
+{
+	return array(
+	'pi_region_sort_table' => array(
+		'arguments' => array('header', 'rows', 'regions', 'attributes'),
+		'file' => 'pi_region_sort_themes.inc')
+	);
+}
+
 function pi_nquire_admin() {
   $output = '';
   if(module_exists(pi_available_content_types)) {
@@ -423,7 +435,7 @@ function pi_get_all_group_nids() {
 		$group = node_load($id);
 		if($group->status)
 		{
-			$groups[] = $id;
+			$groups[$id] = $id;
 		}  		
 	}
 	return $groups;
@@ -431,6 +443,8 @@ function pi_get_all_group_nids() {
 
 
 /**
+ * Get an array describing all groups defined as multiclass/class/group in nquire
+ * array is indexed by group nid (aka gid) and contains an array of elements for group id and type 
  * @return array[nid] => array('nid', 'group_type') An array of arrays with group nids 
  * and group type defiend as class, multiclass, group and indexed by group nid
  * group type is indexed as 'group_type' 
@@ -495,7 +509,7 @@ function pi_get_group_nids_of_type($type)
 		}
 		else
 		{
-			drupal_set_message(t("Duplicate group definitions found for group ") . check_plain($id) . 
+			drupal_set_message(t("Duplicate group definitions found for group #") . check_plain($id) . 
 				t(" as type '") . check_plain($groups[$id]['group_type']) . "'.", 'warning');
 		}
 	}
@@ -722,7 +736,7 @@ function pi_get_group_data_and_root_groups(&$all_groups_by_id, &$tree_roots)
  * Returns an array containing the uids for the members of the group.
  * The group could be a group, class or multiclass.
  * @param uint $gid Group id to get members of
- * @return array(user) array of db_fetch_objects indeced by id
+ * @return array(user) array of db_fetch_array indeced by id
  */
 function pi_get_members_of_group($gid) {
 	$query = "SELECT uid FROM {og_uid} WHERE nid = %d";
@@ -740,9 +754,17 @@ function pi_get_members_of_group($gid) {
 	return $members;
 }
 
-//this funciton needs to move to pi module
+/**
+ * 
+ * Return the type of the group as defined in pi_group_type
+ * if the group type is not set it will return null
+ * if the group has duplicate type definitions it will returnt the one with the lowest id
+ * which is probably the original definition.
+ * @param $gid group nid to get the type of
+ * @return string group_type:{multiclass,class,group} or NULL
+ */
 function pi_get_type_of_group($gid) {
-	$query = "SELECT type FROM {pi_group_type} WHERE gid = %d ";
+	$query = "SELECT type FROM {pi_group_type} WHERE gid = %d ORDER BY pgt_id ASC";
 	$result = db_result(db_query($query, $gid));
 	return $result;
 }
@@ -1708,6 +1730,30 @@ function my_weight_compare($x, $y) {
 }
 
 /**
+ * 
+ * Sort an array of arrays by one of their elements - e.g. a list of set result rows to be 
+ * sorted by a column.  Key and value associations are maintained.
+ * @param $array Array of arrays to be sorted
+ * @param $element the name of the array key to sort by
+ */
+function pi_sort_arrays_by_element(&$array, $element)
+{
+	$return_array = array();
+	$element_array = array();
+	foreach($array as $key => $value)
+	{
+		$element_array[$key] = $value[$element];
+	}
+	asort($element_array);
+	foreach($element_array as $key)
+	{
+		$return_array[$key] = $array[$key];
+	}
+	$array = $return_array;
+}
+
+
+/**
  * This is a utility function to merge two content item lists which have '#weight' elements
  * e.g. item[x]['#weight'].  Weight elements in the second list are ignored and this list is
  * appended to the ordrered items in their default order.
@@ -1810,6 +1856,31 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	}
 	return $sorted_items;
 }
+
+/**
+ * This function takes a flattened array of items and groups them into arrays accouting to 
+ * the values of group_field
+ * @param array or array $items items to sort
+ * @param string $group_field the field of the array by which to group items
+ * @return a nested array, first index is the value of $items['group_field'] and the second index the current
+ * key of $item. 
+ * array('group_field1' => array ('id'=>array(value=>'value, group_field=>'group_field1', .), .. )...)
+ */
+function pi_create_grouped_item_list($items, $group_field)
+{
+	$return_array=array();
+	foreach($items as $key => $item)
+	{
+		$group_key = $item[$group_field];
+		if(!array_key_exists($group_key, $return_array))
+		{
+			$return_array[$group_key]=array();		
+		}
+		$return_array[$group_key][$key] = $item; 
+	}
+	return $return_array;
+}
+
 
 
 /**
