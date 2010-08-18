@@ -89,8 +89,6 @@ function pi_fooddiary_render_annotate($form, $form_state, $show_table=TRUE)
 {
 	$food_item = get_food_array($form, $form_state);
 
-	//print_r($food_item);
-	
 	$output .= "<div class=\"fooddiary_outer_div\">
 					<div  class=\"fooddiary_images\">
 						<img src=\"" . $form_state['storage']['food_photo']['filepath'] . "\">

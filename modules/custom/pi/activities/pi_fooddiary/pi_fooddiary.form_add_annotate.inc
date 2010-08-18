@@ -45,9 +45,6 @@ function pi_fooddiary_add_annotate_js()
 		$form_state['storage']['food_annotate']['food_portion'][$food_choice] += $food_portion;
 	}
 	
-	//print_r( $form['food_annotate']['food_choice']['#options'] );
-	//print_r( $form_state['storage']['food_annotate']['food_portion'] );
-	
   	form_set_cache($form_build_id, $form, $form_state);
   	$form += array(	'#post' => $_POST,
     				'#programmed' => FALSE );

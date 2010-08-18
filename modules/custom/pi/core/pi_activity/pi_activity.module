@@ -1,90 +1,38 @@
 <?php
 // $Id: pi_activity.info,  2010/05/21  MCP $
 
+
+module_load_include('inc', 'pi_activity', 'pi_activity.workflow' );
+
 /**
- * hook_menu() for pi_activity defining all the activity/% menu callbacks, etc
- * @return array of menu items as per drupal 6 api
+ *
+ * This functions returns the information for the activity node
+ * Function used by the drupal system
  */
-function pi_activity_menu() {
-	$items = array();
-	$items['activity/%pi_activity'] = array(
-		'title' => 'View',
-		'file' => 'pi_activity.activity.inc',
-		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 'view'),
-		'access callback' => 'pi_activity_item_access',
-		'access arguments' => array(1, 'view'),
-		'type' => MENU_CALLBACK
-	);
-	
-	$items['activity/%pi_activity/view'] = array(
-		'title' => 'View',
-		'type' => MENU_DEFAULT_LOCAL_TASK,
-		'weight' => 0
-	);
-	
-	$items['activity/%pi_activity/edit'] = array(
-		'title' => 'Edit',
-		'file' => 'pi_activity.activity.inc', 
-		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 'edit'),
-		'access callback' => 'pi_activity_item_access',
-		'access arguments' => array(1, 'edit'),
-		'type' => MENU_LOCAL_TASK,
-		'weight' => 1
-	);
-	
-	$items['activity/%pi_activity/add'] = array(
-		'title' => 'Add',
-		'file' => 'pi_activity.activity.inc', 
-		'page callback' => 'pi_activity_view',
-		'page arguments' => array(1, 'add'),
-		'access callback' => 'pi_activity_item_access',
-		'access arguments' => array(1, 'add'),
-		'type' => MENU_LOCAL_TASK,
-		'weight' => 2
-	);
-	
-	$items['activity/%pi_activity/admin'] = array(
-		'title' => 'Admin',
-		'file' => 'pi_activity.admin.inc', 
-		'page callback' => 'pi_activity_content',
-		'page arguments' => array(1),
-		'access_callback' => 'user_access',
-		'access arguments' => array('access pi_authoring content'),
-		'type' => MENU_LOCAL_TASK,
-		'weight' => 3
+function pi_activity_node_info()
+{
+	$type=array(
+		'pi_activity' => array(
+		    'name' => t('Activity'), // Required.
+		    'module' => 'pi_activity',  // Required.
+		    'description' => t('A generic activity'), // Required.
+		    'has_title' => TRUE,
+		    'title_label' => t('Activity'),
+		    'has_body' => TRUE,
+			'body_label' => t('A generic activity'),
+		    'locked' => TRUE )
 	);
 
-	$items['activity/%pi_activity/admin/content'] = array(
-		'title' => 'View Activity Content',
-		'type' => MENU_DEFAULT_LOCAL_TASK,
-		'weight' => 0
-	);
-	
-	$items['activity/%pi_activity/admin/edit'] = array(
-		'title' => 'Edit Activity',
-		'file' => 'pi_activity.admin.inc', 
-		'page callback' => 'pi_activity_edit',
-		'page arguments' => array(1),
-		'access_callback' => TRUE,
-		'access arguments' => array('access pi_authoring content'),
-		'type' => MENU_LOCAL_TASK,
-		'weight' => 1
-	);
+	return $type;
+}
 
-	$items['activity/%pi_activity/admin/view/%node'] = array(
-		'title' => 'Edit Activity',
-		'file' => 'pi_activity.admin.inc', 
-		'page callback' => 'pi_activity_admin_view_node',
-		'page arguments' => array(1, 4),
-		'access_callback' => TRUE,
-		'access arguments' => array('access pi_authoring content'),
-		'type' => MENU_CALLBACK,
-		'weight' => 1
-	);
-	
-	return $items;
+function pi_activity_perm()
+{
+}
+
+function pi_activity_access($op, $node, $account)
+{
+	return true;
 }
 
 /**
@@ -117,6 +65,130 @@ function pi_activity_item_access($activity, $op) {
 }
 
 /**
+ * hook_menu() for pi_activity defining all the activity/% menu callbacks, etc
+ * @return array of menu items as per drupal 6 api
+ */
+function pi_activity_menu() {
+	$items = array();
+	$items['activity/%pi_activity'] = array(
+		'title' => 'View',
+		'file' => 'pi_activity.activity.inc',
+		'page callback' => 'pi_activity_view',
+		'page arguments' => array(1, 'view'),
+		'access callback' => 'pi_activity_item_access',
+		'access arguments' => array(1, 'view'),
+		'type' => MENU_CALLBACK
+	);
+
+	$items['activity/%pi_activity/view'] = array(
+		'title' => 'View',
+		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'weight' => 0
+	);
+
+	$items['activity/%pi_activity/edit'] = array(
+		'title' => 'Edit',
+		'file' => 'pi_activity.activity.inc', 
+		'page callback' => 'pi_activity_view',
+		'page arguments' => array(1, 'edit'),
+		'access callback' => 'pi_activity_item_access',
+		'access arguments' => array(1, 'edit'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 1
+	);
+
+	$items['activity/%pi_activity/add'] = array(
+		'title' => 'Add',
+		'file' => 'pi_activity.activity.inc', 
+		'page callback' => 'pi_activity_view',
+		'page arguments' => array(1, 'add'),
+		'access callback' => 'pi_activity_item_access',
+		'access arguments' => array(1, 'add'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 2
+	);
+
+	$items['activity/%pi_activity/admin'] = array(
+		'title' => 'Admin',
+		'file' => 'pi_activity.admin.inc', 
+		'page callback' => 'pi_activity_content',
+		'page arguments' => array(1),
+		'access_callback' => 'user_access',
+		'access arguments' => array('access pi_authoring content'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 3
+	);
+
+	$items['activity/%pi_activity/admin/content'] = array(
+		'title' => 'View Activity Content',
+		'type' => MENU_DEFAULT_LOCAL_TASK,
+		'weight' => 0
+	);
+
+	$items['activity/%pi_activity/admin/edit'] = array(
+		'title' => 'Edit Activity',
+		'file' => 'pi_activity.admin.inc', 
+		'page callback' => 'pi_activity_edit',
+		'page arguments' => array(1),
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 1
+	);
+
+	$items['activity/%pi_activity/admin/view/%node'] = array(
+		'title' => 'Edit Activity',
+		'file' => 'pi_activity.admin.inc', 
+		'page callback' => 'pi_activity_admin_view_node',
+		'page arguments' => array(1, 4),
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'type' => MENU_CALLBACK,
+		'weight' => 1
+	);
+
+	return $items;
+}
+
+/**
+ * Returns the activity_object from pi_activity table - used in the activity menu
+ * @param int $activity_id the activity ID
+ * @return object from db_fetch_object() for pi_activity table
+ */
+function pi_activity_load($activity_id)
+{
+	$activity = load_activity($activity_id);
+	return $activity;
+}
+
+function pi_activity_insert($node)
+{
+}
+
+function pi_activity_update($node)
+{
+	/*
+	$activity_array = $node->activity_data;
+	
+	$query = "UPDATE {pi_activity} SET " . $set . " WHERE activity_id = %d";
+	
+	db_query($query, 	$activity_array["name"], $activity_array["description"],
+						$activity_array["activity_type"], $activity_array["node_type"],
+						$activity_array["parameters"], $activity_array["destination"],
+						$activity_array["audience"], $node->nid );
+
+	*/
+	
+	//save_activity($node->activity_data);
+}
+
+function pi_activity_delete(&$node)
+{
+	delete_activity($node->nid);
+}
+
+
+/**
  * hook_theme() for pi_activity content
  */
 function pi_activity_theme()
@@ -129,7 +201,7 @@ function pi_activity_theme()
 }
 
 
-	
+
 /*
  *activity teaser
  */
@@ -176,13 +248,13 @@ function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
  */
 function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 	$query = "SELECT {pi_phase}.nid as nid FROM {pi_phase} "
-			. "LEFT JOIN {pi_phase_actor} ON {pi_phase_actor}.phase_id = {pi_phase}.nid "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_phase_actor}.gid "
-			. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.phase_id = {pi_phase}.nid "
-			. "LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
-			. "WHERE {pi_phase}.inquiry_nid = %d "
-			. "AND ( {pi_phase_actor}.uid = %d OR {og_uid}.uid = %d ) "
-			. "AND {pi_stage_phase_activity}.activity_id = %d";
+	. "LEFT JOIN {pi_phase_actor} ON {pi_phase_actor}.phase_id = {pi_phase}.nid "
+	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_phase_actor}.gid "
+	. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.phase_id = {pi_phase}.nid "
+	. "LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
+	. "WHERE {pi_phase}.inquiry_nid = %d "
+	. "AND ( {pi_phase_actor}.uid = %d OR {og_uid}.uid = %d ) "
+	. "AND {pi_stage_phase_activity}.activity_id = %d";
 	$result = db_fetch_object(db_query($query, $inquiry_id, $uid, $uid, $activity_id));
 	return $result;
 }
@@ -193,20 +265,20 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
  **/
 function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) {
 	//find if uid is author of the node
-	$query1 = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} " 
-			. "LEFT JOIN {node} ON {node}.nid = {pi_activity_node}.nid "
-			. "WHERE {pi_activity_node}.inquiry_id = %d "
-			. "AND {pi_activity_node}.activity_id = %d AND {node}.uid = %d " 
-			. "ORDER BY {pi_activity_node}.pan_id DESC";
-	
-/*	$query1 = "SELECT pi_activity_node.nid FROM pi_activity_node, node";
-	$query1 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
-	$query1 .= " AND pi_activity_node.activity_id = " . $activity_id;
-	$query1 .= " AND node.nid = pi_activity_node.nid";
-	$query1 .= " AND node.uid = '" . $uid . "' ";
-	$query1 .= " ORDER BY pan_id DESC";*/
+	$query1 = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} "
+	. "LEFT JOIN {node} ON {node}.nid = {pi_activity_node}.nid "
+	. "WHERE {pi_activity_node}.inquiry_id = %d "
+	. "AND {pi_activity_node}.activity_id = %d AND {node}.uid = %d "
+	. "ORDER BY {pi_activity_node}.pan_id DESC";
 
-	
+	/*	$query1 = "SELECT pi_activity_node.nid FROM pi_activity_node, node";
+	 $query1 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
+	 $query1 .= " AND pi_activity_node.activity_id = " . $activity_id;
+	 $query1 .= " AND node.nid = pi_activity_node.nid";
+	 $query1 .= " AND node.uid = '" . $uid . "' ";
+	 $query1 .= " ORDER BY pan_id DESC";*/
+
+
 	$result = db_fetch_object(db_query($query1, $inquiry_id, $activity_id, $uid));
 	if (isset($result))
 	{
@@ -218,11 +290,11 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 
 	//find if uid is member of a group for the node
 	$query2 = "SELECT {pi_activity_node}.nid FROM {pi_activity_node}, {node_access}, {og_uid} "
-			. "WHERE  {pi_activity_node}.inquiry_id = %d "
-			. "AND {pi_activity_node}.activity_id = %d "
-			. "AND {node_access}.nid = {pi_activity_node}.nid "
-			. "AND ( ( {node_access}.gid = gid AND {node_access}.gid = og_uid.nid AND {og_uid}.uid = %d ) " 
-			. "OR {node_access}.realm = 'all')";
+	. "WHERE  {pi_activity_node}.inquiry_id = %d "
+	. "AND {pi_activity_node}.activity_id = %d "
+	. "AND {node_access}.nid = {pi_activity_node}.nid "
+	. "AND ( ( {node_access}.gid = gid AND {node_access}.gid = og_uid.nid AND {og_uid}.uid = %d ) "
+	. "OR {node_access}.realm = 'all')";
 
 	$result = db_fetch_object(db_query($query2, $inquiry_id, $activity_id, $uid));
 	return $result->nid;
@@ -236,11 +308,11 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
  */
 function get_phase_id_for_activity_id($activity_id) {
 	$sql = "SELECT {pi_stage_phase}.phase_id FROM {pi_stage_phase}, {pi_stage_phase_activity} "
-		. "WHERE {pi_stage_phase_activity}.activity_id = %d "
-		. "AND {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
-		. "ORDER BY {pi_stage_phase}.psp_id DESC LIMIT 1";
+	. "WHERE {pi_stage_phase_activity}.activity_id = %d "
+	. "AND {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
+	. "ORDER BY {pi_stage_phase}.psp_id DESC LIMIT 1";
 	$result = db_fetch_object(db_query($sql, $activity_id));
-	return $result->phase_id; 
+	return $result->phase_id;
 }
 
 /**
@@ -260,11 +332,11 @@ function get_inquiry_id_for_activity_id($activity_id) {
  */
 function get_activity_ids_for_activity_type($inquiry_id, $activity_type, $uid) {
 	$query = "SELECT {pi_activity}.activity_id FROM {pi_activity} "
-			. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.activity_id = {pi_activity}.activity_id "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-			. "WHERE {pi_activity_actor}.inquiry_id = %d "
-			. "AND {pi_activity}.activity_type =  '%s' "
-			. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
+	. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.activity_id = {pi_activity}.activity_id "
+	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+	. "WHERE {pi_activity_actor}.inquiry_id = %d "
+	. "AND {pi_activity}.activity_type =  '%s' "
+	. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
 
 	$result = db_result(db_query($query, $inquiry_id, $activity_type, $uid, $uid));
 	return $result;
@@ -278,12 +350,12 @@ function get_activity_ids_for_activity_type($inquiry_id, $activity_type, $uid) {
  */
 function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
 	$query = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} "
-			. "LEFT JOIN {pi_activity} ON {pi_activity_node}.activity_id = {pi_activity}.activity_id "
-			. "LEFT JOIN {pi_activity_actor} ON (( {pi_activity_node}.inquiry_id = {pi_activity_actor}.inquiry_id ) AND ( {pi_activity_actor}.activity_id = {pi_activity}.activity_id )) "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-			. "WHERE {pi_activity_node}.inquiry_id = %d "
-			. "AND {pi_activity}.activity_type =  '%s' "
-			. "AND ({pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
+	. "LEFT JOIN {pi_activity} ON {pi_activity_node}.activity_id = {pi_activity}.activity_id "
+	. "LEFT JOIN {pi_activity_actor} ON (( {pi_activity_node}.inquiry_id = {pi_activity_actor}.inquiry_id ) AND ( {pi_activity_actor}.activity_id = {pi_activity}.activity_id )) "
+	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+	. "WHERE {pi_activity_node}.inquiry_id = %d "
+	. "AND {pi_activity}.activity_type =  '%s' "
+	. "AND ({pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
 
 	// print $query;
 	$result = db_query($query, $inquiry_id, $activity_type, $uid, $uid);
@@ -415,18 +487,18 @@ function set_visible_status_of_activity($inquiry_id, $activity_id, $uid, $status
  */
 function set_visible_status_of_activity_type($inquiry_id, $activity_type, $uid, $status) {
 	$query = "SELECT {pi_activity_status}.pas_id FROM {pi_activity_status} "
-			. "LEFT JOIN {pi_activity} ON {pi_activity_status}.activity_id = {pi_activity}.activity_id "
-			. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.inquiry_id = {pi_activity_status}.inquiry_id "
-			. "AND {pi_activity_actor}.activity_id = {pi_activity_status}.activity_id "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-			. "WHERE {pi_activity_status}.inquiry_id = %d "
-			. "AND {pi_activity_status}.activity_id = %d "
-			. "AND {pi_activity}.activity_type = '%s' "
-			. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid =  %d )";
+	. "LEFT JOIN {pi_activity} ON {pi_activity_status}.activity_id = {pi_activity}.activity_id "
+	. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.inquiry_id = {pi_activity_status}.inquiry_id "
+	. "AND {pi_activity_actor}.activity_id = {pi_activity_status}.activity_id "
+	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+	. "WHERE {pi_activity_status}.inquiry_id = %d "
+	. "AND {pi_activity_status}.activity_id = %d "
+	. "AND {pi_activity}.activity_type = '%s' "
+	. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid =  %d )";
 
 	$items = db_query($query, $inquiry_id, $activity_id, $activity_type, $uid, $uid);
 
-	while ($item = db_fetch_object($items)) 
+	while ($item = db_fetch_object($items))
 	{
 		$query = "UPDATE {pi_activity_status} SET visible_status = '%s' WHERE pas_id = %d";
 		db_query($query, $status, $item->pas_id);
@@ -462,11 +534,11 @@ function get_node_function_of_activity($inquiry_id, $activity_id, $uid) {
 }
 
 /**
- * Returns FALSE if that node function for that activity and user is not the specified 
+ * Returns FALSE if that node function for that activity and user is not the specified
  * function, otherwise it returns TRUE.
  * @param $inquiry_id
- * @param uint $activity_id ID of pi_acitvity to check node function with 
- * @param uint $uid ID of user to check node function with 
+ * @param uint $activity_id ID of pi_acitvity to check node function with
+ * @param uint $uid ID of user to check node function with
  * @param string $function can Either 'add', 'edit' or 'view'.
  * @return unknown_type
  */
@@ -530,18 +602,18 @@ function set_node_function_of_activity($inquiry_id, $activity_id, $uid, $functio
 function set_node_function_of_activity_type($inquiry_id, $activity_type, $uid, $function) {
 
 	$query = "SELECT {pi_activity_status}.pas_id FROM {pi_activity_status} "
-			. "LEFT JOIN {pi_activity} ON {pi_activity_status}.activity_id = {pi_activity}.activity_id "
-			. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.inquiry_id = {pi_activity_status}.inquiry_id "
-			. "AND {pi_activity_actor}.activity_id = {pi_activity_status}.activity_id "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-			. "WHERE {pi_activity_status}.inquiry_id = %d "
-			. "AND {pi_activity_status}.activity_id = %d "
-			. "AND {pi_activity}.activity_type = '%s' "
-			. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid =  %d )";
+	. "LEFT JOIN {pi_activity} ON {pi_activity_status}.activity_id = {pi_activity}.activity_id "
+	. "LEFT JOIN {pi_activity_actor} ON {pi_activity_actor}.inquiry_id = {pi_activity_status}.inquiry_id "
+	. "AND {pi_activity_actor}.activity_id = {pi_activity_status}.activity_id "
+	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+	. "WHERE {pi_activity_status}.inquiry_id = %d "
+	. "AND {pi_activity_status}.activity_id = %d "
+	. "AND {pi_activity}.activity_type = '%s' "
+	. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid =  %d )";
 
 	$items = db_query($query, $inquiry_id, $activity_id, $activity_type, $uid, $uid);
 
-	while ($item = db_fetch_object($items)) 
+	while ($item = db_fetch_object($items))
 	{
 		$query = "UPDATE {pi_activity_status} SET node_function = '%s' WHERE pas_id = %d";
 		db_query($query, $function, $item->pas_id);
@@ -566,16 +638,7 @@ function load_activity($activity_id)
 	return $activity;
 }
 
-/**
- * Returns the activity_object from pi_activity table - used in the activity menu
- * @param uint $activity_id the activity ID
- * @return object from db_fetch_object() for pi_activity table
- */
-function pi_activity_load($activity_id)
-{
-	$activity = load_activity($activity_id);
-	return $activity;
-}
+
 
 
 /**
@@ -591,27 +654,29 @@ function pi_activity_load($activity_id)
  * $activity_array->audience
  */
 function save_activity($activity_array)
-{	
-	$set = "name = '%s', description = '%s', activity_type = '%s', " .
-	"node_type = '%s', parameters = '%s', destination = '%s', audience = '%s' ";
-	
+{
 	if ($activity_array["activity_id"] != NULL)
 	{
 		//update
-		$query = "UPDATE {pi_activity} SET " . $set . " WHERE activity_id = %d";
-		db_query($query, $activity_array["name"], $activity_array["description"], 
-			$activity_array["activity_type"], $activity_array["node_type"], 
-			$activity_array["parameters"], $activity_array["destination"], 
-			$activity_array["audience"], $activity_array["activity_id"]);
+		$query = "UPDATE {pi_activity} SET name = '%s', description = '%s', activity_type = '%s', 
+						node_type = '%s', parameters = '%s', destination = '%s', 
+						audience = '%s' WHERE activity_id = %d";
+		db_query($query, $activity_array["name"], $activity_array["description"],
+		$activity_array["activity_type"], $activity_array["node_type"],
+		$activity_array["parameters"], $activity_array["destination"],
+		$activity_array["audience"], $activity_array["nid"]);
 	}
 	else
 	{
 		//insert
-		$query = "INSERT INTO {pi_activity} SET " . $set;
-		db_query($query, $activity_array["name"], $activity_array["description"], 
-			$activity_array["activity_type"], $activity_array["node_type"], 
-			$activity_array["parameters"], $activity_array["destination"], 
-			$activity_array["audience"]);
+		$query = "INSERT INTO {pi_activity} SET activity_id = %d, name = '%s', description = '%s', 
+							activity_type = '%s', node_type = '%s', parameters = '%s', 
+							destination = '%s', audience = '%s' ";
+		
+		db_query($query, $activity_array["nid"], $activity_array["name"], $activity_array["description"],
+		$activity_array["activity_type"], $activity_array["node_type"],
+		$activity_array["parameters"], $activity_array["destination"],
+		$activity_array["audience"]);
 	}
 }
 
@@ -622,7 +687,8 @@ function save_activity($activity_array)
  * @param unknown_type $activity_id
  * @return unknown_type
  */
-function delete_activity($activity_id) {
+function delete_activity($activity_id) 
+{
 	//delete from pi_activity
 	$query = "DELETE FROM {pi_activity} WHERE activity_id = %d";
 	db_query($query, $activity_id );
@@ -642,6 +708,9 @@ function delete_activity($activity_id) {
 	//delete from pi_activity_node
 	$query = "DELETE FROM {pi_activity_node} WHERE activity_id = %d";
 	db_query($query, $activity_id );
+	
+	//$node = node_load( $activity_id );
+	//echo "Activity ID: " . $activity_id;
 }
 
 /**
@@ -655,18 +724,18 @@ function delete_activity($activity_id) {
 function load_activity_actor($inquiry_id, $activity_id = NULL, $uid = NULL, $gid = NULL) {
 	$query = "SELECT * FROM {pi_activity_actor} WHERE inquiry_id = %d ";
 	$parameters[] = $inquiry_id;
-	
-	if ($activity_id) 
+
+	if ($activity_id)
 	{
 		$query .= " AND activity_id = %d";
 		$parameters[] = $activity_id;
 	}
-	if ($uid) 
+	if ($uid)
 	{
 		$query .= " AND uid = %d";
 		$parameters[] = $uid;
 	}
-	if ($gid) 
+	if ($gid)
 	{
 		$query .= " AND gid = %d";
 		$parameters[] = $gid;
@@ -698,18 +767,18 @@ function load_activity_actor($inquiry_id, $activity_id = NULL, $uid = NULL, $gid
  * $activity_actor_array ->gid
  */
 function insert_activity_actor($activity_actor_array) {
-	
+
 	$query = "INSERT INTO {pi_activity_actor} SET inquiry_id = %d, activity_id = %d ";
-	
+
 	$parameters[] = $activity_actor_array["inquiry_id"];
 	$parameters[] = $activity_actor_array["activity_id"] ;
-			
-	if (isset($activity_actor_array["uid"])) 
+		
+	if (isset($activity_actor_array["uid"]))
 	{
 		$query .= ", uid = %d ";
 		$parameters[] = $activity_actor_array["uid"];
 	}
-	if (isset($activity_actor_array["gid"])) 
+	if (isset($activity_actor_array["gid"]))
 	{
 		$query .= ", gid = %d ";
 		$parameters[] = $activity_actor_array["gid"];
@@ -727,7 +796,7 @@ function insert_activity_actor($activity_actor_array) {
  * $activity_actor_array ->gid
  */
 function update_activity_actor($actor) {
-	
+
 	$query = "UPDATE {pi_activity_actor} SET inquiry_id = %d , activity_id = %d , uid = %d , gid = %d WHERE paa_id = %d";
 
 	db_query($query, $actor["inquiry_id"], $actor["activity_id"], $actor["uid"], $actor["gid"], $actor["paa_id"]);
@@ -741,13 +810,13 @@ function update_activity_actor($actor) {
  * @return unknown|number
  */
 function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
-	
+
 	$newitems = 0;
 	$query = "SELECT {pi_activity_status}.pas_id FROM {pi_activity_status} "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid "
-			. "WHERE inquiry_id = %d ";
+	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid "
+	. "WHERE inquiry_id = %d ";
 	$parameters[] = $inquiry_id;
-	
+
 	if ($activity_id)
 	{
 		$query .= "AND activity_id = %d ";
@@ -759,7 +828,7 @@ function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
 		$parameters[] = $uid;
 		$parameters[] = $uid;
 	}
-	
+
 	$query .= "ORDER BY pi_activity_status.pas_id DESC";
 
 	$items = db_fetch_object(db_query($query, $parameters));
@@ -769,7 +838,7 @@ function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
 		$newquery = "SELECT * FROM {pi_activity_status} WHERE pas_id = %d";
 		$newitems = db_fetch_object(db_query($newquery, $items->pas_id));
 	}
-	
+
 	return $newitems;
 }
 
@@ -783,7 +852,7 @@ function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
  * $activity_status_array ->visible_status
  */
 function save_activity_status($activity_status) {
-	
+
 	$set = "inquiry_id = %d , activity_id = %d ";
 	$parameters[] = $activity_status->inquiry_id;
 	$parameters[] = $activity_status->activity_id;
@@ -798,7 +867,7 @@ function save_activity_status($activity_status) {
 		$set .= ", gid = %d ";
 		$parameters[] = $activity_status->gid;
 	}
-	
+
 	$set .= ", node_function = '%s' , visible_status = '%s' ";
 	$parameters[] = $activity_status->node_function;
 	$parameters[] = $activity_status->visible_status;
@@ -831,7 +900,7 @@ function save_activity_status($activity_status) {
  * @return unknown_type
  */
 function delete_activity_type_for_user($activity_type, $user) {
-	
+
 	//get all activity id's for $activity_type
 	$query = "SELECT * FROM {pi_activity} WHERE activity_type = '%s'";
 	$results = db_result(db_query($query, $activity_type));
@@ -860,13 +929,13 @@ function delete_activity_type_for_user($activity_type, $user) {
 }
 
 /**
- * Create the url to a particular activity 
+ * Create the url to a particular activity
  * @param uint $inquiry_id
  * @param uint $stage_id
  * @param uint $phase_id
  * @param uint $activity_id
  * @param uint $uid
- * @return array ['url'] and ['title'] countaining link url (via drupal url()) and title (via chaeck_plain()) 
+ * @return array ['url'] and ['title'] countaining link url (via drupal url()) and title (via chaeck_plain())
  */
 function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid)
 {
@@ -878,48 +947,48 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
 		'edit' => 'editable.png',
 		'view' => 'viewable.png',
 		'unavailable' => 'unavailable.png'
-	);
-	
-	$loaded_activity = load_activity($activity_id);
-	$visible_status = get_visible_status_of_activity($inquiry_id, $activity_id, $uid);
-	$node_function = get_node_function_of_activity($inquiry_id, $activity_id, $uid);
+		);
 
-	switch ($loaded_activity->destination)
-	{
-		case "self":
-			$destination = "destination=activity/$activity_id/view";
-			break;
-		case "phase":
-			$destination = "destination=phase/" . $phase_id;
-			break;
-		default:
-			$destination = "destination=inquiry/" . $inquiry_id;
-			break;
-	}
+		$loaded_activity = load_activity($activity_id);
+		$visible_status = get_visible_status_of_activity($inquiry_id, $activity_id, $uid);
+		$node_function = get_node_function_of_activity($inquiry_id, $activity_id, $uid);
 
-	// set editable nodes to be viewed by default
-	if ($node_function == 'edit')
-	{
-		$node_function = 'view';
-	}
-	$url['url'] = url("activity/$activity_id/$node_function", array('query' => $destination));
+		switch ($loaded_activity->destination)
+		{
+			case "self":
+				$destination = "destination=activity/$activity_id/view";
+				break;
+			case "phase":
+				$destination = "destination=phase/" . $phase_id;
+				break;
+			default:
+				$destination = "destination=inquiry/" . $inquiry_id;
+				break;
+		}
 
-	
-	$teacher_gid = check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity_id, $uid);
-	$activity_name_text = check_plain($loaded_activity->name) . teacher_only_flag($teacher_gid);
+		// set editable nodes to be viewed by default
+		if ($node_function == 'edit')
+		{
+			$node_function = 'view';
+		}
+		$url['url'] = url("activity/$activity_id/$node_function", array('query' => $destination));
 
-	//if ($visible_status == "unavailable")
-	//{
+
+		$teacher_gid = check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity_id, $uid);
+		$activity_name_text = check_plain($loaded_activity->name) . teacher_only_flag($teacher_gid);
+
+		//if ($visible_status == "unavailable")
+		//{
 		$label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
 		$url['title'] = $activity_name_text . '&nbsp;' . $label_icon;
-	/*}
-	else {
-		$label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
+		/*}
+		 else {
+		 $label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
 
-		$activity_name_link = "$activity_name_text&nbsp;$label_icon";
-		$url['title'] = $activity_name_link;
-	}*/
-	return $url;
+		 $activity_name_link = "$activity_name_text&nbsp;$label_icon";
+		 $url['title'] = $activity_name_link;
+		 }*/
+		return $url;
 }
 
 
@@ -936,8 +1005,8 @@ function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $u
 	$output = array(
 		'data' => "<a href='" . $link['url'] .  "'>" . $link['title'] . "</a>", 
 		'class' => 'menu'
-	);
-	return $output;
+		);
+		return $output;
 }
 
 /**
@@ -973,7 +1042,7 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
 }
 
 /**
- * Return the activity_id of an "Add $whatever"n activity for a given "Sort $whatever" function, if not return NULL  
+ * Return the activity_id of an "Add $whatever"n activity for a given "Sort $whatever" function, if not return NULL
  * @param unknown_type $inquiry_nid The inquiry id that the activity belongs to
  * @param unknown_type $activity_ind The "Sort $whatever" activity id for the add activity.
  * @param unknown_type $uid The user id to find the add activity id for.
@@ -990,10 +1059,10 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
 			$phases = get_phases_of_inquiry_and_user($inquiry_id, $uid);
 			foreach ($phases as $phase)
 			{
-				$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);				
+				$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);
 				foreach ($activities as $activity)
 				{
-			
+						
 					if($activity->node_type == $node_type_to_find)
 					{
 						$activity_status = load_activity_status($inquiry_id, $activity->activity_id, $uid);
@@ -1025,12 +1094,12 @@ function make_add_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id,
 }
 
 /**
- * Returns an array of nids of a node type available 
- * to a user for a given inquiry 
+ * Returns an array of nids of a node type available
+ * to a user for a given inquiry
  * @param $uid The user to which the nodes are availeable
  * @param $inquiry_id the inquiry id that the nodes belong to
  * @param $type the node type to search for e.g. 'pi_data'
- * 
+ *
  */
 function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
 {
@@ -1054,12 +1123,12 @@ function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
 /**
  * This function takes an array of nids, loads the node and then maps the
  * node attributes to fields as per the key and value of $field_maping
- * if the node cann't be loaded it is dropped from the array therefore 
- * if this is of concern to you, you should check array_keys($results) 
+ * if the node cann't be loaded it is dropped from the array therefore
+ * if this is of concern to you, you should check array_keys($results)
  * with $nids
- * @param $nids array(uint) nids to get data from 
+ * @param $nids array(uint) nids to get data from
  * @param $field_mapping mapping of node attribute to field e.g. array('weight' => '#weight')
- * @return array [nid][{field_mapping_value}] node->{field_mapping_key} 
+ * @return array [nid][{field_mapping_value}] node->{field_mapping_key}
  */
 function pi_activity_map_fields_from_nids($nids, $field_mapping)
 {

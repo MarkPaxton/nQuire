@@ -56,12 +56,9 @@ class pData
 		{
 			$data[ $item[$name] ] = $item;
 		}
-
-
-		//print_r( $data );
+		
 		ksort( $data );
-		//print_r( $data );
-
+		
 		$this->Data = $data;
 	}
 

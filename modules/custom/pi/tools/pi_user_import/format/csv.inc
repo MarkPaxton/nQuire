@@ -52,7 +52,6 @@ function import_users_from_file($filename)
     			}
     		}
     		
-			//print_r( $obj );
 		}
 		fclose($f_handle);
 	}
@@ -100,9 +99,7 @@ function import_og_from_file($filename)
     		if( is_numeric( $obj->nid ) )
     		{
     			$groups[] = $obj;
-    		}    		
-    		
-			//print_r( $obj );
+    		}
 		}
 		fclose($f_handle);
 	}

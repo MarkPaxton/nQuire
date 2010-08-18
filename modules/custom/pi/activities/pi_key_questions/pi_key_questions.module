@@ -66,6 +66,20 @@ function pi_key_questions_access($op, $node) {
 	}
 }
 
+function pi_key_questions_delete(&$node) 
+{
+	//Delete the key question from the sort table if it exists
+	db_query('DELETE FROM {pi_sort_key_questions} WHERE key_question = %d', $node->nid);
+	
+	$result = db_query('SELECT nid FROM {pi_key_answers} WHERE key_question_id = %d', $node->nid);
+	
+	//Remove the answers to the question
+	while( $answer = db_fetch_object($result) )
+	{
+		node_delete( $answer->nid );
+	}
+}
+
 /**
  * Implementation of hook_form().
  */

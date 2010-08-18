@@ -33,8 +33,6 @@ function _pi_user_import_get_files()
 		foreach($files as $file)
 		{
 			$import_files[$file->basename] = $file->basename;
-			
-			//print_r($file);
 		}
 	}
 	

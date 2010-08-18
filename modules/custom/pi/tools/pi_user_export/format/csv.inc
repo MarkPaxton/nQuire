@@ -26,8 +26,6 @@ function export_users_to_file($filename, $users)
 				export_groups_to_file($filepath_groups, $og);
 			}
 			
-			//print_r($og);
-			
 			fputcsv($f_handle, $user_info);
 		}
 		

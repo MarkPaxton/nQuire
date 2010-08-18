@@ -10,7 +10,6 @@ define('FOODDIARY_FILE_PATH', 'fooddiary');
  */
 function pi_fooddiary_upload_photo_js()
 {
-	//print_r($_POST);
 	$submit = $_POST['op'];
 
 	_pi_fooddiary_check_upload_directory();
@@ -79,8 +78,6 @@ function pi_fooddiary_upload_photo_js()
 		$options = $form['food_diary']['meal_type']['#options'];
 
 		$meal_type = strtolower($options[$selected]);
-
-		//print_r($content['food'][$meal_type]['food']);
 
 		$form_state['storage']['food_diary']['meal_type']['#options'] = $selected;
 		$form_state['storage']['food_annotate']['food_portion'] = _pi_fooddiary_make_food_annotation_array($node, $meal_type);
@@ -224,9 +221,6 @@ function _pi_fooddiary_make_food_annotation_array($node, $meal_type)
 
 	$foodoptions = _pi_fooddiary_get_food_options();
 	$content = $node->content;
-
-	//print_r($content);
-	//echo $meal_type;
 
 	$food_items = $content['food'][$meal_type]['food'];
 
