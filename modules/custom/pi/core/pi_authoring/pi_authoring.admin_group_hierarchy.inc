@@ -258,7 +258,7 @@ function pi_authoring_admin_group_hierarchy_form_submit($form, &$form_state)
 					$all_groups[$gid] = $group;	
 					if($region_key != $group['region'])
 					{
-						pi_debug_message("$gid moved from $region_key to " . $group['region']);
+						//pi_debug_message("$gid moved from $region_key to " . $group['region']);
 						$changed_groups[$gid] = $group;
 					}			
 				}
