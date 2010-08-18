@@ -60,22 +60,16 @@ function pi_inquiry_form($node) {
 	// Get metadata for the node type which is defined in pi_inquiry_info()
 	$type = node_get_types('type', $node);
 
-	if ($type->has_title)
-	{
-		$form['title'] = array(
-			'#type' => 'textfield',
-			'#title' => check_plain($type->title_label),
-			'#required' => TRUE,
-			'#default_value' => $node->title,
-		);
-	}
-
-	if ($type->has_body)
-	{
-		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-		$form['body_field']['body']['#rows'] = 6;
-		$form['body_field']['teaser_include']['#access'] = FALSE;
-	}
+	$form['title'] = array(
+		'#type' => 'textfield',
+		'#title' => check_plain($type->title_label),
+		'#required' => TRUE,
+		'#default_value' => $node->title,
+	);
+	
+	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+	$form['body_field']['body']['#rows'] = 6;
+	$form['body_field']['teaser_include']['#access'] = FALSE;
 
 	$form['layout'] = array(
 		'#type' => 'select',
@@ -89,11 +83,30 @@ function pi_inquiry_form($node) {
 			'octagon_icon'=> t("Octagon with icons"),
 			'octagon_activity'=> t("Octagon with activity counts"),
 			'octagon_icon_activity' => t("Octagon with activity counts and icons"),
-	),
+		),
 	);
-
+	
+	$inquiry_groups = pi_get_defined_group_nids();
+	$all_defined_groups = array();
+	foreach(array_keys($inquiry_groups) as $type)
+	{
+		$all_defined_groups = array_merge($all_defined_groups, array_keys($inquiry_groups[$type]));
+	}
+	
+	$group_names['none'] = "";
+	$group_names = array_merge($group_names, pi_groups_get_names_from_nids($all_defined_groups));
+	
+	$form['layout'] = array(
+		'#type' => 'select',
+		'#title' => t('Who is this inquiry for'),
+		'#weight' => 2,
+		'#default_value' => $node->inquiry_actor,
+		'#options' => $group_names,
+	);
+	
 	$form['activities'] = pi_activity_show_hide_from( $node->nid );
 	$form['activities']['#weight'] = 2;
+	
 
 	return $form;
 }
@@ -205,7 +218,14 @@ function pi_inquiry_delete(&$node) {
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-	return db_fetch_object(db_query('SELECT layout, weight FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+	$return = db_fetch_object(db_query('SELECT layout, weight FROM {pi_inquiry} WHERE vid = %d', $node->vid)); 
+	if($return!=NULL)
+	{
+		$query = "SELECT gid FROM {pi_inquiry_actor} WHERE inquiry_id = %d ORDER BY pia_id ASC LIMIT 1";
+		$result = db_fetch_array(db_query($query, $node->nid));
+		$return->inquiry_actor = $result['gid'];
+	}
+	return $return;
 }
 
 /**
@@ -316,11 +336,13 @@ function pi_activity_get_hidden_activities_from_inquiry( $inquiry_id )
 
 	$result = db_query( $query, $inquiry_id);
 	$data = array();
-
-	if( $inquiry = db_fetch_object( $result) )
+	$data['link'] = array();
+	$data['summary'] = array();
+	
+	if( $inquiry = db_fetch_object($result) )
 	{
-		$data[ 'link' ] =  explode( ',', $inquiry->hide_activity_link ) ;
-		$data[ 'summary' ] = explode( ',', $inquiry->hide_activity_in_summary ) ;
+		$data['link'] =  explode( ',', $inquiry->hide_activity_link ) ;
+		$data['summary'] = explode( ',', $inquiry->hide_activity_in_summary ) ;
 	}
 
 	return $data;

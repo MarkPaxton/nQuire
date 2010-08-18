@@ -89,7 +89,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 			$undefined_groups[] = $gid;
 		}
 	}
-	$undefined_names = pi_authoring_get_names_from_nids($undefined_groups);
+	$undefined_names = pi_groups_get_names_from_nids($undefined_groups);
 	if(count($undefined_groups)>0)
 	{
 		drupal_set_message(t('Some groups have not yet been defined as multiclass, class or group; please do this before sorting them.'));
@@ -313,35 +313,6 @@ function pi_authoring_admin_group_hierarchy_form_submit($form, &$form_state)
 	}
 	//pi_debug_message($all_groups);
 }
-
-
-/**
- * 
- * Return an array indexed by nid eith value the title of the node, or NULL
- * if the node is not found
- * @param array uint $nids Array of node ids
- * @return  array('nid' => 'title', ...)
- */
-function pi_authoring_get_names_from_nids($nids)
-{
-	$return_data = array();
-	if(is_array($nids))
-	{
-		foreach($nids as $nid)
-		{
-			$n = node_load($nid);
-			if($n!=NULL)
-			{
-				$return_data[$nid] = $n->title;
-			}
-			else
-			{
-				$return_data[$nid] = NULL;
-			}
-		}
-	}
-	return $return_data;
-} 
 
 /**
  * Create a list of groups and subgroups ids using the group hierarchy in $defined groups

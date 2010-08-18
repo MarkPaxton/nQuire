@@ -77,34 +77,31 @@ function pi_phase_form($node) {
 	{
 		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
 	}
+	
+	$form['title'] = array(
+		'#type' => 'textfield',
+		'#title' => check_plain($type->title_label),
+		'#required' => TRUE,
+		'#weight' => -5,
+		'#default_value' => $node->title,
+	);
+	
 	$form['inquiry_nid'] = array(
 		'#type' => 'select',
 		'#title' => t('Inquiry for phase'),
 		'#required' => TRUE,
-		'#weight' => -1,
+		'#weight' => -4,
 		'#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
 		'#options' => $inquiry_data,
 		'#allowed_inquiry_nids' => $inquiry_nids,
 		'#element_validate' => array('pi_phase_form_inquiry_nid_validate')
 	);	
-	
-	if ($type->has_title)
-	{
-		$form['title'] = array(
-			'#type' => 'textfield',
-			'#title' => check_plain($type->title_label),
-			'#required' => TRUE,
-			'#weight' => 0,
-			'#default_value' => $node->title,
-		);
-	}
-	if ($type->has_body)
-	{
-		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-		$form['body_field']['body']['#rows'] = 6;	
-		$form['body_field']['teaser_include']['#access'] = FALSE;			
-	}
-	
+
+	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+	$form['body_field']['#weight'] = 3;	
+	$form['body_field']['body']['#rows'] = 6;	
+	$form['body_field']['teaser_include']['#access'] = FALSE;			
+
 	return $form;
 }
 
@@ -115,7 +112,7 @@ function pi_phase_form_alter(&$form, $form_state, $form_id) {
 	// Stuff for this demo, best to keep it inside the house
 	if($form_id == 'pi_phase_node_form')
 	{
-		$form['menu']['#weight'] = 2;
+		$form['menu']['#weight'] = 5;
 	}
 }
 
