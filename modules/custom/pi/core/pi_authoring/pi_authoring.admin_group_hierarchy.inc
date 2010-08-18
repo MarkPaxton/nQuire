@@ -31,19 +31,30 @@ function pi_authoring_admin_group_hierarchy_view() {
 	return $output;
 }
 
-function pi_authoring_admin_group_hierarchy_edit() {
+function pi_authoring_admin_group_hierarchy_edit($type) {
 	$output = ''; 
-	$output .= drupal_get_form('pi_authoring_admin_group_hierarchy_form');
+	$output .= drupal_get_form('pi_authoring_admin_group_hierarchy_form', $type);
 	return $output;
 }
 
-
-
-function pi_authoring_admin_group_hierarchy_form($form_state)
+function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group='')
 {
 	$form = array();
 	$form['#prefix'] = t('Use this page to assign your groups into their respective parents: e.g. all the Year 10 classes into the Year 10 group.  ' .
 	"If there are no groups listed, you need to create some using the Groups menu item, then categorise them on the nQurire groups page.</p>");
+	
+	switch($class_or_group)
+	{
+		case 'class':
+			$form['#theme'] = 'pi_authoring_admin_group_hierarchy_form_class';
+		break; 
+		case 'group':
+			$form['#theme'] = 'pi_authoring_admin_group_hierarchy_form_group';
+		break; 
+		default:
+			$form['#theme'] = 'pi_authoring_admin_group_hierarchy_form_full';
+	}
+	//$form['#theme'] = 'pi_authoring_admin_group_hierarchy_form_full';
 	
 	$all_groups_by_id = array();
 	$tree_roots = array();	
@@ -325,16 +336,16 @@ function pi_authoring_render_group_tree($group_list, &$group_data)
 	return $rows_to_return;
 }
 
-function pi_authoring_admin_group_hierarchy_elements($group_list, &$group_data)
-{
-	$form_data = array();
-	
-	
-	return $form_data;
+function theme_pi_authoring_admin_group_hierarchy_form_class($form) {
+	return theme('pi_authoring_admin_group_hierarchy_form_full', $form, 'class');
+}
+
+function theme_pi_authoring_admin_group_hierarchy_form_group($form) {
+	return theme('pi_authoring_admin_group_hierarchy_form_full', $form, 'group');	
 }
 
 
-function theme_pi_authoring_admin_group_hierarchy_form($form) {
+function theme_pi_authoring_admin_group_hierarchy_form_full($form, $class_or_group='') {
 	$output = '';
 		
 	// Region-sort form header
@@ -361,13 +372,20 @@ function theme_pi_authoring_admin_group_hierarchy_form($form) {
 		$class_regions = pi_authoring_admin_group_heairarchy_form_generate_region_list($class_rows, $form['class_hierarchy']);
 		$group_regions = pi_authoring_admin_group_heairarchy_form_generate_region_list($group_rows, $form['group_hierarchy']);
 		//$output .= theme('table', $header, $rows, array('id' => 'sort_list'));
-		$output .= theme('pi_region_sort_table', $header, $class_rows, $class_regions, array('id' => 'sort_list'));
-		$output .= theme('pi_region_sort_table', $header, $group_rows, $group_regions, array('id' => 'sort_list'));
-		//$output .= drupal_render($form);
-		
-		
-		
+		switch($class_or_group)
+		{
+			case 'class':
+				$output .= theme('pi_region_sort_table', $header, $class_rows, $class_regions, array('id' => 'sort_list'));				
+			break;
+			case 'group':
+				$output .= theme('pi_region_sort_table', $header, $group_rows, $group_regions, array('id' => 'sort_list'));
+			break;
+			default:
+				$output .= theme('pi_region_sort_table', $header, $class_rows, $class_regions, array('id' => 'sort_list'));
+				$output .= theme('pi_region_sort_table', $header, $group_rows, $group_regions, array('id' => 'sort_list'));
+		}		
 	}
+	$output .= drupal_render($form);	
 	return $output;
 }
 
@@ -441,7 +459,14 @@ function pi_authoring_admin_group_heairarchy_form_generate_region_list($region_i
 	return $regions;
 }
 
-function pi_authoring_convert_heirarchy_form_elements($hierarchy_elements)
+/**
+ * 
+ * Generates the row data for the given heirarchy elements 
+ * @param array &$hierarchy_elements form elements generated for a multi-region draggable form
+ *  this passed by reference since #printed needs to be set on each item
+ * @return array() rows for use with 'table' theme
+ */
+function pi_authoring_convert_heirarchy_form_elements(&$hierarchy_elements)
 {
 	$rows = array();
 	foreach (element_children($hierarchy_elements) as $region)

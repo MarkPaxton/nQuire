@@ -10,7 +10,7 @@
  * @param array $rows The structure for each row in drupal table theme format 
  * @param array(string) $regions array with key of region keys and array with description and empty text eg:
  * 	'Selected' = array('title'=>'Selected', description'=>'Items you will use', 'empty'=>'There are no selected items'); 
- * @param $attributes attributes of the table
+ * @param $attributes attributes of the table including 'id'=>'sort_list'
  */
 function theme_pi_region_sort_table($header, $rows, $regions, $attributes) {
 
