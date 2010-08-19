@@ -39,11 +39,11 @@ function pi_measure_filter_access($op, $node) {
     $details = get_inquiry_details_from_current_path();
 
     if ($op == 'create') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+        return TRUE;//check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
     }
 
     if ($op == 'update') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+        return TRUE;//check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
     }
 }
 
@@ -52,20 +52,21 @@ function pi_measure_filter_access($op, $node) {
  */
 function pi_measure_filter_form(&$node) {
 	$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
-  	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
 
   	// Get metadata for this node type
   	// (we use it for labelling title and body fields).
   	// We defined this in pi_key_questions_node_info().
   	$type = node_get_types('type', $node);
-
-  	$form['symbol'] = array(
+  
+  if($node_details->inquiry_id) {
+     $form['inquiry_id'] = array(
+      '#type' => 'hidden',
+      '#value' => $node_details->inquiry_id
+      );
+      $form['#redirect'] = "inquiry/" . $node_details->inquiry_id . "/edit/measures";
+  }
+    
+    $form['symbol'] = array(
 	  	'#type' => 'fieldset',
 	  	'#collapsible' => TRUE,
 	  	'#title' => 'Symbol',
@@ -379,15 +380,8 @@ function pi_measure_filter_form(&$node) {
 			'#weight' => 2
 		);
 	  
-
-	if ($current_activity->description)
-	{
-		$prefix  = '<p>' . check_plain($current_activity->description) . '</p>';
-	}
-	else
-	{
 		$prefix  = '<p>' . t("For the inquiry specify which fields will be shown when a measure is added and default values for any field.") . '</p>';
-	}
+
 	$form['#prefix'] = $prefix;
   
 	return $form;
@@ -397,8 +391,8 @@ function pi_measure_filter_form(&$node) {
  * Implementation of hook_insert().
  */
 function pi_measure_filter_insert($node) {
-	db_query("INSERT INTO {pi_measure_filter} (nid, vid, symbol_test, symbol_value, units_test, units_value, units_short_test, units_short_value, field_type_test, field_type_value, data_type_test, data_type_value, list_options_test, list_options_value, content_options_test, content_options_value, textfield_size_test, textfield_size_value, textarea_cols_test, textarea_cols_value, textarea_rows_test, textarea_rows_value, measurement_device_name_test, measurement_device_name_value, measurement_device_description_test, measurement_device_description_value, image_filename_test, image_filename_value) VALUES ('%d', '%d', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%d' )",
-		$node->nid, $node->vid, $node->symbol_test, $node->symbol_value, $node->units_test, $node->units_value, $node->units_short_test, $node->units_short_value, $node->field_type_test, $node->field_type_value, $node->data_type_test, $node->data_type_value, $node->list_options_test, $node->list_options_value, $node->content_options_test, $node->content_options_value, $node->textfield_size_test, $node->textfield_size_value, $node->textarea_cols_test, $node->textarea_cols_value, $node->textarea_rows_test, $node->textarea_rows_value, $node->measurement_device_name_test, $node->measurement_device_name_value, $node->measurement_device_description_test, $node->measurement_device_description_value, $node->image_filename_test, $node->image_filename_value);
+	db_query("INSERT INTO {pi_measure_filter} (nid, vid, inquiry_id, symbol_test, symbol_value, units_test, units_value, units_short_test, units_short_value, field_type_test, field_type_value, data_type_test, data_type_value, list_options_test, list_options_value, content_options_test, content_options_value, textfield_size_test, textfield_size_value, textarea_cols_test, textarea_cols_value, textarea_rows_test, textarea_rows_value, measurement_device_name_test, measurement_device_name_value, measurement_device_description_test, measurement_device_description_value, image_filename_test, image_filename_value) VALUES ('%d', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%s', '%d', '%d', '%d', '%d', '%d', '%d', '%d', '%s', '%d', '%s', '%d', '%d' )",
+		$node->nid, $node->vid, $node->inquiry_id, $node->symbol_test, $node->symbol_value, $node->units_test, $node->units_value, $node->units_short_test, $node->units_short_value, $node->field_type_test, $node->field_type_value, $node->data_type_test, $node->data_type_value, $node->list_options_test, $node->list_options_value, $node->content_options_test, $node->content_options_value, $node->textfield_size_test, $node->textfield_size_value, $node->textarea_cols_test, $node->textarea_cols_value, $node->textarea_rows_test, $node->textarea_rows_value, $node->measurement_device_name_test, $node->measurement_device_name_value, $node->measurement_device_description_test, $node->measurement_device_description_value, $node->image_filename_test, $node->image_filename_value);
 }
 
 /**
@@ -411,8 +405,8 @@ function pi_measure_filter_update($node) {
 	}
 	else
 	{
-		db_query("UPDATE {pi_measure_filter} SET symbol_test = '%d', symbol_value = '%s', units_test = '%d', units_value = '%s', units_short_test = '%d', units_short_value = '%s', field_type_test = '%d', field_type_value = '%s', data_type_test = '%d', data_type_value = '%s', list_options_test = '%d', list_options_value = '%s', content_options_test = '%d', content_options_value = '%s', textfield_size_test = '%d', textfield_size_value = '%d', textarea_cols_test = '%d', textarea_cols_value = '%d', textarea_rows_test = '%d', textarea_rows_value = '%d', measurement_device_name_test = '%d', measurement_device_name_value = '%s', measurement_device_description_test = '%d', measurement_device_description_value = '%s', image_filename_test = '%d', image_filename_value = '%d' WHERE vid = '%d'",
-		$node->symbol_test, $node->symbol_value, $node->units_test, $node->units_value, $node->units_short_test, $node->units_short_value, $node->field_type_test, $node->field_type_value, $node->data_type_test, $node->data_type_value, $node->list_options_test, $node->list_options_value, $node->content_options_test, $node->content_options_value, $node->textfield_size_test, $node->textfield_size_value, $node->textarea_cols_test, $node->textarea_cols_value, $node->textarea_rows_test, $node->textarea_rows_value, $node->measurement_device_name_test, $node->measurement_device_name_value, $node->measurement_device_description_test, $node->measurement_device_description_value, $node->image_filename_test, $node->image_filename_value, $node->vid);
+		db_query("UPDATE {pi_measure_filter} SET inquiry_id = '%d', symbol_test = '%d', symbol_value = '%s', units_test = '%d', units_value = '%s', units_short_test = '%d', units_short_value = '%s', field_type_test = '%d', field_type_value = '%s', data_type_test = '%d', data_type_value = '%s', list_options_test = '%d', list_options_value = '%s', content_options_test = '%d', content_options_value = '%s', textfield_size_test = '%d', textfield_size_value = '%d', textarea_cols_test = '%d', textarea_cols_value = '%d', textarea_rows_test = '%d', textarea_rows_value = '%d', measurement_device_name_test = '%d', measurement_device_name_value = '%s', measurement_device_description_test = '%d', measurement_device_description_value = '%s', image_filename_test = '%d', image_filename_value = '%d' WHERE vid = '%d'",
+		$node->inquiry_id, $node->symbol_test, $node->symbol_value, $node->units_test, $node->units_value, $node->units_short_test, $node->units_short_value, $node->field_type_test, $node->field_type_value, $node->data_type_test, $node->data_type_value, $node->list_options_test, $node->list_options_value, $node->content_options_test, $node->content_options_value, $node->textfield_size_test, $node->textfield_size_value, $node->textarea_cols_test, $node->textarea_cols_value, $node->textarea_rows_test, $node->textarea_rows_value, $node->measurement_device_name_test, $node->measurement_device_name_value, $node->measurement_device_description_test, $node->measurement_device_description_value, $node->image_filename_test, $node->image_filename_value, $node->vid);
 	}
 }
 
@@ -493,7 +487,7 @@ function theme_pi_measure_filter($node) {
 		$output  .= '<p>For the inquiry specify which fields will be shown when a measure is added and default values for any field.</p>';
 	}
 
-	$output = "";
+	//$output = "";
 
   $header = array(
 	    t('Measure attribute'),
@@ -521,12 +515,53 @@ function theme_pi_measure_filter($node) {
 	$row[] = t($node->units_short_value);
 	$rows[] = array('data' => $row);
 	
-	$row = array();
+  $row = array();
+  $row[] = t('Field type');
+  $row[] = t(pi_measure_filter_output_binary($node->field_type_test));
+  $row[] = t($node->field_type_value);
+  $rows[] = array('data' => $row);
+
+  $row = array();
 	$row[] = t('Data type');
 	$row[] = t(pi_measure_filter_output_binary($node->data_type_test));
 	$row[] = t($node->data_type_value);
 	$rows[] = array('data' => $row);
 
+	//list options list_options_test
+  $row = array();
+  $row[] = t('List options');
+  $row[] = t(pi_measure_filter_output_binary($node->list_options_test));
+  $row[] = t($node->list_options_value);
+  $rows[] = array('data' => $row);
+
+  //content options content_options_test
+  $row = array();
+  $row[] = t('Content options');
+  $row[] = t(pi_measure_filter_output_binary($node->content_options_test));
+  $row[] = t($node->content_options_value);
+  $rows[] = array('data' => $row);
+  
+	//textfield size textfield_size_test
+	$row = array();
+  $row[] = t('Textfield size');
+  $row[] = t(pi_measure_filter_output_binary($node->textfield_size_test));
+  $row[] = t($node->textfield_size_value);
+  $rows[] = array('data' => $row);
+  
+	//textarea cols textarea_cols_test
+	$row = array();
+  $row[] = t('Textarea columns');
+  $row[] = t(pi_measure_filter_output_binary($node->textarea_cols_test));
+  $row[] = t($node->textarea_cols_value);
+  $rows[] = array('data' => $row);
+  
+	//textarea rows textarea_rows_test
+  $row = array();
+  $row[] = t('Textarea rows');
+  $row[] = t(pi_measure_filter_output_binary($node->textarea_rows_test));
+  $row[] = t($node->textarea_rows_value);
+  $rows[] = array('data' => $row);	
+	
 	$row = array();
 	$row[] = t('Measurement device name');
 	$row[] = t(pi_measure_filter_output_binary($node->measurement_device_name_test));
