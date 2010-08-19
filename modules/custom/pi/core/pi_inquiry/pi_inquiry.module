@@ -60,16 +60,22 @@ function pi_inquiry_form($node) {
 	// Get metadata for the node type which is defined in pi_inquiry_info()
 	$type = node_get_types('type', $node);
 
-	$form['title'] = array(
-		'#type' => 'textfield',
-		'#title' => check_plain($type->title_label),
-		'#required' => TRUE,
-		'#default_value' => $node->title,
-	);
-	
-	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-	$form['body_field']['body']['#rows'] = 6;
-	$form['body_field']['teaser_include']['#access'] = FALSE;
+	if ($type->has_title)
+	{
+		$form['title'] = array(
+			'#type' => 'textfield',
+			'#title' => check_plain($type->title_label),
+			'#required' => TRUE,
+			'#default_value' => $node->title,
+		);
+	}
+
+	if ($type->has_body)
+	{
+		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+		$form['body_field']['body']['#rows'] = 6;
+		$form['body_field']['teaser_include']['#access'] = FALSE;
+	}
 
 	$form['layout'] = array(
 		'#type' => 'select',
@@ -83,26 +89,11 @@ function pi_inquiry_form($node) {
 			'octagon_icon'=> t("Octagon with icons"),
 			'octagon_activity'=> t("Octagon with activity counts"),
 			'octagon_icon_activity' => t("Octagon with activity counts and icons"),
-		),
+	),
 	);
-	
-	$inquiry_groups = pi_get_defined_group_nids();
-	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
-	$form['#allowed_inquiry_actors'] = $all_defined_groups;	
-	$group_names['none'] = "Select a group...";
-	$group_names = array_replace($group_names, pi_groups_get_names_from_nids($all_defined_groups));
-	
-	$form['inquiry_actor'] = array(
-		'#type' => 'select',
-		'#title' => t('Who is this inquiry for'),
-		'#description' => t('Select the group that will be doing this inquiry'),
-		'#weight' => 2,
-		'#default_value' =>  isset($node->inquiry_actor) ? $node->inquiry_actor : 'none',
-		'#options' => $group_names,
-	);
-	
+
 	$form['activities'] = pi_activity_show_hide_from( $node->nid );
-	$form['activities']['#weight'] = 2;	
+	$form['activities']['#weight'] = 2;
 
 	return $form;
 }
@@ -118,18 +109,6 @@ function pi_inquiry_form_alter(&$form, $form_state, $form_id) {
 	}
 }
 
-/**
- * This is the validation function to make sure that pi_inquiry_actor.gid is a valid group
- * @param unknown_type $element 
- * @param unknown_type $form_state
- */
-function pi_inquiry_form_inquiry_actor_validate($element, $form_state)
-{
-	if(!in_array($form_state['values']['inquiry_actor'], $element['#allowed_inquiry_actors']))
-	{
-		form_error($element, t('The selected inquiry actor group is not valid, please choose a group from the list.'));				
-	}
-}
 
 /**
  * INSERT command for a new inquiry
@@ -157,11 +136,8 @@ function pi_inquiry_insert($node) {
 
 
 	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_inquiry}"));
-	//Update inquiry table
 	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight, hide_activity_link, hide_activity_in_summary ) VALUES (%d, %d, '%s', %d, '%s', '%s')",
 	$node->nid, $node->vid, $node->layout, $initial_weight, $links, $summaries);
-	//Then add phase author
-	pi_inquiry_set_actor($node->nid, $node->inquiry_actor);
 }
 
 /**
@@ -176,49 +152,29 @@ function pi_inquiry_update($node)
 	}
 	else
 	{
-		foreach($node->activities_show_hide as $module_name => $show_hide )
+		foreach( $node->activities_show_hide as $module_name => $show_hide )
 		{
-			if($show_hide['link'] !== 0)
+			if( $show_hide['link'] !== 0 )
 			{
 				$link[] = $module_name;
 			}
 
-			if($show_hide['summary'] !== 0)
+			if( $show_hide['summary'] !== 0 )
 			{
 				$summary[] = $module_name;
 			}
 		}
 
-		$links = implode(',', $link) ;
-		$summaries = implode(',', $summary) ;
+		$links = implode( ',', $link ) ;
+		$summaries = implode( ',', $summary ) ;
+
+		drupal_set_message( $links );
+		drupal_set_message( $summaries );
 		
 		db_query("UPDATE {pi_inquiry} SET layout = '%s', weight= %d, hide_activity_link = '%s', hide_activity_in_summary = '%s' WHERE vid = %d",
 		$node->layout, $node->weight, $links, $summaries, $node->vid);
-		pi_inquiry_set_actor($node->nid, $node->inquiry_actor);
 	}
 }
-
-/**
- * 
- * Insert or update inquiry actor in the pi_inquiry_actor table
- * @param uint $inquiry_id nid
- * @param uint $actor_id nid of an og/nquire group
- */
-function pi_inquiry_set_actor($inquiry_id, $actor_id)
-{
-	$do_update = pi_db_ensure_unique('pi_inquiry_actor', 'inquiry_id', $inquiry_id);
-	if($do_update)
-	{
-		$query = "UPDATE {pi_inquiry_actor} SET gid=%d WHERE inquiry_id=%d";
-	}
-	else
-	{
-		$query = "INSERT INTO {pi_inquiry_actor} (gid, inquiry_id) VALUES (%d, %d)";		
-	}
-	//pi_debug_message(sprintf($query, $actor_id, $inquiry_id));
-	db_query($query, $actor_id, $inquiry_id);
-}
-
 
 /**
  * Implementation of hook_nodeapi().
@@ -243,21 +199,13 @@ function pi_inquiry_nodeapi(&$node, $op, $teaser, $page) {
 function pi_inquiry_delete(&$node) {
 	// Delete the related information we were saving for this node.
 	db_query('DELETE FROM {pi_inquiry} WHERE nid = %d', $node->nid);
-	db_query('DELETE FROM {pi_inquiry_actor} WHERE inquiry_id = %d', $node->nid);	
 }
 
 /**
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-	$return = db_fetch_object(db_query('SELECT layout, weight FROM {pi_inquiry} WHERE vid = %d', $node->vid)); 
-	if($return!=NULL)
-	{
-		$query = "SELECT gid FROM {pi_inquiry_actor} WHERE inquiry_id = %d ORDER BY pia_id ASC LIMIT 1";
-		$result = db_fetch_array(db_query($query, $node->nid));
-		$return->inquiry_actor = $result['gid'];
-	}
-	return $return;
+	return db_fetch_object(db_query('SELECT layout, weight FROM {pi_inquiry} WHERE vid = %d', $node->vid));
 }
 
 /**
@@ -368,13 +316,11 @@ function pi_activity_get_hidden_activities_from_inquiry( $inquiry_id )
 
 	$result = db_query( $query, $inquiry_id);
 	$data = array();
-	$data['link'] = array();
-	$data['summary'] = array();
-	
-	if( $inquiry = db_fetch_object($result) )
+
+	if( $inquiry = db_fetch_object( $result) )
 	{
-		$data['link'] =  explode( ',', $inquiry->hide_activity_link ) ;
-		$data['summary'] = explode( ',', $inquiry->hide_activity_in_summary ) ;
+		$data[ 'link' ] =  explode( ',', $inquiry->hide_activity_link ) ;
+		$data[ 'summary' ] = explode( ',', $inquiry->hide_activity_in_summary ) ;
 	}
 
 	return $data;
@@ -392,9 +338,9 @@ function theme_pi_activity_show_hide($form)
  */
 function pi_inquiry_theme() {
 	return array(
-	    'inquiry_layout' => array(
-	      'arguments' => array('node'),
-		),
+    'inquiry_layout' => array(
+      'arguments' => array('node'),
+	),
 	);
 }
 
