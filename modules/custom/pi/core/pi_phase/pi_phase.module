@@ -97,6 +97,32 @@ function pi_phase_form($node) {
 		'#element_validate' => array('pi_phase_form_inquiry_nid_validate')
 	);	
 
+	$phase_groups = pi_get_defined_group_nids();
+	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($phase_groups));
+	$form['#allowed_phase_actors'] = $all_defined_groups;	
+	$group_names['none'] = "Select a group...";
+	$group_names = array_replace($group_names, pi_groups_get_names_from_nids($all_defined_groups));
+	
+	if(isset($node->inquiry_nid))
+	{
+		$inquiry = node_load($node->inquiry_nid);
+		$phase_actor_default_value = $inquiry->inquiry_actor;
+	}
+	else
+	{ 
+		$phase_actor_default_value = 'none';
+	}
+	$form['phase_actor'] = array(
+		'#type' => 'select',
+		'#title' => t('Who is this phase for'),
+		'#description' => t('Select the group that will be see this phase'),
+		'#weight' => 2,
+		'#default_value' =>  isset($node->phase_actor) ? $node->phase_actor : $phase_actor_default_value,
+		'#options' => $group_names,
+	);
+	
+	
+	
 	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
 	$form['body_field']['#weight'] = 3;	
 	$form['body_field']['body']['#rows'] = 6;	
@@ -130,7 +156,18 @@ function pi_phase_form_inquiry_nid_validate($element, $form_state)
 	}
 }
 
-
+/**
+ * This is the validation function to make sure that pi_phase_actor.gid is a valid group
+ * @param unknown_type $element 
+ * @param unknown_type $form_state
+ */
+function pi_phase_form_phase_actor_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['phase_actor'], $element['#allowed_phase_actors']))
+	{
+		form_error($element, t('The selected phase actor group is not valid, please choose a group from the list.'));				
+	}
+}
 
 /**
  * hook_insert() - INSERT command for a new inquiry phase
@@ -142,6 +179,8 @@ function pi_phase_insert($node) {
 	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_phase} WHERE inquiry_nid=%d", $node->inquiry_nid));
 	db_query("INSERT INTO {pi_phase} (nid, vid, inquiry_nid, weight) VALUES (%d, %d, %d, %d)",
 	$node->nid, $node->vid, $node->inquiry_nid, $initial_weight);
+	//Then add phase actor
+	pi_phase_set_actor($node->nid, $node->phase_actor);	
 }
 
 /**
@@ -158,6 +197,28 @@ function pi_phase_update($node) {
 		db_query("UPDATE {pi_phase} SET inquiry_nid = %d, weight = %d WHERE vid = %d",
 			$node->inquiry_nid, $node->weight, $node->vid);
 	}
+	pi_phase_set_actor($node->nid, $node->phase_actor);	
+}
+
+/**
+ * 
+ * Insert or update phase actor in the pi_inquiry_actor table
+ * @param uint $phase_id nid
+ * @param uint $actor_id nid of an og/nquire group
+ */
+function pi_phase_set_actor($phase_id, $actor_id)
+{
+	$do_update = pi_db_ensure_unique('pi_phase_actor', 'phase_id', $phase_id);
+	if($do_update)
+	{
+		$query = "UPDATE {pi_phase_actor} SET gid=%d WHERE phase_id=%d";
+	}
+	else
+	{
+		$query = "INSERT INTO {pi_phase_actor} (gid, phase_id) VALUES (%d, %d)";		
+	}
+	//pi_debug_message(sprintf($query, $actor_id, $phase_id));
+	db_query($query, $actor_id, $phase_id);
 }
 
 /**
@@ -183,13 +244,75 @@ function pi_phase_nodeapi(&$node, $op, $teaser, $page) {
 function pi_phase_delete(&$node) {
 	// Delete the related information we were saving for this node.
 	db_query('DELETE FROM {pi_phase} WHERE nid = %d', $node->nid);
+	db_query('DELETE FROM {pi_phase_actor} WHERE phase_id = %d', $node->nid);
 }
 
 /**
  * Custom loader for phase type (called when %phase is specified in a menu parameter)
  */
 function pi_phase_load($node) {
-	return db_fetch_object(db_query('SELECT inquiry_nid, weight FROM {pi_phase} WHERE vid = %d', $node->vid));
+	$return = db_fetch_object(db_query('SELECT inquiry_nid, weight FROM {pi_phase} WHERE vid = %d', $node->vid));
+	if($return!=NULL)
+	{
+		$query = "SELECT gid FROM {pi_phase_actor} WHERE phase_id = %d ORDER BY ppa_id ASC LIMIT 1";
+		$result = db_fetch_array(db_query($query, $node->nid));
+		$return->phase_actor = $result['gid'];
+	}
+	return $return;
+}
+
+/**
+ * Queries the node database to provide a list of nids referring to phases in an
+ * inquiry given by $inquiry_nid, ordered by weight
+ * Use node_load($nid) to then access the phase details
+ * @param uint $inquiry_nid the nid of the inquiry to load the phases for
+ * @return array of nids referring to pi_phase nodes in the given inquiry
+ */
+function pi_phase_load_nids($inquiry_nid)
+{
+	$query = "SELECT nid FROM {pi_phase} WHERE inquiry_nid = %d ORDER BY weight";
+	$result = db_query($query, $inquiry_nid);
+	$phase_nodes = array();
+	while($nid=db_result($result))
+	{
+		$phase_nodes[] = $nid;
+	}
+	return $phase_nodes;
+}
+
+/**
+ * Queries the node database to provide a list of nids referring to phases in an
+ * inquiry given by $inquiry_nid, with user a member of the phase actor groups
+ * Use node_load($nid) to then access the phase details
+ * @param uint $inquiry_nid the nid of the inquiry to load the phases for
+ * @param uint $unid The uid of the user to load the phases for
+ * @return array of nids referring to pi_phase nodes in the given inquiry
+ */
+function pi_phase_load_nids_for_user($inquiry_nid, $uid)
+{
+	$query = "SELECT DISTINCT pi_phase.nid AS nid FROM {pi_phase} AS pi_phase " .
+		"LEFT JOIN {pi_phase_actor} AS pi_phase_actor ON pi_phase_actor.phase_id=pi_phase.nid " .
+		"LEFT JOIN {og_uid} AS og_uid ON og_uid.nid = pi_phase_actor.gid " .
+		"WHERE pi_phase.inquiry_nid = %d " .
+		"AND og_uid.uid = %d";	
+	//pi_debug_message(sprintf($query, $inquiry_nid, $uid));
+	$result = db_query($query, $inquiry_nid, $uid);
+	$phase_nodes = array();
+	while($nid=db_result($result))
+	{
+		$phase_nodes[] = $nid;
+	}
+	return $phase_nodes;
+}
+
+
+/**
+ * Returns an array containing the phase_nids of the inquiry for that user.
+ * The phases are ordered by weight.
+ */
+function get_phases_of_inquiry_and_user($inquiry_id, $uid) {
+	drupal_set_error('get_phases_of_inquiry_and_user($inquiry_id, $uid) should be replaced with pi_phase_load_nids_for_user($inquiry_id, $uid)', 'warning');
+	return pi_phase_load_nids_for_user($inquiry_nid, $uid);
 }
 
 
@@ -220,37 +343,6 @@ function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
 		$node = node_prepare($node, $teaser);
 	}
 	return $node;
-}
-
-/**
- * Queries the node database to provide a list of nids referring to phases in an
- * inquiry given by $inquiry_nid, ordered by weight
- * Use node_load($nid) to then access the phase details
- * @param int $inquiry_nid the nid of the inquiry to load the phases for
- * @return array of nids referring to pi_phase nodes in the given inquiry
- */
-function pi_phase_load_nids($inquiry_nid)
-{
-	$query = "SELECT nid FROM {pi_phase} WHERE inquiry_nid = %d ORDER BY weight";
-	$result = db_query($query, $inquiry_nid);
-	$phase_nodes = array();
-	while($nid=db_result($result))
-	{
-		$phase_nodes[] = $nid;
-	}
-	return $phase_nodes;
-}
-
-/**
- * Returns an array of phase node ids for the given inquiry
- * ordered by ascending pi_phase->weight aliased as position.
- * @param unint $inquiry_id should be a valid inquiry id
- * @return array of phase nids with additional ordered by weight taken from pi_phase
- *
- */
-function get_phases_of_inquiry($inquiry_id) {
-	drupal_set_error('get_phases_of_inquiry($inquiry_id) should be replaced with pi_phase_load_nids($inquiry_id)', 'warning');
-	return pi_phase_load_nids($inquiry_id);
 }
 
 /**

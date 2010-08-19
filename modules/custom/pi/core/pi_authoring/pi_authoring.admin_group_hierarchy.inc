@@ -267,51 +267,30 @@ function pi_authoring_admin_group_hierarchy_form_submit($form, &$form_state)
 	}
 	foreach($changed_groups as $gid => $group)
 	{	
-		// check if a group has more than one parent definition...
-		$query = "SELECT COUNT(gid) FROM {pi_group_hierarchy} WHERE gid = %d";
-		$result = db_query($query, $gid);
-		$parent_count = db_result($result);
-		// Check if the group type already exists and leave only one definition left
-		if($parent_count>0)
+		//If the region is going to be null, just delete the definition now
+		if(($group['region']=='multiclass-null') || ($group['region']=='class-null'))
 		{
-			//if the group has an existing definition remove any duplicates, then update it   
-			// if it's going to have no parent, then remove all 
-			if(($parent_count>1) || ($group['region']=='multiclass-null') || 
-				($group['region']=='class-null'))
-			{
-				if(($group['region']=='multiclass-null') || ($group['region']=='class-null'))
-				{
-					$number_to_delete = $parent_count;
-				}
-				else
-				{
-					$number_to_delete = $parent_count-1;
-				}
-				$query = "DELETE FROM {pi_group_hierarchy} WHERE gid = %d  LIMIT %d";
-				//pi_debug_message(sprintf($query, $gid, $number_to_delete));
-				db_query($query, $gid, $number_to_delete);
-			}
-			// if it's being assigned to a parent then update the remaining row:
-			if(($group['region']!='multiclass-null') && ($group['region']!='class-null'))
-			{
-				$query = "UPDATE {pi_group_hierarchy} SET parent_gid = %d WHERE gid = %d";
-				//pi_debug_message(sprintf($query, $group['region'], $gid));
-				db_query($query, $group['region'], $gid);
-			}
+			$query = "DELETE FROM {pi_group_hierarchy} WHERE gid = %d";
+			//pi_debug_message(sprintf($query, $gid));
+			db_query($query, $gid);
 		}
 		else
 		{
-			// if there was no existing entry, it will be inserted not updated
-			// unless it's being assigend to a null parent
-			if(($group['region']!='multiclass-null') && ($group['region']!='class-null'))
+			// ensure a group has no more than one parent definition...
+			$do_update = pi_db_ensure_unique('pi_group_hierarchy', 'gid', $gid);
+			// and the result says if update or insert is required
+			if($do_update)
 			{
-					$query = "INSERT INTO {pi_group_hierarchy} (gid, parent_gid) VALUES (%d, %d)";
-					//pi_debug_message(sprintf($query, $gid, $group['region']));
-					db_query($query, $gid, $group['region']);
-				}
+				$query = "UPDATE {pi_group_hierarchy} SET parent_gid = %d WHERE gid = %d";
+			}
+			else
+			{
+				$query = "INSERT INTO {pi_group_hierarchy} (parent_gid, gid) VALUES (%d, %d)";
+			}
+			//pi_debug_message(sprintf($query, $group['region'], $gid));
+			db_query($query, $group['region'], $gid);
 		}
 	}
-	//pi_debug_message($all_groups);
 }
 
 /**

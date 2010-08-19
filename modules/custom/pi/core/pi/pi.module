@@ -509,10 +509,9 @@ function add_group_to_grouping($grouping_id, $gid) {
 function check_teacher_phase_for_inquiry_phase_user($inquiry_id, $phase_id, $uid) {
 	$query = "SELECT {pi_phase_actor}.gid, {pi_phase_actor}.uid FROM {pi_phase_actor} "
 			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_phase_actor}.gid "
-			. "WHERE {pi_phase_actor}.inquiry_id = %d "
-			. "AND {pi_phase_actor}.phase_id = %d "
+			. "WHERE {pi_phase_actor}.phase_id = %d "
 			. "AND ( {pi_phase_actor}.uid = %d OR {og_uid}.uid = %d )";
-	$result = db_fetch_object(db_query($query, $inquiry_id, $phase_id, $uid, $uid));
+	$result = db_fetch_object(db_query($query, $phase_id, $uid, $uid));
 	if($result->gid) 
 	{
 		$gid_node = node_load($result->gid);
@@ -559,51 +558,6 @@ function check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity
 	}
 }
 
-/**
- * Returns an array containing the phase_nids of the inquiry for that user.
- * The phases are ordered by weight.
- */
-function get_phases_of_inquiry_and_user($inquiry_id, $uid) {
-	$query = "SELECT DISTINCT {pi_phase}.nid AS nid FROM {pi_phase} "
-			. "LEFT JOIN {pi_phase_actor} ON {pi_phase_actor}.phase_id = {pi_phase}.nid "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_phase_actor}.gid "
-			. "WHERE {pi_phase_actor}.inquiry_id = %d "
-			. "AND ( {pi_phase_actor}.uid =  %d OR {og_uid}.uid =  %d) "
-			. "ORDER BY pi_phase.weight ASC";
-
-	$result = db_query($query, $inquiry_id, $uid, $uid);
-	$phase_nids = array();
-	while($row=db_fetch_array($result))
-	{
-		$phase_nids[] = $row['nid'];
-	}
-	return $phase_nids;
-}
-
-/**
- * Returns an array containing the stage_ids of the inquiry for that user.
- * The stages are ordered by position.
- */
-function get_stages_of_inquiry_and_user($inquiry_id, $uid) {
-	$query = "SELECT DISTINCT {pi_stage}.nid AS nid FROM {pi_stage} "
-			. "LEFT JOIN {pi_stage_actor} ON {pi_stage_actor}.stage_id = {pi_stage}.nid "
-			. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_stage_actor}.gid "
-			. "WHERE ( {pi_stage_actor}.inquiry_id = %d  "
-			. "AND {pi_stage_actor}.uid = %d ) "
-			. "OR ( {pi_stage_actor}.inquiry_id = %d "
-			. "AND {og_uid}.uid =  %d ) "
-			. "ORDER BY {pi_stage}.weight ASC";
-
-	$result = db_query($query, $inquiry_id, $uid, $inquiry_id, $uid);
-	
-	$stage_nids = array();
-	while($row=db_fetch_array($result))
-	{
-		$stage_nids[] = $row['nid'];
-	}
-	return $stage_nids;
-}
-
 function insert_stage_phase_activity($psp_id, $activity_id, $position) {
 	$query = "INSERT INTO {pi_stage_phase_activity} (psp_id, activity_id, position) VALUES (%d, %d, %d)";
 	db_query($query, $psp_id, $activity_id, $position);
@@ -617,7 +571,7 @@ function get_activities_of_stage_phase_and_user($inquiry_id, $stage_id, $phase_i
 
 	//get the phases and stages for this inquiry and user
 	if (is_null($phase_id)) {
-		$db_phases = get_phases_of_inquiry_and_user($inquiry_id, $uid);
+		$db_phases = pi_phase_load_nids_for_user($inquiry_id, $uid);
 		$phases = array();
 		foreach($db_phases as $db_phase_nid)
 		{
@@ -630,7 +584,7 @@ function get_activities_of_stage_phase_and_user($inquiry_id, $stage_id, $phase_i
 
 	/*
 	 if (is_null($stage_id)) {
-		$db_stages = get_stages_of_inquiry_and_user ($inquiry_id, $uid);
+		$db_stages = get_stages_of_inquiry_and_user($inquiry_id, $uid);
 		$stages = array();
 		while ($db_stage = db_fetch_object($db_stages)) {
 		$stages[] = $db_stage->stage_id;

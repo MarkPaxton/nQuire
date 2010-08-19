@@ -505,8 +505,8 @@ function pi_get_all_group_nids() {
 
 /**
  * Get an array describing all groups defined as multiclass/class/group in nquire
- * array is indexed by group nid (aka gid) and contains an array of elements for group id and type 
- * @return array[nid] => array('nid', 'group_type') An array of arrays with group nids 
+ * array is indexed by group_type then nid (aka gid) and contains an array of elements for group id and type 
+ * @return array[group_type][nid] => array('nid', 'group_type') An array of arrays with group nids 
  * and group type defiend as class, multiclass, group and indexed by group nid
  * group type is indexed as 'group_type' 
  */

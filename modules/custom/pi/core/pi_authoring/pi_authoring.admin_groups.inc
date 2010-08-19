@@ -210,42 +210,25 @@ function pi_authoring_admin_groups_form_submit($form, &$form_state) {
 	foreach($all_groups as $gid => $group)
 	{
 		// check if a group has more than one definition...
-		$query = "SELECT COUNT(gid) FROM {pi_group_type} WHERE gid = %d";
-		$result = db_query($query, $gid);
-		$group_count = db_result($result);
-		// Check if the group type already exists
-		if($group_count>0)
+		if($group['region']=='none')
 		{
-			//if the group has an existing definition remove any duplicates, then update it   
-			if(($group_count>1) || ($group['region']=='none'))
-			{
-				if($group['region']=='none')
-				{
-					$number_to_delete = $group_count;
-				}
-				else
-				{
-					$number_to_delete = $group_count-1;
-				}
-				$query = "DELETE FROM {pi_group_type} WHERE gid = %d  LIMIT %d";
-				//pi_debug_message(sprintf($query, $gid, $number_to_delete));
-				db_query($query, $gid, $number_to_delete);
-			}
-			if($group['region']!='none')
-			{
-				$query = "UPDATE {pi_group_type} SET type = '%s' WHERE gid = %d";
-				//pi_debug_message(sprintf($query, $group['region'], $gid));
-				db_query($query, $group['region'], $gid);
-			}
+				$query = "DELETE FROM {pi_group_type} WHERE gid = %d";
+				//pi_debug_message(sprintf($query, $gid));
+				db_query($query, $gid);
 		}
 		else
 		{
-			if($group['region']!='none')
+			$do_update = pi_db_ensure_unique('pi_group_type', 'gid', $gid);
+			if($do_update)
 			{
-				$query = "INSERT INTO {pi_group_type} (gid, type) VALUES (%d, '%s')";
-				//pi_debug_message(sprintf($query, $gid, $group['region']));
-				db_query($query, $gid, $group['region']);
+				$query = "UPDATE {pi_group_type} SET type = '%s' WHERE gid = %d";
 			}
+			else
+			{
+				$query = "INSERT INTO {pi_group_type} (type, gid) VALUES ('%s', %d)";
+			}
+			//pi_debug_message(sprintf($query, $group['region'], $gid));
+			db_query($query, $group['region'], $gid);
 		}
 	}
 	drupal_set_message(t('When you have set up the group types, go to the ') . l('group hierarchy page', '/admin/nquire/group_hierarchy') . t(' to link groups and classes.'));

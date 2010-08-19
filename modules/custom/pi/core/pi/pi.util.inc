@@ -241,7 +241,61 @@ function pi_create_grouped_item_list($items, $group_field)
 	return $return_array;
 }
 
+/**
+ * 
+ * This does the opposite of pi_create_grouped_item_list and takes all the elements of $item_list
+ * and combines them into one array
+ * n.b. if items in the sub-arrays have dupliucate keys, the rturn element will be overwritten by the value of the
+ * later sub-list element.
+ * @param array(array(),array(),array()) $item_list
+ * @return array of contents of the above array elements in a single array
+ */
+function pi_flatten_grouped_item_list($item_list)
+{
+	$list = array();
+	$all_defined_groups = array();
+	foreach(array_keys($item_list) as $region)
+	{
+		foreach($item_list[$region] as $key => $item)
+		{
+			$list[$key] = $item;
+		}
+	}
+	return $list;
+}
 
+
+/**
+ * 
+ * This ensures that there is only one unique row in $table with $id_field equal to $id
+ *  if there are no rows, it returns zero, otherwise it returns one.
+ *  If more than one row exists then the lowest $id is kept and the rest are deleted.
+ * @param unknown_type $table
+ * @param unknown_type $id_field
+ * @param int $id
+ * @return bool true if one row is found false if no row exists;
+ */
+function pi_db_ensure_unique($table, $id_field, $id)
+{
+	$one_row = false;
+	// See how many rows there are are
+	$query = "SELECT COUNT(%s) FROM {%s} WHERE %s = %d";
+	$result = db_query($query, $id_field, $table, $id_field, $id);
+	$count = db_result($result);
+	// Check if the group type already exists and leave only one definition left
+	if($count>1)
+	{
+		// if the id has any duplicates remove them...
+		$query = "DELETE FROM {%s} WHERE %s = %d  LIMIT %d";
+		db_query($query, $table, $id_field, $id, $count-1);
+		$one_row = true;
+	}
+	else
+	{
+		$one_row = $count;
+	}
+	return $one_row;
+}
 
 
 ?>
