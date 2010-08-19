@@ -16,15 +16,15 @@ function pi_available_content_types_menu() {
   
   $items = array();
   
-  $items['admin/pi-available-content-types'] = array(
+  $items['admin/nquire/pi-available-content-types'] = array(
     'title' => 'Available content types',
     'description' => 'Manage available content types that can be used for measures',
     'page callback' => 'pi_available_content_types_admin',
     'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
+    'type' => MENU_NORMAL_ITEM,//MENU_CALLBACK,
   );
   
-  $items['admin/pi-available-content-types/list'] = array(
+  $items['admin/nquire/pi-available-content-types/list'] = array(
     'title' => 'List',
     'description' => 'List all available content types',
     'access arguments' => array('access content'),
@@ -32,7 +32,7 @@ function pi_available_content_types_menu() {
     'weight' => -10,
   ); 
 
-  $items['admin/pi-available-content-types/add'] = array(
+  $items['admin/nquire/pi-available-content-types/add'] = array(
     'title' => 'Add',
     'description' => 'Add to the list of available content types',
     'page callback' => 'drupal_get_form',
@@ -42,11 +42,11 @@ function pi_available_content_types_menu() {
     'type' => MENU_LOCAL_TASK,
   );
 
-  $items['admin/pi-available-content-types/delete/%'] = array(
+  $items['admin/nquire/pi-available-content-types/delete/%'] = array(
     'title' => 'Remove available content type',
     'description' => 'Remove from the list of available content types',
     'page callback' => 'pi_available_content_types_delete',
-    'page arguments' => array(3),
+    'page arguments' => array(4),
     'access arguments' => array('access content'),
     'type' => MENU_CALLBACK,
   );
@@ -61,7 +61,7 @@ function pi_available_content_types_admin() {
   $rows = array();
   
   while($content_type = db_fetch_object($result)) {
-    $row = array($content_type->type, l('remove', t('admin/pi-available-content-types/delete/'.$content_type->type)));
+    $row = array($content_type->type, l('remove', t('admin/nquire/pi-available-content-types/delete/'.$content_type->type)));
     $rows[] = array('data' => $row);
   }
   $output .= "<p>Content types available for use as measures</p>";
@@ -92,7 +92,7 @@ function pi_available_content_types_form(&$form_state, $edit = array()) {
   );
   
   $form['submit'] = array('#type' => 'submit', '#value' => t('Save'), '#submit' => array('pi_available_content_types_insert'));
-  $form['cancel'] = array('#value' => l(t('Cancel'), 'admin/pi-available-content-types'));
+  $form['cancel'] = array('#value' => l(t('Cancel'), 'admin/nquire/pi-available-content-types'));
   
   return $form;
 }
@@ -107,11 +107,11 @@ function pi_available_content_types_insert($node) {
   if($content_type) {
     db_query("INSERT INTO {pi_available_content_types} (type) VALUES ('%s')", $content_type);
   }
-  drupal_goto('admin/pi-available-content-types');
+  drupal_goto('admin/nquire/pi-available-content-types');
 }
 
 function pi_available_content_types_delete($arg) {
   drupal_set_title(t($arg));
   db_query("DELETE FROM {pi_available_content_types} WHERE type = '%s' ", $arg);
-  drupal_goto('admin/pi-available-content-types');
+  drupal_goto('admin/nquire/pi-available-content-types');
 }

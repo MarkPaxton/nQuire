@@ -140,9 +140,15 @@ function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id)
 	return find_unique_node_type_for_uid_and_inquiry('pi_hypothesis', $uid, $inquiry_id);
 }
 
-function find_measure_filter_nid_for_uid_and_inquiry($uid, $inquiry_id)
+/*
+  This needs to be done differently for measure filter
+  Measure filter is no longer an activity but inquiry id is stored with the node
+  Therefore use inquiry id in the node for selecting rather than via pi_activity_node
+*/
+function find_measure_filter_nid_for_uid_and_inquiry($inquiry_id)
 {
-	return find_unique_node_type_for_uid_and_inquiry('pi_measure_filter', $uid, $inquiry_id);
+  $result = db_result(db_query('SELECT {pi_measure_filter}.nid FROM {pi_measure_filter} WHERE {pi_measure_filter}.inquiry_id = %d ORDER BY nid DESC;', $inquiry_id));
+	return $result;
 }
 
 function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id)

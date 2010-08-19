@@ -224,7 +224,17 @@ function pi_authoring_menu() {
 		'weight' => 2,
 	);
 
-	// NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
+  $items['inquiry/%node/edit/measures'] = array(
+    'title' => 'Edit Measures',
+    'page callback' => 'pi_measure_filter_call_form',
+    'page arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'access_callback' => TRUE,
+    'access arguments' => array('access pi_authoring content'),
+    'weight' => 3,
+  );
+
+  // NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
 	$items['inquiry/%node/phase/add'] = array(
 		'title' => 'Add a phase',
 		'file' => 'pi_authoring.inquiry_phase_add.inc',
@@ -3496,6 +3506,27 @@ function get_phase_query($inquiry_value, $stage_value){
 	return $phase_query;
 }
 
+function pi_measure_filter_call_form($node){
+  //the nid of the inquiry node is the inquiry id
+  $filter_measure_nid = find_measure_filter_nid_for_uid_and_inquiry($node->nid);
+  if($filter_measure_nid) {
+    $loaded_node = node_load($filter_measure_nid);
+    if( !function_exists("node_page_edit")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+    }
+  
+    $output = node_page_edit($loaded_node);
+    drupal_set_title("Editing " .  check_plain($node->title));
+  }
+  else {
+    if( ! function_exists("node_add")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+    }
+    $output = node_add(pi_measure_filter);
+    drupal_set_title("Editing " .  check_plain($node->title));
+  }
+  return $output;
+}
 /**
  * MISSING
  * 
