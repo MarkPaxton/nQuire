@@ -1,0 +1,247 @@
+<?php
+/**
+ * @file nQuire general utility functions 
+ */
+
+
+
+/**
+ * This is a debug function that prints a given variable to drupal message area
+ * it uses output buffers (ob_start, ob_get_clean) and var_dump
+ * @param $var_to_dump any variable
+ */
+function pi_debug_message($var_to_dump)
+{
+	ob_start();
+	var_dump($var_to_dump);
+	drupal_set_message('<pre>' . check_plain(ob_get_clean()) . '</pre>');
+}
+
+/**
+ * This compares the ['#weight'] elements in two arrays
+ * @param array $x
+ * @param array $y
+ * @return bool result of $x['#weight'] > $y['#weight']
+ */
+function my_weight_compare($x, $y) {
+	$xw = (int) $x['#weight'];
+	$yw = (int) $y['#weight'];
+	return $xw > $yw;
+}
+
+
+function compare_phase($a, $b) {
+	$aposition = $a->position;
+	$bposition = $b->position;
+	$aphase = $a->phase_id;
+	$bphase = $b->phase_id;
+	if ($aphase == $bphase) {
+		if ($aposition == $bposition) {
+			return 0;
+		};
+		if ($aposition < $bposition) {
+			return -1;
+		};
+		if ($aposition > $bposition) {
+			return 1;
+		};
+	}
+	else {
+		if ($aphase < $bphase) {
+			return -1;
+		};
+		if ($aphase > $bphase) {
+			return 1;
+		};
+	}
+}
+
+function compare_status($a, $b) {
+	$aposition = $a->position;
+	$bposition = $b->position;
+	$status = array();
+	$status["start"] = 0;
+	$status["edit"] = 1;
+	$status["view"] = 2;
+	$status["unavailable"] = 3;
+	$astatus = $status[$a->visible_status];
+	$bstatus = $status[$b->visible_status];
+	if ($astatus == $bstatus) {
+		if ($aposition == $bposition) {
+			return 0;
+		};
+		if ($aposition < $bposition) {
+			return -1;
+		};
+		if ($aposition > $bposition) {
+			return 1;
+		};
+	}
+	else {
+		if ($astatus < $bstatus) {
+			return -1;
+		};
+		if ($astatus > $bstatus) {
+			return 1;
+		};
+	}
+}
+
+
+
+/**
+ * 
+ * Sort an array of arrays by one of their elements - e.g. a list of set result rows to be 
+ * sorted by a column.  Key and value associations are maintained.
+ * @param $array Array of arrays to be sorted
+ * @param $element the name of the array key to sort by
+ */
+function pi_sort_arrays_by_element(&$array, $element)
+{
+	$return_array = array();
+	$element_array = array();
+	foreach($array as $key => $value)
+	{
+		$element_array[$key] = $value[$element];
+	}
+	asort($element_array);
+	foreach($element_array as $key)
+	{
+		$return_array[$key] = $array[$key];
+	}
+	$array = $return_array;
+}
+
+
+/**
+ * This is a utility function to merge two content item lists which have '#weight' elements
+ * e.g. item[x]['#weight'].  Weight elements in the second list are ignored and this list is
+ * appended to the ordrered items in their default order.
+ * If an unsorted item occurrs in the sorted item list, the sorted item weight takes precidence
+ * Weight attributes are renumbered incrementally from 0
+ * @param array(array) $sorted_items content item list with '#weight' elements
+ * @param $unsorted_items  $sorted_items content item list - weight ignored
+ * @return array of items sorted by weight
+ */
+function pi_merge_content_item_lists($sorted_items, $unsorted_items)
+{
+	$return_data = array();
+	$weight_data = array();
+	foreach($sorted_items as $key => $sorted_item)
+	{
+		$weight_data[$key] =  $sorted_item['#weight'];
+	}
+	asort($weight_data);
+	foreach(array_keys($weight_data) as $ordered_item_key)
+	{
+		$sorted_items[$ordered_item_key]['#weight'] = count($return_data);
+		$return_data[$ordered_item_key] = $sorted_items[$ordered_item_key];
+	}
+	foreach($unsorted_items as $unsorted_item_key => $unsorted_item)
+	{
+		if(!array_key_exists($unsorted_item_key, $return_data))
+		{
+			$unsorted_item['#weight'] = count($return_data);
+			$return_data[$unsorted_item_key] = $unsorted_item;
+		}
+	}
+	return $return_data;
+}
+
+/**
+ * This is a function to sort items by first array index then then by #weight property
+ * The status order is determined by $group_order, which will set the order for the groups
+ * the #weight parameter of the items will be reset to a sequential series starting from 0
+ * any groups that are not listed are added to the end of the list in order of occurrence
+ * @param array $group_order array of indexes to define what order the grouped items will be sorted, e.g. key, selected, none
+ * @param $grouped_items array of arrays of items with #weight parameters.
+ * 	e.g. array(
+ * 		'key' =>
+ * 			array(
+ * 				'123'=> array('#weight' => 12),
+ * 				'321'=>array('#weight' => 32),
+ * 			),
+ * 		'selected' => etc
+ * @param string $weight_index this will usually be #weight for display items
+ * 	but for form data it could be anything, e.g. 'weight' is often used
+ * @return array Flattened array of items from $grouped_items with a sequential #weight value.
+ */
+function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
+{
+	$item_ids = array();
+	$item_groups = array();
+	$item_weights = array();
+	$items = array();
+	foreach($grouped_items as $group_name => $group)
+	{
+		if(!is_array($item_ids[$group_name]))
+		{
+			$item_ids[$group_name] = array();
+		}
+
+		if(!is_array($item_weights[$group_name]))
+		{
+			$item_weights[$group_name] = array();
+		}
+		foreach($group as $item_id => $item)
+		{
+			$item_ids[$group_name][] = $item_id;
+			$item_weights[$group_name][] = $item[$weight_index];
+			$items[$item_id] = $item;
+		}
+	}
+
+	// If new groups appear that aren't in the default list, append them to the end of the list:
+	foreach(array_keys($item_ids) as $other_group)
+	{
+		if(!in_array($other_group, $group_order))
+		{
+			$group_order[] = $other_group;
+		}
+	}
+	$sorted_items = array();
+	foreach($group_order as $group)
+	{
+		if(array_key_exists($group, $item_ids)!=NULL)
+		{
+			$sort_weights = $item_weights[$group];
+			$sort_ids = $item_ids[$group];
+			array_multisort($sort_weights, $sort_ids);
+			foreach($sort_ids as $item_id)
+			{
+				$items[$item_id][$weight_index] = count($sorted_items);
+				$sorted_items[$item_id] = $items[$item_id];
+			}
+		}
+	}
+	return $sorted_items;
+}
+
+/**
+ * This function takes a flattened array of items and groups them into arrays accouting to 
+ * the values of group_field
+ * @param array or array $items items to sort
+ * @param string $group_field the field of the array by which to group items
+ * @return a nested array, first index is the value of $items['group_field'] and the second index the current
+ * key of $item. 
+ * array('group_field1' => array ('id'=>array(value=>'value, group_field=>'group_field1', .), .. )...)
+ */
+function pi_create_grouped_item_list($items, $group_field)
+{
+	$return_array=array();
+	foreach($items as $key => $item)
+	{
+		$group_key = $item[$group_field];
+		if(!array_key_exists($group_key, $return_array))
+		{
+			$return_array[$group_key]=array();		
+		}
+		$return_array[$group_key][$key] = $item; 
+	}
+	return $return_array;
+}
+
+
+
+
+?>
