@@ -159,7 +159,7 @@ function pi_authoring_order_phases_form_submit($form, &$form_state)
 		}
 		else
 		{
-			drupal_set_error(t("Can't find Phase $phase_nid"), 'error');
+			drupal_set_message(t("Can't find Phase $phase_nid"), 'error');
 		}
 	}
 }
@@ -309,7 +309,7 @@ function pi_authoring_order_stages_form_submit($form, &$form_state)
 		}
 		else
 		{
-			drupal_set_error(t("Can't find stage $stage_nid"), 'error');
+			drupal_set_message(t("Can't find stage $stage_nid"), 'error');
 		}
 	}
 }
