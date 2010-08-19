@@ -10,7 +10,7 @@
  * @param array $rows The structure for each row in drupal table theme format 
  * @param array(string) $regions array with key of region keys and array with description and empty text eg:
  * 	'Selected' = array('title'=>'Selected', description'=>'Items you will use', 'empty'=>'There are no selected items'); 
- * @param $attributes attributes of the table
+ * @param $attributes attributes of the table including 'id'=>'sort_list'
  */
 function theme_pi_region_sort_table($header, $rows, $regions, $attributes) {
 
@@ -52,10 +52,12 @@ function theme_pi_region_sort_table($header, $rows, $regions, $attributes) {
     	//Add the region heading
     	$table_rows[] = array( 'class'=> "region region-$region",    		
 			'data' => array(
-    			array('class' => 'region', 'colspan'=> count($header), 'header' => true,
-	    		'data'=> 
-	    			'<span style="font-size:130%;font-weight:bold;margin-right:15px;">' . $region_data['title'] . '</span>' .
-					'<span style="font-size:90%;font-weight:normal">' . $region_data['description'] . '</span>')
+    			array('class' => 'region', 'header' => true, 
+		    		'data'=> 
+		    			'<span style="font-size:130%;font-weight:bold;margin-right:15px;">' . $region_data['title'] . '</span>'),
+    			array('class' => 'region', 'colspan'=> count($header)-1, 'header' => true,
+		    		'data'=> 
+						'<span style="font-size:90%;font-weight:normal">' . $region_data['description'] . '</span>')
     		)
     	);
 		

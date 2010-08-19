@@ -153,6 +153,30 @@ function pi_stage_form(&$node, $form_state) {
 	    '#attributes' => array('class' => 'no-js'),
 	);
 	
+	$stage_groups = pi_get_defined_group_nids();
+	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($stage_groups));
+	$form['#allowed_stage_actors'] = $all_defined_groups;	
+	$group_names['none'] = "Select a group...";
+	$group_names = array_replace($group_names, pi_groups_get_names_from_nids($all_defined_groups));
+	
+	if(isset($node->inquiry_nid))
+	{
+		$inquiry = node_load($node->inquiry_nid);
+		$stage_actor_default_value = $inquiry->inquiry_actor;
+	}
+	else
+	{ 
+		$stage_actor_default_value = 'none';
+	}
+	$form['stage_actor'] = array(
+		'#type' => 'select',
+		'#title' => t('Who is this stage for'),
+		'#description' => t('Select the group that will be see this stage'),
+		'#weight' => 2,
+		'#default_value' =>  isset($node->stage_actor) ? $node->stage_actor : $stage_actor_default_value,
+		'#options' => $group_names,
+	);
+	
 	$form['stage_phases'] = array(
 		'#type' => 'fieldset',
 		'#title'  => t('Select the phases to be included in this stage'),
@@ -248,8 +272,23 @@ function pi_stage_form_inquiry_nid_validate($element, $form_state)
 	}
 }
 
+
 /**
- * THis is the hook_validate function to make sure that the given  nids are phases and are in the given
+ * This is the validation function to make sure that pi_stage_actor.gid is a valid group
+ * @param unknown_type $element 
+ * @param unknown_type $form_state
+ */
+function pi_stage_form_stage_actor_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['stage_actor'], $element['#allowed_stage_actors']))
+	{
+		form_error($element, t('The selected stage actor group is not valid, please choose a group from the list.'));				
+	}
+}
+
+
+/**
+ * This is the hook_validate function to make sure that the given  nids are phases and are in the given
  *  inquiry for the selected stage
  * @param $element
  * @param $form_state
@@ -300,6 +339,8 @@ function pi_stage_insert($node) {
 				$node->nid, $phase_nid);
 		}
 	}
+	//Then add stage actor
+	pi_stage_set_actor($node->nid, $node->stage_actor);		
 }
 
 /**
@@ -360,6 +401,29 @@ function pi_stage_update($node) {
 			}
 		}
 	}
+	pi_stage_set_actor($node->nid, $node->stage_actor);		
+}
+
+
+/**
+ * 
+ * Insert or update stage actor in the pi_inquiry_actor table
+ * @param uint $stage_id nid
+ * @param uint $actor_id nid of an og/nquire group
+ */
+function pi_stage_set_actor($stage_id, $actor_id)
+{
+	$do_update = pi_db_ensure_unique('pi_stage_actor', 'stage_id', $stage_id);
+	if($do_update)
+	{
+		$query = "UPDATE {pi_stage_actor} SET gid=%d WHERE stage_id=%d";
+	}
+	else
+	{
+		$query = "INSERT INTO {pi_stage_actor} (gid, stage_id) VALUES (%d, %d)";		
+	}
+	//pi_debug_message(sprintf($query, $actor_id, $stage_id));
+	db_query($query, $actor_id, $stage_id);
 }
 
 /**
@@ -387,6 +451,7 @@ function pi_stage_delete(&$node) {
 	// Delete the related information we were saving for this node.
 	db_query('DELETE FROM {pi_stage} WHERE nid = %d', $node->nid);
 	db_query('DELETE FROM {pi_stage_phase} WHERE stage_id = %d', $node->nid);
+	db_query('DELETE FROM {pi_stage_actor} WHERE stage_id = %d', $node->nid);
 }
 
 /**
@@ -406,6 +471,9 @@ function pi_stage_load($node) {
 	$data->stage_phases['phases'] = $phase_nids;
 	$data->phases = array_keys($phase_nids);
 	$data->stage_phase_ids = $psp_ids;
+	$query = "SELECT gid FROM {pi_stage_actor} WHERE stage_id = %d ORDER BY psa_id ASC LIMIT 1";
+	$result = db_fetch_array(db_query($query, $node->nid));
+	$data->stage_actor = $result['gid'];
 	return $data;
 }
 
@@ -425,17 +493,40 @@ function pi_stage_load_nids($inquiry_nid) {
 	return $nids;
 }
 
+
 /**
- * Returns array of stage_nids for given inquiry_id, ordered by weight
- * use pi_phase_load_nids instead!
+ * Queries the node database to provide a list of nids referring to stages in an
+ * inquiry given by $inquiry_nid, with user a member of the stage actor groups
+ * Use node_load($nid) to then access the stage details
+ * @param uint $inquiry_nid the nid of the inquiry to load the stages for
+ * @param uint $unid The uid of the user to load the stages for
+ * @return array of nids referring to pi_stage nodes in the given inquiry
  */
-function get_stages_of_inquiry($inquiry_nid) {
-	drupal_set_message('warning', "get_stages_of_inquiry has been used, please use pi_stage_load_nids instead");
-	return pi_stage_load_nids($inquiry_nid);
+function pi_stage_load_nids_for_user($inquiry_nid, $uid)
+{
+	$query = "SELECT DISTINCT pi_stage.nid AS nid FROM {pi_stage} AS pi_stage " .
+		"LEFT JOIN {pi_stage_actor} AS pi_stage_actor ON pi_stage_actor.stage_id=pi_stage.nid " .
+		"LEFT JOIN {og_uid} AS og_uid ON og_uid.nid = pi_stage_actor.gid " .
+		"WHERE pi_stage.inquiry_nid = %d " .
+		"AND og_uid.uid = %d";	
+	$result = db_query($query, $inquiry_nid, $uid);
+	$stage_nodes = array();
+	while($nid=db_result($result))
+	{
+		$stage_nodes[] = $nid;
+	}
+	return $stage_nodes;
 }
 
 
-
+/**
+ * Returns an array containing the stage_nids of the inquiry for that user.
+ * The stages are ordered by weight.
+ */
+function get_stages_of_inquiry_and_user($inquiry_id, $uid) {
+	drupal_set_error('get_stages_of_inquiry_and_user($inquiry_id, $uid) should be replaced with pi_stage_load_nids_for_group($inquiry_id, $uid)', 'warning');
+	return pi_stage_load_nids_for_user($inquiry_nid, $uid);
+}
 
 
 /**

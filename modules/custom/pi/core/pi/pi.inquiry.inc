@@ -27,7 +27,7 @@ function pi_inquiry_inquiry_view($node) {
 	$loaded_stage = node_load($details->stage_id);
 	drupal_set_title($loaded_stage->title);
 	$output = "<p>" . $loaded_stage->body . "</p>";
-	$phases = get_phases_of_inquiry_and_user($details->inquiry_id, $user->uid);
+	$phases = pi_phase_load_nids_for_user($details->inquiry_id, $user->uid);
 
 	// Header
 	$header = array(
@@ -115,7 +115,14 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
 	$output = "";
 	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
 	
-	if ($layout == 'list') {
+	if ($layout == 'octagon') {
+		// $background_arrows_image = '<ul style="" class="phase">';
+		$background_arrows_image .= '<img width="150" height="625" src="' . $image_path . 'arrows_loop.png" />';
+		//$left_positions = array('200px', '200px', '200px', '200px', '200px', '200px', '200px', '200px');
+		//$top_positions = array('35px', '110px', '185px', '260px', '335px', '410px', '485px', '560px');
+		$phase_icons = array('topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
+	}
+	elseif ($layout == 'list') {
 		$background_arrows_image = '<div style="position: absolute; top: 5px; left: 150px;">';
 		$background_arrows_image .= '<img width="150" height="625" src="' . $image_path . 'arrows_loop.png" />';
 		$left_positions = array('200px', '200px', '200px', '200px', '200px', '200px', '200px', '200px');
@@ -137,12 +144,12 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
 		$phase_icons = array('topic.jpg', 'question.jpg', 'method.jpg', 'data_collection.jpg', 'analysis.jpg', 'conclusion.jpg', 'evaluation.jpg', 'presentation.jpg');
 	};
 	
-	$output .= '<div style="position: relative; width: 100%; height: 500px;">';
-	$output .= $background_arrows_image;
-	$output .= '</div>';
+	
+	$list = array();
 	
 	if( is_array( $phases ) )
 	{
+		$count = 1;
 		foreach( $phases as $number => $phases ) 
 		{
 			if( isset( $phases['data'] ) ) 
@@ -162,13 +169,31 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
 				$activitys = $activity_count[ $number ];
 				$new_activitys = $new_activity_count[ $number ];
 					    						
-				$output .= '<div style="position: absolute; top: ' . $top_positions[ $number ] . '; left: ' . $left_positions[ $number ] . ';" class="phasebox">';
-				$output .= display_phases_box( $icon_url, $title, $activitys, $new_activitys, $show_phase_icons , $show_activities );					
-				$output .= '</div></div>';
+				// $output .= '<li style="position: absolute; top: ' . $top_positions[ $number ] . '; left: ' . $left_positions[ $number ] . ';" class="phasebox">';
+				
+				
+				$list[] = array('data' => display_phases_box( $icon_url, $title, $activitys, $new_activitys, $show_phase_icons , $show_activities, $layout ), 'class' => $layout . '-phasebox-' . $count);
+				
+				//$output .= '<li style="" class="phase">';
+				//$output .= display_phases_box( $icon_url, $title, $activitys, $new_activitys, $show_phase_icons , $show_activities );					
+				//$output .= '</li></ul>';
+			}
+			if ($layout != 'list') {
+				$count = $count + 1;
 			}
 		}
 	}
+
+	$title = NULL;
+	$type = 'ul';
+	$attributes = array('class' => 'phase');
+	
+	$output .= '<div class="' . $layout . '-phasearea">';	
+	// $output .= theme('table', $headings, $table);
+	$output .= theme_item_list($list, $title, $type, $attributes);	
 	$output .= '</div>';
+	
+	// $output .= '</div>';
 	return $output;
 }
 
@@ -184,7 +209,7 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
  * @param boolean $show_activities Whether or not to show the available and new activities.
  * @return string The HTML code for the phase division.
  */
-function display_phases_box( $icon_url, $title, $activity_count, $new_activity_count, $show_icon = false, $show_activities = false )
+function display_phases_box( $icon_url, $title, $activity_count, $new_activity_count, $show_icon = false, $show_activities = false, $layout = 'list' )
 {
 	$output = '';
 	
@@ -195,23 +220,27 @@ function display_phases_box( $icon_url, $title, $activity_count, $new_activity_c
 	
 	if( $show_icon !== true && $show_activities !== true )
 	{
-		$output .= '<div class="textcontnoicon">
-						<div class="titleboxnoiconnoact">' . $title . '</div>';
+		$output .= '<div class="' . $layout . '-textcontnoicon">
+						<div class="titleboxnoiconnoact">' . $title . '</div>
+					</div>';
 	}
 	else if( $show_icon !== true && $show_activities === true )
 	{
-		$output .= '<div class="textcontnoicon">
-						<div class="titleboxnoicon"><span style="padding: 0px 0px 0px 5px">' . $title . '</span></div>';
+		$output .= '<div class="' . $layout . '-textcontnoicon">
+						<div class="titleboxnoicon"><span style="padding: 0px 0px 0px 5px">' . $title . '</span></div>
+					</div>';
 	}
 	else if( $show_icon === true && $show_activities !== true )
 	{
-		$output .= '<div class="textcont">
-						<div class="titleboxnoact"><span style="padding: 0px 0px 0px 5px">' . $title . '</span></div>';
+		$output .= '<div class="' . $layout . '-textcont">
+						<div class="titleboxnoact"><span style="padding: 0px 0px 0px 5px">' . $title . '</span></div>
+					</div>';
 	}
 	else
 	{
-		$output .= '<div class="textcont">
-						<div class="titlebox"><span style="padding: 0px 0px 0px 5px">' . $title . '</span></div>';
+		$output .= '<div class="' . $layout . '-textcont">
+						<div class="titlebox"><span style="padding: 0px 0px 0px 5px">' . $title . '</span></div>
+					</div>';
 	}
 	
 	if($show_activities === true)

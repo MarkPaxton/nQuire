@@ -49,7 +49,6 @@
 		<div id="footer" class="mobileregion">
 			<?php print $footer_message . $footer; ?>
 		</div>
-		<?php endif; ?>
 	</div>
 </body>
 </html>
