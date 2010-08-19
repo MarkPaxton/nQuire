@@ -214,7 +214,7 @@ function pi_activity_teaser($node, $activity, $link_node_function) {
 	}
 	else
 	{
-		$output = "<div>" . $activity->description . "</div>";
+		$output = $activity->description;
 	}
 	return $output;
 }
@@ -971,8 +971,8 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
 		{
 			$node_function = 'view';
 		}
-		$url['url'] = url("activity/$activity_id/$node_function", array('query' => $destination));
-
+		// $url['url'] = url("activity/$activity_id/$node_function", array('query' => $destination));
+		$url['url'] = "activity/$activity_id/" . $node_function . '&' . $destination;
 
 		$teacher_gid = check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity_id, $uid);
 		$activity_name_text = check_plain($loaded_activity->name) . teacher_only_flag($teacher_gid);
@@ -1000,13 +1000,10 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
  * @param uint $activity_id
  * @param uint $uid
  */
-function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
+function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid, $class = 'menu') {
 	$link = pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid);
-	$output = array(
-		'data' => "<a href='" . $link['url'] .  "'>" . $link['title'] . "</a>", 
-		'class' => 'menu'
-		);
-		return $output;
+	$output = l($link['title'], $link['url'], array('attributes' => array('class' => $class), 'html' => TRUE));
+	return $output;
 }
 
 /**
@@ -1086,7 +1083,7 @@ function make_add_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id,
 	$add_activity_id = pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid);
 	if ($add_activity_id) {
 		$activity_link = build_activity_link($inquiry_id, $stage_id, $phase_id, $add_activity_id, $uid);
-		return t('<div style="display: block; float: right; margin: 0 1em 0 1em;clear:left;">'.$activity_link['data'].'</div>');
+		return t('<div class="add_activity_link">' . $activity_link . '</div>');
 	}
 	else {
 		return '';

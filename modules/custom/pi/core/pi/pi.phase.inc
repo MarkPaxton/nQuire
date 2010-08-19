@@ -19,9 +19,9 @@ function pi_inquiry_phase_view($phase) {
 	$activities = get_activities_of_stage_phase_and_user($phase->inquiry_nid, NULL, $phase->nid, $user->uid);
 
 	$output = "";
-	$output .= "<div style='display: block; clear: both;'>";
+	//$output .= "<div style='display: block; clear: both;'>";
 	$output .= t("<p>" . $phase->body . "</p>");
-	$output .= "</div>";
+	//$output .= "</div>";
 	
 
 	$hidden_created_activity_types = get_hidden_summary_activities($phase->inquiry_nid);
@@ -89,7 +89,7 @@ function pi_inquiry_phase_view($phase) {
 					$activity_link = l(check_plain($loaded_activity->name) . '&nbsp;' . add_activity_icon($loaded_activity_status->visible_status) . '&nbsp;' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
 				};
 */
-				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity->activity_id, $user->uid);
+				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity->activity_id, $user->uid, 'heading');
 				if (($active_activity_flag == 0) AND $loaded_activity)
 				{
 					$active_activity_flag = 1;
@@ -98,15 +98,17 @@ function pi_inquiry_phase_view($phase) {
 				$nid = get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
 				$loaded_actvity_node = node_load($nid);
 				$activity_desc = pi_activity_teaser($loaded_actvity_node, $loaded_activity, $link_node_function);
-								
-				$list[] = array('data' => $activity_link['data'] . $activity_desc, 'class' => 'phase');
+						
+				// $list[] = array('data' => l(check_plain($inquiry->title), "inquiry/" . $inquiry->nid, array('attributes' => array('class' => 'heading'))) . $inquiry->body, 'class' => 'inquiry');			
+				$list[] = array('data' => $activity_link . $activity_desc, 'class' => 'activity');	
+				// $list[] = array('data' => $activity_link['data'] . $activity_desc, 'class' => 'phase');
 				
 			}
 		}
 
 		$title = NULL;
 		$type = 'ul';
-		$attributes = array('class' => 'phase');
+		$attributes = array('class' => 'activity');
 		
 		// $output .= theme('table', $headings, $table);
 		$output .= theme_item_list($list, $title, $type, $attributes);
