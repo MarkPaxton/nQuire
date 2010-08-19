@@ -52,10 +52,12 @@ function theme_pi_region_sort_table($header, $rows, $regions, $attributes) {
     	//Add the region heading
     	$table_rows[] = array( 'class'=> "region region-$region",    		
 			'data' => array(
-    			array('class' => 'region', 'colspan'=> count($header), 'header' => true,
-	    		'data'=> 
-	    			'<span style="font-size:130%;font-weight:bold;margin-right:15px;">' . $region_data['title'] . '</span>' .
-					'<span style="font-size:90%;font-weight:normal">' . $region_data['description'] . '</span>')
+    			array('class' => 'region', 'header' => true, 
+		    		'data'=> 
+		    			'<span style="font-size:130%;font-weight:bold;margin-right:15px;">' . $region_data['title'] . '</span>'),
+    			array('class' => 'region', 'colspan'=> count($header)-1, 'header' => true,
+		    		'data'=> 
+						'<span style="font-size:90%;font-weight:normal">' . $region_data['description'] . '</span>')
     		)
     	);
 		

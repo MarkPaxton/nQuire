@@ -80,6 +80,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 	$undefined_groups = array();
 	
 	// Collect together all groups that are not yet allocated group types
+	// and add description data and users
 	foreach(array_keys($all_groups_by_id) as $gid)
 	{
 		if(!(array_key_exists($gid, $multiclass_groups) ||
@@ -110,7 +111,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 		'children' => $tree_roots['group']
 	);
 
-	
+	 
 	//This drops 'none' grouped items into the above placeholder multiclass/class items
 	// and adds those placeholder items to the form data structure
 	$form_data_structure = array();
@@ -118,7 +119,6 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 	{		
 		$form_data_structure[] = $multiclass_group_id;
 	}
-	
 	foreach($tree_roots['class'] as $class_group_id)
 	{		
 		$all_groups_by_id['multiclass-null']['children'][] = $class_group_id;
@@ -135,7 +135,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 
 	
 	// Generate the group hierarchy for the form data structure
-	$groups_hierarchy = pi_authoring_generate_child_list($form_data_structure, $all_groups_by_id);
+	$groups_hierarchy = pi_groups_generate_child_list($form_data_structure, $all_groups_by_id);
 	
 	// These are the region options for the respective subgroups (
 	//  e.g multiclass groups for class groups to be put in)
@@ -177,7 +177,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 				);
 	
 				$class_form_element['description'] = array(
-					'#value' => ''
+					'#value' => $all_groups_by_id[$multiclass_child_nid]['description']
 				);
 				
 				$class_form_element['region'] = array(
@@ -207,7 +207,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 						);
 		
 						$group_form_element['description'] = array(
-							'#value' => ''
+							'#value' => $all_groups_by_id[$class_child_nid]['description']
 						);
 						
 						$group_form_element['region'] = array(
@@ -315,54 +315,6 @@ function pi_authoring_admin_group_hierarchy_form_submit($form, &$form_state)
 }
 
 /**
- * Create a list of groups and subgroups ids using the group hierarchy in $defined groups
- * and the names of the nodes - groups with children will be recursively traversed
- * @param array $parents array of nids
- * @param array $groups_with_hierarchy pointer to array of group hierarchy data indexed by nid
- * @return array($nid=>array(...)) array with key parent nid and value null or array if it has children
- */
-function pi_authoring_generate_child_list($parents, &$group_data)
-{
-	$child_list = array();
-	foreach($parents as $nid)
-	{
-		if(count($group_data[$nid]['children'])>0)
-		{
-			$grandchild_list =  pi_authoring_generate_child_list($group_data[$nid]['children'], $group_data); 
-			$child_list[$nid] = $grandchild_list;
-		}
-		else
-		{
-			$child_list[$nid] = NULL;
-		}
-	}
-	return $child_list;
-}
-
-function theme_pi_authoring_group_title($name, $group_type)
-{
-	$output = '';
-	if($group_type!=NULL)
-	{
-		$group_type_text = check_plain(ucfirst($group_type));
-	}
-	else
-	{
-		$group_type = t('None');
-	}
-	if($name!=NULL)
-	{
-		$output_name = $name;
-	}
-	else
-	{
-		$output_name = t('Unknown');
-	}
-	$output .= $output_name . " ($group_type_text)";
-	return $output;
-}
-
-/**
  * Expand an tree of nids by replacing each element with it's value if it's not an array
  * or another expanded tree if it's an array.
  * Expanded lists will be rendered using theme('item_list') with it's title taken from the key used as
@@ -377,7 +329,7 @@ function pi_authoring_render_group_tree($group_list, &$group_data)
 	// expanded sub-list (if it's an array) 
 	foreach($group_list as $group_id => $group_items) 
 	{
-		$item_name = theme('pi_authoring_group_title', l($group_data[$group_id]['title'], 'node/' . $group_id . '/edit', array('query' => drupal_get_destination()) ), $group_data[$group_id]['group_type']);		
+		$item_name = theme('pi_group_title', l($group_data[$group_id]['title'], 'node/' . $group_id . '/edit', array('query' => drupal_get_destination()) ), $group_data[$group_id]['group_type']);		
 		if(is_array($group_items))
 		{
 			//pi_debug_message("expanding $group_id :" . count($group_items));
@@ -468,7 +420,7 @@ function theme_pi_authoring_admin_group_hierarchy_list($group_order, $group_list
 			//Render each tree within an item list for the group description
 
 			// First go through the trees and add nids for any branches/children 
-			$full_tree_structures = pi_authoring_generate_child_list($group_list_by_type[$group_type_to_list], $all_groups);
+			$full_tree_structures = pi_groups_generate_child_list($group_list_by_type[$group_type_to_list], $all_groups);
 			// Now render all branches of the trees
 			$expanded_root = pi_authoring_render_group_tree($full_tree_structures, $all_groups);	
 			asort($expanded_root);
@@ -493,7 +445,8 @@ function theme_pi_authoring_admin_group_hierarchy_list($group_order, $group_list
 function pi_authoring_admin_group_hierarchy_form_generate_region_list($region_items, $form_elements)
 {
 	$regions = array();
-	$names = pi_authoring_get_names_from_nids(element_children($region_items));
+	$names = pi_groups_get_names_from_nids(element_children($region_items));
+	
 	foreach($names as $region_element_id => $details)
 	{
 		switch($region_element_id)
@@ -510,8 +463,10 @@ function pi_authoring_admin_group_hierarchy_form_generate_region_list($region_it
 				$item = node_load($region_element_id);
 				if($item != NULL)
 				{
+					
 					$regions[$region_element_id]['title'] = $item->title;
-					$regions[$region_element_id]['description'] = $item->og_description;
+					$group_users = pi_get_members_of_group($region_element_id);
+					$regions[$region_element_id]['description'] =  theme('pi_group_description', $item->og_description, $group_users);
 				}
 				else
 				{
@@ -544,6 +499,7 @@ function pi_authoring_convert_heirarchy_form_elements(&$hierarchy_elements)
 
 			$rows[$region][$key]['title'] = drupal_render($hierarchy_elements[$region][$key]['title']);
 			$rows[$region][$key]['description'] = drupal_render($hierarchy_elements[$region][$key]['description']);
+			
 			$rows[$region][$key]['region'] = drupal_render($hierarchy_elements[$region][$key]['region']);
 			$rows[$region][$key]['weight'] = drupal_render($hierarchy_elements[$region][$key]['weight']);
 		}

@@ -31,6 +31,33 @@ function pi_groups_get_names_from_nids($nids)
 	return $return_data;
 } 
 
+/**
+ * 
+ * Return an array indexed by nid eith value the title of the node, or NULL
+ * if the node is not found
+ * @param array uint $nids Array of node ids
+ * @return  array('nid' => 'title', ...)
+ */
+function pi_groups_get_descriptions_from_nids($nids)
+{
+	$return_data = array();
+	if(is_array($nids))
+	{
+		foreach($nids as $nid)
+		{
+			$n = node_load($nid);
+			if($n!=NULL)
+			{
+				$return_data[$nid] = $n->og_description;
+			}
+			else
+			{
+				$return_data[$nid] = NULL;
+			}
+		}
+	}
+	return $return_data;
+} 
 
 
 /**
@@ -85,17 +112,33 @@ function pi_get_group_data_and_root_groups(&$all_groups_by_id, &$tree_roots)
 			$groups_with_hierarchy[$group_id]['group_type'] = $group_type;			
 		}
 		$groups_by_type[$group_type][$group_id] = &$groups_with_hierarchy[$group_id];	
-		$all_groups_by_id[$group_id] = &$groups_by_type[$group_type][$group_id];	
+		$all_groups_by_id[$group_id] = &$groups_with_hierarchy[$group_id];	
 	}
+
 	$groups_names = pi_groups_get_names_from_nids(array_keys($all_groups_by_id));
+	$groups_descriptions = pi_groups_get_descriptions_from_nids(array_keys($all_groups_by_id));
+	
+	foreach($all_groups_by_id as $gid => $group)
+	{
+		$group_users = pi_get_members_of_group($gid);
+		$all_groups_by_id[$gid]['description'] = theme('pi_group_description', $groups_descriptions[$gid], $group_users);
+		$all_groups_by_id[$gid]['title'] = $groups_names[$gid];
+	}	
+		
 	foreach(array_keys($groups_by_type) as $group_type)
 	{
 		foreach($groups_by_type[$group_type] as $gid => $group)
 		{
-			$groups_by_type[$group_type][$gid]['title'] = $groups_names[$gid];			
-			if($groups_with_hierarchy[$gid]['parent'] == NULL)
+			if(!array_key_exists($gid, $groups_with_hierarchy))
+			{				
+				$tree_roots[$group_type][] = $gid;
+			}
+			else
 			{
-				$tree_roots[$group_type][] = $gid;				
+				if($groups_with_hierarchy[$gid]['parent'] == NULL)
+				{
+					$tree_roots[$group_type][] = $gid;
+				}
 			}
 		}
 	}
@@ -501,4 +544,88 @@ function pi_get_defined_group_nids() {
 		}
 	}
 	return $groups;
+}
+
+/**
+ * Helper function to get all the users who are member of an og group
+ * 
+ * @param unknown_type $og
+ * @return unknown
+ */
+function get_og_group_name($og_id){
+	$query = "SELECT og_description FROM {og} WHERE nid = %d";
+	$group = db_fetch_object(db_query($query), $og_id);
+	return $group->og_description;
+}
+
+
+
+/**
+ * Create a list of groups and subgroups ids using the group hierarchy in $defined groups
+ * and the names of the nodes - groups with children will be recursively traversed
+ * @param array $parents array of nids
+ * @param array $groups_with_hierarchy pointer to array of group hierarchy data indexed by nid
+ * @return array($nid=>array(...)) array with key parent nid and value null or array if it has children
+ */
+function pi_groups_generate_child_list($parents, &$group_data)
+{
+	$child_list = array();
+	foreach($parents as $nid)
+	{
+		if(count($group_data[$nid]['children'])>0)
+		{
+			$grandchild_list =  pi_groups_generate_child_list($group_data[$nid]['children'], $group_data); 
+			$child_list[$nid] = $grandchild_list;
+		}
+		else
+		{
+			$child_list[$nid] = NULL;
+		}
+	}
+	return $child_list;
+}
+
+/**
+ * 
+ * Theme function to generate a group title with name (group type) or 'unknown' if the data isn't available 
+ * @param $name
+ * @param $group_type
+ */
+function theme_pi_group_title($name, $group_type)
+{
+	$output = '';
+	if($group_type!=NULL)
+	{
+		$group_type_text = check_plain(ucfirst($group_type));
+	}
+	else
+	{
+		$group_type = t('None');
+	}
+	if($name!=NULL)
+	{
+		$output_name = $name;
+	}
+	else
+	{
+		$output_name = t('Unknown');
+	}
+	$output .= $output_name . " ($group_type_text)";
+	return $output;
+}
+
+
+function theme_pi_group_description($description, $members=NULL)
+{
+	$user_names = array();
+	if(is_array($members))
+	{
+		foreach($members as $user)
+		{
+			$user_names[] = l($user->name, '/user/' . $user->uid);
+		}
+	}
+	$group_description = '<div>' . $description . '<br />'
+		. implode(', ', $user_names) . '</div>';
+	return $group_description;
 }

@@ -74,16 +74,8 @@ function pi_authoring_admin_groups_form($form_state)
 			
 			$group_name = l($group_node->title, 'node/' . $gid . '/edit', array('query' => drupal_get_destination()));
 			
-			//@todo change to some kind of theme function
 			$users = pi_get_members_of_group($gid);
-			$user_names = array();
-			foreach($users as $user)
-			{
-				$user_names[] = l($user->name, '/user/' . $user->uid);
-			}
-			$group_description = '<div>' . $group_node->og_description . '<br />' 
-								 . implode(', ', $user_names) . '</div>';
-
+			$group_description = theme('pi_group_description', $group_node->og_description, $users);
 								 
 			$tree[$group_type][$gid]['title'] = array(
 				'#value' => $group_name,
