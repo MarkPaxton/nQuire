@@ -168,17 +168,17 @@ function pi_activity_insert($node)
 function pi_activity_update($node)
 {
 	/*
-	$activity_array = $node->activity_data;
-	
-	$query = "UPDATE {pi_activity} SET " . $set . " WHERE activity_id = %d";
-	
-	db_query($query, 	$activity_array["name"], $activity_array["description"],
-						$activity_array["activity_type"], $activity_array["node_type"],
-						$activity_array["parameters"], $activity_array["destination"],
-						$activity_array["audience"], $node->nid );
+	 $activity_array = $node->activity_data;
 
-	*/
-	
+	 $query = "UPDATE {pi_activity} SET " . $set . " WHERE activity_id = %d";
+
+	 db_query($query, 	$activity_array["name"], $activity_array["description"],
+	 $activity_array["activity_type"], $activity_array["node_type"],
+	 $activity_array["parameters"], $activity_array["destination"],
+	 $activity_array["audience"], $node->nid );
+
+	 */
+
 	//save_activity($node->activity_data);
 }
 
@@ -658,7 +658,7 @@ function save_activity($activity_array)
 	if ($activity_array["activity_id"] != NULL)
 	{
 		//update
-		$query = "UPDATE {pi_activity} SET name = '%s', description = '%s', activity_type = '%s', 
+		$query = "UPDATE {pi_activity} SET name = '%s', description = '%s', activity_type = '%s',
 						node_type = '%s', parameters = '%s', destination = '%s', 
 						audience = '%s' WHERE activity_id = %d";
 		db_query($query, $activity_array["name"], $activity_array["description"],
@@ -669,10 +669,10 @@ function save_activity($activity_array)
 	else
 	{
 		//insert
-		$query = "INSERT INTO {pi_activity} SET activity_id = %d, name = '%s', description = '%s', 
+		$query = "INSERT INTO {pi_activity} SET activity_id = %d, name = '%s', description = '%s',
 							activity_type = '%s', node_type = '%s', parameters = '%s', 
 							destination = '%s', audience = '%s' ";
-		
+
 		db_query($query, $activity_array["nid"], $activity_array["name"], $activity_array["description"],
 		$activity_array["activity_type"], $activity_array["node_type"],
 		$activity_array["parameters"], $activity_array["destination"],
@@ -687,7 +687,7 @@ function save_activity($activity_array)
  * @param unknown_type $activity_id
  * @return unknown_type
  */
-function delete_activity($activity_id) 
+function delete_activity($activity_id)
 {
 	//delete from pi_activity
 	$query = "DELETE FROM {pi_activity} WHERE activity_id = %d";
@@ -708,7 +708,7 @@ function delete_activity($activity_id)
 	//delete from pi_activity_node
 	$query = "DELETE FROM {pi_activity_node} WHERE activity_id = %d";
 	db_query($query, $activity_id );
-	
+
 	//$node = node_load( $activity_id );
 	//echo "Activity ID: " . $activity_id;
 }
@@ -772,7 +772,7 @@ function insert_activity_actor($activity_actor_array) {
 
 	$parameters[] = $activity_actor_array["inquiry_id"];
 	$parameters[] = $activity_actor_array["activity_id"] ;
-		
+
 	if (isset($activity_actor_array["uid"]))
 	{
 		$query .= ", uid = %d ";
@@ -942,53 +942,55 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
 	$url = array('url'=>'', 'title'=>'');
 
 	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-	$status_image = array(
-		'start' => 'creatable.png',
-		'edit' => 'editable.png',
-		'view' => 'viewable.png',
-		'unavailable' => 'unavailable.png'
-		);
+	$status_image = array( 	'start' => 'creatable.png',
+							'edit' => 'editable.png',
+							'view' => 'viewable.png',
+							'unavailable' => 'unavailable.png' );
 
-		$loaded_activity = load_activity($activity_id);
-		$visible_status = get_visible_status_of_activity($inquiry_id, $activity_id, $uid);
-		$node_function = get_node_function_of_activity($inquiry_id, $activity_id, $uid);
+	$loaded_activity = load_activity($activity_id);
+	$visible_status = get_visible_status_of_activity($inquiry_id, $activity_id, $uid);
+	$node_function = get_node_function_of_activity($inquiry_id, $activity_id, $uid);
 
-		switch ($loaded_activity->destination)
-		{
-			case "self":
-				$destination = "destination=activity/$activity_id/view";
-				break;
-			case "phase":
-				$destination = "destination=phase/" . $phase_id;
-				break;
-			default:
-				$destination = "destination=inquiry/" . $inquiry_id;
-				break;
-		}
+	switch ($loaded_activity->destination)
+	{
+		case "self":
+			$destination = "destination=activity/" . $activity_id . "/view";
+			break;
+		case "phase":
+			$destination = "destination=phase/" . $phase_id;
+			break;
+		default:
+			$destination = "destination=inquiry/" . $inquiry_id;
+			break;
+	}
 
-		// set editable nodes to be viewed by default
-		if ($node_function == 'edit')
-		{
-			$node_function = 'view';
-		}
-		// $url['url'] = url("activity/$activity_id/$node_function", array('query' => $destination));
-		$url['url'] = "activity/$activity_id/" . $node_function . '&' . $destination;
+	// set editable nodes to be viewed by default
+	if ($node_function == 'edit')
+	{
+		$node_function = 'view';
+	}
+	//$url['url'] = url("activity/$activity_id/$node_function", array('query' => $destination));
+	//$url['url'] = "activity/$activity_id/" . $node_function . '&' . $destination;
+	
+	$url['url'] = "activity/" . $activity_id . "/" . $node_function;
+	$url['destination'] = $destination;
 
-		$teacher_gid = check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity_id, $uid);
-		$activity_name_text = check_plain($loaded_activity->name) . teacher_only_flag($teacher_gid);
+	$teacher_gid = check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity_id, $uid);
+	$activity_name_text = check_plain($loaded_activity->name) . teacher_only_flag($teacher_gid);
 
-		//if ($visible_status == "unavailable")
-		//{
-		$label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
-		$url['title'] = $activity_name_text . '&nbsp;' . $label_icon;
-		/*}
-		 else {
-		 $label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
+	//if ($visible_status == "unavailable")
+	//{
+	$label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
+	$url['title'] = $activity_name_text . '&nbsp;' . $label_icon;
+	/*}
+	 else {
+	 $label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
 
-		 $activity_name_link = "$activity_name_text&nbsp;$label_icon";
-		 $url['title'] = $activity_name_link;
-		 }*/
-		return $url;
+	 $activity_name_link = "$activity_name_text&nbsp;$label_icon";
+	 $url['title'] = $activity_name_link;
+	 }*/
+	
+	return $url;
 }
 
 
@@ -1000,9 +1002,16 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
  * @param uint $activity_id
  * @param uint $uid
  */
-function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid, $class = 'menu') {
+function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid, $class = 'menu') 
+{
 	$link = pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid);
-	$output = l($link['title'], $link['url'], array('attributes' => array('class' => $class), 'html' => TRUE));
+
+	$options['html'] = TRUE;
+	$options['query'] = $link['destination'];
+	$options['attributes'] = array( 'class' => $class);
+	
+	$output = l($link['title'], $link['url'], $options );
+
 	return $output;
 }
 
@@ -1059,7 +1068,7 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
 				$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);
 				foreach ($activities as $activity)
 				{
-						
+
 					if($activity->node_type == $node_type_to_find)
 					{
 						$activity_status = load_activity_status($inquiry_id, $activity->activity_id, $uid);
