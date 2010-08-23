@@ -39,12 +39,13 @@ function _pi_fooddiary_add_available_measures()
  * 
  * Enter description here ...
  */
-function _pi_fooddiary_add_available_measures_date()
+function _pi_fooddiary_add_available_measures_date( $delegated_node )
 {
 	global $user;
 	//Date
 	$new_node = new stdClass();
 	$new_node->type 							= 'pi_available_measures';
+	$new_node->delegated_node					= $delegated_node;
 	$new_node->uid								= $user->uid;
 	$new_node->title 							= FOODDIARY_DATE_TYPE;
 	$new_node->symbol 							= FOODDIARY_DATE_TYPE;

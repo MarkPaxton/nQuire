@@ -55,11 +55,15 @@ function pi_inquiry_inquiry_view($node) {
 	{
 		$phase = node_load($phase_nid);
 		$row = array();
-		if (in_array($phase->nid, $phases_of_current_stage)) {
-			$row[] = l(t($phase->title . " <img width='12' src='" . $image_path . "/folder_empty_current.png'/>"), t("phase/" . $phase->nid), array('html' => TRUE));
+		if (in_array($phase->nid, $phases_of_current_stage)) 
+		{
+			$link_text = check_plain( $phase->title );
+			$link_text .= ' <img width="12" src="' . $image_path . '/folder_empty_current.png"/>';
+			$row[] = l($link_text, "phase/" . $phase->nid, array('html' => TRUE));
 		}
-		else {
-			$row[] = l($phase->title, t("phase/" . $phase->nid));
+		else 
+		{
+			$row[] = l(check_plain($phase->title), "phase/" . $phase->nid);
 		}
 		$row[] = $phase->body;
 		$rows[] = array('data' => $row);
