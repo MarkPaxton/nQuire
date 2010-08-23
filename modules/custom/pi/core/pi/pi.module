@@ -177,13 +177,20 @@ function get_inquiry_details_from_current_path() {
 	$uid = $user->uid;
 
 	$result = new stdClass;
+	$result->phase_id = NULL;
+	$result->inquiry_id = NULL;
+	$result->activity_id = NULL;
+	$result->stage_id = NULL;
 
-	if(arg(0) == 'home') {
+	if(arg(0) == 'home') 
+	{
 		//inquiry, stage, phase an activity are not set
 	}
-	elseif (arg(0) == 'inquiry' || arg(0) == 'set_stage') {
+	elseif (arg(0) == 'inquiry' || arg(0) == 'set_stage') 
+	{
 		//get inquiry from the arg
-		if (arg(1)) {
+		if (arg(1)) 
+		{
 			$result->inquiry_id = (int) arg(1);
 		}
 			
@@ -193,7 +200,8 @@ function get_inquiry_details_from_current_path() {
 
 		//phase and activity are not set
 	}
-	elseif (arg(0) == 'phase') {
+	elseif (arg(0) == 'phase') 
+	{
 		//get inquiry from the database
 		//get direct from the phase id rather than session id
 		//$sid = get_current_session_id();
@@ -250,6 +258,7 @@ function get_inquiry_details_from_current_path() {
 		$result->phase_id = arg(5);
 		$result->activity_id = arg(6);
 		}*/
+	
 	return $result;
 }
 
@@ -768,15 +777,16 @@ function get_inquiries_of_user($uid = 0) {
  * @param  uint $uid User id
  * @return uint stage nid for current stage of given inquiry and user
  */
-function get_current_stage_of_inquiry_and_user($inquiry_id, $uid) {
-
+function get_current_stage_of_inquiry_and_user($inquiry_id, $uid) 
+{
 	// user's current stage
 	$query = "SELECT stage_id, pcs_id FROM {pi_current_stage} ";
 	$query .= "WHERE inquiry_id = %d AND uid = %d ";
 	$result = db_fetch_object(db_query($query, $inquiry_id, $uid));
 
+	
 	//user's group's current stage
-	if (isset($result) AND ($result == NULL))
+	if(isset($result) && ($result == NULL))
 	{
 		$query = "SELECT {pi_current_stage}.stage_id, {pi_current_stage}.pcs_id FROM {pi_current_stage} "
 				. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_current_stage}.gid "
@@ -784,6 +794,13 @@ function get_current_stage_of_inquiry_and_user($inquiry_id, $uid) {
 				. "AND {og_uid}.uid = %d ";
 
 		$result = db_fetch_object(db_query($query, $inquiry_id, $uid));
+		
+		if(isset($result) && ($result == NULL)) 
+		{
+			$result = new stdClass();
+			$result->stage_id = NULL;
+		}	
+		
 	}
 	
 	return $result;
@@ -1145,6 +1162,5 @@ if (!function_exists('array_replace'))
     return $array;
   }
 }
-
 
 ?>

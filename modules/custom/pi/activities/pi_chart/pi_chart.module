@@ -30,7 +30,7 @@ function pi_chart_show_chart_as_png($activity_id, $arg_node_function)
 	$delim = "";
 
 	$SQL = "SELECT {available_measure} FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
-	
+
 	$measures = db_query($SQL, $node->nid , $node->vid);
 
 	while ($measure = db_fetch_object($measures))
@@ -137,6 +137,8 @@ function shorten_lables($labels, $length)
 
 function check_labels($labels)
 {
+	$renamed_labels = array();
+	
 	if(is_array($labels))
 	{
 		$array_length = count($labels) - 1;
@@ -151,18 +153,16 @@ function check_labels($labels)
 		}
 	}
 
-	if(is_array($renamed_labels))
+	foreach( $renamed_labels as $renamed_label )
 	{
-		foreach( $renamed_labels as $renamed_label )
-		{
-			$key = array_search($renamed_label, $labels);
+		$key = array_search($renamed_label, $labels);
 
-			if($key !== FALSE && $key !== NULL)
-			{
-				$labels[$key] = $labels[$key] . " (1)";
-			}
+		if($key !== FALSE && $key !== NULL)
+		{
+			$labels[$key] = $labels[$key] . " (1)";
 		}
 	}
+
 
 	return $labels;
 }

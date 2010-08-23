@@ -5,7 +5,7 @@ module_load_include('inc', 'pi_fooddiary', 'pi_fooddiary.form_render_functions')
 define('FOODDIARY_FILE_PATH', 'fooddiary');
 
 /**
- * 
+ *
  * Enter description here ...
  */
 function pi_fooddiary_upload_photo_js()
@@ -72,7 +72,11 @@ function pi_fooddiary_upload_photo_js()
 		}
 
 		$node = node_load($form['nid']['#value']);
-		$content = $node->content;
+
+		//if( property_exists($node, 'content'))
+		{
+			$content = $node->content;
+		}
 
 		$selected = $_POST['food_diary']['meal_type'];
 		$options = $form['food_diary']['meal_type']['#options'];
@@ -110,7 +114,7 @@ function pi_fooddiary_upload_photo_js()
 		$new_elements_form['food_annotate']['food_portion']['#prefix']['#attributes']['class'] = empty($new_elements_form) ? 'ahah-new-content' : $new_element_forms['food_annotate']['food_portion']['#prefix']['#attributes']['class'] .' ahah-new-content';
 		$new_elements_form['food_annotate']['add_submit']['#attributes']['class'] = empty($new_elements_form) ? 'ahah-new-content' : $new_element_forms['food_annotate']['add_submit']['#attributes']['class'] .' ahah-new-content';
 		$new_elements_form['food_annotate']['remove_submit']['#attributes']['class'] = empty($new_elements_form) ? 'ahah-new-content' : $new_element_forms['food_annotate']['remove_submit']['#attributes']['class'] .' ahah-new-content';
-		 
+			
 
 		$output  = '';
 		$output .= pi_fooddiary_render_annotate($form, $form_state, FALSE);
@@ -123,7 +127,7 @@ function pi_fooddiary_upload_photo_js()
 }
 
 /**
- * 
+ *
  * Enter description here ...
  */
 function _pi_fooddiary_add_js_form_element()
@@ -131,17 +135,8 @@ function _pi_fooddiary_add_js_form_element()
 	$form = array( '#tree' => TRUE );
 
 	$food_choice = 	_pi_fooddiary_get_food_options();
-		
-	$food_portion = array( 	t('1'),
-							t('2'),
-							t('3'),
-							t('4'),
-							t('5'),
-							t('6'),
-							t('7'),
-							t('8'),
-							t('9'),
-							t('10')	);
+
+	$food_portion = array( 	'1', '2', '3', '4', '5', '6', '7',  '8',  '9', '10' );
 
 	$form['food_choice'] = array(
 			'#type' => 'select',
@@ -149,8 +144,7 @@ function _pi_fooddiary_add_js_form_element()
 			'#required' => FALSE,
 			'#multiple' => FALSE,
 		    '#options' => $food_choice,
-			'#default_value' => ''
-			);
+			'#default_value' => '' );
 
 	$form['food_portion'] = array(
 			'#type' => 'select',
@@ -158,8 +152,7 @@ function _pi_fooddiary_add_js_form_element()
 			'#required' => FALSE,
 			'#multiple' => FALSE,
 		    '#options' => $food_portion,
-			'#default_value' => ''
-			);
+			'#default_value' => '' );
 
 	$form['add_submit'] = array(
    		'#type' => 'submit',
@@ -171,11 +164,7 @@ function _pi_fooddiary_add_js_form_element()
       			'wrapper' => 'add_choice',
       			'method' => 'replace',
       			'effect' => 'fade',
-      			'progress' => array(
-        		'type' => 'throbber',
-					)
-				)
-			);
+      			'progress' => array( 'type' => 'throbber' ) ) );
 
 	$form['remove_submit'] = array(
    		'#type' => 'submit',
@@ -189,18 +178,13 @@ function _pi_fooddiary_add_js_form_element()
       			'wrapper' => 'add_choice',
       			'method' => 'replace',
       			'effect' => 'fade',
-      			'progress' => array(
-        		'type' => 'throbber',
-			)
-			)
-			);
+      			'progress' => array( 'type' => 'throbber' ) ) );
 
-
-			return $form;
+	return $form;
 }
 
 /**
- * 
+ *
  * Enter description here ...
  */
 function _pi_fooddiary_check_upload_directory()
@@ -210,7 +194,7 @@ function _pi_fooddiary_check_upload_directory()
 }
 
 /**
- * 
+ *
  * Enter description here ...
  * @param $node
  * @param $meal_type
@@ -229,7 +213,7 @@ function _pi_fooddiary_make_food_annotation_array($node, $meal_type)
 		foreach($food_items as $food_item)
 		{
 			$key = array_search($food_item['name'], $foodoptions);
-				
+
 			if($key !== FALSE)
 			{
 				$annotate[$key] = $food_item['amount'];

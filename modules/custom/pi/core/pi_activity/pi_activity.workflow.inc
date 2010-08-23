@@ -12,7 +12,7 @@ function pi_activity_nodeapi(&$node, $op)
 	//check this from the args
 	$details = get_inquiry_details_from_current_path();
 
-	if (is_numeric($details->activity_id))
+	if(is_object($details) && is_numeric($details->activity_id))
 	{
 		$activity = pi_activity_load( $details->activity_id );
 		$activity_type = $activity->activity_type;
