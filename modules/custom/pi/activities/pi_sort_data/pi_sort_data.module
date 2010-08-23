@@ -13,8 +13,8 @@ function pi_sort_data_node_info() {
 		    'body_label' => t('Sort of collected data'),
 		    'locked' => TRUE,
 		    'add_node_type' => 'pi_data'
-		)
-	);
+		    )
+		    );
 
 }
 
@@ -42,10 +42,10 @@ function pi_sort_data_theme() {
 	return array(
 	    'pi_sort_data_node_form' => array(
 	    	'arguments' => array('form'),
-		),
+	),
 	    'pi_sort_data' => array(
 	   		'arguments' => array('node', 'teaser', 'data_items_to_show'),
-		),
+	),
 	);
 }
 
@@ -57,18 +57,18 @@ function pi_sort_data_theme() {
 function pi_sort_data_form(&$node) {
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
-	
-	$current_activity = NULL;	
+
+	$current_activity = NULL;
 	if (is_numeric($node_details->activity_id))
 	{
 		$current_activity = load_activity($node_details->activity_id);
 	}
-	 
+
 	if ($current_activity->name)
 	{
 		$users_group = get_group_of_type($user->uid, $current_activity->audience,
-					$node_details->inquiry_id, $node_details->stage_id, 
-					$node_details->phase_id, $node_details->activity_id);
+		$node_details->inquiry_id, $node_details->stage_id,
+		$node_details->phase_id, $node_details->activity_id);
 		if($users_group!=false)
 		{
 			$group = node_load($users_group);
@@ -85,14 +85,14 @@ function pi_sort_data_form(&$node) {
 		$type = node_get_types('type', $node);
 		$node_title = $type->name;
 	}
-	 
+
 	// Build the form
 	$form = array();
 	if($current_activity->description)
 	{
 		$form['#prefix'] = $current_activity->description;
 	}
-		
+
 	$form['title'] = array (
         '#type' => 'hidden',
         '#value' => $node_title,
@@ -114,9 +114,9 @@ function pi_sort_data_form(&$node) {
 	}
 
 	$all_collected_data = pi_sort_data_get_options();
-	
+
 	$data_to_show = pi_merge_content_item_lists($sorted_collected_data, $all_collected_data);
-	
+
 	// set $tree to point to the above $form['onepageprofile_categories'] object
 	$tree = &$form['onepageprofile_categories'];
 	foreach($data_to_show as $data_nid => $data_item)
@@ -126,7 +126,7 @@ function pi_sort_data_form(&$node) {
 		if($data_item_node)
 		{
 			$title = $data_item_node->title;
-			//Overrride the data item title with activity title for node 
+			//Overrride the data item title with activity title for node
 			$data_activity_id = get_activity_id_for_nid($data_item_node->nid);
 			if($data_activity_id)
 			{
@@ -135,7 +135,7 @@ function pi_sort_data_form(&$node) {
 				{
 					if(strlen($data_activity->name)>0)
 					{
-						$title = $data_activity->name; 
+						$title = $data_activity->name;
 					}
 				}
 			}
@@ -143,11 +143,11 @@ function pi_sort_data_form(&$node) {
 			$tree[$data_nid]['title'] = array(
 	            '#value' => check_plain($title),
 			);
-			
+
 			$tree[$data_nid]['description'] = array(
 				'#value' => node_view($data_item_node, TRUE, TRUE),
 			);
-			
+
 			$tree[$data_nid]['weight'] = array(
 	            '#type'          => 'weight',
 	            '#delta'         =>count($data_to_show),
@@ -159,14 +159,14 @@ function pi_sort_data_form(&$node) {
 }
 
 function pi_sort_data_insert($node) {
-  if(count($node->onepageprofile_categories) > 0)
-  {
-    foreach($node->onepageprofile_categories as $key => $measure)
-    {
-      db_query("INSERT INTO {pi_sort_data} (nid, vid, data, weight) VALUES (%d, %d, '%s', %d)",
+	if(count($node->onepageprofile_categories) > 0)
+	{
+		foreach($node->onepageprofile_categories as $key => $measure)
+		{
+			db_query("INSERT INTO {pi_sort_data} (nid, vid, data, weight) VALUES (%d, %d, '%s', %d)",
 			$node->nid, $node->vid, $key, $measure['weight']);
-    }
-  }
+		}
+	}
 }
 
 function pi_sort_data_update($node) {
@@ -194,85 +194,85 @@ function pi_sort_data_load($node) {
 }
 
 function pi_get_titles_of_nodes_of_type($type) {
-  $result = db_query("SELECT title FROM node WHERE type = '%s'", $type);
-  $count = 0;
-  $result_list = array();
-  while($object = db_fetch_object($result)) {
-    $result_list[$object->title] = $count++;
-  }
-  return $result_list;
+	$result = db_query("SELECT title FROM node WHERE type = '%s'", $type);
+	$count = 0;
+	$result_list = array();
+	while($object = db_fetch_object($result)) {
+		$result_list[$object->title] = $count++;
+	}
+	return $result_list;
 }
 
 function pi_get_measure_value_list($measure_node) {
-  if($measure_node->list_options) {
-    $explode = explode("\n", $measure_node->list_options);
-    $measure_values = array();
-    foreach($explode as $key => $value) {
-      $measure_values[rtrim($value)] = $key;
-    }
-  }
-  elseif($measure_node->content_options) {
-    $measure_values = pi_get_titles_of_nodes_of_type($measure_node->content_options);
-  }
-  return $measure_values;
+	if($measure_node->list_options) {
+		$explode = explode("\n", $measure_node->list_options);
+		$measure_values = array();
+		foreach($explode as $key => $value) {
+			$measure_values[rtrim($value)] = $key;
+		}
+	}
+	elseif($measure_node->content_options) {
+		$measure_values = pi_get_titles_of_nodes_of_type($measure_node->content_options);
+	}
+	return $measure_values;
 }
 
 function pi_sort_data_items_around_key_measures($sorted_data_items, $key_measures, $selected_measure_nid) {
-  $key_measure_value_array = array();
-  if($key_measures) {
-    foreach ($key_measures as $key => $key_measure) {
-      $measure_node = node_load($key);
-      if($measure_node->list_options || $measure_node->content_options) {
-        $key_measure_value_array[$key] = pi_get_measure_value_list($measure_node);
-      }
-      else {
-        return $sorted_data_items;
-      }
-    }  
-  }
+	$key_measure_value_array = array();
+	if($key_measures) {
+		foreach ($key_measures as $key => $key_measure) {
+			$measure_node = node_load($key);
+			if($measure_node->list_options || $measure_node->content_options) {
+				$key_measure_value_array[$key] = pi_get_measure_value_list($measure_node);
+			}
+			else {
+				return $sorted_data_items;
+			}
+		}
+	}
 
-  $key_measure_data_keys = array();
-  $count = 0;
-  if($key_measures) {
-    foreach ($key_measures as $key => $key_measure) {
-      $key_measure_data_keys[$key] = $selected_measure_nid.'-'.$key;
-      $testnode = node_load($key);
-    }
-  }
+	$key_measure_data_keys = array();
+	$count = 0;
+	if($key_measures) {
+		foreach ($key_measures as $key => $key_measure) {
+			$key_measure_data_keys[$key] = $selected_measure_nid.'-'.$key;
+			$testnode = node_load($key);
+		}
+	}
 
-  $km_values = array();
-  foreach($sorted_data_items as $data_key => $info) {
-    $data_node = node_load($data_key);
-    //$km_values[$data_key] = array();
-    $km_values['nid'][] = $data_key;
-    foreach($key_measure_data_keys as $key_measure => $key_measure_data_key) {
-      $value = $data_node->categories[$key_measure_data_key]["#value"];
-      //$km_values[$data_key][$key_measure] = $key_measure_value_array[$key_measure][$value];
-      $km_values[$key_measure][] = $key_measure_value_array[$key_measure][$value];
-    }
-  }
-  $eval_string = 'array_multisort(';
-  foreach($key_measures as $key => $value) {
-    $eval_string .= '$km_values[' . $key . '],SORT_ASC,';
-  }
-  $eval_string .= '$km_values[\'nid\'],SORT_ASC);';
-  eval($eval_string);
+	$km_values = array();
+	foreach($sorted_data_items as $data_key => $info) {
+		$data_node = node_load($data_key);
+		//$km_values[$data_key] = array();
+		$km_values['nid'][] = $data_key;
+		foreach($key_measure_data_keys as $key_measure => $key_measure_data_key) {
+			$value = $data_node->categories[$key_measure_data_key]["#value"];
+			//$km_values[$data_key][$key_measure] = $key_measure_value_array[$key_measure][$value];
+			$km_values[$key_measure][] = $key_measure_value_array[$key_measure][$value];
+		}
+	}
+	$eval_string = 'array_multisort(';
+	foreach($key_measures as $key => $value) {
+		$eval_string .= '$km_values[' . $key . '],SORT_ASC,';
+	}
+	$eval_string .= '$km_values[\'nid\'],SORT_ASC);';
+	eval($eval_string);
 
-  $count = 0;
-  foreach($km_values['nid'] as $km_nid) {
-    $sorted_data_items[$km_nid]["#weight"] = $count++;
-  }
-  
-  uasort($sorted_data_items,my_weight_compare);
-  return $sorted_data_items;
+	$count = 0;
+	foreach($km_values['nid'] as $km_nid) {
+		$sorted_data_items[$km_nid]["#weight"] = $count++;
+	}
+
+	uasort($sorted_data_items,my_weight_compare);
+	return $sorted_data_items;
 }
 
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
-	
+
 	$node = node_prepare($node, $teaser);
-	
+
 	if (is_numeric($node_details->activity_id))
 	{
 		$current_activity = load_activity($node_details->activity_id);
@@ -281,39 +281,39 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 			drupal_set_title(check_plain($current_activity->name));
 		}
 	}
-	
+
 	// Assemble an array of key questions in the output format (build_activity_link makes this a link with icon)
 	$already_sorted_data_items = $node->categories;
-	
+
 	$unsorted_data_items = pi_sort_data_get_options();
 
-  $sorted_data_items = pi_merge_content_item_lists($already_sorted_data_items, $unsorted_data_items);
+	$sorted_data_items = pi_merge_content_item_lists($already_sorted_data_items, $unsorted_data_items);
 
-  $node->key_measures = array();
-  
-  $selected_measure_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-  if($selected_measure_nid)
-  {
-    $selected_measures_node = node_load($selected_measure_nid);
-    if($selected_measures_node)
-    {
-      $selected_measures = $selected_measures_node->measures_list;
-      foreach($selected_measures as $key => $measure)
-      {
-        if($measure['#status']=='key')
-        {
-          $node->key_measures[$key] = $measure['#title'];
-        }
-      }
-    }
-  }
-  
-  //sort  combined list according to measures
-  if(count($sorted_data_items) > 1) {
-    $sorted_data_items = pi_sort_data_items_around_key_measures($sorted_data_items, $node->key_measures, $selected_measure_nid);  
-  }
+	$node->key_measures = array();
+
+	$selected_measure_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	if($selected_measure_nid)
+	{
+		$selected_measures_node = node_load($selected_measure_nid);
+		if($selected_measures_node)
+		{
+			$selected_measures = $selected_measures_node->measures_list;
+			foreach($selected_measures as $key => $measure)
+			{
+				if($measure['#status']=='key')
+				{
+					$node->key_measures[$key] = $measure['#title'];
+				}
+			}
+		}
+	}
+
+	//sort  combined list according to measures
+	if(count($sorted_data_items) > 1) {
+		$sorted_data_items = pi_sort_data_items_around_key_measures($sorted_data_items, $node->key_measures, $selected_measure_nid);
+	}
 	$data_items_to_show = array();
-	
+
 	foreach(array_keys($sorted_data_items) as $sorted_data_items_nid)
 	{
 		$data_item_activity_id = get_activity_id_for_nid($sorted_data_items_nid);
@@ -323,13 +323,11 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 			$data_item_activity = pi_activity_load($data_item_activity_id);
 			$activity_link = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $data_item_activity_id, $user->uid);
 			$activity_teaser = pi_activity_teaser($data_item_node, $data_item_activity, 'view');
-			$data_items_to_show[] = array(
-				'title' => $activity_link['data'],
-				'description' => $activity_teaser			
-			);
+			$data_items_to_show[] = array(	'title' => $activity_link,
+											'description' => $activity_teaser );
 		}
 	}
-	
+
 	if($teaser)
 	{
 		//Link to add a new key question
@@ -340,29 +338,8 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
             '#value' =>$link_output,
             '#weight' => -3
 		);
-	}	
-/*	
-  $node->key_measures = array();
-  
-  $selected_measure_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-  if($selected_measure_nid)
-  {
-    $selected_measures_node = node_load($selected_measure_nid);
-    if($selected_measures_node)
-    {
-      $selected_measures = $selected_measures_node->measures_list;
-      foreach($selected_measures as $key => $measure)
-      {
-        if($measure['#status']=='key')
-        {
-          $node->key_measures[$key] = $measure['#title'];
-        }
-      }
-    }
-  }
-  
-  pi_sort_data_items_around_key_measures($sorted_data_items, $node->key_measures, $selected_measure_nid);*/
-	
+	}
+
 	$node->content['pi_sort_data'] = array(
             '#value' => theme('pi_sort_data', $node, $teaser, $data_items_to_show),
             '#weight' => 2
@@ -371,14 +348,13 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	return $node;
 }
 
-function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
+function theme_pi_sort_data($node, $teaser, $data_items_to_show)
+{
 	global $user;
-	 
+
 	$output = '';
 
-	$header = array(
-		t("Data")
-	);
+	$header = array( t("Data") );
 
 	$rows = array();
 	if (is_array($data_items_to_show))
@@ -387,19 +363,18 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
 		{
 			$title_for_row = $data_item['title'];
 			$description_for_row =  str_replace(
-				array('<div', '</div', 'class="submitted"'), 
-				array('<span', '</span', 'class="submitted" style="display:none"'),  
-				$data_item['description']);
-			
+			array('<div', '</div', 'class="submitted"'),
+			array('<span', '</span', 'class="submitted" style="display:none"'),
+			$data_item['description']);
+
 			$rows[] =	'<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $title_for_row . '</span>' .
 							'<span>' . $description_for_row . '</span>' .
 						'</div>';
 		}
 	}
-  
+
 	if(count($rows) > 0)
 	{
-		
 		if(count($node->key_measures)>0)
 		{
 			$measures_text = " for your key " . format_plural(count($node->key_measures), t("measure"), t("measures")) . " ";
@@ -419,7 +394,10 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
 				}
 			}
 		}
-		$output .= '<p>You have collected these data' . check_plain($measures_text) . '.  Click the activity to sort them or add new data.</p>';
+		$output .= '<p>';
+		$output .= t('You have collected these data @measures_text.', array( '@measures_text' => $measures_text ) );
+		$output .= t(' Click the activity to sort them or add new data.');
+		$output .= '</p>';
 		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
 
 		//$output .= theme('table', $header, $rows);
@@ -437,15 +415,15 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show) {
  */
 function theme_pi_sort_data_node_form($form) {
 	$output = '';
-	
+
 	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
 
-/*	// Header
-	$header = array(
+	/*	// Header
+	 $header = array(
 		t('Data'),
 		t('Weight')
-	);
-*/
+		);
+		*/
 	// Rows for the tabledrag
 	$rows = array();
 
@@ -456,41 +434,41 @@ function theme_pi_sort_data_node_form($form) {
 		$row = array();
 		$tree[$key]['title']['#prefix'] = '<span style="white-space:nowrap;font-size:130%;font-weight:bold;margin-right:15px;">';
 		$tree[$key]['title']['#suffix'] =  '</span>';
-		
+
 		$tree[$key]['description']['#prefix'] = '<span style="font-size:90%;">';
 		$tree[$key]['description']['#suffix'] = '</span>';
-		
-		$modified_description = str_replace(array('<div', '</div', 'class="submitted"'), 
-			array('<span', '</span', 'class="submitted" style="display:none"'),  
+
+		$modified_description = str_replace(array('<div', '</div', 'class="submitted"'),
+		array('<span', '</span', 'class="submitted" style="display:none"'),
 		$tree[$key]['description']['#value']);
 		$tree[$key]['description']['#value'] = $modified_description;
 
-		$row[] = array('data' => drupal_render($tree[$key]['title']), 
+		$row[] = array('data' => drupal_render($tree[$key]['title']),
 					'style' => 'white-space:nowrap;'
-			);
-		$row[] = drupal_render($tree[$key]['description']);
-		$row[] = drupal_render($tree[$key]['weight']);
+					);
+					$row[] = drupal_render($tree[$key]['description']);
+					$row[] = drupal_render($tree[$key]['weight']);
 
-		$rows[] = array('data' => $row, 'class' => 'draggable');
+					$rows[] = array('data' => $row, 'class' => 'draggable');
 	}
 
 	if (count($rows) == 0)
 	{
-	   if(arg(2) == 'add')
-    {
-       $output  .= '<p> Press <strong>Save</strong> to start adding your data.</p>';
-    }
-    else
-    {
-      $output .= "<p>No data is available.</p>";
-    }
+		if(arg(2) == 'add')
+		{
+			$output  .= '<p> Press <strong>Save</strong> to start adding your data.</p>';
+		}
+		else
+		{
+			$output .= "<p>No data is available.</p>";
+		}
 	}
 	else
 	{
-		$output .= theme('table', NULL, $rows, array('id' => 'onepageprofile-categories'));	
+		$output .= theme('table', NULL, $rows, array('id' => 'onepageprofile-categories'));
 	}
 	$output .= drupal_render($form);
-	
+
 	return $output;
 }
 
@@ -499,32 +477,32 @@ function theme_pi_sort_data_node_form($form) {
  */
 function pi_sort_data_get_choice($node) {
 	$query = "SELECT * FROM {pi_sort_data} AS pi_sort_data "
-			. "WHERE pi_sort_data.nid = %d "
-			. "AND pi_sort_data.vid = %d "
-			. "ORDER BY weight ASC";
+	. "WHERE pi_sort_data.nid = %d "
+	. "AND pi_sort_data.vid = %d "
+	. "ORDER BY weight ASC";
 	$result = db_query($query, $node->nid, $node->vid);
 	$data = array();
 	while ($row = db_fetch_object($result))
 	{
 		$loaded_node = node_load($row->data);
-        if($loaded_node!=false)
-        {
-        	$activity_nid = get_activity_id_for_nid($loaded_node->nid);
-        	$activity = load_activity($activity_nid);
-        	$title = $loaded_node->title;
-        	// Activity title is better here, so if it's set, use that
-        	if($activity)
-        	{
-        		if($activity->name)
-        		{
-        			$title = $activity->name;
-        		}
-        	}
-        	$data[$row->data] = array(
+		if($loaded_node!=false)
+		{
+			$activity_nid = get_activity_id_for_nid($loaded_node->nid);
+			$activity = load_activity($activity_nid);
+			$title = $loaded_node->title;
+			// Activity title is better here, so if it's set, use that
+			if($activity)
+			{
+				if($activity->name)
+				{
+					$title = $activity->name;
+				}
+			}
+			$data[$row->data] = array(
 	            '#weight' => count($data),
 	            '#title'  => check_plain($title)
-        	);
-        }
+			);
+		}
 	}
 	return $data;
 }
@@ -544,5 +522,5 @@ function pi_sort_data_get_options() {
 	{
 		$items[$nid]['#weight'] = 0;
 	}
-    return $items;
+	return $items;
 }
