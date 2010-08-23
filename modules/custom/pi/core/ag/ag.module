@@ -68,38 +68,51 @@ function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id
 	$visible_status = get_visible_status_of_activity ($inquiry_id, $activity_id, $uid);
 	$node_function = get_node_function_of_activity ($inquiry_id, $activity_id, $uid);
 
-	switch ($loaded_activity->destination) {
+	switch ($loaded_activity->destination) 
+	{
 		case "self":
-			$destination = "";
+			$destination = '';
 			break;
 		case "phase":
-			$destination = t("destination=" . build_link("phase", $phase_id, "view", $inquiry_id, $stage_id, $phase_id,$activity_id));
+			$destination = "destination=" . build_link("phase", $phase_id, "view", $inquiry_id, $stage_id, $phase_id,$activity_id);
 			break;
 		default:
-			$destination = t("destination=" . build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id));
+			$destination = "destination=" . build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id);
 			break;
 	}
 
 	$teacher_gid = check_teacher_activity_for_inquiry_activity_user ($inquiry_id, $activity_id, $uid);
 
-	if ($visible_status == "unavailable") {
-		$output = t("<img class='ag-icon' src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . teacher_only_flag($teacher_gid) . "</span>");
+	$link_text  = '<img class="ag-icon" src="' . $image_path. $status_image[$visible_status] . '"/>'; 
+	$link_text .= '<span style="vertical-align: 10%;">'; 
+	$link_text .= t( $loaded_activity->name . teacher_only_flag($teacher_gid) );
+	$link_text .= '</span>';
+	
+	if ($visible_status == "unavailable") 
+	{
+		$output = $link_text;
 	}
-	elseif ($node_function == "add") {
+	elseif ($node_function == "add") 
+	{
 		$link = build_link("node", $node_function, str_replace("_", "-", $loaded_activity->node_type), $inquiry_id, $stage_id, $phase_id, $activity_id);
-		if ($params) {
+		if ($params) 
+		{
 			$link = $link . "/" . $params;
 		}
-		$output = l(t("<img class='ag-icon' src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . teacher_only_flag($teacher_gid) . "</span>"), $link,  array('html' => true, 'query' => $destination));
+		
+		$output = l($link_text, $link,  array('html' => true, 'query' => $destination));
 	}
-	else {
+	else 
+	{
 		$nid = get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid);
 		//$nid = get_nid_for_inquiry_activity_and_user(1, 3, 1);
 		$link = build_link("node", $nid, $node_function, $inquiry_id, $stage_id, $phase_id, $activity_id);
-		if ($params) {
+		if($params) 
+		{
 			$link = $link . "/" . $params;
 		}
-		$output = l(t("<img class='ag-icon' src=\"" . $image_path. $status_image[$visible_status] . "\"/>" . " " . "<span style='vertical-align: 10%;'>" . $loaded_activity->name . teacher_only_flag($teacher_gid) . "</span>"), $link,  array('html' => true, 'query' => $destination));
+		
+		$output = l($link_text, $link,  array('html' => true, 'query' => $destination));
 	}
 
 	return $output;
@@ -155,7 +168,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 						$phase_link = t($phase->title);
 					}
 					else {
-						$phase_link = l($phase->title . teacher_only_flag($teacher_gid), t("phase/" . $phase->nid), array('html' => true));
+						$phase_link = l($phase->title . teacher_only_flag($teacher_gid), "phase/" . $phase->nid, array('html' => true));
 					}
 
 					$activity_menu_items = array();
@@ -206,8 +219,6 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 	}
 
 	$home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-
-	// $block['subject'] = l(t("Sustainability investigator&nbsp;" . "<img src=\"" . $image_path . "home.png\"/>"), t($home_link), array(html=>true));
 
 	$previous_answers = array("title" => "my title", "author" => "my author");
 
@@ -283,11 +294,11 @@ function get_ag_content() {
         
       <div id='ag_home'>
         <div id='ag_home_icon'>";
-	$content .= l(t("<img src=\"${image_path}unit-navigator-home.png\"/>"), t($home_link), array('html'=>true, 'attributes' => array('class' => 'ag-link')));
+	$content .= l(t("<img src=\"${image_path}unit-navigator-home.png\"/>"), $home_link, array('html'=>true, 'attributes' => array('class' => 'ag-link')));
 	$content .= "
         </div>
         <div id='ag_home_text'>";     
-	$content .= l(t("Sustainability<br/>Investigator"), t($home_link), array('html'=>true, 'attributes' => array('class' => 'ag-link')));
+	$content .= l(t("Sustainability<br/>Investigator"), $home_link, array('html'=>true, 'attributes' => array('class' => 'ag-link')));
 	$content .= "
         </div>
       </div>";

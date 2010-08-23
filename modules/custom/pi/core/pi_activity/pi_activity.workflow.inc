@@ -140,6 +140,12 @@ function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id)
 	return find_unique_node_type_for_uid_and_inquiry('pi_hypothesis', $uid, $inquiry_id);
 }
 
+function find_default_measure_filter_nid()
+{
+  $result = db_result(db_query('SELECT {pi_default_measure_filter}.nid FROM {pi_default_measure_filter} ORDER BY nid DESC LIMIT 1;'));
+  return $result;
+}
+
 /*
   This needs to be done differently for measure filter
   Measure filter is no longer an activity but inquiry id is stored with the node

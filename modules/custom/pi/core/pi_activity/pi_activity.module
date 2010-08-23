@@ -1053,22 +1053,25 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
  * @param unknown_type $activity_ind The "Sort $whatever" activity id for the add activity.
  * @param unknown_type $uid The user id to find the add activity id for.
  */
-function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid) {
+function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid) 
+{
 	$return_value = NULL;
 	$sort_activity = load_activity($activity_id);
-	if($sort_activity!=false)
+	
+	if($sort_activity!=FALSE)
 	{
 		$type = node_get_types('type', $sort_activity->node_type);
+		
 		if(isset($type->add_node_type))
 		{
 			$node_type_to_find = $type->add_node_type;
+			
 			$phases = pi_phase_load_nids_for_user($inquiry_id, $uid);
 			foreach ($phases as $phase)
 			{
 				$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);
 				foreach ($activities as $activity)
 				{
-
 					if($activity->node_type == $node_type_to_find)
 					{
 						$activity_status = load_activity_status($inquiry_id, $activity->activity_id, $uid);
@@ -1082,21 +1085,26 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
 			}
 		}
 	}
+	
 	return $return_value;
 }
 
 /**
  * Generates add activity link
  */
-function make_add_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
+function make_add_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) 
+{
+	$add_activity_link = '';
+	
 	$add_activity_id = pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid);
-	if ($add_activity_id) {
+	
+	if ($add_activity_id) 
+	{
 		$activity_link = build_activity_link($inquiry_id, $stage_id, $phase_id, $add_activity_id, $uid);
-		return t('<div class="add_activity_link">' . $activity_link . '</div>');
+		$add_activity_link = '<div class="add_activity_link">' . $activity_link . '</div>';
 	}
-	else {
-		return '';
-	}
+	
+	return $add_activity_link;
 }
 
 /**

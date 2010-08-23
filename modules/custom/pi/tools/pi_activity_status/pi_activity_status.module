@@ -11,7 +11,7 @@ function get_activity_participants($node_details) {
 	//get the audience
 	$audience = $loaded_activity->audience;
 	$content .= t(" audience:" . $audience);
-		
+
 	$loaded_activity_actor = load_activity_actor($node_details->inquiry_id, $node_details->activity_id);
 	$gid_actor = $loaded_activity_actor[0]["gid"];
 	$uid_actor = $loaded_activity_actor[0]["uid"];
@@ -22,18 +22,18 @@ function get_activity_participants($node_details) {
 	$grouping = get_grouping ($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
 
 	$groups = get_groups_from_grouping ($grouping);
-		
+
 	$content .= t(" grouping:" . $grouping);
-		
+
 	//pull out the actual audiences
-		
+
 	$content .= " groups:";
 	$groups_array = array();
 	while ($gid = db_fetch_object($groups)) {
 		$groups_array[] = $gid->gid;
 		$content .= t($gid->gid);
 	}
-		
+
 	$activity_participants = array();
 	$content .= " type:";
 	//the actor is a uid
@@ -42,7 +42,7 @@ function get_activity_participants($node_details) {
 		$content .= "uid";
 		$activity_participants[] = $uid_actor;
 	}
-		
+
 	//the actor is a gid for an individual activity
 	//get the individual members of the gid
 	elseif ($gid_actor && $audience == "individual") {
@@ -53,7 +53,7 @@ function get_activity_participants($node_details) {
 		}
 
 	}
-		
+
 	//the actor is a gid for a group activity
 	//use the gid if it is a group
 	//get the group members (from grouping) if the gid is a class/multiclass
@@ -69,7 +69,7 @@ function get_activity_participants($node_details) {
 		elseif ($actor_type == "class") {
 			//find groups in gid class from array
 			//find which members of groups array are groups in this class
-				
+
 			$group_query = "SELECT {pi_group_hierarchy}.gid FROM {pi_group_hierarchy}, {pi_group_type} WHERE {pi_group_hierarchy}.parent_gid = %d AND {pi_group_hierarchy}.gid = {pi_group_type}.gid AND {pi_group_type}.type = 'group'";
 			$group_query_result = db_query($group_query, $gid_actor);
 			$groups_of_actor_class = array();
@@ -79,7 +79,7 @@ function get_activity_participants($node_details) {
 				$content .= $single_group->gid;
 			}
 			$activity_participants = array_intersect($groups_of_actor_class, $groups_array);
-				
+
 		}
 		elseif ($actor_type == "multiclass") {
 			//find groups within the multiclass
@@ -95,28 +95,28 @@ function get_activity_participants($node_details) {
 			$activity_participants = array_intersect($groups_of_actor_class, $groups_array);
 		}
 	}
-		
+
 	//the actor is a gid for a class activity
 	//use the gid if it is a class
 	//get the class members (from grouping) if it is a multiclass
-	elseif ($gid_actor && $audience == "class") 
+	elseif ($gid_actor && $audience == "class")
 	{
 		$content .= "gid/class";
 		$query = "SELECT type FROM {pi_group_type} WHERE gid = %d";
 		$actor_type = db_result(db_query($query, $gid_actor));
 		$content .= " type:" . $actor_type;
-		if ($actor_type == "class" && in_array($gid_actor, $groups_array)) 
+		if ($actor_type == "class" && in_array($gid_actor, $groups_array))
 		{
 			$activity_participants[] = $gid_actor;
 		}
-		elseif ($actor_type == "multiclass") 
+		elseif ($actor_type == "multiclass")
 		{
 			//find the classes of the multiclass
 			$group_query = "SELECT {pi_group_hierarchy}.gid FROM {pi_group_hierarchy}, {pi_group_type} WHERE {pi_group_hierarchy}.parent_gid = %d AND {pi_group_hierarchy}.gid = {pi_group_type}.gid AND {pi_group_type}.type = 'class'";
 			$group_query_result = db_query($group_query, $gid_actor);
 			$groups_of_actor_class = array();
 			$content .= " classes of multiclass:";
-			while ($single_group = db_fetch_object($group_query_result)) 
+			while ($single_group = db_fetch_object($group_query_result))
 			{
 				$groups_of_actor_class[] = $single_group->gid;
 				$content .= $single_group->gid;
@@ -124,32 +124,33 @@ function get_activity_participants($node_details) {
 			$activity_participants = array_intersect($groups_of_actor_class, $groups_array);
 		}
 	}
-		
+
 	//the actor is a gid for a multiclass activity
 	//the gid should be a multiclass
-	elseif ($gid_actor && $audience == "muticlass") 
+	elseif ($gid_actor && $audience == "muticlass")
 	{
 		$content .= "gid/multiclass";
 		$content .= "gid/multiclass";
 		$query = "SELECT type FROM {pi_group_type} WHERE gid = %d";
 		$actor_type = db_result(db_query($query, $gid_actor));
 		$content .= " type:" . $actor_type;
-		if ($actor_type == "multiclass" && in_array($gid_actor, $groups_array)) 
+		if ($actor_type == "multiclass" && in_array($gid_actor, $groups_array))
 		{
 			$activity_participants[] = $gid_actor;
 		}
 	}
 
-		
+
 	$result = array('activity_participants' => $activity_participants, 'gid_actor' => $gid_actor, 'uid_actor' => $uid_actor, 'audience' => $audience, 'name' => $loaded_activity->name);
 
 	return $result;
 }
 
 
-function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
-	switch ($op) {
-
+function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) 
+{
+	switch ($op) 
+	{
 		case 'list':
 			$blocks[0]['info'] = t('Activity Status');
 			return $blocks;
@@ -164,26 +165,30 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
 			global $user;
 
 			$node_details = get_inquiry_details_from_current_path();
-			if (isset($node_details->inquiry_id)) {
+			if (isset($node_details->inquiry_id))
+			{
 				$node_details_inquiry_id = $node_details->inquiry_id;
 			}
-			else {
+			else
+			{
 				$node_details_inquiry_id = '';
 			}
 
 			$teacher_tools = array();
-			if (in_array(arg(0), array('inquiry', 'phase', 'activity', 'set_stage'))) {
-				$teacher_tools[] = l(t("Change stage"), t('set_stage/' . $node_details->inquiry_id), array('query'=> t('destination=inquiry/'. $node_details->inquiry_id)));
+			if (in_array(arg(0), array('inquiry', 'phase', 'activity', 'set_stage')))
+			{
+				$teacher_tools[] = l(t("Change stage"), 'set_stage/' . $node_details->inquiry_id, array('query'=> t('destination=inquiry/'. $node_details->inquiry_id)));
 			}
-			else {
+			else
+			{
 				$teacher_tools[] = t("Change stage");
 			}
 			$teacher_tools[] = t("Dashboard");
 			$teacher_tools[] = t("Events");
 			$content = t(theme('item_list', $teacher_tools, NULL, 'ul', array('class' => 'menu')));
 
-			if (is_numeric($node_details->activity_id)) {
-
+			if (is_numeric($node_details->activity_id))
+			{
 				$ap_result = get_activity_participants($node_details);
 				$audience = $ap_result["audience"];
 				$activity_participants = $ap_result["activity_participants"];
@@ -191,22 +196,19 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) {
 					
 				/*get the status for each actual audience*/
 				//use activity status
-					
 				$content .= "<strong>" . $activity_name . ":</strong>";
-					
 				$content .= generate_status_table($activity_participants, $node_details, $audience);
-					
 			}
-			 
+
 			$block['subject'] = "Teacher tools";
 			$block['content'] = $content;
-			 
+
 			return $block;
-	};
+	}
 }
 
 function generate_status_table($activity_participants, $node_details, $audience) {
-		
+
 	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
 	$status_image = array();
 	$status_image["start"] = "creatable.png";
@@ -224,12 +226,12 @@ function generate_status_table($activity_participants, $node_details, $audience)
 			}
 		}
 	}
-		
+
 	else {
 		foreach ($activity_participants as $activity_participant) {
 			$members_of_group = get_members_of_group($activity_participant);
 			$group_member = db_fetch_object($members_of_group);
-				
+
 			//I need this because uid 1 is admin and a member of every group
 			if ($group_member->uid == 1) {
 				$group_member = $group_member = db_fetch_object($members_of_group);
