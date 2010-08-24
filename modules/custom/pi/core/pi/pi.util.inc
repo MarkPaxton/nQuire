@@ -174,15 +174,24 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	$items = array();
 	foreach($grouped_items as $group_name => $group)
 	{
-		if(!is_array($item_ids[$group_name]))
-		{
-			$item_ids[$group_name] = array();
+		if( is_array($item_ids) )
+		{ 
+			if( !array_key_exists($group_name, $item_ids) || 
+				( array_key_exists($group_name, $item_ids) && !is_array($item_ids[$group_name]) ) )
+			{
+				$item_ids[$group_name] = array();
+			}
 		}
 
-		if(!is_array($item_weights[$group_name]))
-		{
-			$item_weights[$group_name] = array();
+		if( is_array($item_weights) )
+		{ 
+			if( !array_key_exists($group_name, $item_weights) || 
+				( array_key_exists($group_name, $item_weights) && !is_array($item_weights[$group_name]) ) )
+			{
+				$item_weights[$group_name] = array();
+			}
 		}
+		
 		foreach($group as $item_id => $item)
 		{
 			$item_ids[$group_name][] = $item_id;

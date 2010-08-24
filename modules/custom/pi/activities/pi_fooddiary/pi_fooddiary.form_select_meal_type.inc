@@ -7,9 +7,9 @@
 function pi_fooddiary_select_meal_type_js() 
 {	
 	$photo = NULL;
-	//$output = 'Hello World says pi_fooddiary_select_meal_type_js';
+	$output = '';
+	$meal_type = '';
 	
-	//drupal_alter('form', $form_element, array(), 'pi_fooddiary_select_meal_type_js');
   	drupal_alter('form', $form_element, array(), 'pi_fooddiary_node_form');
 
   	// Build the new form.
@@ -28,12 +28,17 @@ function pi_fooddiary_select_meal_type_js()
   	$options = $form['food_diary']['meal_type']['#options'];
 	$selected = $_POST['food_diary']['meal_type'];
 	
-	
-	$meal_type = strtolower($options[$selected]);
+	//if( array_key_exists($selected, $options) )
+	{
+		$meal_type = strtolower($options[$selected]);
+	}
 	
 	$content = $node->content; 
 	
-	$food_info = $content['food'][$meal_type];
+	//if( array_key_exists($meal_type, $content) )
+	{
+		$food_info = $content['food'][$meal_type];
+	}
 	
 	if(substr_count($food_info['image'], 'pi_fooddiary/unknown.png') <= 0)
 	{

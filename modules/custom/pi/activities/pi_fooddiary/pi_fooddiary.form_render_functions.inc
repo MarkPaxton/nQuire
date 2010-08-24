@@ -87,6 +87,8 @@ function _pi_fooddiary_add_anotate_js_form_element()
  */
 function pi_fooddiary_render_annotate($form, $form_state, $show_table=TRUE)
 {
+	$output = '';
+	
 	$food_item = get_food_array($form, $form_state);
 
 	$output .= "<div class=\"fooddiary_outer_div\">
