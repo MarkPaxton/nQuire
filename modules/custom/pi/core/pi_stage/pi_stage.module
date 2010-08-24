@@ -131,7 +131,7 @@ function pi_stage_form(&$node, $form_state) {
 		'#options' => $inquiry_data,
 		'#allowed_inquiry_nids' => $inquiry_nids,
 		'#default_value' => $inquiry_nid_default_value,
-		'#element_validate' => array('pi_stage_form_inquiry_nid_validate'),
+		'#element_validate' => array('pi_util_inquiry_nid_validate'),
 		'#ahah' => array(
 			'path'    => ahah_helper_path(array('stage_phases')),
 			'wrapper' => 'stage-phases-wrapper',
@@ -157,7 +157,7 @@ function pi_stage_form(&$node, $form_state) {
 	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($stage_groups));
 	$form['#allowed_stage_actors'] = $all_defined_groups;	
 	$group_names['none'] = "Select a group...";
-	$group_names = array_replace($group_names, pi_groups_get_names_from_nids($all_defined_groups));
+	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
 	
 	if(isset($node->inquiry_nid))
 	{
@@ -258,19 +258,6 @@ function pi_stage_form_pi_stage_node_form_alter(&$form, &$form_state) {
 		$form['changed']['#default_value'] = $_SERVER['REQUEST_TIME'];
 }
 
-
-/**
- * This is the validation function to make sure that pi_stage.inquiry_nid is a valid inquiry
- * @param array $element drupal forms api element data
- * @param array $form_state form submit data as per drupal api
- */
-function pi_stage_form_inquiry_nid_validate($element, $form_state)
-{
-	if(!in_array($form_state['values']['inquiry_nid'], $element['#allowed_inquiry_nids']))
-	{
-		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));				
-	}
-}
 
 
 /**

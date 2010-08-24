@@ -17,6 +17,37 @@ function pi_debug_message($var_to_dump)
 	drupal_set_message('<pre>' . check_plain(ob_get_clean()) . '</pre>');
 }
 
+
+
+/**
+ * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry
+ * @param unknown_type $element 
+ * @param unknown_type $form_state
+ */
+function pi_util_inquiry_nid_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['inquiry_nid'], $element['#allowed_inquiry_nids']))
+	{
+		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));				
+	}
+}
+
+
+/**
+ * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry
+ * @param unknown_type $element 
+ * @param unknown_type $form_state
+ */
+function pi_util_phase_nid_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['phase_nid'], $element['#allowed_phase_nids']))
+	{
+		form_error($element, t('The selected phase is not valid, please choose an existing phase from an inquiry.'));				
+	}
+}
+
+
+
 /**
  * This compares the ['#weight'] elements in two arrays
  * @param array $x
@@ -305,6 +336,35 @@ function pi_db_ensure_unique($table, $id_field, $id)
 	}
 	return $one_row;
 }
+
+/**
+ * 
+ * Return an array indexed by nid with value the title of the node, or NULL
+ * if the node is not found
+ * @param array uint $nids Array of node ids
+ * @return  array('nid' => 'title', ...)
+ */
+function pi_util_get_names_from_nids($nids)
+{
+	$return_data = array();
+	if(is_array($nids))
+	{
+		foreach($nids as $nid)
+		{
+			$n = node_load($nid);
+			if($n!=NULL)
+			{
+				$return_data[$nid] = $n->title;
+			}
+			else
+			{
+				$return_data[$nid] = NULL;
+			}
+		}
+	}
+	return $return_data;
+} 
+
 
 
 ?>

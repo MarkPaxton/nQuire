@@ -147,8 +147,315 @@ function pi_activity_menu() {
 		'weight' => 1
 	);
 
+	// NOTE: If you change the url below also change pi_activity_form_pi_activity_form_alter()
+	$items['admin/nquire/activity'] = array(
+		'title' => 'Add an Activity to an Inquiry',
+		'description' => 'This allows you to directly add an activity to an inquiry, selecting the phase and stages it belongs to.',
+		'page callback' => 'pi_activity_add',
+		'type' => MENU_NORMAL_ITEM,
+		'access arguments' => array('administer site configuration'),
+		'weight' => 4,
+	);
+	
 	return $items;
 }
+
+/**
+ * This page is the standard activity authoring page that is currently linked to from admin/nquire
+ * It calls pi_activity_form which will be rewritten in pi_activity_pi_activity_form_alter where it will 
+ * be redirected to it's calling location where necessary 
+ */
+function pi_activity_add()
+{
+	$output = '';
+
+	$output = t("<p>Use this page to add an activity to an inquiry - select the activity, then the phase and then the phases that it will be incuded in." .	
+			 	" For each stage you wil have to chouse how it will be made available: as either <i>unavailable</i>, " . 
+				"<i>startable</i>, <i>editable</i> or <i>viewable</i>.");	
+	$new_activity = new stdClass();
+	$output .= drupal_get_form('pi_activity_form', $new_activity);
+	
+	return $output;	
+}
+
+/**
+ * General form form for activity editing using drupal forms API. 
+ * @param $form_state
+ */
+function pi_activity_form($form_state) {	
+	$form = array();
+	/* construct form to edit the details of an activity
+	 * inc. pi_activity, pi_activity_status, pi_activity_actor & pi_stage_phase_activity tables
+	 */
+	
+	
+	$inquiry_data = array();
+	$inquiry_nids = pi_inquiry_load_nids();
+	$inquiry_data = pi_util_get_names_from_nids($inquiry_nids);
+	
+	$inquiry_options = array('none'=>t('Select an inquiry for this activity'));
+	foreach($inquiry_data as $inquiry_nid => $inquiry_name)
+	{
+		$inquiry_options[$inquiry_nid] = $inquiry_name;
+	}
+	
+	pi_util_get_names_from_nids($inquiry_nids);
+	if(count($inquiry_data)==0)
+	{
+		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
+	}
+	
+	//This section allows a dynamic list of stages to appear on the form to allow 
+	// pi_stage_phase links to be created at the same time as a stage.
+	// This uses the ahah_helper module
+	ahah_helper_register($form, $form_state); 
+	
+	// If there's no value in storage and the node has one set, then use that
+	if(isset($node->inquiry_nid) && !isset($form_state['storage']['inquiry_nid']))
+	{
+		$inquiry_nid_default_value = $node->inquiry_nid;
+	}
+	else
+	{
+		//If there's a value in storage use that
+		if(isset($form_state['storage']['inquiry_nid']))
+		{
+			$inquiry_nid_default_value =  $form_state['storage']['inquiry_nid'];
+		}
+		else
+		{
+			//Otherwise, use 'none'
+			$inquiry_nid_default_value = 'none';
+		}
+	}
+	
+	$form['inquiry_nid'] = array(
+		'#type' => 'select',
+		'#title' => t('Inquiry for stage'),
+		'#required' => TRUE,
+		'#weight' => 1,
+		'#options' => $inquiry_options,
+		'#allowed_inquiry_nids' => $inquiry_nids,
+		'#default_value' => $inquiry_nid_default_value,
+		'#element_validate' => array('pi_util_inquiry_nid_validate'),
+		'#ahah' => array(
+			'path'    => ahah_helper_path(array('activity_phases')),
+			'wrapper' => 'activity-phase-wrapper',
+		),
+		 //this fixes some layout issues with the ahah throbber
+		//'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
+		'#prefix' => "<div style='min-height:40px;'>",
+		'#suffix' => '</div>'
+	);	
+	
+	//This uses the generic submit callback provided by the ahah_helper module here
+	// Is sets $form_state['rebuild'] = TRUE.
+	// 'no-js' class is set so that the submit button will be shown if JS is disabled.
+	$form['inquiry_nid']['update_usage'] = array(
+	    '#type'  => 'submit',
+	    '#value' => t('Update phase list'),
+	    '#weight' => 1,
+		'#submit' => array('ahah_helper_generic_submit'),
+	    '#attributes' => array('class' => 'no-js'),
+	);
+		
+	$form['phase_nid'] = pi_activity_form_generate_phase_select($inquiry_nid_default_value, $phase_nid_default_value);
+	
+	$form['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Activity Name'),
+		'#weight' => 3,
+		'#description' => t('This is the title of the activity that will appear as the activity link in the phase view.'),
+		'#default_value' => $result->name,
+	);
+	
+	$form['description'] = array(
+		'#type' => 'textarea',
+		'#weight' => 4,
+		'#cols' => 80,
+		'#rows' => 5,
+		'#description' => t('For some activity types the description will be shown at the top of the page (for example in the Hypothesis activity). Enter it here.'),
+		'#title' => t('Activity Description'),
+		'#default_value' => $result->description,
+	);
+	
+	//activity and node type query
+	
+	$node_types = node_get_types('names');
+	if(is_array($node_types))
+	{
+		$node_type_options = array('none'=>t('Select activity type...'));
+		foreach($node_types as $type => $name)
+		{
+			$node_type_options[$type] = $name;
+			$allowed_activity_types = array_keys($node_types);
+		}
+	}
+	else
+	{
+		$node_type_options = array('none' => t('No activity types available, please check nQuire is correctly installed'));
+		$allowed_activity_types = array();
+	}
+
+	$form['activity_type'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Type'),
+		'#description' => t('Choose the type of activity you want to place into the inquiry from this list.'),
+		'#weight' => 5,
+		'#options' => $node_type_options,
+		'#default_value' => $result->activity_type,
+		'#allowed_activity_types' => $allowed_activity_types,
+	);
+	
+	$form['node_type'] = array(
+		'#type' => 'select',
+		'#title' => t('Node Type'),
+		'#weight' => 6,
+		'#options' => $node_type_options,
+		'#default_value' => $result->node_type,
+	);
+	
+	$form['parameters'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Parameters'),
+		'#weight' => 7,
+		'#default_value' => $result->parameters,
+	);
+	
+	$destination_option = array('phase'=>'phase','self'=>'self',);
+	
+	$form['destination'] = array(
+		'#type' => 'select',
+		'#title' => t('Destination After Completing the Activity (self or phase)'),
+		'#weight' => 8,
+		'#options' => $destination_option,
+		'#default_value' => $result->destination,
+	);
+	
+	$group_options = array('individual'=>'individual',
+						'group'=>'group',
+						'class'=>'class',
+						'multiclass'=>'multiclass');
+	
+	$form['audience'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Audience'),
+		'#weight' => 9,
+		'#options' => $group_options,
+		'#default_value' => $result->audience,
+	);
+	
+	//pi_activity_status table
+	$query2 = "SELECT * FROM pi_activity_status WHERE activity_id = '" . $activity_id . "'";
+	$result2 = db_fetch_object(db_query($query2));
+	
+	$og_query = "SELECT * FROM og";
+	$og_groups_query = db_query($og_query);
+	$og_groups_options = array();
+	while($og = db_fetch_object($og_groups_query)){
+		$og_groups_options[$og->nid] = $og->og_description . ' (' . $og->nid . ')';
+	}
+
+	$form['gid'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Group'),
+		'#weight' => 10,
+		'#options' => $og_groups_options,
+		'#default_value' => $result2->gid,
+	);
+	
+	$node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view',);
+	
+	$form['node_function'] = array(
+		'#type' => 'select',
+		'#title' => t('Node Function'),
+		'#weight' => 11,	
+		'#options' => $node_function_options,
+		'#default_value' => $result2->node_function,
+	);
+	
+	$visible_status_options = array('start'=>'start','in_progress'=>'in_progress',
+									'view'=>'view', 'unavailable'=>'unavailable');
+	
+	$form['visible_status'] = array(
+		'#type' => 'select',
+		'#title' => t('Visible Status'),
+		'#options' => $visible_status_options,
+		'#weight' => 12,
+		'#default_value' => $result2->visible_status,
+	);
+	
+	//nid options
+	$query3 = "SELECT * FROM node";
+	$result3 = db_query($query3);
+	$node_options = array();
+	//first is none -> is 0 as no nid is 0 they always start at 1
+	$node_options[] = array(0=>'none');
+	while($object3 = db_fetch_object($result3)){
+		$node_options[$object3->nid] = $object3->title . "(" . $object3->type . ")";
+	}
+	
+	$query4 = "SELECT * FROM pi_activity_node WHERE activity_id = '" . $activity_id . "'";
+	$object4 = db_fetch_object(db_query($query4));
+	
+	$form['existing_nid'] = array(
+		'#type' => 'select',
+		'#title' => t('Does The Activity Refer To An Existing Node? I.e. if you have selected view in view_type then to which node do you want to view?'),
+		'#weight' => 13,
+		'#options' => $node_options,
+		'#default_value' => $object4->nid,
+	);
+	
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+		'#weight' => 14,	
+	);
+	
+	return $form;
+}
+
+
+/**
+ * Generate the ['activity_phases']['phases'] select list for a given inquiry nid.
+ * this is used in this module and also called by pi_authoring using hook_form_FORM-ID_alter()
+ * as it can't run the ahah call do do this
+ * @param uint $inquiry_nid nid of the inquiry to show generate boxes for or 'none' for blank
+ * @return array describing the checkboxes form element
+ */
+function pi_activity_form_generate_phase_select($inquiry_nid, $default_value)
+{
+	// Based on the selection above generate the select boxes for phases
+	$phase_select_options = array('none' => t('Select the phase for this activity...'));
+	if($inquiry_nid != 'none')
+	{
+		$inquiry_phase_nids = pi_phase_load_nids($inquiry_nid);
+		$phase_names = pi_util_get_names_from_nids($inquiry_phase_nids);
+		foreach($phase_names as $phase_nid => $name)
+		{
+			$phase_select_options[$phase_nid] = $name;
+		} 
+	}
+	else
+	{
+		$inquiry_phase_nids = array();
+	}
+
+	$form_element =  array(
+		'#type' => 'select',
+	    '#weight' => 2,
+		'#options' => $phase_select_options,
+		'#allowed_phase_nids' => $inquiry_phase_nids,
+		'#default_value' => $default_value,
+		'#element_validate' => array('pi_util_phase_nid_validate'),
+		'#prefix' => "<div id='activity-phase-wrapper'>",
+		'#suffix' => '</div>'
+	);
+	return $form_element;
+}
+
+
+
 
 /**
  * Returns the activity_object from pi_activity table - used in the activity menu

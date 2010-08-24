@@ -90,7 +90,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 			$undefined_groups[] = $gid;
 		}
 	}
-	$undefined_names = pi_groups_get_names_from_nids($undefined_groups);
+	$undefined_names = pi_util_get_names_from_nids($undefined_groups);
 	if(count($undefined_groups)>0)
 	{
 		drupal_set_message(t('Some groups have not yet been defined as multiclass, class or group; please do this before sorting them.'));
@@ -424,7 +424,7 @@ function theme_pi_authoring_admin_group_hierarchy_list($group_order, $group_list
 function pi_authoring_admin_group_hierarchy_form_generate_region_list($region_items, $form_elements)
 {
 	$regions = array();
-	$names = pi_groups_get_names_from_nids(element_children($region_items));
+	$names = pi_util_get_names_from_nids(element_children($region_items));
 	
 	foreach($names as $region_element_id => $details)
 	{

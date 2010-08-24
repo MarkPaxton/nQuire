@@ -10,34 +10,6 @@
  * @param array uint $nids Array of node ids
  * @return  array('nid' => 'title', ...)
  */
-function pi_groups_get_names_from_nids($nids)
-{
-	$return_data = array();
-	if(is_array($nids))
-	{
-		foreach($nids as $nid)
-		{
-			$n = node_load($nid);
-			if($n!=NULL)
-			{
-				$return_data[$nid] = $n->title;
-			}
-			else
-			{
-				$return_data[$nid] = NULL;
-			}
-		}
-	}
-	return $return_data;
-} 
-
-/**
- * 
- * Return an array indexed by nid eith value the title of the node, or NULL
- * if the node is not found
- * @param array uint $nids Array of node ids
- * @return  array('nid' => 'title', ...)
- */
 function pi_groups_get_descriptions_from_nids($nids)
 {
 	$return_data = array();
@@ -115,7 +87,7 @@ function pi_get_group_data_and_root_groups(&$all_groups_by_id, &$tree_roots)
 		$all_groups_by_id[$group_id] = &$groups_with_hierarchy[$group_id];	
 	}
 
-	$groups_names = pi_groups_get_names_from_nids(array_keys($all_groups_by_id));
+	$groups_names = pi_util_get_names_from_nids(array_keys($all_groups_by_id));
 	$groups_descriptions = pi_groups_get_descriptions_from_nids(array_keys($all_groups_by_id));
 	
 	foreach($all_groups_by_id as $gid => $group)
@@ -165,6 +137,27 @@ function pi_get_members_of_group($gid) {
 	}
 	return $members;
 }
+
+
+/**
+ * Helper function to get a list of the names of all the users who are member of an og group
+ * 
+ * @param uint $og group nid /gid
+ * @return string concatonated string of user names separated by a comma.
+ */
+function pi_group_get_name_list($og_id){
+
+	$users = pi_get_members_of_group($og_id);
+	$user_list = array();
+	foreach($users as $user)
+	{
+		$user_list[] .= $user->name;
+	}
+	$user_string = implode(', ', $user_list);
+	return $user_string;
+}
+
+
 
 /**
  * 

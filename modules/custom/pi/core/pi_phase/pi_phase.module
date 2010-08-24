@@ -65,14 +65,8 @@ function pi_phase_form($node) {
 
 	$inquiry_data = array();
 	$inquiry_nids = pi_inquiry_load_nids();
-	foreach($inquiry_nids as $nid)
-	{
-		$inquiry = node_load($nid);
-		if($inquiry)
-		{
-			$inquiry_data[$nid] = $inquiry->title;
-		}
-	} 
+	$inquiry_data = pi_util_get_names_from_nids($inquiry_nids);
+
 	if(count($inquiry_data)==0)
 	{
 		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
@@ -94,14 +88,14 @@ function pi_phase_form($node) {
 		'#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
 		'#options' => $inquiry_data,
 		'#allowed_inquiry_nids' => $inquiry_nids,
-		'#element_validate' => array('pi_phase_form_inquiry_nid_validate')
+		'#element_validate' => array('pi_util_inquiry_nid_validate')
 	);	
 
 	$phase_groups = pi_get_defined_group_nids();
 	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($phase_groups));
 	$form['#allowed_phase_actors'] = $all_defined_groups;	
 	$group_names['none'] = "Select a group...";
-	$group_names = array_replace($group_names, pi_groups_get_names_from_nids($all_defined_groups));
+	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
 	
 	if(isset($node->inquiry_nid))
 	{
@@ -139,20 +133,6 @@ function pi_phase_form_alter(&$form, $form_state, $form_id) {
 	if($form_id == 'pi_phase_node_form')
 	{
 		$form['menu']['#weight'] = 5;
-	}
-}
-
-
-/**
- * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry
- * @param unknown_type $element 
- * @param unknown_type $form_state
- */
-function pi_phase_form_inquiry_nid_validate($element, $form_state)
-{
-	if(!in_array($form_state['values']['inquiry_nid'], $element['#allowed_inquiry_nids']))
-	{
-		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));				
 	}
 }
 
