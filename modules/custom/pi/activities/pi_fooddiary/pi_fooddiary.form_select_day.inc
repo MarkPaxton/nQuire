@@ -33,7 +33,8 @@ function pi_fooddiary_select_day_js()
 		// Add the new element to the stored form. Without adding the element to the
 		// form, Drupal is not aware of this new elements existence and will not
 		// process it. We retreive the cached form, add the element, and resave.
-		if (!$form = form_get_cache($form_build_id, $form_state)) {
+		if (!$form = form_get_cache($form_build_id, $form_state)) 
+		{
 			exit();
 		}
 			
@@ -76,6 +77,7 @@ function pi_fooddiary_select_day_js()
 	}
 
 	print drupal_to_js(array('status' => TRUE, 'data' => $output));
+	
 	exit;
 }
 
@@ -106,7 +108,7 @@ function _pi_fooddiary_select_day_js_form_element()
 		'#ahah' => array(
 	//'#bind' => array(
 				'event' => 'change',
-	//'path'    => ahah_helper_path(array('fooddiary')),
+	'path'    => ahah_helper_path(array('fooddiary')),
 				'path'    => 'activity/pi_fooddiary_select_meal_type/js',
 				'wrapper' => 'food-photo-wrapper',
 	),

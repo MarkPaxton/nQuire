@@ -1,18 +1,7 @@
 <?php
 // $Id: ag.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
 
-
-/**
- * Implementation of hook_init().
-
- function ag_init() {
-
- drupal_add_css(drupal_get_path('module', 'ag') .'/ag.css');
- drupal_add_js(drupal_get_path('module', 'ag') .'/jquery-ui-1.7.2.custom.min.js');
- drupal_add_js(drupal_get_path('module', 'ag') .'/ag.js');
-
- } */
-
+ 
 /**
  * @file
  * Implements block for Activity Guide navigation.
@@ -33,91 +22,29 @@ function add_activity_icon($visible_status) {
 	return "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
 }
 
-function build_link($first, $second, $third, $inquiry_id = 0, $stage_id = 0, $phase_id = 0, $activity_id = 0) {
-	if (! $activity_id) {
-		return t($first . "/" . $second . "/" . $third . "/" . $inquiry_id . "/" . $stage_id . "/" . $phase_id);
+function build_link($first, $second, $third, $inquiry_id = 0, $stage_id = 0, $phase_id = 0, $activity_id = 0)
+{
+	if (! $activity_id)
+	{
+		return $first . "/" . $second . "/" . $third . "/" . $inquiry_id . "/" . $stage_id . "/" . $phase_id;
 	}
-	else {
-		return t($first . "/" . $second . "/" . $third . "/" . $inquiry_id . "/" . $stage_id . "/" . $phase_id . "/" . $activity_id);
+	else
+	{
+		return $first . "/" . $second . "/" . $third . "/" . $inquiry_id . "/" . $stage_id . "/" . $phase_id . "/" . $activity_id;
 	}
 }
 
-function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) {
-	if (!$inquiry_id) {
+function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) 
+{
+	if (!$inquiry_id) 
+	{
 		$query = "SELECT inquiry_id FROM {pi_current_stage} ORDER BY inquiry_id DESC";
 		$result = db_fetch_object(db_query($query));
 		$inquiry_id = $result->inquiry_id;
 	}
-	return t("home///" . $inquiry_id . "///");
-	//return t("home///" . $inquiry_id . "/" . $stage_id . "/" . $phase_id . "/" . $activity_id);
-}
-
-function build_activity_link_old($inquiry_id, $stage_id, $phase_id, $activity_id, $uid) {
-
-	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-	$status_image = array();
-	$status_image["start"] = "creatable.png";
-	$status_image["edit"] = "editable.png";
-	$status_image["view"] = "viewable.png";
-	$status_image["unavailable"] = "unavailable.png";
-
-	$loaded_activity = load_activity($activity_id);
-	$params = $loaded_activity->parameters;
-
-	//get node_function and visible_status for inuiqry, activity, uid, gid
-	$visible_status = get_visible_status_of_activity ($inquiry_id, $activity_id, $uid);
-	$node_function = get_node_function_of_activity ($inquiry_id, $activity_id, $uid);
-
-	switch ($loaded_activity->destination) 
-	{
-		case "self":
-			$destination = '';
-			break;
-		case "phase":
-			$destination = "destination=" . build_link("phase", $phase_id, "view", $inquiry_id, $stage_id, $phase_id,$activity_id);
-			break;
-		default:
-			$destination = "destination=" . build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id);
-			break;
-	}
-
-	$teacher_gid = check_teacher_activity_for_inquiry_activity_user ($inquiry_id, $activity_id, $uid);
-
-	$link_text  = '<img class="ag-icon" src="' . $image_path. $status_image[$visible_status] . '"/>'; 
-	$link_text .= '<span style="vertical-align: 10%;">'; 
-	$link_text .= t( $loaded_activity->name . teacher_only_flag($teacher_gid) );
-	$link_text .= '</span>';
 	
-	if ($visible_status == "unavailable") 
-	{
-		$output = $link_text;
-	}
-	elseif ($node_function == "add") 
-	{
-		$link = build_link("node", $node_function, str_replace("_", "-", $loaded_activity->node_type), $inquiry_id, $stage_id, $phase_id, $activity_id);
-		if ($params) 
-		{
-			$link = $link . "/" . $params;
-		}
-		
-		$output = l($link_text, $link,  array('html' => true, 'query' => $destination));
-	}
-	else 
-	{
-		$nid = get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid);
-		//$nid = get_nid_for_inquiry_activity_and_user(1, 3, 1);
-		$link = build_link("node", $nid, $node_function, $inquiry_id, $stage_id, $phase_id, $activity_id);
-		if($params) 
-		{
-			$link = $link . "/" . $params;
-		}
-		
-		$output = l($link_text, $link,  array('html' => true, 'query' => $destination));
-	}
-
-	return $output;
+	return "home///" . $inquiry_id . "///";
 }
-
 
 function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
@@ -132,15 +59,15 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
 			$show_activities = show_activites($user->uid);
 			$show_phases = show_phases($user->uid);
-			
+				
 			$node_details = get_inquiry_details_from_current_path();
-			
+				
 			$hidden_created_activity_types = get_hidden_link_activities($node_details->inquiry_id);
 			//$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers', 'pi_fooddiary');
 			//$hidden_created_activity_types = array('pi_measure_filter');
-				
+
 			$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-			
+				
 			if(arg(0) == 'phase' || arg(0) == 'activity')
 			{
 				$phases = pi_phase_load_nids_for_user($node_details->inquiry_id, $user->uid);
@@ -188,7 +115,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 							//do not want to show
 							$loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
 							//$visible_status = get_visible_status_of_activity($node_details->inquiry_id, $activity->activity_id, $user->uid);
-							 
+
 							if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
 								$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->nid, $activity->activity_id, $user->uid);
 							}
@@ -244,24 +171,24 @@ function teacher_only_flag ($gid) {
 }
 
 /*
-function new_activities($inquiry_id, $phase_id, $uid) {
-	$query = "SELECT DISTINCT {pi_activity_status}.activity_id FROM {pi_activity_status} LEFT JOIN {pi_previous_activity_status} ON {pi_activity_status}.pas_id = {pi_previous_activity_status}.pas_id LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity_status}.activity_id LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.psp_id =  {pi_stage_phase_activity}.psp_id WHERE {pi_stage_phase}.phase_id = %d AND ( {pi_activity_status}.node_function = 'add' OR {pi_activity_status}.node_function = 'edit' OR {pi_activity_status}.node_function = 'view') AND ( {pi_previous_activity_status}.node_function = 'unavailable' OR {pi_previous_activity_status}.node_function IS NULL) AND {pi_activity_status}.inquiry_id = %d AND ( {pi_activity_status}.uid = %d OR {og_uid}.uid = %d)";
+ function new_activities($inquiry_id, $phase_id, $uid) {
+ $query = "SELECT DISTINCT {pi_activity_status}.activity_id FROM {pi_activity_status} LEFT JOIN {pi_previous_activity_status} ON {pi_activity_status}.pas_id = {pi_previous_activity_status}.pas_id LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity_status}.activity_id LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.psp_id =  {pi_stage_phase_activity}.psp_id WHERE {pi_stage_phase}.phase_id = %d AND ( {pi_activity_status}.node_function = 'add' OR {pi_activity_status}.node_function = 'edit' OR {pi_activity_status}.node_function = 'view') AND ( {pi_previous_activity_status}.node_function = 'unavailable' OR {pi_previous_activity_status}.node_function IS NULL) AND {pi_activity_status}.inquiry_id = %d AND ( {pi_activity_status}.uid = %d OR {og_uid}.uid = %d)";
 
-	$result = db_query($query, $phase_id, $inquiry_id, $uid, $uid );
-	return $result;
-}
-*/
+ $result = db_query($query, $phase_id, $inquiry_id, $uid, $uid );
+ return $result;
+ }
+ */
 
 function new_activity_list($inquiry_id, $phase_id, $uid) {
 
-/*
-	$activity_list = array();
-	$new_activities = new_activities($inquiry_id, $phase_id, $uid);
+	/*
+	 $activity_list = array();
+	 $new_activities = new_activities($inquiry_id, $phase_id, $uid);
 
-	while ($activity = db_fetch_object($new_activities)) {
+	 while ($activity = db_fetch_object($new_activities)) {
 		$activity_list[] = $activity->activity_id;
-	}
-*/
+		}
+		*/
 	return $activity_list;
 }
 
