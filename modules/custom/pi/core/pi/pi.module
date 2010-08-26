@@ -188,17 +188,16 @@ function get_inquiry_details_from_current_path() {
 		//$sid = get_current_session_id();
 		//$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
 
-
-		//get the current stage for the inquiry and user
-		$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-		$result->stage_id = $stage->stage_id;
-
 		//get phase from the arg
 		if (arg(1)) {
 			$result->phase_id = (int) arg(1);
 			$result->inquiry_id = get_inquiry_id_for_phase_id($result->phase_id);
 		}
-
+    
+		//get the current stage for the inquiry and user
+    $stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
+    $result->stage_id = $stage->stage_id;
+    
 		//activity is not set
 	}
 	elseif ((arg(0) == 'activity') || (arg(0) == 'export')) {
@@ -206,10 +205,6 @@ function get_inquiry_details_from_current_path() {
 		//get direct from the activity id rather than session id
 		//$sid = get_current_session_id();
 		//$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
-
-		//get the current stage for the inquiry and user
-		$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-		$result->stage_id = $stage->stage_id;
 
 		//get activity from the arg
 		if (arg(1)) {
@@ -219,6 +214,11 @@ function get_inquiry_details_from_current_path() {
 		//get phase of the activity
 		$phase = get_phase_of_inquiry_and_activity($result->inquiry_id, $result->activity_id, $uid);
 		$result->phase_id = $phase->nid;
+		
+		//get the current stage for the inquiry and user
+    $stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
+    $result->stage_id = $stage->stage_id;
+    
 	}
 	/*
 	 if (arg(0) == 'node' && (arg(1) == 'add' || arg(2) == 'edit' || arg(2) == 'view')) {
