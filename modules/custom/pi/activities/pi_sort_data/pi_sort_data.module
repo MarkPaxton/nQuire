@@ -98,6 +98,12 @@ function pi_sort_data_form(&$node) {
         '#value' => $node_title,
 	);
 
+	 $form['autosort'] = array (
+        '#type' => 'checkbox',
+        '#title' => t('Sort automatically using menu order'),
+	      '#default_value' => $node->autosort,
+  );
+  
 	// onepageprofile_categories and tree used for draggable menu items
 	$form['onepageprofile_categories'] = array(
         '#tree'   => TRUE,
@@ -167,6 +173,7 @@ function pi_sort_data_insert($node) {
 			$node->nid, $node->vid, $key, $measure['weight']);
 		}
 	}
+	db_query("INSERT INTO {pi_auto_sort} (nid, vid, autosort) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->autosort);
 }
 
 function pi_sort_data_update($node) {
@@ -178,17 +185,21 @@ function pi_sort_data_update($node) {
 	else
 	{
 		db_query("DELETE FROM {pi_sort_data} WHERE vid = %d", $node->vid);
+		db_query("DELETE FROM {pi_auto_sort} WHERE vid = %d", $node->vid);
 		pi_sort_data_insert($node);
 	}
 }
 
 function pi_sort_data_delete(&$node) {
 	db_query("DELETE FROM {pi_sort_data} WHERE nid = %d", $node->nid);
+	db_query("DELETE FROM {pi_auto_sort} WHERE nid = %d", $node->nid);
 }
 
 
 function pi_sort_data_load($node) {
+  $autosort = db_result(db_query("SELECT autosort FROM pi_auto_sort WHERE vid = %d", $node->vid));
 	$result = new stdClass;
+	$result->autosort = $autosort;
 	$result->categories = pi_sort_data_get_choice($node);
 	return $result;
 }
@@ -309,9 +320,12 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	}
 
 	//sort  combined list according to measures
-	if(count($sorted_data_items) > 1) {
+	//comment this out to return to standard sort order
+	if($node->autosort && count($sorted_data_items) > 1) {
 		$sorted_data_items = pi_sort_data_items_around_key_measures($sorted_data_items, $node->key_measures, $selected_measure_nid);
 	}
+	
+	
 	$data_items_to_show = array();
 
 	foreach(array_keys($sorted_data_items) as $sorted_data_items_nid)
