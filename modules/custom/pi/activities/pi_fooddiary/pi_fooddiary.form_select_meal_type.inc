@@ -40,6 +40,8 @@ function pi_fooddiary_select_meal_type_js()
 		$food_info = $content['food'][$meal_type];
 	}
 	
+	//$output = var_export($_POST, true);
+	
 	if(substr_count($food_info['image'], 'pi_fooddiary/unknown.png') <= 0)
 	{
 		$file_info = pathinfo($food_info['image']);
@@ -54,6 +56,7 @@ function pi_fooddiary_select_meal_type_js()
   	$form['food_photo'] = $form_element;
   	
   	form_set_cache($form_build_id, $form, $form_state);
+  	
   	$form += array(	'#post' => $_POST,
     				'#programmed' => FALSE );
 

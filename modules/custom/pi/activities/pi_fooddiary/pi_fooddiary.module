@@ -521,18 +521,7 @@ function pi_fooddiary_form(&$node, $form_state)
 	drupal_add_js( drupal_get_path('module', 'pi_fooddiary') .'/pi_fooddiary.js');
 
 	$node_details = get_inquiry_details_from_current_path();
-	$measures_param = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-
-	if ($measures_param)
-	{
-		$measures_node = node_load($measures_param);
-		$measure_rows = $measures_node->measures_list;
-	}
-
-	//_pi_fooddiary_get_create_missing_measures_settings();
-
-	$type = node_get_types('type', $node);
-
+	
 	if( property_exists($node, 'content') )
 	{
 		$food_diary_data = $node->content['food'];
@@ -1601,7 +1590,7 @@ function _pi_fooddiary_get_image($filename, $thumb = 0)
  */
 function _pi_fooddiary_get_create_missing_measures_settings()
 {
-	//@todo Check if function works correctly! It should NOT generate activities!
+	//@todo Check if function works correctly!
 
 	global $user;
 
@@ -1644,13 +1633,15 @@ function _pi_fooddiary_get_create_missing_measures_settings()
 
 	$selected_measure_node = new stdClass();
 
-	//if( $date_available === FALSE )
+	if( $date_available === FALSE )
 	{
 		$pi_data_node = _pi_fooddiary_add_available_measures_date($details);
 
 		$measures_list_key[ $pi_data_node->nid ] = array(	'weight' => 0,
                     										'title' => $pi_data_node->title,
                     										'status' => 'key' );
+		
+		drupal_set_message( t('Measure type %measure_type for food diary added', array( '%measure_type' => 'Date' ) ) );
 	}
 	if( $type_available === FALSE )
 	{
@@ -1659,6 +1650,7 @@ function _pi_fooddiary_get_create_missing_measures_settings()
 		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 1,
                     											'title' => $pi_data_node->title,
                     											'status' => 'selected' );
+		drupal_set_message( t('Measure type %measure_type for food diary added', array( '%measure_type' => 'Meal type' ) ) );
 	}
 	if( $image_available === FALSE )
 	{
@@ -1667,6 +1659,7 @@ function _pi_fooddiary_get_create_missing_measures_settings()
 		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 2,
                     											'title' => $pi_data_node->title,
                     											'status' => 'selected' );
+		drupal_set_message( t('Measure type %measure_type for food diary added', array( '%measure_type' => 'Food Image' ) ) );
 	}
 	if( $food_available === FALSE )
 	{
@@ -1675,6 +1668,7 @@ function _pi_fooddiary_get_create_missing_measures_settings()
 		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 3,
                     											'title' => $pi_data_node->title,
                     											'status' => 'selected' );
+		drupal_set_message( t('Measure type %measure_type for food diary added', array( '%measure_type' => 'Food type' ) ) );
 	}
 	if( $portion_available === FALSE )
 	{
@@ -1683,6 +1677,7 @@ function _pi_fooddiary_get_create_missing_measures_settings()
 		$measures_list_selected[ $pi_data_node->nid ] = array(	'weight' => 4,
                     											'title' => $pi_data_node->title,
                     											'status' => 'selected' );
+		drupal_set_message( t('Measure type %measure_type for food diary added', array( '%measure_type' => 'Portion size' ) ) );
 	}
 
 	if( is_array( $measures_list_key ) )
@@ -1698,7 +1693,10 @@ function _pi_fooddiary_get_create_missing_measures_settings()
 	if( is_array( $measures_list ) )
 	{
 
+		//@todo Check for the correct sort measures activity, and group id.
+		
 		$selected_measure_node->type				= 'pi_sort_measures';
+		$selected_measure_node->activity_id 		= 0;
 		$selected_measure_node->uid					= $user->uid;
 		$selected_measure_node->measures_list  		= $measures_list;
 
