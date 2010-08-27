@@ -8,7 +8,7 @@ function pi_available_content_types_perm() {
   return array();
 }
 
-function pi_available_content_types_access($op, $node) {
+function pi_available_content_types_access($op, $node, $account) {
   return TRUE;
 }
 
@@ -55,16 +55,16 @@ function pi_available_content_types_menu() {
 }
 
 function pi_available_content_types_admin() {
-  $query = "SELECT DISTINCT type FROM pi_available_content_types ORDER BY pi_available_content_types.type ASC";
+  $query = "SELECT DISTINCT type FROM {pi_available_content_types} ORDER BY {pi_available_content_types}.type ASC";
   $result = db_query($query);
   
   $rows = array();
   
   while($content_type = db_fetch_object($result)) {
-    $row = array($content_type->type, l('remove', t('admin/nquire/pi-available-content-types/delete/'.$content_type->type)));
+    $row = array($content_type->type, l( t('remove'), 'admin/nquire/pi-available-content-types/delete/'.$content_type->type));
     $rows[] = array('data' => $row);
   }
-  $output .= "<p>Content types available for use as measures</p>";
+  $output .= "<p>" . t('Content types available for use as measures') ."</p>";
   $output .= theme('table', $header, $rows);
   return $output;
 }
@@ -79,7 +79,7 @@ function pi_available_content_types_form(&$form_state, $edit = array()) {
   $form['#prefix'] = "Select a content type to add to the list of available content types";
 
   $content_types = array();
-  $query = "SELECT DISTINCT node_type.type FROM node_type LEFT JOIN pi_available_content_types ON pi_available_content_types.type = node_type.type WHERE pi_available_content_types.type IS NULL ";
+  $query = "SELECT DISTINCT {node_type}.type FROM {node_type} LEFT JOIN {pi_available_content_types} ON {pi_available_content_types}.type = {node_type}.type WHERE {pi_available_content_types}.type IS NULL ";
   //$query = "SELECT DISTINCT node_type.type FROM node_type, pi_available_content_types WHERE NOT EXISTS (SELECT * FROM pi_available_content_types WHERE node_type.type = pi_available_content_types.type) ORDER BY node_type.type ASC";
   $result = db_query($query);
   while($row = db_fetch_object($result)) {

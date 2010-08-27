@@ -33,7 +33,7 @@ function pi_authoring_activity_g_perm() {
 /**
  * Implementation of hook_access().
  */
-function pi_authoring_activity_g_access($op, $node) {
+function pi_authoring_activity_g_access($op, $node, $account) {
   global $user;
   $details = get_inquiry_details_from_current_path();
 
@@ -88,11 +88,9 @@ function pi_authoring_activity_g_form($node, $form_state) {
  * Implementation of hook_insert().
  */
 function pi_authoring_activity_g_insert($node) {
-  $query = "INSERT INTO authoring_activity SET ";
-  $query .= "placeholder_name = '" . $node->title . "' ";
-  $query .= ", nid = '" . $node->nid . "'";
-  $query .= ", vid = '" . $node->vid . "'";
-  db_query($query);
+  $query = "INSERT INTO {authoring_activity} SET ";
+  $query .= "placeholder_name = '%s', nid = %d', vid = %d";
+  db_query($query, $node->title, $node->nid, $node->vid);
 }
 
 /**
@@ -104,8 +102,8 @@ function pi_authoring_activity_g_update($node) {
   }
   
   else {
-    $query = "UPDATE authoring_activity SET placeholder_name = '" . $node->title . "'";
-    db_query($query);
+    $query = "UPDATE {authoring_activity} SET placeholder_name = '%s'";
+    db_query($query, $node->title);
   }
 }
 
@@ -113,8 +111,8 @@ function pi_authoring_activity_g_update($node) {
  * Implementation of hook_delete().
  */
 function pi_authoring_activity_g_delete(&$node) {
-	$query = "DELETE FROM authoring_activity WHERE nid = '" . $node->nid . "'";
-  	db_query($query);
+	$query = "DELETE FROM {authoring_activity} WHERE nid = %d";
+  	db_query($query, $node->nid);
 }
 
 /**
@@ -124,8 +122,8 @@ function pi_authoring_activity_g_delete(&$node) {
  * @return unknown_type
  */
 function pi_authoring_activity_g_load($node) {
-	$query = "SELECT * FROM authoring_activity WHERE vid = '" . $node->vid . "'";
-	return db_fetch_object(db_query($query));
+	$query = "SELECT * FROM {authoring_activity} WHERE vid = %d";
+	return db_fetch_object(db_query($query, $node->vid));
 }
 
 /**

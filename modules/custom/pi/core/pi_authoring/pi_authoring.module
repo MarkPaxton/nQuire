@@ -67,7 +67,7 @@ function pi_authoring_theme() {
 /**
  * Implementation of _help hook for pi_authoring
  */
-function pi_authoring_help($section='') {
+function pi_authoring_help($path, $arg) {
 
 	$output = '';
 
@@ -98,7 +98,7 @@ function pi_authoring_menu() {
 	
 	// Add some items to the administration menu
 	$items['admin/nquire'] = array(
-      'title' => t('nQuire Inquiry Authoring'),
+      'title' => 'nQuire Inquiry Authoring',
 	  'position' => 'right',
 	  'weight' => -5,
   	  'page callback' => 'pi_authoring_view',
@@ -152,6 +152,10 @@ function pi_authoring_menu() {
 		'weight' => 3,
 	);
 		
+	
+	
+	
+	
 	$items['admin/nquire/inquires'] = array(
 		'title' => 'Inquiries',
 		'description' => 'Manage Inquiries.',
@@ -160,6 +164,7 @@ function pi_authoring_menu() {
 		'access arguments' => array('administer site configuration'),
 		'weight' => 3,
 	);
+
 
 	// NOTE: If you change the url below also change pi_authoring_form_pi_inquiry_node_form_alter()
 	$items['inquiry/add'] = array(
@@ -823,7 +828,7 @@ function pi_authoring_order_inquiries_form(&$form_state, $inquiries) {
 		$inquiry = node_load($inquiry_nid);
 		$form['order_inquiries_inquiries'][$inquiry->nid]['title'] =
 		 	array(
-		 		'#value' => l(check_plain($inquiry->title), 'inquiry/' . $inquiry->nid . '/edit'),
+		 		'#value' => l($inquiry->title, 'inquiry/' . $inquiry->nid . '/edit'),
 		 	);
 		$form['order_inquiries_inquiries'][$inquiry->nid]['body'] = 
 			array(
@@ -939,7 +944,7 @@ function draw_table($inquiry, $view_type){
 	 		{
 	 			//2. does this phase in this stage have activites?
 	 			$activities = array();
-	 			$query = "SELECT * FROM pi_stage_phase_activity WHERE psp_id = %d ORDER BY position";
+	 			$query = "SELECT * FROM {pi_stage_phase_activity} WHERE psp_id = %d ORDER BY position";
 	 			$result = db_query($query, $stage->stage_phase_ids[$phase_nid]);
 	 			while($object = db_fetch_object($result))
 	 			{
@@ -1639,7 +1644,7 @@ function pi_authoring_new_activities_placeholder_add_form($form_state, $inquiry)
 
 	//get all inquiries to add to an option array
 	$group_options = array();
-	$query2 = "SELECT * FROM og";
+	$query2 = "SELECT * FROM {og}";
 	$all_og = db_query($query2);
 	while($group = db_fetch_object($all_og)){
 		$group_options[$group->nid] = $group->nid . " : " . $group->og_description;
@@ -1684,7 +1689,7 @@ function pi_authoring_new_activities_placeholder_add_form_submit($form, &$form_s
 	//echo $inquiry_id . " + " . $psp_id;
 
 	//insert new activity (temp) //
-	$query = "INSERT INTO pi_activity SET ";
+	$query = "INSERT INTO {pi_activity} SET ";
 	$query .= "name = '" . $form_state['values']['add']['name'] . "'";
 	$query .= ", description = '" . $form_state['values']['add']['description'] . "'";
 	$query .= ", activity_type = 'pi_authoring_activity'";
@@ -1695,29 +1700,29 @@ function pi_authoring_new_activities_placeholder_add_form_submit($form, &$form_s
 	db_query($query);
 
 	//get new activity_id
-	$query2 = "SELECT MAX(pi_activity.activity_id) FROM pi_activity";
+	$query2 = "SELECT MAX( {pi_activity}.activity_id ) FROM {pi_activity}";
 	$activity_id = db_result(db_query($query2));
 
 	//stage_phase_activity
-	$query3 = "SELECT MAX(pi_stage_phase_activity.position) FROM pi_stage_phase_activity";
+	$query3 = "SELECT MAX( {pi_stage_phase_activity}.position) FROM {pi_stage_phase_activity}";
 	$position = db_result(db_query($query3));
 	$new_position = $position + 1;
 
-	$query4 = "INSERT INTO pi_stage_phase_activity SET";
+	$query4 = "INSERT INTO {pi_stage_phase_activity} SET";
 	$query4 .= " psp_id = '" . $psp_id . "'";
 	$query4 .= ", activity_id = '" . $activity_id . "'";
 	$query4 .= ", position = '" . $new_position . "'";
 	db_query($query4);
 
 	//activity_actor
-	$query5 = "INSERT INTO pi_activity_actor SET";
+	$query5 = "INSERT INTO {pi_activity_actor} SET";
 	$query5 .= " inquiry_id = '" . $inquiry_id . "'";
 	$query5 .= ", activity_id = '" . $activity_id . "'";
 	$query5 .= ", gid = '" . $form_state['values']['add']['group'] . "'";
 	db_query($query5);
 
 	//activity_status //
-	$query6 = "INSERT INTO pi_activity_status SET";
+	$query6 = "INSERT INTO {pi_activity_status} SET";
 	$query6 .= " inquiry_id = '" . $inquiry_id . "'";
 	$query6 .= ", activity_id = '" . $activity_id . "'";
 	$query6 .= ", gid = '" . $form_state['values']['add']['group'] . "'";
@@ -1762,7 +1767,7 @@ function pi_authoring_new_activities_real_edit_form($form_state){
 	);
 	
 	//pi_activity table
-	$query = "SELECT * FROM pi_activity WHERE activity_id = '" . $activity_id . "'";
+	$query = "SELECT * FROM {pi_activity} WHERE activity_id = '" . $activity_id . "'";
 	$result = db_fetch_object(db_query($query));
 
 	$form['edit']['piactivity']['name'] = array(
@@ -1778,7 +1783,7 @@ function pi_authoring_new_activities_real_edit_form($form_state){
 	);
 	
 	//activity and node type query
-	$nt_query = "SELECT * FROM node_type";
+	$nt_query = "SELECT * FROM {node_type}";
 	$node_type_query = db_query($nt_query);
 	$node_type_options = array();
 	while($nt = db_fetch_object($node_type_query)){
@@ -1827,10 +1832,10 @@ function pi_authoring_new_activities_real_edit_form($form_state){
 	);
 	
 	//pi_activity_status table
-	$query2 = "SELECT * FROM pi_activity_status WHERE activity_id = '" . $activity_id . "'";
+	$query2 = "SELECT * FROM {pi_activity_status} WHERE activity_id = '" . $activity_id . "'";
 	$result2 = db_fetch_object(db_query($query2));
 	
-	$og_query = "SELECT * FROM og";
+	$og_query = "SELECT * FROM {og}";
 	$og_groups_query = db_query($og_query);
 	$og_groups_options = array();
 	while($og = db_fetch_object($og_groups_query)){
@@ -1864,7 +1869,7 @@ function pi_authoring_new_activities_real_edit_form($form_state){
 	);
 	
 	//nid options
-	$query3 = "SELECT * FROM node";
+	$query3 = "SELECT * FROM {node}";
 	$result3 = db_query($query3);
 	$node_options = array();
 	//first is none -> is 0 as no nid is 0 they always start at 1
@@ -1873,7 +1878,7 @@ function pi_authoring_new_activities_real_edit_form($form_state){
 		$node_options[$object3->nid] = $object3->title . "(" . $object3->type . ")";
 	}
 	
-	$query4 = "SELECT * FROM pi_activity_node WHERE activity_id = '" . $activity_id . "'";
+	$query4 = "SELECT * FROM {pi_activity_node} WHERE activity_id = '" . $activity_id . "'";
 	$object4 = db_fetch_object(db_query($query4));
 	
 	$form['edit']['piactivitystatus']['existing_nid'] = array(
@@ -1903,7 +1908,7 @@ function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
 	$inquiry_id = arg(4);
 	
 	//update pi_activity table
-	$query = "UPDATE pi_activity ";
+	$query = "UPDATE {pi_activity} ";
 	$query .= "SET name = '" . $form_state['values']['edit']['piactivity']['name'] . "'";
 	$query .= ", description = '" . $form_state['values']['edit']['piactivity']['description'] . "'";
 	$query .= ", activity_type = '" . $form_state['values']['edit']['piactivity']['activity_type'] . "'";
@@ -1915,7 +1920,7 @@ function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
 	db_query($query);
 	
 	//update pi_activity_status table
-	$query2 = "UPDATE pi_activity_status ";
+	$query2 = "UPDATE {pi_activity_status} ";
 	$query2 .= "SET gid = '" . $form_state['values']['edit']['piactivitystatus']['gid'] . "'";
 	$query2 .= ", node_function = '" . $form_state['values']['edit']['piactivitystatus']['node_function'] . "'";
 	$query2 .= ", visible_status = '" . $form_state['values']['edit']['piactivitystatus']['visible_status'] . "'";
@@ -1924,7 +1929,7 @@ function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
 	db_query($query2);
 	
 	//update pi_activity_actor table - gid should be the same as in pi_activity_status (??)
-	$query3 = "UPDATE pi_activity_actor SET gid = '" . $form_state['values']['edit']['piactivitystatus']['gid'] . "'";
+	$query3 = "UPDATE {pi_activity_actor} SET gid = '" . $form_state['values']['edit']['piactivitystatus']['gid'] . "'";
 	$query3 .= " WHERE activity_id ='" . $activity_id ."'";
 	db_query($query3);
 	
@@ -1932,14 +1937,14 @@ function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
 	$existing_nid = $form_state['values']['edit']['piactivitystatus']['existing_nid'];
 	if($existing_nid != 'none'){
 		//insert or update?
-		$query4 = "SELECT * FROM pi_activity_node WHERE";
+		$query4 = "SELECT * FROM {pi_activity_node} WHERE";
 		$query4 .= " activity_id = '" . $activity_id . "'";
 		$query4 .= " AND inquiry_id = '" . $inquiry_id ."'";
 		$object4 = db_fetch_object(db_query($query4));
 		if($object4){
 			//update
 			//echo 'update';
-			$query5 = "UPDATE pi_activity_node SET";
+			$query5 = "UPDATE {pi_activity_node} SET";
 			$query5 .= " nid = '" . $existing_nid . "'";
 			$query5 .= " WHERE pan_id = '" . $object4->pan_id . "'";
 			db_query($query5);
@@ -1947,7 +1952,7 @@ function pi_authoring_new_activities_real_edit_form_submit($form, &$form_state){
 		else{
 			//insert
 			//echo 'insert';
-			$query6 = "INSERT INTO pi_activity_node SET";
+			$query6 = "INSERT INTO {pi_activity_node} SET";
 			$query6 .= " inquiry_id = '" . $inquiry_id . "'";
 			$query6 .= ", activity_id = '" . $activity_id . "'";
 			$query6 .= ", nid = '" . $existing_nid . "'";
@@ -1972,13 +1977,13 @@ function pi_authoring_new_activities_include(){
 	$activity = arg(7);
 	
 	//find psp_id
-	$query = "SELECT * FROM pi_stage_phase WHERE ";
+	$query = "SELECT * FROM {pi_stage_phase} WHERE ";
 	$query .= "phase_id = '" . $phase . "'";
 	$query .= " AND stage_id = '" . $stage . "'";
 	$result = db_fetch_object(db_query($query));
 	
 	//include activity in this stage and phase
-	$query2 = "INSERT INTO pi_stage_phase_activity SET ";
+	$query2 = "INSERT INTO {pi_stage_phase_activity} SET ";
 	$query2 .= "psp_id = '" . $result->psp_id . "'";
 	$query2 .= ", activity_id = '" . $activity . "'";
 	//position
@@ -2050,7 +2055,7 @@ function pi_authoring_advanced_groups_og(){
 	$content .= "<p>If the Organic Groups you need are not listed below then you need to do this now.</p>";
 	
 	//current og groups
-	$query = "SELECT * FROM og";
+	$query = "SELECT * FROM {og}";
 	$all_og = db_query($query);
 	$content .= "<table>";
 	$content .= '<tr bgcolor="#EEEEEE"><td>OG Group Name</td><td>Membership</td></tr>';
@@ -2065,8 +2070,8 @@ function pi_authoring_advanced_groups_og(){
 	$content .= '<br>';
 	
 	//current groupings
-	$query2 = "SELECT * FROM pi_grouping ";
-	$query2 .= "LEFT JOIN pi_grouping_group ON pi_grouping_group.grouping_id = pi_grouping.grouping_id";
+	$query2 = "SELECT * FROM {pi_grouping} ";
+	$query2 .= "LEFT JOIN {pi_grouping_group} ON {pi_grouping_group}.grouping_id = {pi_grouping}.grouping_id";
 	$all_groupings = db_query($query2);
 	$content .= "<table>";
 	$content .= '<tr bgcolor="#EEEEEE"><td>Grouping Name</td><td>Description</td><td>OG Group</td></tr>';
@@ -2158,7 +2163,7 @@ function pi_authoring_advanced_groups_create_form($form_state){
 	);
 	
 	//inquiry options
-	$inquiry_query = "SELECT * FROM pi_inquiry";
+	$inquiry_query = "SELECT * FROM {pi_inquiry}";
 	$inquiries = db_query($inquiry_query);
 	$inquiry_options = array();
 	$inquiry_options['none'] = 'none';
@@ -2306,7 +2311,7 @@ function pi_authoring_advanced_groups_create_form($form_state){
 		'#default_value' => '',
 	);
 	
-	$og_query = "SELECT * FROM og";
+	$og_query = "SELECT * FROM {og}";
 	$og_groups_query = db_query($og_query);
 	$og_groups_options = array();
 	while($og = db_fetch_object($og_groups_query)){
@@ -2342,29 +2347,29 @@ function pi_authoring_advanced_groups_create_form($form_state){
  */
 function pi_authoring_advanced_groups_create_form_submit($form, &$form_state){
 	//pi_grouping
-	$query = "INSERT INTO pi_grouping SET";
+	$query = "INSERT INTO {pi_grouping} SET";
 	$query .= " name = '" . $form_state['values']['add']['name'] . "'";
 	$query .= ", description = '" . $form_state['values']['add']['description'] . "'";
 	db_query($query);
 	
 	//get grouping_id
-	$query1 = "SELECT MAX(pi_grouping.grouping_id) FROM pi_grouping";
+	$query1 = "SELECT MAX( {pi_grouping.grouping_id} ) FROM {pi_grouping}";
 	$grouping_id = db_result(db_query($query1));
 	
 	//pi_grouping_group
-	$query2 = "INSERT INTO pi_grouping_group SET";
+	$query2 = "INSERT INTO {pi_grouping_group} SET";
 	$query2 .= " grouping_id = '" . $grouping_id . "'";
 	$query2 .= ", gid = '" . $form_state['values']['add']['gid'] . "'";
 	db_query($query2);
 	
 	//pi_group_hierarchy
-	$query3 = "INSERT INTO pi_group_hierarchy SET";
+	$query3 = "INSERT INTO {pi_group_hierarchy} SET";
 	$query3 .= " gid = '" . $form_state['values']['add']['gid'] . "'";
 	$query3 .= ", parent_gid = '" . $form_state['values']['add']['parent_gid'] . "'";
 	db_query($query3);
 	
 	//pi_grouping_group
-	$query4 = "INSERT INTO pi_inquiry_grouping SET";
+	$query4 = "INSERT INTO {pi_inquiry_grouping} SET";
 	$query4 .= " grouping_id = '" . $grouping_id ."'";
 	$query4 .= ", inquiry_id = '" . $form_state['values']['add']['inquiry']['which'] . "'";
 	if($form_state['values']['add']['stage']['which'] != 'none'){
@@ -2387,17 +2392,17 @@ function pi_authoring_advanced_groups_create_form_submit($form, &$form_state){
  * @return string
  */
 function get_stage_query($inquiry_value, $phase_value){
-	$stage_query = "SELECT * FROM pi_stage";
+	$stage_query = "SELECT * FROM {pi_stage}";
 	//LEFT JOIN'S
 	if($inquiry_value != 'none'){
-		$stage_query .= " LEFT JOIN pi_inquiry_stage ON pi_inquiry_stage.stage_id = pi_stage.stage_id";
+		$stage_query .= " LEFT JOIN {pi_inquiry_stage} ON {pi_inquiry_stage}.stage_id = {pi_stage}.stage_id";
 	}
 	if($phase_value != 'none'){
-		$stage_query .= " LEFT JOIN pi_stage_phase ON pi_stage_phase.stage_id = pi_stage.stage_id";
+		$stage_query .= " LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.stage_id = {pi_stage}.stage_id";
 	}
 	//WHERE'S
 	if($inquiry_value != 'none'){
-		$stage_query .= " WHERE pi_inquiry_stage.inquiry_id = '" . $inquiry_value . "'";
+		$stage_query .= " WHERE {pi_inquiry_stage}.inquiry_id = '" . $inquiry_value . "'";
 	}
 	if($phase_value != 'none'){
 		if($inquiry_value != 'none'){
@@ -2406,7 +2411,7 @@ function get_stage_query($inquiry_value, $phase_value){
 		else{
 			$stage_query .= " WHERE";
 		}
-		$stage_query .= " pi_stage_phase.phase_id = '" . $phase_value . "'";
+		$stage_query .= " {pi_stage_phase}.phase_id = '" . $phase_value . "'";
 	}
 	return $stage_query;
 }
@@ -2419,17 +2424,17 @@ function get_stage_query($inquiry_value, $phase_value){
  * @return string
  */
 function get_phase_query($inquiry_value, $stage_value){
-	$phase_query = "SELECT * FROM pi_phase";
+	$phase_query = "SELECT * FROM {pi_phase}";
 	//LEFT JOIN'S
 	if($inquiry_value != 'none'){
-		$phase_query .= " LEFT JOIN pi_inquiry_phase ON pi_inquiry_phase.phase_id = pi_phase.phase_id";
+		$phase_query .= " LEFT JOIN {pi_inquiry_phase} ON {pi_inquiry_phase}.phase_id = {pi_phase}.phase_id";
 	}
 	if($stage_value != 'none'){
-		$phase_query .= " LEFT JOIN pi_stage_phase ON pi_stage_phase.phase_id = pi_phase.phase_id";
+		$phase_query .= " LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.phase_id = {pi_phase}.phase_id";
 	}
 	//WHERE'S
 	if($inquiry_value != 'none'){
-		$phase_query .= " WHERE pi_inquiry_phase.inquiry_id = '" . $inquiry_value . "'";
+		$phase_query .= " WHERE {pi_inquiry_phase}.inquiry_id = '" . $inquiry_value . "'";
 	}
 	if($stage_value != 'none'){
 		if($inquiry_value != 'none'){
@@ -2438,7 +2443,7 @@ function get_phase_query($inquiry_value, $stage_value){
 		else{
 			$phase_query .= " WHERE";
 		}
-		$phase_query .= " pi_stage_phase.stage_id = '" . $stage_value . "'";
+		$phase_query .= " {pi_stage_phase}.stage_id = '" . $stage_value . "'";
 	}
 	return $phase_query;
 }
@@ -2472,12 +2477,12 @@ function pi_measure_filter_call_form($node){
  * @return string
  */
 function get_activity_query($phase_value, $stage_value){
-	$activity_query = "SELECT * FROM pi_activity";
-	$activity_query .= " LEFT JOIN pi_stage_phase_activity ON";
-	$activity_query .= " pi_stage_phase_activity.activity_id = pi_activity.activity_id";
-	$activity_query .= " LEFT JOIN pi_stage_phase ON pi_stage_phase.psp_id = pi_stage_phase_activity.psp_id";
+	$activity_query = "SELECT * FROM {pi_activity}";
+	$activity_query .= " LEFT JOIN {pi_stage_phase_activity} ON";
+	$activity_query .= " {pi_stage_phase_activity}.activity_id = {pi_activity}.activity_id";
+	$activity_query .= " LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.psp_id = {pi_stage_phase_activity}.psp_id";
 	if($phase_value != 'none'){
-		$activity_query .= " WHERE pi_stage_phase.phase_id = '" . $phase_value . "'";
+		$activity_query .= " WHERE {pi_stage_phase}.phase_id = '" . $phase_value . "'";
 	}
 	if($stage_value != 'none'){
 		if($phase_value != 'none'){
@@ -2486,7 +2491,7 @@ function get_activity_query($phase_value, $stage_value){
 		else{
 			$activity_query .= " WHERE";
 		}
-		$activity_query .= " pi_stage_phase.stage_id = '" . $stage_value . "'";
+		$activity_query .= " {pi_stage_phase}.stage_id = '" . $stage_value . "'";
 	}
 	return $activity_query;
 }
