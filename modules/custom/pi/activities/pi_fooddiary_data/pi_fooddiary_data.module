@@ -1,0 +1,201 @@
+<?php
+// $Id: pi_sort_data.module,v 1.2 2010/02/15 09:17:48 ou_pm Exp $
+
+function pi_fooddiary_data_node_info()
+{
+	return array(
+	    'pi_fooddiary_data' => array(
+		    'name' => t('Fooddiary show collected data'), // Required.
+		    'module' => 'pi_fooddiary_data',  // Required.
+		    'description' => t('Show collected fooddiary data'), // Required.
+		    'has_title' => FALSE,
+		    'title_label' => t('Fooddiary data'),
+		    'has_body' => TRUE,
+		    'body_label' => t('Show of collected data'),
+		    'locked' => TRUE,
+		    'add_node_type' => 'pi_fooddiary'
+		    )
+		    );
+
+}
+
+function pi_fooddiary_data_perm()
+{
+}
+
+function pi_fooddiary_data_access($op, $node, $account)
+{
+	global $user;
+	$access = FALSE;
+
+	$details = get_inquiry_details_from_current_path();
+
+	if ($op == 'create') 
+	{
+		$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+	}
+
+	if ($op == 'update') 
+	{
+		$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+	}
+	
+	return $access;
+}
+
+function pi_fooddiary_data_form(&$node)
+{
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function pi_fooddiary_data_theme()
+{
+	$themes =  array(	'pi_fooddiary_data_node_form' =>
+	array(	'arguments' => array('form')	),
+	    				'pi_fooddiary_data' => 
+	array( 'arguments' => array('node', 'teaser', 'data_items_to_show') ) );
+
+	return $themes;
+}
+
+
+function pi_fooddiary_data_load($node)
+{
+	$result = new stdClass;
+	$result->categories = pi_sort_data_get_choice($node);
+		
+	return $result;
+}
+
+function pi_fooddiary_data_view($node, $teaser, $page = FALSE)
+{
+	global $user;
+	
+	$node_details = get_inquiry_details_from_current_path();
+	$node = node_prepare($node, $teaser);
+
+	/*
+	if (is_numeric($node_details->activity_id))
+	{
+		$current_activity = load_activity($node_details->activity_id);
+		if ($current_activity->name)
+		{
+			drupal_set_title(check_plain($current_activity->name));
+		}
+	}
+	*/
+	
+	if($teaser)
+	{
+		//Link to add a new key question
+		//cannot get activity id from $node_details when viewing a list of activity teasers
+		$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+		
+		
+		
+		$link_output = make_add_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $activity_id_for_this_node, $user->uid);
+		$node->content['pi_fooddiary_data_add_link'] =  array(	'#value' =>$link_output,
+            													'#weight' => -3	);
+	}
+	
+	$node->content['pi_fooddiary_data'] = array( 	'#value' => theme('pi_fooddiary_data', $node, $teaser ),
+            										'#weight' => 2 );
+	
+	return $node;
+}
+
+function theme_pi_fooddiary_data($node, $teaser)
+{
+	global $user;
+
+	$output = '';
+	$items[] = array();
+	$nids = _pi_fooddiary_get_user_nids();
+
+	if(count($nids)>0)
+	{
+		$output .= "<div>You have the following food data collected:</div>";
+
+		$nids = _pi_fooddiary_sort_nids($nids);
+		
+		foreach($nids as $nid)
+		{
+			$node = node_load($nid);
+
+			$day = $node->content['day'];
+			$food = $node->content['food'];
+
+			$food_breakfast = $food['breakfast']['food'];
+			$food_lunch 	= $food['lunch']['food'];
+			$food_dinner 	= $food['dinner']['food'];
+			$food_snack 	= $food['snack']['food'];
+
+			$element = '';
+
+			if(count($food_breakfast) > 0 )
+			{
+				$element .= t('Breakfast');
+			}
+			if(count($food_lunch) > 0 )
+			{
+				if( strlen($element)>0)
+				{
+					$element .= ', ';
+				}
+				$element .= t('Lunch');
+			}
+			if(count($food_dinner) > 0 )
+			{
+				if( strlen($element)>0)
+				{
+					$element .= ', ';
+				}
+				$element .= t('Dinner');
+			}
+			if(count($food_snack) > 0 )
+			{
+				if( strlen($element)>0)
+				{
+					$element .= ', ';
+				}
+				$element .= t('Snack');
+			}
+
+			$activity_id = get_activity_id_for_nid($nid);
+			$phase_id = get_phase_id_for_activity_id($activity_id);
+
+			$path = 'activity/' . $activity_id . '/view';
+			$destination['query'] = 'destination=phase/' . $phase_id;
+
+			$day_link = l($day, $path, $destination);
+
+			if(strlen($element)>0)
+			{
+				$items[] = '<p><strong>' . $day_link . '</strong>: ' . $element. '</p>';
+			}
+		}
+
+		$output .= theme('item_list', $items, NULL, 'ul', array('style' => 'list-style-type:none'));
+	}
+	else
+	{
+		$output .= "<div class=\"teaser_table_cell\">You have no food diary data collected.</div>";
+	}
+	
+	return $output;
+}
+
+function theme_pi_fooddiary_data_node_form($form)
+{
+	$output = '';
+	
+	$output .= '<p>'; 
+	$output .= t('Sorting of the food diary data is disabled. Data are automatically sorted according date');
+	$output .= '</p>';
+
+	$output .= drupal_render($form);
+	
+	return $output;
+}

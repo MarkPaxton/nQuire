@@ -1,0 +1,118 @@
+<?php
+
+/**
+ * @file
+ * Module for creating "available measurements" node instances for the fooddiary
+ */
+
+/**
+ * Implementation of pi_fooddiary_measures_node_info().
+ */
+function pi_fooddiary_measures_node_info() {
+	return array(
+    'pi_fooddiary_measures' => array(
+      'name' => t('Available measures for fooddiary'), // Required.
+      'module' => 'pi_fooddiary_measures',  // Required.
+      'description' => t('What are you going to measure?'), // Required.
+      'has_title' => TRUE,
+      'title_label' => t('Name'),
+      'has_body' => TRUE,
+      'body_label' => t('Description'),
+      'min_word_count' => 2,
+      'locked' => TRUE
+	)
+	);
+}
+
+/**
+ * Implementation of pi_available_measures_perm().
+ */
+function pi_fooddiary_measures_perm() {
+}
+
+/**
+ * Implementation of pi_fooddiary_measures_access().
+ */
+function pi_fooddiary_measures_access($op, $node, $account)
+{
+	global $user;
+	$access = FALSE;
+
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+
+	if ($op == 'create')
+	{
+		$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+	}
+	if ($op == 'update')
+	{
+		$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+	}
+	if ($op == 'delete')
+	{
+		if (arg(0) == 'node' && arg(2) == 'delete')
+		{
+			//get inquiry for session id and activity
+			$nid = arg(1);
+			$activity_id = get_activity_id_for_nid($nid);
+			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
+			if($inquiry_id && $activity_id)
+			{
+				$access = check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+			}
+		}
+		else
+		{
+			$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		}
+	}
+
+	return $access;
+}
+
+
+/**
+ * Implementation of ppi_fooddiary_measures_form().
+ */
+function pi_fooddiary_measures_form(&$node)
+{
+	_pi_fooddiary_get_create_missing_measures_settings();
+}
+
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_fooddiary_measures_view($node, $teaser = FALSE, $page = FALSE) 
+{
+	global $user;
+	
+	drupal_set_message('pi_fooddiary_measures_view');
+	
+	return $node;
+}
+
+/**
+ * hook_theme() for pi_available_measures
+ * @return array of theme data as per drupal 6 api   
+ */
+function pi_fooddiary_measures_theme() 
+{
+	$themes =  array( 'pi_fooddiary_measures_node_form' => array( 'arguments' => array('form') ) );
+
+	return $themes;
+}
+
+function theme_pi_fooddiary_measures_node_form($form)
+{
+	$output = '';
+	
+	$output .= '<p>'; 
+	$output .= t('The necessary setup of measure types for the food diary has been done automatically.');
+	$output .= '</p>';
+
+	//$output .= drupal_render($form);
+	
+	return $output;
+}
