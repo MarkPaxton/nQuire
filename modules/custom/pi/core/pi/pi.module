@@ -99,6 +99,14 @@ function pi_menu() {
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
 	);
+	
+	 $items['set_status'] = array(
+    'title' => 'Change activity status',
+    'page callback' => 'pi_status_changer_view',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  
 	return $items;
 }
 
@@ -127,6 +135,25 @@ function pi_nquire_admin() {
   $output = '';
   if(module_exists(pi_available_content_types)) {
     $output .= "<p>" . l('Manage content types for use as variables', 'admin/pi-available-content-types') . "</p>";
+  }
+  return $output;
+}
+
+function pi_status_changer_view() {
+ $query = "SELECT nid FROM {node} WHERE type = 'pi_set_status' ORDER BY nid DESC LIMIT 1";
+  $nid = db_result(db_query($query));
+  if ($nid) {
+    $loaded_node = node_load($nid);
+    if( ! function_exists("node_page_edit")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+    }
+    $output = node_page_edit($loaded_node);
+  }
+  else {
+    if( ! function_exists("node_add")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+    }
+    $output = node_add('pi_set_status');
   }
   return $output;
 }

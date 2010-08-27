@@ -179,6 +179,7 @@ function pi_update_stage($node) {
 
   $selected_stage = $node->selected_stage;//$stages[$node->selected_stage];
 
+  //db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
   db_query("UPDATE {pi_current_stage} SET stage_id = '%d' WHERE pcs_id = %d",$selected_stage, $node->pcs_id);
   
   $included_stages = array($selected_stage);
@@ -199,13 +200,15 @@ function pi_update_stage($node) {
   }
   
   $included_stages_output = implode(" OR ", $included_stages_strings);
-  
-  $ouside_focus_query = "SELECT * FROM {pi_activity_status} " 
-  . "LEFT JOIN {pi_stage_phase_activity} ON {pi_activity_status}.activity_id = {pi_stage_phase_activity}.activity_id " 
-  . "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id " 
-  . "LEFT JOIN {pi_inquiry_stage} ON {pi_stage_phase}.stage_id = {pi_inquiry_stage}.stage_id " 
-  . "WHERE {pi_inquiry_stage}.inquiry_id = %d AND NOT ( '%s' ) ";
 
+  $ouside_focus_query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = '" . $details->inquiry_id . "' AND NOT (" . $included_stages_output . ") ";  
+//  $ouside_focus_query = "SELECT * FROM {pi_activity_status} " 
+//  . "LEFT JOIN {pi_stage_phase_activity} ON {pi_activity_status}.activity_id = {pi_stage_phase_activity}.activity_id " 
+//  . "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id " 
+//  . "LEFT JOIN {pi_inquiry_stage} ON {pi_stage_phase}.stage_id = {pi_inquiry_stage}.stage_id " 
+//  . "WHERE {pi_inquiry_stage}.inquiry_id = %d AND NOT ( '%s' ) ";
+
+//  $outside_status_list = db_query($ouside_focus_query, $details->inquiry_id, $included_stages_output);
   $outside_status_list = db_query($ouside_focus_query, $details->inquiry_id, $included_stages_output);
   
   //update outside focus activity status
@@ -215,27 +218,33 @@ function pi_update_stage($node) {
   	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_leave_focus");
   	if ($new_status->node_function && $new_status->visible_status) 
   	{
-  		$query = "UPDATE {pi_activity_status} SET node_function = '%s' , visible_status = '%s' WHERE pas_id = %d";
-  		db_query($query, $new_status->node_function, $new_status->visible_status, $status_item->pas_id);
+  		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
+      db_query($query);
+      //$query = "UPDATE {pi_activity_status} SET node_function = '%s' , visible_status = '%s' WHERE pas_id = %d";
+  		//db_query($query, $new_status->node_function, $new_status->visible_status, $status_item->pas_id);
   	}
   }
-  
-  $inside_focus_query = "SELECT * FROM {pi_activity_status} "
-  	. "LEFT JOIN {pi_stage_phase_activity} ON {pi_activity_status}.activity_id = {pi_stage_phase_activity}.activity_id "
-  	. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
-  	. "LEFT JOIN {pi_inquiry_stage} ON {pi_stage_phase}.stage_id = {pi_inquiry_stage}.stage_id "
-  	. "WHERE {pi_inquiry_stage}.inquiry_id = %d AND ( '%s' ) ";
+
+  $inside_focus_query = "SELECT * FROM pi_activity_status LEFT JOIN pi_stage_phase_activity ON pi_activity_status.activity_id = pi_stage_phase_activity.activity_id LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id WHERE pi_inquiry_stage.inquiry_id = " . $details->inquiry_id . " AND (" . $included_stages_output . ") ";
+//  $inside_focus_query = "SELECT * FROM {pi_activity_status} "
+//  	. "LEFT JOIN {pi_stage_phase_activity} ON {pi_activity_status}.activity_id = {pi_stage_phase_activity}.activity_id "
+//  	. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
+//  	. "LEFT JOIN {pi_inquiry_stage} ON {pi_stage_phase}.stage_id = {pi_inquiry_stage}.stage_id "
+//  	. "WHERE {pi_inquiry_stage}.inquiry_id = %d AND ( '%s' ) ";
   
   //update inside focus activity status
   $inside_status_list = db_query($inside_focus_query, $details->inquiry_id, $included_stages_output);
+//  $inside_status_list = db_query($inside_focus_query, $details->inquiry_id, $included_stages_output);
   while($status_item = db_fetch_object($inside_status_list)) {
   	$loaded_activity = load_activity($status_item->activity_id);
   	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_enter_focus");
   	if ($new_status->node_function && $new_status->visible_status) 
   	{
-  		$query = "UPDATE {pi_activity_status} SET node_function = '%s' , visible_status = '%s' WHERE pas_id = %d ";
+  		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
+  		//$query = "UPDATE {pi_activity_status} SET node_function = '%s' , visible_status = '%s' WHERE pas_id = %d ";
   	}
-  	db_query($query, $new_status->node_function, $new_status->visible_status, $status_item->pas_id);
+  	db_query($query);
+  	//db_query($query, $new_status->node_function, $new_status->visible_status, $status_item->pas_id);
   }
 }	
 	
@@ -281,8 +290,29 @@ function pi_update_stage($node) {
 }
 */
 function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
-	
-	$query = "SELECT node_function, visible_status FROM %s "
+  
+  $query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND (prior_nf = \"" . $node_function . "\" OR prior_nf IS NULL) AND (prior_vs = \"" . $visible_status . "\" OR prior_vs IS NULL) ";
+  
+  $result = db_fetch_object(db_query($query));
+  
+  if (!$result->node_function) {
+  
+    $query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
+  
+    $result = db_fetch_object(db_query($query));
+    
+    if (!$result->node_function) {
+  
+      $query = "SELECT node_function, visible_status FROM " . $table . " WHERE activity_id IS NULL AND activity_type IS NULL AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
+    
+      $result = db_fetch_object(db_query($query));
+    }
+  }
+  return $result;
+}
+
+/*	
+	$query = "SELECT node_function, visible_status FROM {%s} "
 			. "WHERE ( activity_id = %d OR activity_type = '%s' ) "
 			. "AND ( inquiry_id = %d OR inquiry_id IS NULL) "
 			. "AND ( prior_nf = '%s' OR prior_nf IS NULL) "
@@ -310,7 +340,7 @@ function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_funct
 		}
 	}
 	return $result;
-}
+}*/
  
 
 //this function shows how activity status can be updated by a stage change
@@ -330,7 +360,24 @@ function pi_change_activty_status_for_stage($inquiry_id, $stage_id, $transition_
 
 function make_change_to_status($inquiry_id, $stage_id, $new_function, $new_visible_status, $test_visible_status, $valence) {
 
-	$query = "UPDATE {pi_activity_status} "
+  $query = "UPDATE pi_activity_status ";
+  $query .= "LEFT JOIN pi_stage_phase_activity ON ";
+  $query .= "pi_activity_status.activity_id = pi_stage_phase_activity.activity_id ";
+  $query .= "LEFT JOIN pi_stage_phase ON pi_stage_phase_activity.psp_id = pi_stage_phase.psp_id ";
+  $query .= "LEFT JOIN pi_inquiry_stage ON pi_stage_phase.stage_id = pi_inquiry_stage.stage_id ";
+  $query .= "SET pi_activity_status.node_function = \"" . $new_function . "\", pi_activity_status.visible_status = \"" . $new_visible_status . "\" ";
+  $query .= "WHERE pi_inquiry_stage.inquiry_id = " . $inquiry_id . " ";
+  if ($valence) {
+    $query .= "AND pi_stage_phase.stage_id = " .  $stage_id . " ";
+  }
+  else {
+    $query .= "AND NOT (pi_stage_phase.stage_id = " .  $stage_id . ") ";
+  }
+  $query .= "AND pi_activity_status.visible_status = \"" . $test_visible_status . "\" ";
+  db_query($query);
+}
+
+/*$query = "UPDATE {pi_activity_status} "
 			. "LEFT JOIN {pi_stage_phase_activity} ON {pi_activity_status}.activity_id = {pi_stage_phase_activity}.activity_id "
 			. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
 			. "LEFT JOIN {pi_inquiry_stage} ON {pi_stage_phase}.stage_id = {pi_inquiry_stage}.stage_id "
@@ -350,4 +397,4 @@ function make_change_to_status($inquiry_id, $stage_id, $new_function, $new_visib
 	$query .= "AND {pi_activity_status}.visible_status = '%s'";
 	
 	db_query($query, $new_function, $new_visible_status, $inquiry_id, $stage_id, $test_visible_status);
-}
+}*/

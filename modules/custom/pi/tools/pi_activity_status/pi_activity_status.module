@@ -165,6 +165,7 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array())
 			global $user;
 
 			$node_details = get_inquiry_details_from_current_path();
+
 			if (isset($node_details->inquiry_id))
 			{
 				$node_details_inquiry_id = $node_details->inquiry_id;
@@ -183,8 +184,12 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array())
 			{
 				$teacher_tools[] = t("Change stage");
 			}
-			$teacher_tools[] = t("Dashboard");
-			$teacher_tools[] = t("Events");
+			if(arg(0) == 'activity') {
+			   $teacher_tools[] = l(t("Change current activity status"), 'set_status/' . $node_details->activity_id, array('query'=> t('destination=activity/'.  $node_details->activity_id . '/view')));
+			}
+			else {
+			  $teacher_tools[] = t("Change current activity status");
+			}
 			$content = t(theme('item_list', $teacher_tools, NULL, 'ul', array('class' => 'menu')));
 
 			if (is_numeric($node_details->activity_id))
