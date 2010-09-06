@@ -41,7 +41,7 @@ function pi_activity_access($op, $node, $account)
  * @param uint $op the function to perform on the activity (view/add/edit)
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
-function pi_activity_item_access($activity, $op) {
+function pi_activity_item_access($activity, $op, $account) {
 	$return_value = false;
 	if(isset($activity->activity_id))
 	{
@@ -1116,12 +1116,15 @@ function update_activity_actor($actor) {
  * @param unknown_type $uid
  * @return unknown|number
  */
-function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
-
+function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL)
+{
+	$activity_node_found = FALSE;
 	$newitems = 0;
-	$query = "SELECT {pi_activity_status}.pas_id FROM {pi_activity_status} "
+
+	$query = "SELECT {pi_activity_status}.* FROM {pi_activity_status} "
 	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid "
 	. "WHERE inquiry_id = %d ";
+
 	$parameters[] = $inquiry_id;
 
 	if ($activity_id)
@@ -1138,14 +1141,8 @@ function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL) {
 
 	$query .= "ORDER BY pi_activity_status.pas_id DESC";
 
-	$items = db_fetch_object(db_query($query, $parameters));
-
-	if ($items->pas_id)
-	{
-		$newquery = "SELECT * FROM {pi_activity_status} WHERE pas_id = %d";
-		$newitems = db_fetch_object(db_query($newquery, $items->pas_id));
-	}
-
+	$newitems = db_fetch_object(db_query($query, $parameters));	
+	
 	return $newitems;
 }
 
@@ -1276,8 +1273,6 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
 	{
 		$node_function = 'view';
 	}
-	//$url['url'] = url("activity/$activity_id/$node_function", array('query' => $destination));
-	//$url['url'] = "activity/$activity_id/" . $node_function . '&' . $destination;
 	
 	$url['url'] = "activity/" . $activity_id . "/" . $node_function;
 	$url['destination'] = $destination;
@@ -1285,18 +1280,9 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
 	$teacher_gid = check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity_id, $uid);
 	$activity_name_text = check_plain($loaded_activity->name) . teacher_only_flag($teacher_gid);
 
-	//if ($visible_status == "unavailable")
-	//{
 	$label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
 	$url['title'] = $activity_name_text . '&nbsp;' . $label_icon;
-	/*}
-	 else {
-	 $label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
 
-	 $activity_name_link = "$activity_name_text&nbsp;$label_icon";
-	 $url['title'] = $activity_name_link;
-	 }*/
-	
 	return $url;
 }
 
