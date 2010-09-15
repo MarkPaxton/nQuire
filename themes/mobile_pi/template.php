@@ -1,8 +1,7 @@
 <?php
 // $Id: template.php,v 1.4 2009/05/26 12:58:49 teemule Exp $
-
 /**
- * mobile_garland is a Garland inspired mobile optimized Drupal theme.
+ * mobile_pi is a Garland inspired mobile optimized Drupal theme.
  * The theme should be used with the Mobile Plugin -module.
  */
 
@@ -89,7 +88,7 @@ function phptemplate_feed_icon($url, $title) {
  * Register original theme functions.
  * @return theme function array
  */
-function mobile_garland_theme() {
+function mobile_pi_theme() {
 	return array(
 		'toplinks' => array(
 			'arguments' => array($links => array(), $attributes => array())
@@ -103,7 +102,7 @@ function mobile_garland_theme() {
  * @param attributes attributes to add for the element
  * @return top links markup
  */
-function mobile_garland_toplinks($links, $attributes = array('class' => 'links')) {
+function mobile_pi_toplinks($links, $attributes = array('class' => 'links')) {
 	$num_links = count($links);
 	if ($num_links == 0) {
 		return '';
@@ -148,4 +147,27 @@ function mobile_garland_toplinks($links, $attributes = array('class' => 'links')
 	}
 	$output .= '</div>';
 	return $output;
+}
+
+/**
+ * Implements theme_menu_item_link()
+ */
+function mobile_pi_menu_item_link($link) {
+	
+  if (empty($link['localized_options'])) {
+    $link['localized_options'] = array();
+  }
+
+  // If an item is a LOCAL TASK, render it as a tab
+  if ($link['type'] & MENU_IS_LOCAL_TASK) {
+    $link['title'] = '<span class="tab">' . check_plain($link['title']) . '</span>';
+    $link['localized_options']['html'] = TRUE;
+  }
+  
+  // Add destination to tabs - TDC5 13th May 2010
+  if (isset($_REQUEST['destination'])) {
+  	$link['localized_options']['query'] = drupal_get_destination();
+  }
+  
+  return l($link['title'], $link['href'], $link['localized_options']);
 }

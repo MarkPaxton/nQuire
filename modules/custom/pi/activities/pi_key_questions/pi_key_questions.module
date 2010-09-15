@@ -18,13 +18,33 @@ function pi_key_questions_node_info() {
 		    'description' => t('Key questions for an inquiry'), // Required.
 		    'has_title' => TRUE,
 		    'title_label' => t('Key question'),
-		    'has_body' => TRUE,
-		    'body_label' => t('Key question'),
+		    'has_body' => FALSE,
 		    'locked' => TRUE
     	)
     );
 }
 
+/**
+ * Hide node revisions box - this is a node type often set to keep revisions
+ * if form alter not included then user sees the log message box
+ * 
+ * @param unknown_type $form
+ * @param unknown_type $form_state
+ * @param unknown_type $form_id
+ * @return unknown_type
+ */
+function pi_key_questions_form_alter(&$form, $form_state, $form_id) 
+{
+  global $user; // Bring $user object into scope if displaying shall depend on userid or role
+  #if ( $user->uid != 1 ) // 0 -> Anonymous, 1 -> SuperAdmin, 2+ -> Authenticated users
+  if ( !in_array('USER ROLE NAME', $user->roles) ) // Check for role (using role name)
+  {
+    // add class 'hideme' to elements which shall be hidden
+    $form['revision_information']['#attributes'] = array('class' => 'hideme'); // Revision information
+    // This class has been added to the CSS file:
+   //  .hideme { display: none; }
+  }
+}
 
 /**
  * Implementation of hook_perm().
@@ -66,19 +86,6 @@ function pi_key_questions_access($op, $node, $account) {
 	}
 }
 
-function pi_key_questions_delete(&$node) 
-{
-	//Delete the key question from the sort table if it exists
-	db_query('DELETE FROM {pi_sort_key_questions} WHERE key_question = %d', $node->nid);
-	
-	$result = db_query('SELECT nid FROM {pi_key_answers} WHERE key_question_id = %d', $node->nid);
-	
-	//Remove the answers to the question
-	while( $answer = db_fetch_object($result) )
-	{
-		node_delete( $answer->nid );
-	}
-}
 
 /**
  * Implementation of hook_form().
@@ -105,12 +112,12 @@ function pi_key_questions_form(&$node) {
         '#value' => t('Key question')
 	);
 
-	$form['body_filter']['body'] = array(
+	$form['key_question'] = array(
 		'#type' => 'textarea',
 		'#title' => t('Key question'),
 		'#required' => TRUE,
-		'#default_value' => $node->body,
-		'#description' => t('Enter your key question'),
+		'#default_value' => $node->key_question,
+		'#description' => t('A key question is asked in order to test all or part of a hypothesis. Write your key question here.'),
 		'#resizable' => FALSE,
 		'#rows' => 4,
 		'#cols' => 40,
@@ -122,18 +129,61 @@ function pi_key_questions_form(&$node) {
 	{
 		$hypothesis_node = node_load($hypothesis_nid);
 		$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis->nid);
-		if($hypothesis_activity_nid)
+		if($hypothesis_activity_nid) 
 		{
 			$hypothesis_activity = load_activity($hypothesis_activity_nid);
 			if($hypothesis_activity)
 			{
-				$form['#prefix'] = theme('pi_key_questions_hypothesis', $hypothesis_node, $hypothesis_activity);
+				$form['#prefix'] = theme('pi_hypothesis', $hypothesis_node, $hypothesis_activity);
 			}
 		}
 	}
 	
 	return $form;
 }
+
+/**
+ * Implementation of hook_insert().
+ */
+function pi_key_questions_insert($node) {
+    db_query("INSERT INTO {pi_key_questions} (nid, vid, key_question) VALUES ('%d', '%d', '%s')",
+        $node->nid, $node->vid, $node->key_question);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function pi_key_questions_update($node) {
+    if ($node->revision) {
+        pi_key_questions_insert($node);
+    }
+    else {
+        db_query("UPDATE {pi_key_questions} SET key_question = '%s' WHERE vid = %d", $node->key_question, $node->vid);
+    }
+}
+
+function pi_key_questions_delete(&$node) 
+{
+	//Delete the key question from the table and the sort table if it exists
+	db_query('DELETE FROM {pi_key_questions} WHERE nid = %d', $node->nid);
+	db_query('DELETE FROM {pi_sort_key_questions} WHERE key_question = %d', $node->nid);
+	
+	$result = db_query('SELECT nid FROM {pi_key_answers} WHERE key_question_id = %d', $node->nid);
+	
+	//Remove the answers to the question
+	while( $answer = db_fetch_object($result) )
+	{
+		node_delete( $answer->nid );
+	}
+}
+
+/**
+ * Implementation of hook_load().
+ */
+function pi_key_questions_load($node) {
+    return db_fetch_object(db_query('SELECT * FROM {pi_key_questions} WHERE vid = %d', $node->vid));
+}
+
 
 /**
  * Implementation of hook_view().
@@ -156,8 +206,9 @@ function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
 				$hypothesis_activity = load_activity($hypothesis_activity_nid);
 				if($hypothesis_activity)
 				{
-					$node->content['pi_key_questions_hypothesis'] = array(
-						'#value' => theme('pi_key_questions_hypothesis', $hypothesis_node, $hypothesis_activity),
+					$hypothesis_node = node_load($hypothesis_nid);
+					$node->content['pi_hypothesis'] = array(
+						'#value' => node_view($hypothesis_node, TRUE, TRUE),
 						'#weight' => -2
 					);
 				}
@@ -179,9 +230,6 @@ function pi_key_questions_theme() {
     return array(
 	    'pi_key_questions' => array(
 	    	'arguments' => array('node', 'teaser'),
-	    ),
-	    'pi_key_questions_hypothesis' => array(
-	    	'arguments' => array('hypothesis', 'hypothesis_activity')
 	    )
     );
 }
@@ -193,31 +241,8 @@ function pi_key_questions_theme() {
  * @return string HTML output
  */
 function theme_pi_key_questions($node, $teaser) {
-	if(!$teaser)
-	{
-		$output .= '<strong>' . t('Key question') . ':</strong>';
-	}
+	$output = '<strong>' . t('Key question:') . '</strong> ' . nl2br($node->key_question);
 	return $output;
 }
 
-/**
- * Theme function to generate a hypothesis prefix for the key_questions activity
- * @param object(node->pi_hypotheis) $hypothesis The hypothesis to show
- * @param object(pi_activity) $hypothesis_activity The activity relating to this hypothesis
- */
-function theme_pi_key_questions_hypothesis($hypothesis, $hypothesis_activity)
-{
-	$output = '';
-	$hypothesis_prefix = '';
-	//if ($hypothesis_activity->description)
-	//{
-	//	$hypothesis_prefix .= "<strong>" . check_plain($hypothesis_activity->description) . ": </strong>";
-	//}
-	//else
-	//{
-		$hypothesis_prefix .= "<strong>" . t('Your hypothesis is') . ": </strong>";
-	//}
-	$output .= "<p>" . $hypothesis_prefix . check_plain($hypothesis->hypothesis) . "</p>";
-	return $output;
-}
 

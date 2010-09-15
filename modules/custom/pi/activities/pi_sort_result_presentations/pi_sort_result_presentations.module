@@ -213,24 +213,25 @@ function theme_pi_sort_result_presentations($node, $teaser, $result_presentation
 
 	$output = '';
 	$output = '<p>' . t('View and organise the presentations of your results.') . '</p>';
+	$list = array();
 	
 	foreach ($result_presentations as $results)
 	{
 		$title_for_row = $results['title'];
-		$description_for_row =  str_replace(
-		array('<div', '</div', 'class="submitted"'),
-		array('<span', '</span', 'class="submitted" style="display:none"'),
-				$results['description']);
+		$description_for_row = $results['description'];
 			
-		$rows[] =	'<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $title_for_row . '</span>' .
-					'<div>' . $description_for_row . '</div>' .
-				'</div>';
+		//$rows[] =	'<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $title_for_row . '</span>' .
+		//			'<div>' . $description_for_row . '</div>' .
+		//		'</div>';
+		$rows[] = array('data' => '<span class="heading">' . t($title_for_row) . '</span> ' . t($description_for_row), 'class' => 'activity');
+		
+		
 	}
 
 	//only display form and submit button if there are some entries
 	if (count($rows) > 0)
 	{
-		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
+		$output .= theme('item_list', $rows, NULL, 'ul', array('class' => 'activity'));
 	}
 	else {
 		$output .= "<p>No result presentations are available.</p>";

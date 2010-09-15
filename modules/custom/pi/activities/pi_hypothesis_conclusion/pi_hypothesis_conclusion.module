@@ -62,9 +62,6 @@ function pi_hypothesis_conclusion_theme() {
 	    'pi_hypothesis_conclusion' => array(
 		    'arguments' => array('node', 'teaser'),
 		),
-	    'pi_hypothesis_conclusion_hypothesis' => array(
-		    'arguments' => array('node'),
-		),
 	);
 }
 
@@ -132,7 +129,7 @@ function pi_hypothesis_conclusion_form(&$node) {
 		$hypothesis_node = node_load($hypothesis_param);
 		if ($hypothesis_node)
 		{
-			$prefix .= theme('pi_hypothesis_conclusion_hypothesis', $hypothesis_node);
+			$prefix .= theme('pi_hypothesis', $hypothesis_node);
 		}
 	}
 
@@ -191,8 +188,8 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
 		if ($hypothesis_nid)
 		{
 			$hypothesis_node = node_load($hypothesis_nid);
-			$node->content['pi_hypothesis_conclusion_hypothesis'] = array(
-				'#value' => theme('pi_hypothesis_conclusion_hypothesis', $hypothesis_node),
+			$node->content['pi_hypothesis'] = array(
+				'#value' => node_view($hypothesis_node, TRUE, TRUE),
 				'#weight' => 1
 			);
 		}
@@ -215,28 +212,12 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
  * @return string HTML for the page content added for hypothesis conclusion data
  */
 function theme_pi_hypothesis_conclusion($node, $teaser) {
-	$output='';
-	if(!$teaser)
-	{
-		$output .= '<div><strong>My conclusion is:</strong></div>' . "\n";
-	}
-	$output .= '<p>' . nl2br(check_plain($node->conclusion)). '</p>';
+	$output = '<strong>' . t('Conclusion:') . '</strong> ' . nl2br($node->conclusion);
+    return $output;
 
     return $output;
 }
 
-/**
- * Theme function to display the pi_hypothesis_conclusion view page (uses drupal theme_hook()) 
- * @param object(node) $node Drupal node of type pi_hypothesis_conlcusion
- * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
- * @return string HTML for the page content added for hypothesis conclusion data
- */
-function theme_pi_hypothesis_conclusion_hypothesis($node) {
-	$output='';
-	$output .= '<div><strong>My hypothesis is:</strong></div>' . "\n";
-	$output .= '<p>' . check_plain($node->hypothesis). '</p>';
-    return $output;
-}
 
 
 

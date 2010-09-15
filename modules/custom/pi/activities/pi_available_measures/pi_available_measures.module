@@ -633,7 +633,7 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
 		$node->content['pi_available_measures_teaser'] = array(
 			'#value' => theme('pi_available_measures_teaser', $node, $measure_parameters_defined),
 			'#weight' => 0,
-			'#style' => 'margon-top:2px;'
+			'#style' => 'margin-top:2px;'
 		);
 		$node->content['body']['#value'] = '';
     }
@@ -706,7 +706,7 @@ function theme_pi_available_measures($node, $measures_parameters) {
 			default:
 				$print_value = check_plain($parameter['value']);
 		}
-		$output .= "<p><strong>" . check_plain($print_title) . "</strong>:&nbsp;" . $print_value . "  </p>";
+		$output .= "<p><span class='heading'>" . check_plain($print_title) . "</span>:&nbsp;" . $print_value . "</p>";
 	}
 	return $output;
 }
@@ -725,11 +725,11 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 	switch ($measures_parameters['field_type']['value'])
 	{
 		case 'upload-file':
-			$output .= "<span><strong>" . t('Upload a file') . "</strong></span>";
+			$output .= t('Upload a file');
 			unset($measures_parameters['data_type']);
 			break;
 			case 'upload-image':
-			$output .= "<span><strong>" . t('Upload an image') . "</strong></span>";
+			$output .= t('Upload an image');
 			unset($measures_parameters['data_type']);
 			break;
 	}
@@ -743,27 +743,27 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 				{
 					case 'upload-file':
 					case 'upload-image':
-						$output .= "<span><strong>" . t('Upload') . "</strong></span>";
+						$output .= t('Upload');
 						break;
 					default:
-						$output .= "<span><strong>" . t('Text') . "</strong></span>";
+						$output .= t('Text');
 				}
 				unset($measures_parameters['data_type']);			
 			break;
 			case 'numeric':
-				$output .= "<span><strong>" . t('A number') . "</strong></span>";
+				$output .= t('A number');
 				unset($measures_parameters['data_type']);
 				break;
 			case 'menu':
 				$title = t('Choose from');
 				if($measures_parameters['list_options']['value']) {
 					$value = implode(', ', $measures_parameters['list_options']['value']);
-					$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+					$output .= $title . ":&nbsp;" . check_plain($value);
 				}
 				elseif($measures_parameters['content_options']['value']) {
 					$value = implode(', ', get_node_titles_by_type($measures_parameters['content_options']['value']));
 					
-					$output .= "<span><strong>" . $title . ":&nbsp;</strong>" . check_plain($value) . "</span> ";
+					$output .= $title . ":&nbsp;" . check_plain($value);
 				}
 				unset($measures_parameters['data_type']);
 				unset($measures_parameters['list_options']);
@@ -774,14 +774,14 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 	{
 		$title = t('measured in');
 		$value = $measures_parameters['units']['value'];
-		$output .= " <span>$title<strong>&nbsp;" . check_plain($value) . "</strong></span> ";
+		$output .= " " . $title . " " . check_plain($value);
 		unset($measures_parameters['units']);
 	}
 
 	if(isset($measures_parameters['units_short']))
 	{
 		$value = $measures_parameters['units_short']['value'];
-		$output .= " <span>(" . check_plain($value) . ")</span>";
+		$output .= " (" . check_plain($value) . ")";
 		unset($measures_parameters['units_short']);
 	}
 	
@@ -789,11 +789,11 @@ function theme_pi_available_measures_teaser($node, $measures_parameters) {
 	{
 		$title = t('using');
 		$value = $measures_parameters['measurement_device_name']['value'];
-		$output .= " <span>$title&nbsp;<strong>" . check_plain($value) . "</strong></span>";
+		$output .= " " . $title . " the " . check_plain($value);
 		unset($measures_parameters['measurement_device_name']);
 	}	
 	
-	return $output;
+	return $output . ".";
 }
 
 function get_node_nids_by_type($content_type) {
@@ -824,7 +824,8 @@ function get_node_teasers_by_type($content_type) {
 	$result = db_query($query, $content_type);
 	while($content_node = db_fetch_object($result)) 
 	{
-		$titles[] = t($content_node->title) . node_view(node_load($content_node->nid), TRUE, TRUE);
+		// $titles[] = t($content_node->title) . node_view(node_load($content_node->nid), TRUE, TRUE);
+		$titles[] = node_view(node_load($content_node->nid), TRUE, FALSE);
 	}
 	return $titles;
 }

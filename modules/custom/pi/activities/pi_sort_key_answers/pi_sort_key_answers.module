@@ -315,65 +315,56 @@ function theme_pi_sort_key_answers($node, $teaser, $key_questions_to_show, $key_
 	$details = get_inquiry_details_from_current_path();
 
 	$output = '';
-    
-	$rows = array();
-	$header = array();
+    $list = array();
+
+    $count = 0;
+    $empty_list = true;
+    $position_array = array();
 	foreach($key_questions_to_show as $key_question_nid => $question)
 	{
-		//Make a table for each key question
-
-		$rows[$key_question_nid] = array();
-		$header[$key_question_nid] = array(check_plain($question['#title']));
-
+		//Make a list to hold the key qyuestions and their key answers
+		$position_array[] = $key_question_nid;
+		$list[$count] = array('data' => '<span class="heading">' . $question['#title'] . '</span>', 'class' => 'activity');
+		$count++;
 	}
 	
 	foreach($key_answers_to_show as $answer_nid => $answer)
 	{
 		$key_answer_node = node_load($answer_nid);
-		if($key_answer_node)
+		$key_question_id = $key_answer_node->key_question_id;
+		$position_count = array_search($key_question_id, $position_array);		
+		$row_activity_id = get_activity_id_for_nid($answer_nid);
+		if ($row_activity_id)
 		{
-			$key_question_id = $key_answer_node->key_question_id;
-			$row_activity_id = get_activity_id_for_nid($answer_nid);
-			if ($row_activity_id)
-			{
-				$line = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $user->uid);
-			}
-			else
-			{
-				$line = $answer['#title'];
-			}
-
-			//$rows[$key_question][] = array('data' => $row);
-			$rows[$key_question_id][] = $line;
+			$list[$position_count]['children'][] = array('data' => build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $row_activity_id, $user->uid, 'heading'), 'class' => 'activity');
+		}
+		else
+		{
+			$list[$position_count]['children'][] = array('data' => $answer['#title'], 'class' => 'activity');
 		}
 	}
-
 	
-    
-	if(count($key_questions_to_show)>0)
-	{
+    $count = 0;
+	foreach($list as $item) {
+		if (count($list[$count]['children']) == 0) {
+			$list[$count]['children'][] = array('data' => t('There are no answers linked to this question.'), 'class' => 'activity');
+		}
+		$count++;
+	}	
+	
+	if (!$key_answers_to_show) {
+		$list[] = array('data' => t('No key questions are available to answer.'), 'class' => 'activity');
+	}
+	else {
 		if($teaser)
 		{
-			$output .= '<p>' . t('These are the answers to your key questions.  Click the activity to sort them.') . '</p>';
+			$output .= '<p>' . t('These are my key answers.  Click the activity to sort them or add a new one.') . '</p>';
 		}
 		
-		foreach($key_questions_to_show as $question_nid => $question)
-		{
-			$output .= '<div><strong>' . $header[$question_nid][0] . '</strong></div>';
-			if (count($rows[$question_nid]) > 0)
-			{
-				$output .= theme('item_list', $rows[$question_nid], NULL, 'ul', array('style' => 'list-style-type:none'));
-			}
-			else
-			{
-				$output .= theme('item_list', array('No answers linked to this question'), NULL, 'ul', array('style' => 'list-style-type:none'));
-			}
-		}
 	}
-	else
-	{
-		$output .= "<p>No key questions are available to answer.</p>";
-	}
+	
+	$output .= theme('item_list', $list, NULL, 'ul', array('class' => 'activity'));
+    
 	return $output;
 }
 

@@ -18,7 +18,7 @@ function pi_key_answers_node_info() {
 			'description' => t('What are the answers to the key questions of your inquiry?'), // Required.
 		    'has_title' => TRUE,
 		    'title_label' => t('Short title'),
-		    'has_body' => TRUE,
+		    'has_body' => FALSE,
 		    'body_label' => t('Key question answer'),
 		    'locked' => TRUE
 		)
@@ -111,27 +111,34 @@ function pi_key_answers_form(&$node) {
 	        '#value' => t('Key answer')
     	);
 
-    	$form['body_filter']['body'] = array(
+    	$form['body_filter']['key_answer'] = array(
 			'#type' => 'textarea',
 			'#title' => t('Answer'),
 			'#required' => TRUE,
-			'#default_value' => $node->body,
+			'#default_value' => $node->key_answer,
 			'#description' => t('Enter an answer to your selected key question'),
 			'#resizable' => FALSE,
 			'#rows' => 4,
 			'#cols' => 40,
 			'#weight' => -2
     	);
-    	/*
-    	 if($current_activity->description) {
-    	 $prefix = "<p>" . $current_activity->description . "</p>";
-    	 }
-    	 else {
-    	 $prefix = "<p>Use your findings to answer a key question.</p>";
-    	 }
-
-    	 $form['#prefix'] = $prefix;*/
+    	
     }
+	
+    $hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	if ($hypothesis_nid)
+	{
+		$hypothesis_node = node_load($hypothesis_nid);
+		$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis->nid);
+		if($hypothesis_activity_nid) 
+		{
+			$hypothesis_activity = load_activity($hypothesis_activity_nid);
+			if($hypothesis_activity)
+			{
+				$form['#prefix'] = node_view($hypothesis_node, TRUE, TRUE);
+			}
+		}
+	}
 	return $form;
 }
 
@@ -139,7 +146,7 @@ function pi_key_answers_form(&$node) {
  * Implementation of hook_insert().
  */
 function pi_key_answers_insert($node) {
-    db_query("INSERT INTO {pi_key_answers} (nid, vid, key_question_id) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->key_question_id, $node->weight);
+    db_query("INSERT INTO {pi_key_answers} (nid, vid, key_question_id, key_answer) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $node->key_question_id, $node->key_answer);
 }
 
 /**
@@ -153,7 +160,7 @@ function pi_key_answers_update($node) {
 	}
 	else 
 	{
-		db_query("UPDATE {pi_key_answers} SET key_question_id = '%d' WHERE vid = '%d'", $node->key_question_id, $node->vid);
+		db_query("UPDATE {pi_key_answers} SET key_question_id = %d, key_answer = '%s' WHERE vid = '%d'", $node->key_question_id, $node->key_answer, $node->vid);
 	}
 }
 
@@ -184,7 +191,18 @@ function pi_key_answers_view($node, $teaser = FALSE, $page = FALSE) {
 
 	// Use Drupal's default node view.
 	$node = node_prepare($node, $teaser);
-
+	
+	if(!$teaser)
+	{
+		$key_question_node = node_load($node->key_question_id);
+		if($key_question_node)
+		{
+			$node->content['pi_key_question'] = array(
+				'#value' => node_view($key_question_node, TRUE, TRUE),
+				'#weight' => -1
+			);
+		}
+	}
 	$node->content['pi_key_answers'] = array(
 		'#value' => theme('pi_key_answers', $node, $teaser),
 		'#weight' => 0
@@ -201,18 +219,19 @@ function pi_key_answers_view($node, $teaser = FALSE, $page = FALSE) {
 function pi_key_answers_theme() {
 	return array(
 		'pi_key_answers_node_form' => array(
-    'arguments' => array('form'),
-    ),
+	    	'arguments' => array('form'),
+	    ),
 		'pi_key_answers' => array(
-		'arguments' => array('node','teaser'),
+			'arguments' => array('node','teaser'),
 		),
 	);
 }
 
 
 function theme_pi_key_answers_node_form($form) {
-		$details = get_inquiry_details_from_current_path();
+	$details = get_inquiry_details_from_current_path();
     $activity = load_activity($details->activity_id);
+    
     if ($activity->description) {
     	$output  .= '<p>' . t($activity->description) . '</p>';
     }
@@ -244,20 +263,7 @@ function theme_pi_key_answers_node_form($form) {
  * @return string
  */
 function theme_pi_key_answers($node,$teaser) {
-	$details = get_inquiry_details_from_current_path();
-  	if (is_numeric($details->activity_id)) {
-  		$current_activity = load_activity($details->activity_id);
-  	}
-  	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
-  	}
-  	
-	$key_question_node = node_load($node->key_question_id);
-	if(!$teaser) {
-		$output .= "<p><strong>Key question:</strong> " . check_plain($key_question_node->body) . "</p>";
-		$output .= "<p><strong>Answer:</strong> ";
-	}
+	$output = '<strong>' . t('Key answer:') . '</strong> ' . nl2br($node->key_answer);
 	return $output;
 }
 

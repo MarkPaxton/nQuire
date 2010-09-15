@@ -114,7 +114,7 @@ function pi_sort_key_questions_form(&$node) {
     {
         $key_question = node_load($question_nid);
         $key_question_elements[$question_nid] = array( 
-        	'title' => array('#value' => check_plain($question_item['#title'])),
+        	'title' => array('#value' => $question_item['#title']),
        		'weight' => array(
 	            '#type' => 'weight',
 	            '#delta' => count($key_questions_to_list),
@@ -200,8 +200,8 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 				$hypothesis_activity = load_activity($hypothesis_activity_nid);
 				if($hypothesis_activity)
 				{
-					$node->content['pi_sort_key_questions_hypothesis'] = array(
-						'#value' => theme('pi_key_questions_hypothesis', $hypothesis_node, $hypothesis_activity),
+					$node->content['pi_key_questions_hypothesis'] = array(
+						'#value' => node_view($hypothesis_node, TRUE, TRUE),
 						'#weight' => -2
 					);
 				}
@@ -214,7 +214,7 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 	$unsorted_key_questions = pi_sort_key_questions_get_options();
     
 	$sorted_key_questions = pi_merge_content_item_lists($already_sorted_key_questions, $unsorted_key_questions);
-	$key_questions_to_show = array();
+	$key_questions_to_show = array(); 
 	foreach(array_keys($sorted_key_questions) as $sorted_key_questions_nid)
 	{
 		$key_question_activity_id = get_activity_id_for_nid($sorted_key_questions_nid);
@@ -223,7 +223,6 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 			$key_questions_to_show[] = array('data' => build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $key_question_activity_id, $user->uid, 'heading'), 'class' => 'activity');
 		}
 	}
-	
 	if($teaser)
 	{
 		//Link to add a new key question
@@ -344,8 +343,8 @@ function pi_sort_key_questions_get_choice($node) {
         if($loaded_node!=false)
         {
 	        $questions[$row->key_question] = array(
-	            '#weight' => count($questions),
-	            '#title'  => check_plain($loaded_node->title)
+	            '#title'  => check_plain($loaded_node->key_question),
+	            '#weight' => count($questions)
 	        );
         }
     }

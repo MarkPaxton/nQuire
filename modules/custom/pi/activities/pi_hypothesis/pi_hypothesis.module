@@ -94,7 +94,7 @@ function pi_hypothesis_form(&$node) {
         '#title' => t('My hypothesis is'),
         '#required' => TRUE,
         '#default_value' => $node->hypothesis,
-        '#description' => t('Type your hypothesis into the above box and click on the Save button when you are finished'),
+        '#description' => t('A hypothesis is a prediction that you can test. Write your hypothesis here.'),
         '#resizable' => TRUE,
         '#rows' => 5,
         '#cols' => 40,
@@ -102,13 +102,6 @@ function pi_hypothesis_form(&$node) {
     );
 
     $prefix = '';
-    if ($current_activity->description) {
-    	$prefix .= "<p>" . check_plain($current_activity->description) . "</p>";
-    }
-    else {
-    	$prefix .= "<p>A hypothesis is a prediction that you can test.</p>";
-    }
-
     $form['#prefix'] = $prefix;
     return $form;
 
@@ -121,7 +114,7 @@ function pi_hypothesis_insert($node) {
     db_query("INSERT INTO {pi_hypothesis} (nid, vid, hypothesis) VALUES ('%d', '%d', '%s')",
         $node->nid, $node->vid, $node->hypothesis);
 }
-
+ 
 /**
  * Implementation of hook_update().
  */
@@ -206,19 +199,7 @@ function pi_hypothesis_theme() {
  * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
  * @return string HTML for the page content added for hypothesis data
  */
-function theme_pi_hypothesis($node, $current_activity=NULL, $teaser) {
-	$output = '';
-	if(!$teaser)
-	{
-		if(isset($current_activity->description))
-		{
-			$output .= "<p>" . $current_activity->description . "</p>";
-		}
-  	}
-    else
-    {
-    	$output .= "<p>" . t('A hypothesis is a prediction that you can test') . ".</p>";
-    }
-    $output .= '<p>' . nl2br($node->hypothesis). '</p>';
+function theme_pi_hypothesis($node, $current_activity=NULL, $teaser=NULL) {
+	$output = '<strong>Hypothesis:</strong> ' . nl2br($node->hypothesis);
     return $output;
 }

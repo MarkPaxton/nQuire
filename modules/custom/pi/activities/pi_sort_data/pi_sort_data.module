@@ -335,7 +335,7 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 		{
 			$data_item_node = node_load($sorted_data_items_nid);
 			$data_item_activity = pi_activity_load($data_item_activity_id);
-			$activity_link = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $data_item_activity_id, $user->uid);
+			$activity_link = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $data_item_activity_id, $user->uid, 'heading');
 			$activity_teaser = pi_activity_teaser($data_item_node, $data_item_activity, 'view');
 			$data_items_to_show[] = array(	'title' => $activity_link,
 											'description' => $activity_teaser );
@@ -376,23 +376,24 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show)
 		foreach($data_items_to_show as $data_item)
 		{
 			$title_for_row = $data_item['title'];
-			$description_for_row =  str_replace(
-			array('<div', '</div', 'class="submitted"'),
-			array('<span', '</span', 'class="submitted" style="display:none"'),
-			$data_item['description']);
+			$description_for_row = $data_item['description'];
 
-			$rows[] =	'<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $title_for_row . '</span>' .
-							'<span>' . $description_for_row . '</span>' .
-						'</div>';
+			$rows[] = array('data' => $title_for_row . ' ' . $description_for_row, 'class' => 'activity');
 		}
 	}
 
 	if(count($rows) > 0)
 	{
-		if(count($node->key_measures)>0)
+		$key_measures_count = count($node->key_measures);
+		if($key_measures_count > 0)
 		{
-			$measures_text = t(' for your key %measures ', array( '%measures' =>  format_plural( count($node->key_measures), t('measure'), t('measures') ) ) );
-			
+			// $measures_text = t(' for your key %measures ', array( '%measures' =>  format_plural( count($node->key_measures), t('measure'), t('measures') ) ) );
+			if ($key_measures_count > 1) {
+				$measures_text = t(' for your key measures ');
+			}
+			else {
+				$measures_text = t(' for your key measure ');
+			}
 			foreach($node->key_measures as $key => $measure_name)
 			{
 				unset($node->key_measures[$key]);
@@ -410,10 +411,10 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show)
 			}
 		}
 		$output .= '<p>';
-		$output .= t('You have collected these data @measures_text.', array( '@measures_text' => $measures_text ) );
+		$output .= t('You have collected the following data ' . $measures_text . '.');
 		$output .= t(' Click the activity to sort them or add new data.');
 		$output .= '</p>';
-		$output .= theme('item_list', $rows, NULL, 'ul', array('style' => 'list-style-type:none'));
+		$output .= theme('item_list', $rows, NULL, 'ul', array('class' => 'activity'));
 
 		//$output .= theme('table', $header, $rows);
 	}
