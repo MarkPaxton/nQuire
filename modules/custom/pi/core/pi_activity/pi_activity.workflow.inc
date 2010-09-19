@@ -101,7 +101,7 @@ function pi_activity_nodeapi(&$node, $op)
 					break;
 				case 'pi_key_questions':
 					update_node_title($node);
-					update_activity_when_activity_node_updated($node, $node->title);
+					update_activity_when_activity_node_updated($node, $node->body);
 					break;
 				case 'pi_result_presentations':
 					update_activity_when_activity_node_updated($node, $node->title);
@@ -222,6 +222,7 @@ function update_activity_when_activity_node_updated($node, $activity_title)
 	$activity_array = array();
 	$activity_array["name"] = check_plain($activity_title);
 	$activity_array["activity_id"] = $loaded_activity->activity_id;
+	$activity_array["nid"] = $loaded_activity->activity_id;
 	$activity_array["description"] = $loaded_activity->description;
 	$activity_array["activity_type"] = $loaded_activity->activity_type;
 	$activity_array["node_type"] = $loaded_activity->node_type;
