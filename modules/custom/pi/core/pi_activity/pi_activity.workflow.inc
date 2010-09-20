@@ -97,11 +97,11 @@ function pi_activity_nodeapi(&$node, $op)
 					break;
 				case 'pi_key_answers':
 					update_node_title($node);
-					update_activity_when_activity_node_updated($node, $node->title);
+					update_activity_when_activity_node_updated($node, $node->key_answer);
 					break;
 				case 'pi_key_questions':
 					update_node_title($node);
-					update_activity_when_activity_node_updated($node, $node->body);
+					update_activity_when_activity_node_updated($node, $node->key_question);
 					break;
 				case 'pi_result_presentations':
 					update_activity_when_activity_node_updated($node, $node->title);
