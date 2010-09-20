@@ -39,12 +39,12 @@ function pi_activity_nodeapi(&$node, $op)
 					}
 					break;
 				case 'pi_key_questions':
-					update_node_title($node);
-					add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
+					update_node_title($node, $node->key_question);
+					add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_question, $details);
 					break;
 				case 'pi_key_answers':
-					update_node_title($node);
-					add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
+					update_node_title($node, $node->key_answer);
+					add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_answer, $details);
 					break;
 				case 'pi_result_presentations':
 					add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
@@ -96,11 +96,11 @@ function pi_activity_nodeapi(&$node, $op)
 					update_activity_when_activity_node_updated($node, $node->title);
 					break;
 				case 'pi_key_answers':
-					update_node_title($node);
+					update_node_title($node, $node->key_answer);
 					update_activity_when_activity_node_updated($node, $node->key_answer);
 					break;
 				case 'pi_key_questions':
-					update_node_title($node);
+					update_node_title($node, $node->key_question);
 					update_activity_when_activity_node_updated($node, $node->key_question);
 					break;
 				case 'pi_result_presentations':
@@ -191,24 +191,23 @@ function find_selected_measures_nid_for_uid ($uid)
  * This function updates the title of the node in the node and node_revision table
  * @param $node
  */
-function update_node_title($node)
+function update_node_title($node, $text=NULL)
 {
-	//get activity title from node body
-	$length = 250;
-	if(strlen($node->body) > $length)
-	{
-		$short_body = substr(check_plain($node->body), 0, $length);
-		$last_space = strrpos($short_body, " ");
-		$short_body = substr($short_body, 0, $last_space);
-		$node->title = $short_body."...";
-	}
-	else
-	{
-		$node->title = $node->body;
-	}
+  if ($text === NULL) {
+    $text = $node->body;
+  }
+//get activity title from node body
+$length = 250;
+if(strlen($text) > $length)
+{
+$short_body = substr(check_plain($text), 0, $length);
+$last_space = strrpos($short_body, " ");
+$short_body = substr($short_body, 0, $last_space);
+$text = $short_body."...";
+}
 
-	db_query("UPDATE node SET title='%s' WHERE vid=%d ", $node->title, $node->vid);
-	db_query("UPDATE node_revisions SET title='%s' WHERE vid= %d", $node->title, $node->vid);
+db_query("UPDATE node SET title='%s' WHERE vid=%d ", $text, $node->vid);
+db_query("UPDATE node_revisions SET title='%s' WHERE vid= %d", $text, $node->vid);
 }
 
 function update_activity_when_activity_node_updated($node, $activity_title)
@@ -222,7 +221,6 @@ function update_activity_when_activity_node_updated($node, $activity_title)
 	$activity_array = array();
 	$activity_array["name"] = check_plain($activity_title);
 	$activity_array["activity_id"] = $loaded_activity->activity_id;
-	$activity_array["nid"] = $loaded_activity->activity_id;
 	$activity_array["description"] = $loaded_activity->description;
 	$activity_array["activity_type"] = $loaded_activity->activity_type;
 	$activity_array["node_type"] = $loaded_activity->node_type;
