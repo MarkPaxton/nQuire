@@ -19,7 +19,7 @@ function pi_home_view() {
 	
 	foreach($inquiries_for_user as $inquiry)
 	{
-		$list[] = array('data' => l(check_plain($inquiry->title), "inquiry/" . $inquiry->nid, array('attributes' => array('class' => 'heading'))) . $inquiry->body, 'class' => 'inquiry');		
+		$list[] = array('data' => l(check_plain($inquiry->title), "inquiry/" . $inquiry->nid, array('attributes' => array('class' => 'heading'))) . node_view($inquiry, TRUE, TRUE), 'class' => 'inquiry');		
 	}
 
 	$type = 'ul';
