@@ -158,9 +158,12 @@ function pi_merge_content_item_lists($sorted_items, $unsorted_items)
 {
 	$return_data = array();
 	$weight_data = array();
-	foreach($sorted_items as $key => $sorted_item)
+	if ($sorted_items) 
 	{
-		$weight_data[$key] =  $sorted_item['#weight'];
+		foreach($sorted_items as $key => $sorted_item)
+		{
+			$weight_data[$key] =  $sorted_item['#weight'];
+		}
 	}
 	asort($weight_data);
 	foreach(array_keys($weight_data) as $ordered_item_key)
