@@ -10,16 +10,16 @@
  */
 function pi_stage_node_info() {
 	return array(
-		'pi_stage' => array(
-			'name' => t('Inquiry Stage'), // Required.
-			'module' => 'pi_stage',  // Required.
-			'description' => t('This is the Inquiry Stage content type for nQuire'), // Required.
-			'has_title' => TRUE,
-			'title_label' => t('Stage Name'),
-			'has_body' => TRUE,
-			'body_label' => t('Stage Description'),
-			'min_word_count' => 1,
-		)
+	  'pi_stage' => array(
+		 'name' => t('Inquiry Stage'), // Required.
+		 'module' => 'pi_stage',  // Required.
+		 'description' => t('This is the Inquiry Stage content type for nQuire'), // Required.
+		 'has_title' => TRUE,
+		 'title_label' => t('Stage Name'),
+		 'has_body' => TRUE,
+		 'body_label' => t('Stage Description'),
+		 'min_word_count' => 1,
+	  )
 	);
 }
 
@@ -54,47 +54,44 @@ function pi_stage_access($op, $node, $account) {
 }
 
 
-/**
- * The form for adding/editing an Inquiry
+/** 
+ * The form for adding/editing a stage with ahah_helper to update inquiry and phase relationsips
+ * @param $node
+ * @param $form_state
  */
-function pi_stage_form(&$node, $form_state) {
+function pi_stage_form(&$node, &$form_state) {
 	// Get metadata for the node type which is defined in pi_stage_info()
 	$type = node_get_types('type', $node);
 
 	$form=array();
 	
-	if ($type->has_title)
-	{
-		$form['title'] = array(
-			'#type' => 'textfield',
-			'#title' => check_plain($type->title_label),
-			'#weight' => 0,
-			'#required' => TRUE,
-			'#default_value' => $node->title,
-		);
-	}
-	if ($type->has_body)
-	{
-		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-		$form['body_field']['body']['#rows'] = 6;
-		$form['body_field']['teaser_include']['#access'] = FALSE;			
-	}
-	
+	$form['title'] = array(
+	  '#type' => 'textfield',
+	  '#title' => check_plain($type->title_label),
+	  '#weight' => 0,
+	  '#required' => TRUE,
+	  '#default_value' => $node->title,
+	);
+
+	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+	$form['body_field']['body']['#rows'] = 6;
+	$form['body_field']['teaser_include']['#access'] = FALSE;
+		
 	//Generate list of inquiry options from existing inquiries
 	$inquiry_data = array();	
 	// Add default value
 	$inquiry_data['none'] = 'Select Inquiry...';
 	
 	$inquiry_nids = pi_inquiry_load_nids();
-	foreach($inquiry_nids as $nid)
+	foreach ($inquiry_nids as $nid)
 	{
 		$inquiry = node_load($nid);
-		if($inquiry)
+		if ($inquiry)
 		{
 			$inquiry_data[$nid] = $inquiry->title;
 		}
 	} 
-	if(count($inquiry_data)==0)
+	if (count($inquiry_data)==0)
 	{
 		drupal_set_message(t('There are no inquiries defined, please create an inquiry before defining phases.'), 'error');		
 	}
@@ -105,14 +102,14 @@ function pi_stage_form(&$node, $form_state) {
 	ahah_helper_register($form, $form_state); 
 	
 	// If there's no value in storage and the node has one set, then use that
-	if(isset($node->inquiry_nid) && !isset($form_state['storage']['inquiry_nid']))
+	if (isset($node->inquiry_nid) && !isset($form_state['storage']['inquiry_nid']))
 	{
 		$inquiry_nid_default_value = $node->inquiry_nid;
 	}
 	else
 	{
 		//If there's a value in storage use that
-		if(isset($form_state['storage']['inquiry_nid']))
+		if (isset($form_state['storage']['inquiry_nid']))
 		{
 			$inquiry_nid_default_value =  $form_state['storage']['inquiry_nid'];
 		}
@@ -159,7 +156,7 @@ function pi_stage_form(&$node, $form_state) {
 	$group_names['none'] = "Select a group...";
 	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
 	
-	if(isset($node->inquiry_nid))
+	if (isset($node->inquiry_nid))
 	{
 		$inquiry = node_load($node->inquiry_nid);
 		$stage_actor_default_value = $inquiry->inquiry_actor;
@@ -168,6 +165,7 @@ function pi_stage_form(&$node, $form_state) {
 	{ 
 		$stage_actor_default_value = 'none';
 	}
+	
 	$form['stage_actor'] = array(
 		'#type' => 'select',
 		'#title' => t('Who is this stage for'),
@@ -209,17 +207,17 @@ function pi_stage_form_generate_phase_checkboxes($node_stage_phases, $inquiry_ni
 // Based on the selection above generate the select boxes for phases
 	$phase_select_boxes = array();
 	$phase_select_boxes_defaults = array();
-	if($inquiry_nid != 'none')
+	if ($inquiry_nid != 'none')
 	{
 		$inquiry_phase_nids = pi_phase_load_nids($inquiry_nid);
-		foreach($inquiry_phase_nids as $nid)
+		foreach ($inquiry_phase_nids as $nid)
 		{
 			$phase = node_load($nid);
-			if($phase !== FALSE)
+			if ($phase !== FALSE)
 			{
 				$phase_select_boxes[$phase->nid] = check_plain($phase->title);				
 			}
-			if($node_stage_phases[$nid]===TRUE)
+			if ($node_stage_phases[$nid]===TRUE)
 			{
 				$phase_select_boxes_defaults[] = $nid;
 			}
@@ -240,11 +238,15 @@ function pi_stage_form_generate_phase_checkboxes($node_stage_phases, $inquiry_ni
  * hook_form_alter - changes the form to change it from default node layout
  */
 function pi_stage_form_pi_stage_node_form_alter(&$form, &$form_state) {
-		$form['menu']['#weight'] = 4;
-		if(isset($form_state['post']))
+	pi_debug_message("node form alter form state");
+	
+	pi_debug_message($form_state);
+
+	$form['menu']['#weight'] = 4;
+		if (isset($form_state['post']))
 		{
 			ahah_helper_register($form, $form_state);
-			if($form_state['submitted'])
+			if ($form_state['submitted'])
 			{
 				$form['stage_phases']['#prefix'] = '';
 				$form['stage_phases']['#suffix'] = '';
@@ -267,7 +269,7 @@ function pi_stage_form_pi_stage_node_form_alter(&$form, &$form_state) {
  */
 function pi_stage_form_stage_actor_validate($element, $form_state)
 {
-	if(!in_array($form_state['values']['stage_actor'], $element['#allowed_stage_actors']))
+	if (!in_array($form_state['values']['stage_actor'], $element['#allowed_stage_actors']))
 	{
 		form_error($element, t('The selected stage actor group is not valid, please choose a group from the list.'));				
 	}
@@ -282,22 +284,22 @@ function pi_stage_form_stage_actor_validate($element, $form_state)
  */
 function pi_stage_form_validate($node, &$form)
 {
-	foreach($element['phases'] as $phase_nid)
+	foreach ($element['phases'] as $phase_nid)
 	{
 		$proposed_phase = load_node($phase_nid);
-		if($proposed_phase==FALSE)
+		if ($proposed_phase==FALSE)
 		{
 			form_set_error("phases][$phase_nid", "The selected item does not appear to exist.");
 		}
 		else
 		{
-			if($proposed_phase['type']!='pi_phase')
+			if ($proposed_phase['type']!='pi_phase')
 			{
 				form_set_error("phases][$phase_nid", "The selected item does not appear to be a phase.");
 			}
 			else
 			{
-				if($proposed_phase->inquiry_ind != $node->inquiry_nid)
+				if ($proposed_phase->inquiry_ind != $node->inquiry_nid)
 				{
 					form_set_error("phases][$phase_nid", "This phase doesn't appear to be in the selected inquiry.");					
 				}
@@ -318,9 +320,9 @@ function pi_stage_insert($node) {
 	db_query("INSERT INTO {pi_stage} (nid, vid, inquiry_nid, weight) VALUES (%d, %d, %d, %d)",
 		$node->nid, $node->vid, $node->inquiry_nid, $initial_weight);
 	
-	foreach($node->stage_phases['phases'] as $phase_nid => $value)
+	foreach ($node->stage_phases['phases'] as $phase_nid => $value)
 	{
-		if($value==TRUE)
+		if ($value==TRUE)
 		{
 			db_query("INSERT INTO {pi_stage_phase} (stage_id, phase_id) VALUES (%d, %d)",
 				$node->nid, $phase_nid);
@@ -353,7 +355,7 @@ function pi_stage_update($node) {
 		// First of all, if the inquiry has changed, all the current stage_phases should be dropped
 		//  so check $node->inquiry_nid and $old_stage->inquiry_nid; if they are not the same then
 		//  delete all the related pi_stage_phases from the database 
-		if($node->inquiry_nid != $old_stage->inquiry_nid)
+		if ($node->inquiry_nid != $old_stage->inquiry_nid)
 		{
 			db_query('DELETE FROM {pi_stage_phase} WHERE (stage_id = %d)', $node->nid);			
 		}
@@ -361,15 +363,15 @@ function pi_stage_update($node) {
 		// The form returns an array stage_phases['phases'] with all the phases available to the stage
 		// containing TRUE or FALSE indicating whether they should be included, so use this to iterate through
 		// the phases and update pi_stage_phase accordingly 
-		foreach($node->stage_phases['phases'] as $phase_nid => $value)
+		foreach ($node->stage_phases['phases'] as $phase_nid => $value)
 		{
 			// $value is true if the phase should be included 
-			if($value==TRUE)
+			if ($value==TRUE)
 			{
 				// if the phase is to be included, and it was already included it will be 
 				//  in $old_stage->phases  (see pi_stage_load() below)
 				// if it is not, then it should be inserted.
-				if(!in_array($phase_nid, $old_stage->phases))
+				if (!in_array($phase_nid, $old_stage->phases))
 				{
 					db_query("INSERT INTO {pi_stage_phase} (stage_id, phase_id) VALUES (%d, %d)",
 						$node->nid, $phase_nid);
@@ -380,7 +382,7 @@ function pi_stage_update($node) {
 				// If the phase is not to be included, then check to see if it needs to be removed
 				//  by looking at $old_stage->phases; if it is in the array, it needs to be removed
 				//  from the database
-				if(in_array($phase_nid, $old_stage->phases))
+				if (in_array($phase_nid, $old_stage->phases))
 				{
 					db_query('DELETE FROM {pi_stage_phase} WHERE (stage_id = %d AND phase_id = %d)', 
 						$node->nid, $phase_nid);
@@ -401,7 +403,7 @@ function pi_stage_update($node) {
 function pi_stage_set_actor($stage_id, $actor_id)
 {
 	$do_update = pi_db_ensure_unique('pi_stage_actor', 'stage_id', $stage_id);
-	if($do_update)
+	if ($do_update)
 	{
 		$query = "UPDATE {pi_stage_actor} SET gid=%d WHERE stage_id=%d";
 	}
