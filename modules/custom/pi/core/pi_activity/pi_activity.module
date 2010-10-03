@@ -265,15 +265,15 @@ function pi_activity_form($form_state) {
 	
 	$form['activity_phases']['phase_nid'] = pi_activity_form_generate_phase_select($inquiry_nid_default_value, $phase_nid_default_value);
 	
-	$form['activity_phases']['stages'] = array();
+	/*$form['activity_phases']['stages'] = array();
 	$form['activity_phases']['stages']['#type'] = 'fieldset';
 	$form['activity_phases']['stages']['#weight'] = 3;
 	$form['activity_phases']['stages']['#title'] = 'Stages';	
 	$form['activity_phases']['stages']['#prefix'] =  "<div id='activity-stage-wrapper'>";
-	$form['activity_phases']['stages']['#suffix'] =  "</div>";
+	$form['activity_phases']['stages']['#suffix'] =  "</div>";*/
 	
-	pi_debug_message($form_state['storage']['activity_phases']['phase_nid']);
-	//$form['activity_phases']['stages'] = pi_activity_form_generate_stage_select($stages_default_value, $stages_default_value);
+	pi_debug_message($inquiry_nid_default_value);
+	$form['activity_phases']['stages'] = pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 	
 	$form['name'] = array(
 		'#type' => 'textfield',
@@ -437,7 +437,7 @@ function pi_activity_form($form_state) {
  * @param uint $inquiry_nid nid of the inquiry to show generate boxes for or 'none' for blank
  * @return array describing the checkboxes form element
  */
-function pi_activity_form_generate_phase_select($inquiry_nid, $default_values=array())
+function pi_activity_form_generate_phase_select($inquiry_nid, $default_value='none')
 {
 	// Based on the selection above generate the select boxes for phases
 	$phase_select_options = array('none' => t('Select the phase for this activity...'));
@@ -452,7 +452,7 @@ function pi_activity_form_generate_phase_select($inquiry_nid, $default_values=ar
 	}
 	else
 	{
-		//if there is no inquiry selected then there are no phases to selevt
+		//if there is no inquiry selected then there are no phases to select
 		$inquiry_phase_nids = array();
 	}
 	
@@ -467,7 +467,7 @@ function pi_activity_form_generate_phase_select($inquiry_nid, $default_values=ar
 		'#element_validate' => array('pi_util_phase_nid_validate'),
 		'#ahah' => array(
 			'path'    => ahah_helper_path(array('activity_phases')),
-			'wrapper' => 'activity-stage-wrapper',
+			'wrapper' => 'activity-phase-wrapper',
 		),	
 		'#prefix' => "<div id='activity-phase-wrapper'>",
 		'#suffix' => '</div>'
@@ -483,14 +483,15 @@ function pi_activity_form_generate_phase_select($inquiry_nid, $default_values=ar
  * @param uint $inquiry_nid nid of the inquiry to show generate boxes for or 'none' for blank
  * @return array describing the checkboxes form element
  */
-function pi_activity_form_generate_stage_select($inquiry_nid, $default_value='none')
+function pi_activity_form_generate_stage_select($inquiry_nid, $default_values=array())
 {
 	// Based on the selection above generate the select boxes for phases
 	$stage_select_options = array();
-	if($inquiry_nid != 'none')
+	if( ($inquiry_nid != 'none') && ( $inquiry_nid != NULL ) )
 	{
 		$inquiry_stage_nids = pi_stage_load_nids($inquiry_nid);
 		$stage_names = pi_util_get_names_from_nids($inquiry_stage_nids);
+		pi_debug_message($stage_names);
 		foreach ($stage_names as $stage_nid => $name)
 		{
 			$stage_select_options[$stage_nid] = in_array($stage_nid, $default_values);
@@ -498,25 +499,19 @@ function pi_activity_form_generate_stage_select($inquiry_nid, $default_value='no
 	}
 	else
 	{
-		//if there is no inquiry selected then there are no phases to selevt
-		$inquiry_phase_nids = array();
+		//if there is no inquiry selected then there are no phases to select
+		$inquiry_stage_nids = array();
 	}
 	
 	$form_element =  array(
 		'#type' => 'select',
-		'#title' => t('Select phase for activity'),
-	    '#weight' => 2,
+		'#title' => t('Select stages for activity'),
+	    '#weight' => 3,
 		'#required' => true,
-		'#options' => $phase_select_options,
-		'#allowed_phase_nids' => $inquiry_phase_nids,
+		'#options' => $stage_select_options,
+		'#allowed_stage_nids' => $inquiry_stage_nids,
 		'#default_value' => $default_value,
-		'#element_validate' => array('pi_util_phase_nid_validate'),
-		'#ahah' => array(
-			'path'    => ahah_helper_path(array('activity_phases')),
-			'wrapper' => 'activity-stage-wrapper',
-		),	
-		'#prefix' => "<div id='activity-phase-wrapper'>",
-		'#suffix' => '</div>'
+		'#element_validate' => array('pi_util_stage_nid_validate'),		
 	);
 	return $form_element;
 }
