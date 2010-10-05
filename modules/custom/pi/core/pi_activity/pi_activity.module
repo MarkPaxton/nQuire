@@ -272,7 +272,7 @@ function pi_activity_form($form_state) {
 	$form['activity_phases']['stages']['#prefix'] =  "<div id='activity-stage-wrapper'>";
 	$form['activity_phases']['stages']['#suffix'] =  "</div>";*/
 	
-	pi_debug_message($inquiry_nid_default_value);
+	$stages_default_value = array();
 	$form['activity_phases']['stages'] = pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 	
 	$form['name'] = array(
@@ -485,6 +485,15 @@ function pi_activity_form_generate_phase_select($inquiry_nid, $default_value='no
  */
 function pi_activity_form_generate_stage_select($inquiry_nid, $default_values=array())
 {
+	$stage_options = array(
+	  'none' => t('Select state...'),
+	  'unavailable' => t('Not available'),
+	  'available' => t('Available'),
+	  'viewable' => t('View only')
+	);
+	
+	$stage_boxes = array(); 
+	
 	// Based on the selection above generate the select boxes for phases
 	$stage_select_options = array();
 	if( ($inquiry_nid != 'none') && ( $inquiry_nid != NULL ) )
@@ -494,26 +503,20 @@ function pi_activity_form_generate_stage_select($inquiry_nid, $default_values=ar
 		pi_debug_message($stage_names);
 		foreach ($stage_names as $stage_nid => $name)
 		{
-			$stage_select_options[$stage_nid] = in_array($stage_nid, $default_values);
+			$stage_boxes[$stage_nid] = array(
+				'#type' => 'select',
+				'#title' => check_plain($name),
+			    '#weight' => count($stage_boxes),
+				'#required' => true,
+				'#options' => $stage_options,
+				'#default_value' => (isset($default_values[$stage_nid]) ? $default_values[$stage_nid] : 'none' )
+			);
 		} 
+		$stage_boxes['#tree'] = true;
+		$stage_boxes['#title'] = t('Select activity status for each stage:');
+		$stage_boxes['#weight'] = 3;		
 	}
-	else
-	{
-		//if there is no inquiry selected then there are no phases to select
-		$inquiry_stage_nids = array();
-	}
-	
-	$form_element =  array(
-		'#type' => 'select',
-		'#title' => t('Select stages for activity'),
-	    '#weight' => 3,
-		'#required' => true,
-		'#options' => $stage_select_options,
-		'#allowed_stage_nids' => $inquiry_stage_nids,
-		'#default_value' => $default_value,
-		'#element_validate' => array('pi_util_stage_nid_validate'),		
-	);
-	return $form_element;
+	return $stage_boxes;
 }
 
 
