@@ -1,0 +1,277 @@
+<?php
+// $Id: pi_manage_focus,  2010/05/21  PM $
+
+/**
+ * Implementation of hook_perm().
+ */
+function pi_manage_focus_perm() {
+  return array();
+}
+
+function pi_manage_focus_access($op, $node, $account) {
+  return TRUE;
+}
+
+function pi_manage_focus_menu() {
+  
+  $items = array();
+  
+  $items['admin/nquire/pi-enter-focus'] = array(
+    'title' => 'Status change on entering focus',
+    'description' => 'Specify how an activity changes status when entering focus',
+    'page callback' => 'pi_enter_focus_admin',
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  
+  $items['admin/nquire/pi-enter-focus/list'] = array(
+    'title' => 'List',
+    'description' => 'Specify how an activity changes status when entering focus',
+    'access arguments' => array('access content'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/nquire/pi-enter-focus/add'] = array(
+    'title' => 'Add',
+    'description' => 'Specify how an activity changes status when entering focus',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pi_enter_focus_edit'),
+    'access arguments' => array('access content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['admin/nquire/pi-enter-focus/edit'] = array(
+    'title' => 'Edit',
+    'description' => 'Specify how an activity changes status when entering focus',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pi_enter_focus_edit'),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/nquire/pi-enter-focus/delete/%'] = array(
+    'title' => 'Remove from the list of entries',
+    'description' => 'Remove from the list of entries',
+    'page callback' => 'pi_enter_focus_delete',
+    'page arguments' => array(4),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/nquire/pi-leave-focus'] = array(
+    'title' => 'Status change on leaving focus',
+    'description' => 'Specify how an activity changes status when leaving focus',
+    'page callback' => 'pi_leave_focus_admin',
+    'access arguments' => array('access content'),
+    'type' => MENU_NORMAL_ITEM,//MENU_CALLBACK,
+  );
+  
+  $items['admin/nquire/pi-leave-focus/list'] = array(
+    'title' => 'List',
+    'description' => 'Specify how an activity changes status when leaving focus',
+    'access arguments' => array('access content'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'weight' => -10,
+  );
+
+  $items['admin/nquire/pi-leave-focus/add'] = array(
+    'title' => 'Add',
+    'description' => 'Specify how an activity changes status when leaving focus',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pi_leave_focus_edit'),
+    'access arguments' => array('access content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  
+  $items['admin/nquire/pi-leave-focus/edit'] = array(
+    'title' => 'Edit',
+    'description' => 'Specify how an activity changes status when leaving focus',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('pi_leave_focus_edit'),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['admin/nquire/pi-leave-focus/delete/%'] = array(
+    'title' => 'Remove from the list of entries',
+    'description' => 'Remove from the list of entries',
+    'page callback' => 'pi_leave_focus_delete',
+    'page arguments' => array(4),
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  
+  return $items;
+}
+
+function pi_enter_focus_edit($form_state) {
+    $output  = pi_enter_focus_form($form_state);
+    return $output;  
+}
+
+function pi_leave_focus_edit($form_state) {
+    $output  = pi_leave_focus_form($form_state);
+    return $output;  
+}
+
+//list of activity types
+function pi_activity_type_list() {
+  $activity_types = array('NULL'=>'');
+  $auery = "SELECT DISTINCT activity_type FROM `pi_activity` ORDER BY activity_type ASC";
+  $result = db_query($auery);
+  while($db_entry = db_fetch_object($result)) {
+    $activity_types[$db_entry->activity_type] = $db_entry->activity_type;
+  }
+  return $activity_types;
+}
+
+function pi_enter_focus_form($form_state) {
+  $node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  $prior_node_function_options = array('NULL' => '','add'=>'add','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  $visible_status_options = array('start'=>'start','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  $prior_visible_status_options = array('NULL' => '','start'=>'start','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  drupal_set_title('Status change on entering focus');
+  $selected_entry = arg(4);
+  if(is_numeric($selected_entry)) {
+    $result = db_query("SELECT * FROM {pi_activity_enter_focus} WHERE {pi_activity_enter_focus}.paef_id = %d ", $selected_entry);
+    $default_value = db_fetch_object($result);
+  }
+
+  $inquiry_id = ($default_value->inquiry_id == '0') ? '' : $default_value->inquiry_id;
+  $activity_id = ($default_value->activity_id == '0') ? '' : $default_value->activity_id;
+    
+  $form['#prefix'] = "enter focus:".$selected_entry.$default_value->node_function;
+  $form['paef_id'] = array('#type' => 'hidden', '#value' => $default_value->paef_id);
+  $form['activity_type'] =  array('#type' => 'select', '#options' => pi_activity_type_list(), '#default_value' => $default_value->activity_type, '#title' => 'Activity type');
+  $form['activity_id'] =  array('#type' => 'textfield',  '#default_value' => $activity_id, '#title' => 'Activity id', '#size' => '6');
+  $form['inquiry_id'] =  array('#type' => 'textfield', '#default_value' => $inquiry_id, '#title' => 'Inquiry id', '#size' => '6');
+  $form['node_function'] =  array('#type' => 'select', '#options' => $node_function_options, '#default_value' => $default_value->node_function, '#title' => 'Node function');
+  $form['visible_status'] =  array('#type' => 'select', '#options' => $visible_status_options, '#default_value' => $default_value->visible_status, '#title' => 'Visible status');
+  $form['prior_nf'] =  array('#type' => 'select', '#options' => $prior_node_function_options, '#default_value' => $default_value->prior_nf, '#title' => 'Prior node function');
+  $form['prior_vs'] =  array('#type' => 'select', '#options' => $prior_visible_status_options, '#default_value' => $default_value->prior_vs, '#title' => 'Prior visible status');
+  
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'), '#submit' => array('pi_enter_focus_insert'));
+  $form['cancel'] = array('#value' => l(t('Cancel'), 'admin/nquire/pi-enter-focus'));
+
+  return $form;
+}
+
+function pi_leave_focus_form($form_state) {
+  $node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  $prior_node_function_options = array('NULL' => '','add'=>'add','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  $visible_status_options = array('start'=>'start','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  $prior_visible_status_options = array('NULL' => '','start'=>'start','edit'=>'edit','view'=>'view','unavailable'=>'unavailable');
+  drupal_set_title('Status change on leaving focus');
+  $selected_entry = arg(4);
+  if(is_numeric($selected_entry)) {
+    $result = db_query("SELECT * FROM {pi_activity_leave_focus} WHERE {pi_activity_leave_focus}.palf_id = %d ", $selected_entry);
+    $default_value = db_fetch_object($result);
+  }
+
+  $inquiry_id = ($default_value->inquiry_id == '0') ? '' : $default_value->inquiry_id;
+  $activity_id = ($default_value->activity_id == '0') ? '' : $default_value->activity_id;
+    
+  $form['#prefix'] = "leave focus:".$selected_entry.$default_value->node_function;
+  $form['palf_id'] = array('#type' => 'hidden', '#value' => $default_value->palf_id);
+  $form['activity_type'] =  array('#type' => 'select', '#options' => pi_activity_type_list(), '#default_value' => $default_value->activity_type, '#title' => 'Activity type');
+  $form['activity_id'] =  array('#type' => 'textfield',  '#default_value' => $activity_id, '#title' => 'Activity id', '#size' => '6');
+  $form['inquiry_id'] =  array('#type' => 'textfield', '#default_value' => $inquiry_id, '#title' => 'Inquiry id', '#size' => '6');
+  $form['node_function'] =  array('#type' => 'select', '#options' => $node_function_options, '#default_value' => $default_value->node_function, '#title' => 'Node function');
+  $form['visible_status'] =  array('#type' => 'select', '#options' => $visible_status_options, '#default_value' => $default_value->visible_status, '#title' => 'Visible status');
+  $form['prior_nf'] =  array('#type' => 'select', '#options' => $prior_node_function_options, '#default_value' => $default_value->prior_nf, '#title' => 'Prior node function');
+  $form['prior_vs'] =  array('#type' => 'select', '#options' => $prior_visible_status_options, '#default_value' => $default_value->prior_vs, '#title' => 'Prior visible status');
+  
+  $form['submit'] = array('#type' => 'submit', '#value' => t('Save'), '#submit' => array('pi_leave_focus_insert'));
+  $form['cancel'] = array('#value' => l(t('Cancel'), 'admin/nquire/pi-leave-focus'));
+
+  return $form;
+}
+
+function pi_enter_focus_insert($node) {
+  //insert new entry
+  $paef_id = $node['paef_id']['#value'];
+  
+  if($paef_id) {
+    //update existing entry
+    db_query("UPDATE {pi_activity_enter_focus} SET activity_type = '%s', activity_id = %d, inquiry_id = %d, node_function = '%s', visible_status = '%s', prior_nf = '%s', prior_vs = '%s' WHERE paef_id = %d",
+    $node['activity_type']['#value'], $node['activity_id']['#value'], $node['inquiry_id']['#value'], $node['node_function']['#value'], $node['visible_status']['#value'], $node['prior_nf']['#value'], $node['prior_vs']['#value'], $node['paef_id']['#value']);
+  }
+  else {
+    //add new entry
+    db_query("INSERT INTO {pi_activity_enter_focus} (activity_type, activity_id, inquiry_id, node_function, visible_status, prior_nf, prior_vs) VALUES ('%s', %d, %d, '%s', '%s', '%s', '%s') ",
+    $node['activity_type']['#value'], $node['activity_id']['#value'], $node['inquiry_id']['#value'], $node['node_function']['#value'], $node['visible_status']['#value'], $node['prior_nf']['#value'], $node['prior_vs']['#value']);
+  }
+  
+  drupal_goto('admin/nquire/pi-enter-focus');
+}
+
+function pi_leave_focus_insert($node) {
+  //insert new entry
+  $palf_id = $node['palf_id']['#value'];
+  
+  if($palf_id) {
+    //update existing entry
+    db_query("UPDATE {pi_activity_leave_focus} SET activity_type = '%s', activity_id = %d, inquiry_id = %d, node_function = '%s', visible_status = '%s', prior_nf = '%s', prior_vs = '%s' WHERE palf_id = %d",
+    $node['activity_type']['#value'], $node['activity_id']['#value'], $node['inquiry_id']['#value'], $node['node_function']['#value'], $node['visible_status']['#value'], $node['prior_nf']['#value'], $node['prior_vs']['#value'], $node['palf_id']['#value']);
+  }
+  else {
+    //add new entry
+    db_query("INSERT INTO {pi_activity_leave_focus} (activity_type, activity_id, inquiry_id, node_function, visible_status, prior_nf, prior_vs) VALUES ('%s', %d, %d, '%s', '%s', '%s', '%s') ",
+    $node['activity_type']['#value'], $node['activity_id']['#value'], $node['inquiry_id']['#value'], $node['node_function']['#value'], $node['visible_status']['#value'], $node['prior_nf']['#value'], $node['prior_vs']['#value']);
+  }
+  
+  drupal_goto('admin/nquire/pi-leave-focus');
+}
+
+function pi_enter_focus_admin() {
+  $query = "SELECT * FROM {pi_activity_enter_focus} ORDER BY {pi_activity_enter_focus}.paef_id ASC";
+  $result = db_query($query);
+  $rows = array();
+  $header = array("Activity type", "Activity id", "Inquiry id", "Node function", "Visible status", "Prior node function", "Prior visible status", "", "");
+  while($db_entry = db_fetch_object($result)) {
+    $inquiry_id = ($db_entry->inquiry_id == '0') ? '' : $db_entry->inquiry_id;
+    $activity_id = ($db_entry->activity_id == '0') ? '' : $db_entry->activity_id;
+    $activity_type = ($db_entry->activity_type == 'NULL') ? '' : $db_entry->activity_type;
+    $prior_nf = ($db_entry->prior_nf == 'NULL') ? '' : $db_entry->prior_nf;
+    $prior_vs = ($db_entry->prior_vs == 'NULL') ? '' : $db_entry->prior_vs;
+    $row = array($activity_type, $activity_id, $inquiry_id, $db_entry->node_function, $db_entry->visible_status, $prior_nf, $prior_vs, l( t('edit'), 'admin/nquire/pi-enter-focus/edit/' . $db_entry->paef_id), l( t('delete'), 'admin/nquire/pi-enter-focus/delete/'.$db_entry->paef_id));
+    $rows[] = array('data' => $row);
+  }
+  $output .= "<p>" . t('Specify how an activity changes status when entering focus') ."</p>";
+  $output .= theme('table', $header, $rows);
+  
+  return $output;
+}
+
+function pi_leave_focus_admin() {
+  $query = "SELECT * FROM {pi_activity_leave_focus} ORDER BY {pi_activity_leave_focus}.palf_id ASC";
+  $result = db_query($query);
+  $rows = array();
+  $header = array("Activity type", "Activity id", "Inquiry id", "Node function", "Visible status", "Prior node function", "Prior visible status", "", "");
+  while($db_entry = db_fetch_object($result)) {
+    $inquiry_id = ($db_entry->inquiry_id == '0') ? '' : $db_entry->inquiry_id;
+    $activity_id = ($db_entry->activity_id == '0') ? '' : $db_entry->activity_id;
+    $activity_type = ($db_entry->activity_type == 'NULL') ? '' : $db_entry->activity_type;
+    $prior_nf = ($db_entry->prior_nf == 'NULL') ? '' : $db_entry->prior_nf;
+    $prior_vs = ($db_entry->prior_vs == 'NULL') ? '' : $db_entry->prior_vs;
+    $row = array($activity_type, $activity_id, $inquiry_id, $db_entry->node_function, $db_entry->visible_status, $prior_nf, $prior_vs, l( t('edit'), 'admin/nquire/pi-leave-focus/edit/' . $db_entry->palf_id), l( t('delete'), 'admin/nquire/pi-leave-focus/delete/'.$db_entry->palf_id));
+    $rows[] = array('data' => $row);
+  }
+  $output .= "<p>" . t('Specify how an activity changes status when leaving focus') ."</p>";
+  $output .= theme('table', $header, $rows);
+  
+  return $output;
+}
+
+function pi_enter_focus_delete($arg) {
+  drupal_set_message("Entry deleted");
+  db_query("DELETE FROM {pi_activity_enter_focus} WHERE paef_id = %d ", $arg);
+  drupal_goto('admin/nquire/pi-enter-focus');
+}
+
+function pi_leave_focus_delete($arg) {
+  drupal_set_message("Entry deleted");
+  db_query("DELETE FROM {pi_activity_leave_focus} WHERE palf_id = %d ", $arg);
+  drupal_goto('admin/nquire/pi-leave-focus');
+}
