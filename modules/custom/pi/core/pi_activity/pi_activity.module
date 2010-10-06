@@ -265,14 +265,7 @@ function pi_activity_form($form_state) {
 	
 	$form['activity_phases']['phase_nid'] = pi_activity_form_generate_phase_select($inquiry_nid_default_value, $phase_nid_default_value);
 	
-	/*$form['activity_phases']['stages'] = array();
-	$form['activity_phases']['stages']['#type'] = 'fieldset';
-	$form['activity_phases']['stages']['#weight'] = 3;
-	$form['activity_phases']['stages']['#title'] = 'Stages';	
-	$form['activity_phases']['stages']['#prefix'] =  "<div id='activity-stage-wrapper'>";
-	$form['activity_phases']['stages']['#suffix'] =  "</div>";*/
-	
-	pi_debug_message($inquiry_nid_default_value);
+	$stages_default_value = array();
 	$form['activity_phases']['stages'] = pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 	
 	$form['name'] = array(
@@ -282,19 +275,8 @@ function pi_activity_form($form_state) {
 		'#description' => t('This is the title of the activity that will appear as the activity link in the phase view.'),
 		'#default_value' => $result->name,
 	);
-	
-	$form['description'] = array(
-		'#type' => 'textarea',
-		'#weight' => 4,
-		'#cols' => 80,
-		'#rows' => 5,
-		'#description' => t('For some activity types the description will be shown at the top of the page (for example in the Hypothesis activity). Enter it here.'),
-		'#title' => t('Activity Description'),
-		'#default_value' => $result->description,
-	);
-	
+
 	//activity and node type query
-	
 	$node_types = node_get_types('names');
 	if(is_array($node_types))
 	{
@@ -310,23 +292,37 @@ function pi_activity_form($form_state) {
 		$node_type_options = array('none' => t('No activity types available, please check nQuire is correctly installed'));
 		$allowed_activity_types = array();
 	}
-
+	
 	$form['activity_type'] = array(
 		'#type' => 'select',
 		'#title' => t('Activity Type'),
+		'#required' => true,
 		'#description' => t('Choose the type of activity you want to place into the inquiry from this list.'),
-		'#weight' => 5,
+		'#weight' => 4,
 		'#options' => $node_type_options,
 		'#default_value' => $result->activity_type,
 		'#allowed_activity_types' => $allowed_activity_types,
 	);
 	
+	
+	$form['description'] = array(
+		'#type' => 'textarea',
+		'#weight' => 5,
+		'#cols' => 70,
+		'#rows' => 5,
+		'#description' => t('For some activity types the description will be shown at the top of the page (for example in the Hypothesis activity). Enter it here.'),
+		'#title' => t('Activity Description'),
+		'#default_value' => $result->description,
+	);
+	
 	$form['node_type'] = array(
 		'#type' => 'select',
 		'#title' => t('Node Type'),
+		'#required' => true,
 		'#weight' => 6,
 		'#options' => $node_type_options,
 		'#default_value' => $result->node_type,
+		'#description' => t('Some activities will create content of different types, but unless you know otherwise choose the same as the Activity Type.')
 	);
 	
 	$form['parameters'] = array(
@@ -334,6 +330,7 @@ function pi_activity_form($form_state) {
 		'#title' => t('Parameters'),
 		'#weight' => 7,
 		'#default_value' => $result->parameters,
+		'#description' => t('Some activities need special parameters, but unless you know otherwise leave this blank.')
 	);
 	
 	$destination_option = array('phase'=>'phase','self'=>'self',);
@@ -341,9 +338,11 @@ function pi_activity_form($form_state) {
 	$form['destination'] = array(
 		'#type' => 'select',
 		'#title' => t('Destination After Completing the Activity (self or phase)'),
+		'#required' => true,
 		'#weight' => 8,
 		'#options' => $destination_option,
 		'#default_value' => $result->destination,
+		'#description' => t('When someone completes an activity and seves it, they can go back to the phase view, or stay on the activity page (self), so choose which one here.')
 	);
 	
 	$group_options = array('individual'=>'individual',
@@ -351,35 +350,74 @@ function pi_activity_form($form_state) {
 						'class'=>'class',
 						'multiclass'=>'multiclass');
 	
-	$form['audience'] = array(
-		'#type' => 'select',
-		'#title' => t('Activity Audience'),
-		'#weight' => 9,
-		'#options' => $group_options,
-		'#default_value' => $result->audience,
+	$form['groups'] = array(
+	  '#type' => 'fieldset',
+	  '#title' => t('Set up who works on and who can see the results of this activity'),
+	  '#weight' => 9,
+	  '#description' => t('Members of the selected group is do the activity. The Audience is what related group will share the finished content.')
 	);
 	
 	//pi_activity_status table
 	$query2 = "SELECT * FROM pi_activity_status WHERE activity_id = '" . $activity_id . "'";
 	$result2 = db_fetch_object(db_query($query2));
 	
-	$og_query = "SELECT * FROM og";
-	$og_groups_query = db_query($og_query);
-	$og_groups_options = array();
-	while($og = db_fetch_object($og_groups_query)){
-		$og_groups_options[$og->nid] = $og->og_description . ' (' . $og->nid . ')';
-	}
-
-	$form['gid'] = array(
-		'#type' => 'select',
-		'#title' => t('Activity Group'),
-		'#weight' => 10,
-		'#options' => $og_groups_options,
-		'#default_value' => $result2->gid,
+	$defined_groups = pi_flatten_grouped_item_list(pi_get_defined_group_nids());
+	$group_options = pi_util_get_names_from_nids(array_keys($defined_groups));
+	$form['groups']['selects'] = array(
+	  '#tree' => true,
+	  '#theme' => 'pi_util_form_elements_float',
 	);
 	
-	$node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view',);
+	$form['groups']['selects']['gid'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Group'),
+		'#weight' => 1,
+		'#options' => $group_options,
+		'#default_value' => $result2->gid,
+		'#ahah' => array(
+		  'path'    => ahah_helper_path(array('groups', 'info')),
+		  'wrapper' => 'groups-info-wrapper',
+		),
+		'#prefix' => "<div style='min-height:40px;'>",
+		'#suffix' => '</div>'		
+	);
 	
+	$activity_audience_types = array(
+		'individual' => 'Individual activity',
+		'group' => 'Results shared with group',
+		'class' => 'Results shared with class',
+		'multiclass' => 'Results shared within multiclass'
+	);
+	
+	$form['groups']['selects']['audience'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Audience'),
+		'#weight' => 2,
+		'#options' => $activity_audience_types,
+		'#default_value' => $result->audience,
+		'#prefix' => "<div style='min-height:40px;'>",
+		'#suffix' => '</div>',
+		'#ahah' => array(
+		  'path'    => ahah_helper_path(array('groups', 'info')),
+		  'wrapper' => 'groups-info-wrapper',
+		),
+		'#prefix' => "<div style='min-height:40px;'>",
+		'#suffix' => '</div>'		
+		
+	);
+	
+	$explanation_value = pi_activity_explain_actor_and_audience($form_state['storage']['selects']['gid'], $form_state['storage']['selects']['audience']);
+	$form['groups']['info'] = array(
+		'#type' => 'item',
+		'#weight' => 3,
+		'#value' => $explanation_value,
+		'#prefix' => "<div id='groups-info-wrapper'>",
+		'#suffix' => '</div>'
+		
+	);
+	
+	
+	$node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view',);
 	$form['node_function'] = array(
 		'#type' => 'select',
 		'#title' => t('Node Function'),
@@ -388,8 +426,12 @@ function pi_activity_form($form_state) {
 		'#default_value' => $result2->node_function,
 	);
 	
-	$visible_status_options = array('start'=>'start','in_progress'=>'in_progress',
-									'view'=>'view', 'unavailable'=>'unavailable');
+	$visible_status_options = array(
+	  'start'=>'start',
+	  'in_progress'=>'in_progress',
+	  'view'=>'view',
+	  'unavailable'=>'unavailable'
+	);
 	
 	$form['visible_status'] = array(
 		'#type' => 'select',
@@ -465,10 +507,6 @@ function pi_activity_form_generate_phase_select($inquiry_nid, $default_value='no
 		'#allowed_phase_nids' => $inquiry_phase_nids,
 		'#default_value' => $default_value,
 		'#element_validate' => array('pi_util_phase_nid_validate'),
-		'#ahah' => array(
-			'path'    => ahah_helper_path(array('activity_phases')),
-			'wrapper' => 'activity-phase-wrapper',
-		),	
 		'#prefix' => "<div id='activity-phase-wrapper'>",
 		'#suffix' => '</div>'
 	);
@@ -485,35 +523,74 @@ function pi_activity_form_generate_phase_select($inquiry_nid, $default_value='no
  */
 function pi_activity_form_generate_stage_select($inquiry_nid, $default_values=array())
 {
+	$stage_options = array(
+	  'none' => t('Select state...'),
+	  'unavailable' => t('Not available'),
+	  'available' => t('Available'),
+	  'viewable' => t('View only')
+	);
+	
+	$stage_boxes = array(); 
+	
 	// Based on the selection above generate the select boxes for phases
 	$stage_select_options = array();
 	if( ($inquiry_nid != 'none') && ( $inquiry_nid != NULL ) )
 	{
 		$inquiry_stage_nids = pi_stage_load_nids($inquiry_nid);
 		$stage_names = pi_util_get_names_from_nids($inquiry_stage_nids);
-		pi_debug_message($stage_names);
 		foreach ($stage_names as $stage_nid => $name)
 		{
-			$stage_select_options[$stage_nid] = in_array($stage_nid, $default_values);
+			$stage_boxes[$stage_nid] = array(
+				'#type' => 'select',
+				'#title' => check_plain($name),
+			    '#weight' => count($stage_boxes),
+				'#required' => true,
+				'#options' => $stage_options,
+				'#default_value' => (isset($default_values[$stage_nid]) ? $default_values[$stage_nid] : 'none' )
+			);
 		} 
+		if(count($stage_names)==0)
+		{
+			$stage_boxes['#description'] = t('There are no stages defined for this inquiry yet.');
+		}
+		else
+		{
+			$stage_boxes['#description'] = t('For each stage, choose how the activity will be available.  When you chance stage, you can also choose whether the status will be changed to this or not.');			
+		}
 	}
 	else
 	{
-		//if there is no inquiry selected then there are no phases to select
-		$inquiry_stage_nids = array();
+		$stage_boxes['#description'] = t('Select an inquiry to see it\'s stages.');
 	}
-	
-	$form_element =  array(
-		'#type' => 'select',
-		'#title' => t('Select stages for activity'),
-	    '#weight' => 3,
-		'#required' => true,
-		'#options' => $stage_select_options,
-		'#allowed_stage_nids' => $inquiry_stage_nids,
-		'#default_value' => $default_value,
-		'#element_validate' => array('pi_util_stage_nid_validate'),		
-	);
-	return $form_element;
+	$stage_boxes['#type'] = 'fieldset';
+	$stage_boxes['#title'] = t('Select activity status for each stage:');
+	$stage_boxes['#weight'] = 3;
+	$stage_boxes['#theme'] = 'pi_util_form_elements_float';
+	return $stage_boxes;
+}
+
+/**
+ * 
+ * Generate an explanation of exactly who works on and who will see the result of an activity
+ * given the actor group id and the audiance group type
+ * @param uint $actor_gid gid of a valid group within nQuire (an og_group with class/group/multiclass definition)  
+ * @param $audience_group_type one of individual, group, class, or multiclass
+ */
+function pi_activity_explain_actor_and_audience($actor_gid, $audience_group_type)
+{
+	$valid_group_types = array('individual', 'group', 'class', 'multiclass');
+	$output = '';
+	$group = node_load($actor_gid);
+	if($group!=NULL && in_array($audience_group_type, $valid_group_types)) 
+	{
+		$group_members = pi_group_get_name_list($actor_gid);
+		$output .= $group_members;
+	}
+	else
+	{
+		$output .= t('Select a group and audience group type to see who does and how sees the activity content.');
+	}
+	return $output;
 }
 
 
@@ -564,10 +641,9 @@ function pi_activity_theme()
 	return array(
 		'pi_activity_admin_view_node' => array(
 			'arguments' => array('activity', 'node_view_page'),
-			'file' => 'pi_activity.admin.inc')
+			'file' => 'pi_activity.admin.inc'),
 	);
 }
-
 
 
 /*

@@ -140,9 +140,9 @@ function pi_get_members_of_group($gid) {
 
 
 /**
- * Helper function to get a list of the names of all the users who are member of an og group
  * 
- * @param uint $og group nid /gid
+ * Helper function to get a list of the names of all the users who are member of an og group
+ * @param uint $og_id group nid /gid
  * @return string concatonated string of user names separated by a comma.
  */
 function pi_group_get_name_list($og_id){
