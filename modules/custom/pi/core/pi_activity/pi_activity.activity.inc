@@ -112,8 +112,8 @@ function pi_activity_actor_audience_info($inquiry_id, $activity_id) {
 		$loaded_activity = load_activity($activity_id);
 		$audience = $loaded_activity->audience;
 		$loaded_activity_actor = load_activity_actor($inquiry_id, $activity_id);
-		$activity_uid = $activity_actor[0]["uid"];
-		$activity_gid = $activity_actor[0]["gid"];
+		$activity_uid = $loaded_activity_actor[0]["uid"];
+		$activity_gid = $loaded_activity_actor[0]["gid"];
 		$activity_gid_type = pi_get_type_of_group($gid);
 		 
 		$seen_by = $audience;

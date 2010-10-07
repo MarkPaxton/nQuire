@@ -581,16 +581,63 @@ function pi_activity_explain_actor_and_audience($actor_gid, $audience_group_type
 	$valid_group_types = array('individual', 'group', 'class', 'multiclass');
 	$output = '';
 	$group = node_load($actor_gid);
-	if($group!=NULL && in_array($audience_group_type, $valid_group_types)) 
+
+	if( ($group!=NULL) && in_array($audience_group_type, $valid_group_types)) 
 	{
-		$group_members = pi_group_get_name_list($actor_gid);
-		$output .= $group_members;
+		$actor_group_type = pi_get_type_of_group($actor_gid);
+		$group_members_list = pi_group_get_name_list($actor_gid);
+		
+		$seen_by = $audience_group_type;
+		if (($actor_gid==NULL) || $audience_group_type == 'individual')
+		{
+			$done_by = 'individual';
+		}
+		elseif ($actor_group_type=='class' && $audience_group_type == 'class')
+		{
+			$done_by = 'class';
+		}
+		else
+		{
+			$done_by = 'group';
+		}
+
+		$group_members = pi_get_members_of_group($actor_gid);
+		switch($done_by)
+		{
+			case 'individual':
+				//If it's individual then everyone in the target group will create
+				// their own activity content.
+				$output .= t('One activity per person in the group:');
+				$output .= '<div>' . $group_members_list . "</div>\n";
+			break;
+			case 'class':
+				// If a class group is selected and the audience is class, then 
+				// the same activity content is editable by the whole class group
+				$output .= t('This class will edit the same activity content:');
+				$output .= '<div>' . check_plain($group->title) . "</div>\n";
+			break;
+			case 'group':
+				// If a class is selected and the audience is class, then 
+				// 
+				$output .= t('This class will edit the same activity content:');
+				$output .= '<div>' . check_plain($group->title) . "</div>\n";
+			break;
+				
+		}
+		
 	}
 	else
 	{
 		$output .= t('Select a group and audience group type to see who does and how sees the activity content.');
 	}
 	return $output;
+}
+
+
+function pi_activity_form_submit($form, &$form_state)
+{
+	
+	
 }
 
 
@@ -1159,11 +1206,11 @@ function delete_activity($activity_id)
 
 /**
  * Returns array from pi_activity_actor table.
- * @param unknown_type $inquiry_id
- * @param unknown_type $activity_id
- * @param unknown_type $uid
- * @param unknown_type $gid
- * @return Ambigous <multitype:, unknown>
+ * @param uint $inquiry_id
+ * @param uint $activity_id
+ * @param uint $uid
+ * @param uint $gid
+ * @return array of activity_actor table with keys: "paa_id", "inquiry_id", "activity_id", "uid", "gid"
  */
 function load_activity_actor($inquiry_id, $activity_id = NULL, $uid = NULL, $gid = NULL) {
 	$query = "SELECT * FROM {pi_activity_actor} WHERE inquiry_id = %d ";
