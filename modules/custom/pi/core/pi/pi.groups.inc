@@ -554,7 +554,7 @@ function get_og_group_name($og_id){
 
 
 /**
- * Create a list of groups and subgroups ids using the group hierarchy in $defined groups
+ * Create a list of groups and subgroups ids using the group hierarchy in $group_data
  * and the names of the nodes - groups with children will be recursively traversed
  * @param array $parents array of nids
  * @param array $groups_with_hierarchy pointer to array of group hierarchy data indexed by nid
@@ -577,6 +577,90 @@ function pi_groups_generate_child_list($parents, &$group_data)
 	}
 	return $child_list;
 }
+
+
+/**
+ * 
+ * Get ids of all associated groups of a given type in the given heirarchy
+ *  e.g. if a class group nid is given, and type is 'group' an array of child group nids
+ *  will be returned.  If multiclass is specified an array with one element (the class group's
+ *  parent) will be returned. 
+ * The entire heirarch data is searched, so even oddly specified groups will be returned - 
+ *   e.g a 'group' child of a 'multiclass'.
+ * @param uint $group_id A nid of an og_group that is registered with nquire
+ * @param string $associated_groups_type one of group, class, multiclass 
+ * @return array(nid) 
+ */
+function pi_groups_get_associated_groups($group_id, $associated_groups_type)
+{
+	$return_group_nids = array();
+	$hierarchy_data = pi_get_group_hierarchy($group_id);
+	$group_type = pi_get_type_of_group($group_id);
+	if($group_type!=NULL)
+	{
+		$group_levels = array(
+		'group' => 0,
+		'class' => 1,
+		'multiclass' => 2
+		);
+
+		if(array_key_exists($associated_groups_type, $group_levels))
+		{
+			//pi_debug_message("Given group: $group_type, specified type: $associated_groups_type.");
+			if($group_levels[$group_type]==$group_levels[$associated_groups_type])
+			{
+				$return_group_nids[] = $group_id;
+			}
+			elseif($group_levels[$group_type]>$group_levels[$associated_groups_type])
+			{
+				foreach($hierarchy_data['children'] as $child_nid)
+				{
+					if(pi_get_type_of_group($child_nid)==$associated_groups_type)
+					{
+						$return_group_nids[] = $child_nid;
+					}
+					else
+					{
+						$child_groups_found = pi_groups_get_associated_groups($child_nid, $associated_groups_type);
+						foreach($child_groups_found as $group_found)
+						{
+							$return_group_nids[] = $group_found;
+						} 
+					}
+				}
+			}
+			else
+			{
+				if($hierarchy_data['parent']!=NULL)
+				{
+					if(pi_get_type_of_group($hierarchy_data['parent'])==$associated_groups_type)
+					{
+						$return_group_nids[] = $hierarchy_data['parent'];
+					}
+					else
+					{
+						$parent_groups_found = pi_groups_get_associated_groups($hierarchy_data['parent'], $associated_groups_type);
+						foreach($parent_groups_found as $group_found)
+						{
+							$return_group_nids[] = $group_found;
+						}
+					}
+				}
+			}
+		}
+		else
+		{
+			drupal_set_message(t('An invalid group type has been given for pi_groups_get_associated_groups.'), 'error');
+		}
+	}
+	else
+	{
+			drupal_set_message(t('An invalid group id has been given to pi_groups_get_associated_groups.'), 'error');
+	}
+	return $return_group_nids;
+}
+
+
 
 /**
  * 

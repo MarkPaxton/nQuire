@@ -345,16 +345,11 @@ function pi_activity_form($form_state) {
 		'#description' => t('When someone completes an activity and seves it, they can go back to the phase view, or stay on the activity page (self), so choose which one here.')
 	);
 	
-	$group_options = array('individual'=>'individual',
-						'group'=>'group',
-						'class'=>'class',
-						'multiclass'=>'multiclass');
-	
 	$form['groups'] = array(
 	  '#type' => 'fieldset',
 	  '#title' => t('Set up who works on and who can see the results of this activity'),
 	  '#weight' => 9,
-	  '#description' => t('Members of the selected group is do the activity. The Audience is what related group will share the finished content.')
+	  '#description' => t('First choose the audience: this determines how widely the results are shared.  Then select the group containing who you want to do the activity.')
 	);
 	
 	//pi_activity_status table
@@ -362,37 +357,24 @@ function pi_activity_form($form_state) {
 	$result2 = db_fetch_object(db_query($query2));
 	
 	$defined_groups = pi_flatten_grouped_item_list(pi_get_defined_group_nids());
-	$group_options = pi_util_get_names_from_nids(array_keys($defined_groups));
+	$group_options = array('none' => 'Select actor group...') +  pi_util_get_names_from_nids(array_keys($defined_groups)); 
 	$form['groups']['selects'] = array(
 	  '#tree' => true,
 	  '#theme' => 'pi_util_form_elements_float',
 	);
 	
-	$form['groups']['selects']['gid'] = array(
-		'#type' => 'select',
-		'#title' => t('Activity Group'),
-		'#weight' => 1,
-		'#options' => $group_options,
-		'#default_value' => $result2->gid,
-		'#ahah' => array(
-		  'path'    => ahah_helper_path(array('groups', 'info')),
-		  'wrapper' => 'groups-info-wrapper',
-		),
-		'#prefix' => "<div style='min-height:40px;'>",
-		'#suffix' => '</div>'		
-	);
-	
 	$activity_audience_types = array(
-		'individual' => 'Individual activity',
-		'group' => 'Results shared with group',
-		'class' => 'Results shared with class',
-		'multiclass' => 'Results shared within multiclass'
+		'none' => t('Select audience setting...'),
+		'individual' => t("Don't share (Individual activity)"),
+		'group' => t('Share with group'),
+		'class' => t('Share with class'),
+		'multiclass' => t('Share with multiclass')
 	);
 	
 	$form['groups']['selects']['audience'] = array(
 		'#type' => 'select',
 		'#title' => t('Activity Audience'),
-		'#weight' => 2,
+		'#weight' => 1,
 		'#options' => $activity_audience_types,
 		'#default_value' => $result->audience,
 		'#prefix' => "<div style='min-height:40px;'>",
@@ -406,12 +388,27 @@ function pi_activity_form($form_state) {
 		
 	);
 	
+	
+	$form['groups']['selects']['gid'] = array(
+		'#type' => 'select',
+		'#title' => t('Activity Group'),
+		'#weight' => 2,
+		'#options' => $group_options,
+		'#default_value' => $result2->gid,
+		'#ahah' => array(
+		  'path'    => ahah_helper_path(array('groups', 'info')),
+		  'wrapper' => 'groups-info-wrapper',
+		),
+		'#prefix' => "<div style='min-height:40px;'>",
+		'#suffix' => '</div>'		
+	);
+	
 	$explanation_value = pi_activity_explain_actor_and_audience($form_state['storage']['selects']['gid'], $form_state['storage']['selects']['audience']);
 	$form['groups']['info'] = array(
 		'#type' => 'item',
 		'#weight' => 3,
 		'#value' => $explanation_value,
-		'#prefix' => "<div id='groups-info-wrapper'>",
+		'#prefix' => "<div id='groups-info-wrapper' style='clear:left;'>",
 		'#suffix' => '</div>'
 		
 	);
@@ -574,70 +571,215 @@ function pi_activity_form_generate_stage_select($inquiry_nid, $default_values=ar
  * Generate an explanation of exactly who works on and who will see the result of an activity
  * given the actor group id and the audiance group type
  * @param uint $actor_gid gid of a valid group within nQuire (an og_group with class/group/multiclass definition)  
- * @param $audience_group_type one of individual, group, class, or multiclass
+ * @param string $audience_group_type one of individual, group, class, or multiclass
  */
 function pi_activity_explain_actor_and_audience($actor_gid, $audience_group_type)
 {
-	$valid_group_types = array('individual', 'group', 'class', 'multiclass');
-	$output = '';
+	$group_values = array(
+		'individual' => 0,
+		'group' => 1,
+		'class' => 2,
+		'multiclass' => 3
+	);
 	$group = node_load($actor_gid);
 
-	if( ($group!=NULL) && in_array($audience_group_type, $valid_group_types)) 
+	if( ($group!=NULL) && array_key_exists($audience_group_type, $group_values)) 
 	{
 		$actor_group_type = pi_get_type_of_group($actor_gid);
+		$group_members = pi_get_members_of_group($actor_gid);
 		$group_members_list = pi_group_get_name_list($actor_gid);
 		
-		$seen_by = $audience_group_type;
-		if (($actor_gid==NULL) || $audience_group_type == 'individual')
-		{
-			$done_by = 'individual';
-		}
-		elseif ($actor_group_type=='class' && $audience_group_type == 'class')
-		{
-			$done_by = 'class';
-		}
-		else
-		{
-			$done_by = 'group';
-		}
+		$setting_preview = array();
+		
+		$audience_value = $group_values[$audience_group_type];
+		$actor_value = $group_values[$actor_group_type];
 
-		$group_members = pi_get_members_of_group($actor_gid);
-		switch($done_by)
+		$activity_setting = NULL;
+		
+		//This section sets up the type of explanation that is generated below in the switch
+		// statement.  It's easier to understand the input/outcomes here then sort out the 
+		// explanations below. 
+		
+		//$audience_value == 0 (individual)
+		if ($audience_group_type=='individual')
 		{
-			case 'individual':
-				//If it's individual then everyone in the target group will create
-				// their own activity content.
-				$output .= t('One activity per person in the group:');
-				$output .= '<div>' . $group_members_list . "</div>\n";
-			break;
-			case 'class':
-				// If a class group is selected and the audience is class, then 
-				// the same activity content is editable by the whole class group
-				$output .= t('This class will edit the same activity content:');
-				$output .= '<div>' . check_plain($group->title) . "</div>\n";
-			break;
-			case 'group':
-				// If a class is selected and the audience is class, then 
-				// 
-				$output .= t('This class will edit the same activity content:');
-				$output .= '<div>' . check_plain($group->title) . "</div>\n";
-			break;
-				
+			// When individual audience is set, then it's an individual activity for everyone in
+			// the seleted actor group.
+			$activity_setting = 'done_as_individuals_in_group_not_shared';
+		}
+		elseif ($audience_value == $actor_value)
+		{
+			// If the actor group type is the same as the audience type then the activity is 
+			// shared between all members of the actor group and only one activity content is generated
+			$activity_setting = 'done_as_single_group_not_shared';
+		}
+		elseif ($audience_value < $actor_value)
+		{
+			// When the audience is smaller than the actor group type, then all the 
+			// groups of the audience type are given individual activities.
+			// for example all the groups within a class or multiclass. 
+			$activity_setting = 'done_by_all_groups_in_larger_group_not_shared';
+		}
+		elseif ($audience_value > $actor_value)
+		{
+			// When the audience group type is larger than the actor group, then the 
+			// actor group shares the generated content witht the members of the larger group
+			// and one item of generated for the actor group.
+			// for example a group shares one content item with a class, 
+			// or a class shares one content item with a multiclass
+			$activity_setting = 'done_by_group_shared_with_larger_group';
 		}
 		
+		// Now the type of activity actor/audience has been established, print the appropriate
+		// explanation messages.
+		switch($activity_setting)
+		{
+			case 'done_as_individuals_in_group_not_shared':
+			//If audience is individual then everyone in the target group will create
+			// their own activity content and it wont be shared.
+			$setting_explanation = t("The members of the selected @group_type '%group_name' will do this activity individually and the results will not be shared.", 
+				array(
+				  '@group_type'=> $actor_group_type,
+				  '%group_name'=> $group->title
+				)
+			);
+			$setting_preview[] = t("Members of the @group_type are: %names",  
+				array(
+				  '@group_type'=> $actor_group_type,
+				  '%names' => $group_members_list
+				)
+			);
+			break;
+			
+			case 'done_as_single_group_not_shared':
+			$setting_explanation = t("This activity will be done as a %actor_group_type by %actor_group_type '%group_name'.",
+				array(
+				  '%actor_group_type' => $actor_group_type,
+				  '%group_name'=> $group->title
+				
+				)
+			);
+			$setting_preview[] = t("One shared result for %group_name (%names).",
+				array(
+			  	  '%group_name'=> $group->title,
+				  '%names' => $group_members_list
+				)
+			);
+			break;
+			case 'done_by_all_groups_in_larger_group_not_shared':
+				// If audience is group then activity will be done as a group and shared within the specified audience group type
+				// All the groups of nquire group type 'group' within the selected group will do one item of content
+				$setting_explanation = t("The activity will be done by each @audience_group_type within the @group_type '%group_name'.",
+					array(
+					  '@audience_group_type'=> $audience_group_type,
+					  '@group_type'=> $actor_group_type,
+					  '%group_name'=> $group->title,
+					) 
+				);
+				// Need to get all audience group within the hierarchy of the selected actor group.
+				$associated_groups = pi_groups_get_associated_groups($actor_gid, $audience_group_type);
+				$group_names = pi_util_get_names_from_nids($associated_groups);
+				foreach($group_names as $group_id => $group_name)
+				{
+					$setting_preview[] = t("One shared result for @audience_group_type '%group_name' (%names).",  
+						array(
+					  	  '@audience_group_type'=> $audience_group_type,
+						  '%group_name'=> $group_name,
+						  '%names' => pi_group_get_name_list($group_id)
+						)
+					);					
+				}
+			break;
+			case 'done_by_group_shared_with_larger_group':
+				$audience_id = pi_groups_get_associated_groups($actor_gid, $audience_group_type);
+				// There should only be one larger group, so if more than one is returned, there's a problem
+				// if 0 is returned then there is also a problem, but it's less bad as it means the parent hasn't
+				// been assigned, rather than it having 2 parents (that's a DB error!).
+				if(count($audience_id)==1)
+				{
+					$audience_group_info = pi_util_get_names_from_nids($audience_id);
+					$audience_group_name = $audience_group_info[$audience_id[0]];
+					$setting_explanation = t("This activity will done by @actor_group_type '%group_name' and the result will be viewable by the @audience_group_type '%audience_group_name'.",
+						array(
+					  	  '@audience_group_type'=> $audience_group_type,
+						  '@actor_group_type'=> $actor_group_type,
+					  	  '%group_name'=> $group->title,
+						  '%audience_group_name'=> $audience_group_name						
+						)
+					);
+					$setting_preview[] = t("One shared result for %group_name (%names) viewable by %audience_group_name (%audience_group_names).",
+						array(
+						  '%group_name'=> $group->title,
+						  '%names' => $group_members_list,
+						  '%audience_group_name'=> $audience_group_name,
+						  '%audience_group_names'=> pi_group_get_name_list($audience_id)						
+						)
+					);
+				}
+				elseif(count($audience_id)==0)
+				{
+					$setting_explanation = t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type but one has not been assigned.",
+						array(
+						  '@actor_group_type'=> $actor_group_type,
+					  	  '%group_name'=> $group->title,
+					  	  '@audience_group_type'=> $audience_group_type,
+						)
+					);
+					$setting_preview[] = t("One shared result for %group_name (%names) viewable by the associated @audience_group_type (not yet assigned).",  
+						array(
+					  	  '%group_name'=> $group->title,
+						  '%names' => $group_members_list,
+					  	  '@audience_group_type'=> $audience_group_type,
+						)
+					);
+				}
+				else
+				{
+					$setting_explanation = t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type however there's more than one class associated with '%group_name' - please check the group hierarchy is set up correctly.",
+						array(
+						  '@actor_group_type'=> $actor_group_type,
+					  	  '%group_name'=> $group->title,
+					  	  '@audience_group_type'=> $audience_group_type,
+						)
+					);
+					$setting_preview[] = t("One shared result for %group_name (%names) viewable by the associated @audience_group_type (not yet assigned).",  
+						array(
+					  	  '%group_name'=> $group->title,
+						  '%names' => $group_members_list,
+					  	  '@audience_group_type'=> $audience_group_type,
+						)
+					);
+				}
+			break;
+			default:
+				//This bit should never be reached because the above options cover all eventualities!!
+				$setting_explanation = '';
+				drupal_set_message('Unexpected error in pi_activity_explain_actor_and_audience!', 'error');
+			break;
+		}
+		$output = theme('pi_activity_form_actor_audience_explanation', $setting_explanation, $setting_preview);
 	}
 	else
 	{
-		$output .= t('Select a group and audience group type to see who does and how sees the activity content.');
+		$output = t('Select a group and audience group type to see who does and how sees the activity content.');
 	}
 	return $output;
 }
 
-
+/**
+ * 
+ * Submit handler for the pi_activity_form
+ * @param array $form
+ * @param array $form_state
+ */
 function pi_activity_form_submit($form, &$form_state)
 {
-	
-	
+	pi_debug_message($form_state);
+	/*if($form_state['storage']['values']['selects']['gid'])
+	{
+		
+	}
+	*/
 }
 
 
@@ -688,7 +830,12 @@ function pi_activity_theme()
 	return array(
 		'pi_activity_admin_view_node' => array(
 			'arguments' => array('activity', 'node_view_page'),
-			'file' => 'pi_activity.admin.inc'),
+			'file' => 'pi_activity.admin.inc'
+		),
+		'pi_activity_form_actor_audience_explanation' => array(
+			'arguments' => array('explanation', 'preview'),
+			'file' => 'pi_activity.form.themes.inc'
+		)
 	);
 }
 
