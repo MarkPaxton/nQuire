@@ -11,7 +11,7 @@
 function pi_activity_install()
 {
 	// Create tables.
-	//drupal_install_schema('pi_activity');
+	drupal_install_schema('pi_activity');
 	
 	variable_set("og_content_type_usage_pi_activity", 'group_post');
 	//Options are status, promote, sticky, revision
@@ -25,7 +25,7 @@ function pi_activity_install()
  */
 function pi_activity_uninstall() {
 	// Remove tables.
-	//drupal_uninstall_schema('pi_activity');
+	drupal_uninstall_schema('pi_activity');
 	
 	variable_del("og_content_type_usage_pi_activity");
 	variable_del("node_options_pi_activity");
@@ -36,10 +36,76 @@ function pi_activity_uninstall() {
 /**
  * Implementation of hook_schema().
  */
-function pi_activity_schema() {
+function pi_activity_schema()
+{
+  $schema = array();
+  $schema['pi_activity'] = array(
+    'description' => 'PI Activity.',
+    'fields' => array(
+	  'nid' => array(
+        'description' => 'Activity node id, used to be activity_id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+	  'vid' => array(
+        'description' => 'Activity node id, used to be activity_id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'activity_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Activity type - category of activity e.g. data collection.'
+      ),
+      'node_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Node type - content type of a node created/used in an activity.'
+      ),
+      'parameters' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Parameters needed to create/use a node in an activity (optional).'
+      ),
+      'destination' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'destination - form destination page after submission e.g. phase, self.'
+      ),
+      'audience' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.'
+      )
+    ),
+    'primary key' => array('nid', 'vid'),
+    'indexes' => array(
+      'nid' => array('nid'), 
+      'vid' => array('vid'), 
+    'activity_type' => array('activity_type')
+    )
+  );
+  return $schema;
+}
+
+
+function pi_activity_schema_full() {
 	
 	$schema = array();
-	
+/* old chema for non-node pi_activity	
 	$schema['pi_activity'] = array(
     'description' => 'PI Activity.',
     'fields' => array(
@@ -90,8 +156,67 @@ function pi_activity_schema() {
 			'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.' ) ),
 	'primary key' => array('activity_id'),
 	'indexes' => array(	'activity_type' => array('activity_type') )	
-	);
+	);*/
 
+  $schema['pi_activity'] = array(
+    'description' => 'PI Activity.',
+    'fields' => array(
+	  'nid' => array(
+        'description' => 'Activity node id, used to be activity_id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+	  'vid' => array(
+        'description' => 'Activity node id, used to be activity_id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'activity_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Activity type - category of activity e.g. data collection.'
+      ),
+      'node_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Node type - content type of a node created/used in an activity.'
+      ),
+      'parameters' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Parameters needed to create/use a node in an activity (optional).'
+      ),
+      'destination' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'destination - form destination page after submission e.g. phase, self.'
+      ),
+      'audience' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.'
+      )
+    ),
+    'primary key' => array('nid', 'vid'),
+    'indexes' => array(
+      'nid' => array('nid'), 
+      'activity_type' => array('activity_type')
+    )
+  );
+	
 	$schema['pi_activity_actor'] = array(
     'description' => 'PI activity actor',
 	'fields' =>	array(	

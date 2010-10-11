@@ -11,25 +11,36 @@ module_load_include('inc', 'pi_activity', 'pi_activity.workflow' );
  */
 function pi_activity_node_info()
 {
-	$type=array(
-		'pi_activity' => array(
-		    'name' => t('Activity'), // Required.
-		    'module' => 'pi_activity',  // Required.
-		    'description' => t('A generic activity'), // Required.
-		    'has_title' => TRUE,
-		    'title_label' => t('Activity'),
-		    'has_body' => TRUE,
-			'body_label' => t('A generic activity'),
-		    'locked' => TRUE )
+	return array(
+	  'pi_activity' => array(
+    	  'name' => t('Activity'), // Required.
+    	  'module' => 'pi_activity',  // Required.
+    	  'description' => t('A generic activity'), // Required.
+    	  'has_title' => TRUE,
+    	  'title_label' => t('Activity'),
+    	  'has_body' => TRUE,
+    	  'body_label' => t('A generic activity'),
+    	  'locked' => TRUE
+	  )
 	);
-
-	return $type;
 }
 
+/**
+ * 
+ * Drupal API hook_perm() implemetaiton to define available permissions for activity node type 
+ */
 function pi_activity_perm()
 {
+  	return array('create activity', 'edit own activity', 'edit any activity', 'delete own activity', 'delete any activity');
 }
 
+/**
+ * 
+ * Drupal API hook_accesss
+ * @param unknown_type $op
+ * @param unknown_type $node
+ * @param unknown_type $account
+ */
 function pi_activity_access($op, $node, $account)
 {
 	return true;
@@ -182,13 +193,15 @@ function pi_activity_add()
  * General form form for activity editing using drupal forms API. 
  * @param $form_state
  */
-function pi_activity_form($form_state) {	
-	$form = array();
+function pi_activity_form($node) {	
 	/* construct form to edit the details of an activity
 	 * inc. pi_activity, pi_activity_status, pi_activity_actor & pi_stage_phase_activity tables
 	 */
+	$form = array();
+	$type = node_get_types('type', $node);
 	
-	
+
+	/* First get inquiry, phase and stage locations */
 	$inquiry_data = array();
 	$inquiry_nids = pi_inquiry_load_nids();
 	$inquiry_data = pi_util_get_names_from_nids($inquiry_nids);
@@ -268,14 +281,17 @@ function pi_activity_form($form_state) {
 	$stages_default_value = array();
 	$form['activity_phases']['stages'] = pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 	
-	$form['name'] = array(
+
+    /* Now the activity inquiry/phase/stages are decided get the rest of the details, title, type, description, etc */ 
+	$form['title'] = array(
 		'#type' => 'textfield',
-		'#title' => t('Activity Name'),
+		'#title' => check_plain($type->title_label),
 		'#weight' => 3,
 		'#description' => t('This is the title of the activity that will appear as the activity link in the phase view.'),
-		'#default_value' => $result->name,
+		'#required' => TRUE,
+		'#default_value' => $node->title,
 	);
-
+	
 	//activity and node type query
 	$node_types = node_get_types('names');
 	if(is_array($node_types))
@@ -304,16 +320,12 @@ function pi_activity_form($form_state) {
 		'#allowed_activity_types' => $allowed_activity_types,
 	);
 	
-	
-	$form['description'] = array(
-		'#type' => 'textarea',
-		'#weight' => 5,
-		'#cols' => 70,
-		'#rows' => 5,
-		'#description' => t('For some activity types the description will be shown at the top of the page (for example in the Hypothesis activity). Enter it here.'),
-		'#title' => t('Activity Description'),
-		'#default_value' => $result->description,
-	);
+
+	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+	$form['body_field']['#weight'] = 5;
+	$form['body_field']['#description'] = t('For some activity types the description will be shown at the top of the page (for example in the Hypothesis activity). Enter it here.');
+	$form['body_field']['body']['#rows'] = 6;
+	$form['body_field']['teaser_include']['#access'] = FALSE;
 	
 	$form['node_type'] = array(
 		'#type' => 'select',
@@ -459,13 +471,22 @@ function pi_activity_form($form_state) {
 		'#default_value' => $object4->nid,
 	);
 	
-	$form['submit'] = array(
-		'#type' => 'submit',
-		'#value' => t('Save'),
-		'#weight' => 14,	
-	);
-	
 	return $form;
+}
+
+
+/**
+ * 
+ * Drupal API hook_form_alter(), changes the form to alter the default node layout
+ * @param $form
+ * @param $form_state
+ * @param $form_id
+ */
+function pi_activity_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'pi_activity_node_form')
+	{
+		$form['menu']['#weight'] = 3;
+	}
 }
 
 
@@ -788,13 +809,15 @@ function pi_activity_form_submit($form, &$form_state)
 
 
 /**
+ * hook_load from Drupal API 
  * Returns the activity_object from pi_activity table - used in the activity menu
- * @param int $activity_id the activity ID
+ * CHANGED FOR ACTIVITY_NODE VERSION
+ * @param objecy (node) $node
  * @return object from db_fetch_object() for pi_activity table
  */
-function pi_activity_load($activity_id)
+function pi_activity_load($node)
 {
-	$activity = load_activity($activity_id);
+	$activity = load_activity($node->nid);
 	return $activity;
 }
 
@@ -1274,7 +1297,7 @@ function set_node_function_of_activity_type($inquiry_id, $activity_type, $uid, $
  */
 function load_activity($activity_id)
 {
-	$query = "SELECT * FROM {pi_activity} WHERE activity_id = %d";
+	$query = "SELECT * FROM {pi_activity} WHERE nid = %d";
 	$activity = db_fetch_object(db_query($query, $activity_id));
 	return $activity;
 }

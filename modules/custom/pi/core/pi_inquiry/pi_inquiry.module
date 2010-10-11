@@ -60,23 +60,17 @@ function pi_inquiry_form($node) {
 	// Get metadata for the node type which is defined in pi_inquiry_info()
 	$type = node_get_types('type', $node);
 
-	if ($type->has_title)
-	{
-		$form['title'] = array(
-			'#type' => 'textfield',
-			'#title' => check_plain($type->title_label),
-			'#required' => TRUE,
-			'#default_value' => $node->title,
-		);
-	}
-
-	if ($type->has_body)
-	{
-		$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-		$form['body_field']['body']['#rows'] = 6;
-		$form['body_field']['teaser_include']['#access'] = FALSE;
-	}
-
+	$form['title'] = array(
+		'#type' => 'textfield',
+		'#title' => check_plain($type->title_label),
+		'#required' => TRUE,
+		'#default_value' => $node->title,
+	);
+	
+	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
+	$form['body_field']['body']['#rows'] = 6;
+	$form['body_field']['teaser_include']['#access'] = FALSE;
+	
 	$form['layout'] = array(
 		'#type' => 'select',
 		'#title' => t('Layout'),
@@ -102,7 +96,7 @@ function pi_inquiry_form($node) {
 /**
  * hook_form_alter - changes the form to change it from default node layout
  */
-function pi_inquiry_form_alter(&$form, $form_state, $form_id) {
+function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
 	if($form_id == 'pi_inquiry_node_form')
 	{
 		$form['menu']['#weight'] = 3;
