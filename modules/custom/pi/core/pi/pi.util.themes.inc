@@ -14,22 +14,24 @@
  */
 function theme_pi_util_form_elements_float($form)
 {
-	$output = '';
-	$output .= '<div>';
-	
-	$field_content = '';
-	foreach(element_children($form) as $stage_element)
-	{
-		$field_content .= "<div style='float:left;margin-right:8px;'>";
-		$field_content .= drupal_render($form[$stage_element]);
-		$field_content .= "</div>\n";		
-	}
-	$output .= $field_content;
-	
-	$output .= drupal_render($form);
-	
-	$output .= "</div>\n";
-	return $output;	
+  $output = '';
+  $output .= "<div>";
+
+  $field_content = "<div style='clear:right;'>";
+  foreach(element_children($form) as $stage_element)
+  {
+    $field_content .= "<div style='float:left;margin-right:8px;'>";
+    $field_content .= drupal_render($form[$stage_element]);
+    $field_content .= "</div>\n";
+  }
+  $field_content .= "</div>\n";
+  
+  $output .= $field_content;
+
+  $output .= drupal_render($form);
+
+  $output .= "</div>\n";
+  return $output;
 }
 
 ?>
