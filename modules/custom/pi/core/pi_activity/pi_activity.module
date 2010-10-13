@@ -13,7 +13,7 @@ function pi_activity_node_info()
 {
   return array(
   	'pi_activity' => array(
-      'name' => t('nQuire activity description'), // Required.
+      'name' => t('Inquiry Activity'), // Required.
       'module' => 'pi_activity',  // Required.
       'description' => t('Activities are plans for work that students do within nQuire'), // Required.
       'has_title' => TRUE,
@@ -281,17 +281,17 @@ function pi_activity_form($node) {
     '#suffix' => '</div>'  
   );
 
-  $form['activity_phases_stages']['phase_nid'] = pi_activity_form_generate_phase_select($inquiry_nid_default_value, $phase_nid_default_value);
+  $form['activity_phases_stages']['phase_nid'] = _pi_activity_form_generate_phase_select($inquiry_nid_default_value, $phase_nid_default_value);
 
   $stages_default_value = array();
-  $form['activity_phases_stages']['stages'] = pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
+  $form['activity_phases_stages']['stages'] = _pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 
 
   /* Now the activity inquiry/phase/stages are decided get the rest of the details, title, type, description, etc */
   $form['title'] = array(
     '#type' => 'textfield',
     '#title' => check_plain($type->title_label),
-    '#weight' => 1,
+    '#weight' => -9,
     '#description' => t('This is the title of the activity that will appear as the activity link in the phase view.'),
     '#required' => TRUE,
     '#default_value' => $node->title,
@@ -319,14 +319,14 @@ function pi_activity_form($node) {
     '#title' => t('Activity Type'),
     '#required' => true,
     '#description' => t('Choose the type of activity you want to place into the inquiry from this list.'),
-    '#weight' => 2,
+    '#weight' => -9,
     '#options' => $node_type_options,
     '#default_value' => $node->activity_type,
     '#allowed_activity_types' => $allowed_activity_types,
   );
 
   $form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-  $form['body_field']['#weight'] = 3;
+  $form['body_field']['#weight'] = -9;
   $form['body_field']['#description'] = t('For some activity types the description will be shown at the top of the page (for example in the Hypothesis activity). Enter it here.');
   $form['body_field']['body']['#rows'] = 6;
   $form['body_field']['teaser_include']['#access'] = FALSE;
@@ -335,7 +335,7 @@ function pi_activity_form($node) {
   	'#type' => 'select',
   	'#title' => t('Node Type'),
   	'#required' => true,
-  	'#weight' => 6,
+  	'#weight' => -8,
   	'#options' => $node_type_options,
   	'#default_value' => $node->node_type,
   	'#description' => t('Some activities will create content of different types, but unless you know otherwise choose the same as the Activity Type.')
@@ -503,8 +503,7 @@ function pi_activity_form($node) {
 function pi_activity_form_alter(&$form, &$form_state, $form_id) {
   if($form_id=='pi_activity_node_form')
   {
-    $form['menu']['#weight'] = 150;
-    pi_debug_message('test');
+// 	pi_debug_message($form['body_field']);
   }
 }
 
@@ -516,7 +515,7 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
  * @param uint $inquiry_nid nid of the inquiry to show generate boxes for or 'none' for blank
  * @return array describing the checkboxes form element
  */
-function pi_activity_form_generate_phase_select($inquiry_nid, $default_value='none')
+function _pi_activity_form_generate_phase_select($inquiry_nid, $default_value='none')
 {
   // Based on the selection above generate the select boxes for phases
   $phase_select_options = array('none' => t('Select the phase for this activity...'));
@@ -556,7 +555,7 @@ function pi_activity_form_generate_phase_select($inquiry_nid, $default_value='no
  * @param uint $inquiry_nid nid of the inquiry to show generate boxes for or 'none' for blank
  * @return array describing the checkboxes form element
  */
-function pi_activity_form_generate_stage_select($inquiry_nid, $default_values=array())
+function _pi_activity_form_generate_stage_select($inquiry_nid, $default_values=array())
 {
   $elements_to_return = array(
     '#type' => 'fieldset',
