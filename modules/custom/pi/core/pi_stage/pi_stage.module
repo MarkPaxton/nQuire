@@ -59,7 +59,7 @@ function pi_stage_access($op, $node, $account) {
  * @param $node
  * @param $form_state
  */
-function pi_stage_form(&$node, &$form_state) {
+function pi_stage_form(&$node, $form_state) {
 	// Get metadata for the node type which is defined in pi_stage_info()
 	$type = node_get_types('type', $node);
 
@@ -238,26 +238,22 @@ function pi_stage_form_generate_phase_checkboxes($node_stage_phases, $inquiry_ni
  * hook_form_alter - changes the form to change it from default node layout
  */
 function pi_stage_form_pi_stage_node_form_alter(&$form, &$form_state) {
-	pi_debug_message("node form alter form state");
-	
-	pi_debug_message($form_state);
-
-	$form['menu']['#weight'] = 4;
-		if (isset($form_state['post']))
-		{
-			ahah_helper_register($form, $form_state);
-			if ($form_state['submitted'])
-			{
-				$form['stage_phases']['#prefix'] = '';
-				$form['stage_phases']['#suffix'] = '';
-			}
-		}
-		// ISSUE 2: content cannot be saved by another user
-		/**
-		 * @TODO: Figure out the main cause why this happens. It has something
-		 * to do with staying on the node form instead of redirecting to the view.
-		 **/
-		$form['changed']['#default_value'] = $_SERVER['REQUEST_TIME'];
+  $form['menu']['#weight'] = 4;
+  if (isset($form_state['post']))
+  {
+    ahah_helper_register($form, $form_state);
+    if ($form_state['submitted'])
+    {
+      $form['stage_phases']['#prefix'] = '';
+      $form['stage_phases']['#suffix'] = '';
+    }
+  }
+  // ISSUE 2: content cannot be saved by another user
+  /**
+  * @TODO: Figure out the main cause why this happens. It has something
+  * to do with staying on the node form instead of redirecting to the view.
+  **/
+  $form['changed']['#default_value'] = $_SERVER['REQUEST_TIME'];
 }
 
 
