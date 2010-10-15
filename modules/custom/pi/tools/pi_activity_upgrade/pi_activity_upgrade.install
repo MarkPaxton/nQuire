@@ -1,0 +1,178 @@
+<?php
+
+/**
+ * Implementation of hook_install().
+ */
+function pi_activity_upgrade_install() {
+	// Create new table
+	drupal_install_schema('pi_activity_upgrade');
+	// This creates the new nodes and transfers the settings...
+	pi_activity_upgrade_execute();
+	// Finally drop the old table rename the new table
+	//@todo CODE 
+	db_query('RENAME TABLE `pi_activity_upgrade`  TO `pi_activity`');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function pi_activity_upgrade_uninstall() {
+  // You can't go back!
+}
+
+/**
+ * Implementation of hook_schema().
+ */
+function pi_activity_upgrade_schema()
+{
+  $schema = array();
+  $schema['pi_activity_upgrade'] = array(
+    'description' => 'PI Activity.',
+    'fields' => array(
+	  'nid' => array(
+        'description' => 'Activity node id, used to be activity_id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+	  'vid' => array(
+        'description' => 'Activity node id, used to be activity_id',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0
+      ),
+      'activity_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Activity type - category of activity e.g. data collection.'
+      ),
+      'node_type' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Node type - content type of a node created/used in an activity.'
+      ),
+      'parameters' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+        'size' => 'big',
+        'description' => 'Parameters needed to create/use a node in an activity (optional).'
+      ),
+      'destination' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'destination - form destination page after submission e.g. phase, self.'
+      ),
+      'audience' => array(
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.'
+      )
+    ),
+    'primary key' => array('nid', 'vid'),
+    'indexes' => array(
+      'nid' => array('nid'), 
+      'vid' => array('vid'), 
+    'activity_type' => array('activity_type')
+    )
+  );
+  return $schema;
+}
+
+function pi_activity_upgrade_execute()
+{
+  $new_node_ids = array();
+  
+  $node_count = 0;
+  $result = db_query('SELECT * FROM {pi_activity}');
+  while($row = db_fetch_array($result))
+  {
+    $node_count++;
+    $activity_id = $row['activity_id'];
+    $new_node = pi_activity_upgrade_covert_to_node($row);
+    node_save($new_node);
+    $new_node_id = $new_node->nid;
+    $new_node_ids[$activity_id] = $new_node_id;
+  }
+  drupal_set_message("Total activities to change $node_count...");
+
+  $tables_and_columns_to_change = array(
+    'pi_activity_actor' => 'activity_id',  
+    'pi_activity_enter_focus' => 'activity_id',  
+    'pi_activity_leave_focus' => 'activity_id',  
+    'pi_activity_node' => 'activity_id',  
+    'pi_activity_preference' => 'show_activity',  
+    'pi_activity_status' => 'activity_id',  
+    'pi_inquiry_grouping' => 'activity_id',  
+    'pi_stage_phase_activity' => 'activity_id',  
+  );
+  
+  foreach($tables_and_columns_to_change as $table => $column)
+  {
+     pi_activity_upgrade_copy_update_and_replace_table($table, $column, $new_node_ids);
+     drupal_set_message("Updated $table[$column]");
+  }
+}
+
+function pi_activity_upgrade_covert_to_node($activity)
+{
+  $node = new stdClass();
+  $node->type = 'pi_activity';
+  
+  $rows_to_properties = array(
+    'name' => 'title',
+    'description' => 'body',
+	'activity_type' => 'activity_type',
+	'node_type' => 'node_type',  
+    'parameters' => 'parameters',
+    'destination' => 'destination',
+    'audience' => 'audience'
+  );  
+
+  foreach($rows_to_properties as $row => $property)
+  {
+    $node->$property = $activity[$row];
+  }
+  return $node;
+}
+
+function pi_activity_upgrade_copy_update_and_replace_table($table_name, $column_name, $new_node_ids)
+{
+  //Since activity_id and new nids may over lapyou have to move data from one table to another instead
+  // of changing on mass
+  db_query("CREATE TABLE '%s' LIKE '%s'", $table_name . '_tmp', $table_name);
+  //get the coulmn names to copy data using
+  $rows = db_query("SELECT * FROM {%s}", $table_name);
+  if(is_array($rows))
+  {
+    foreach($new_node_ids as $activity_id => $node_id)
+    {
+      pi_activity_upgrade_copy_update_one_activity_id($table_name, array_keys($rows), $column_name, $activity_id, $node_id);
+    }
+  }
+  // now replace all the changed rows...
+  db_query('REPLACE INTO {%s} SELECT * FROM {%s}', $table_name, $table_name . '_tmp');
+  // and drop the temp table
+  db_query('DROP TABLE {%s}', $table_name . '_tmp');
+}
+
+function pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_names, $id_column_name, $activity_id, $node_id)
+{
+  $columns_and_new_values = array_combine($column_names, $column_names);
+  $columns_and_new_values[$id_column_name] = $node_id;
+  
+  $query = "INSERT INTO {%s} . (" . implode($column_names, ', ') . ") " .
+  	" SELECT (" . implode($columns_and_new_values, ', ') . ") FROM {%s} WHERE `%s` = %d";
+  db_query($query, $table_name . '_tmp', $table_name, $id_column_name, $activity_id);
+}
+
+?>
