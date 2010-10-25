@@ -36,10 +36,174 @@ function pi_activity_uninstall() {
 /**
  * Implementation of hook_schema().
  */
-function pi_activity_schema()
+function pi_activity_update_6000()
 {
+  //Get the new schema definition and make sure cache is updated
+  
+  $schema['pi_activity'] = drupal_get_schema('pi_activity', true);
+  $schema['pi_activity_stage_state'] =  drupal_get_schema('pi_activity_stage_state', true);
+  
+  $results = array();
+  db_create_table($results, 'pi_activity_stage_state', $schema['pi_activity_stage_state'] );
+  db_rename_table($results, 'pi_activity', 'pi_activity_old');
+  db_create_table($results, 'pi_activity', $schema['pi_activity'] );
+  _pi_activity_upgrade_execute();
+  db_drop_table($results, 'pi_activity_actor');
+  db_drop_table($results, 'pi_stage_phase_activity');
+  //@todo drop pi_activity_node.inquiry_id
+  return $results;
+}
+
+function _pi_activity_upgrade_execute()
+{
+  $new_node_ids = array();
+  
+  $node_count = 0;
+  $result = db_query('SELECT * FROM {pi_activity_old} LIMIT 10');
+  while($row = db_fetch_array($result))
+  {
+    $node_count++;
+    $activity_id = $row['activity_id'];
+
+    $new_node = _pi_activity_upgrade_covert_to_node($row);
+    pi_debug_message($new_node);
+    node_save($new_node);
+    $new_node_id = $new_node->nid;
+    $new_node_ids[$activity_id] = $new_node_id;
+  }
+  drupal_set_message("Total activities to change $node_count...");
+
+  $tables_and_columns_to_change = array(
+    'pi_activity_enter_focus' => 'activity_id',  
+    'pi_activity_leave_focus' => 'activity_id',  
+    'pi_activity_node' => 'activity_id',  
+    'pi_activity_preference' => 'show_activity',  
+    'pi_activity_status' => 'activity_id',  
+    'pi_inquiry_grouping' => 'activity_id',  
+  );
+  
+  foreach($tables_and_columns_to_change as $table => $column)
+  {
+     _pi_activity_upgrade_copy_update_and_replace_table($table, $column, $new_node_ids);
+     drupal_set_message("Updated $table [$column]");
+  }
+}
+
+
+/**
+ * 
+ * this function converts the activity data in pi_activity, pi_activity_actor, and pi_stage_phase_activity to
+ * a node, with the necessary fields for it to be saved in the new format
+ * The new format consolidates pi_activity_actor into the pi_activity table, and replaces pi_stage_phase_activity with
+ * pi_activity_stage_state.  This table contains a desired state for an activity in the stage, to be set when switching stages
+ * but individual groups will have their own activity states set using the teacher orchestration tools 
+ * @param array $activity pi_activity database row, in 'original' format
+ */
+function _pi_activity_upgrade_covert_to_node($activity)
+{
+  $node = new stdClass();
+  $node->type = 'pi_activity';
+
+  $rows_to_properties = array(
+    'name' => 'title',
+    'description' => 'body',
+	'activity_type' => 'activity_type',
+	'node_type' => 'node_type',  
+    'parameters' => 'parameters',
+    'destination' => 'destination',
+  );  
+
+  foreach($rows_to_properties as $row => $property)
+  {
+    $node->$property = $activity[$row];
+  }
+
+  $node->selects['audience'] = $activity['audience'];
+  
+  // Find the actor for the activity and add it to the new table schema 
+  // only get the first actor in the database, since multiple actors doesn't make sense in the system now
+  $actor_result = db_query("SELECT * FROM {pi_activity_actor} WHERE `activity_id` = %d LIMIT 1", $row['activity_id']);
+  if($actor_result!=NULL)
+  {
+    $actor_row = db_fetch_object($actor_result);
+    $node->selects['gid'] = $actor_result->gid;
+  }
+  else
+  {
+    $node->selects['gid'] = NULL;
+  }
+
+  // Find the stage associated with the activity and 
+  // add it directly to the pi_activity table for the new schema
+  //again only use the first phase found as activities can only belong to one phase
+  $phase_result = db_query("SELECT DISTINCT {pi_stage_phase}.`phase_id` FROM {pi_stage_phase_activity} " .
+      "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.`psp_id` = {pi_stage_phase_activity}.`psp_id` " .
+      "WHERE {pi_stage_phase_activity}.`activity_id` = %d LIMIT 1", $row['activity_id']);
+  if($phase_result!=NULL)
+  {
+    $phase_nid_row = db_fetch_array($phase_result);
+    $node->activity_phases_stages['phase_nid'] = $phase_nid_row['phase_id'];
+    
+    // Assuming the activity doeds belong to a phase, find the corresponding stage states for the activity
+    // and map them to the new schema
+    $node->activity_phases_stages['stages']['stage_select'] = array();
+    
+    $stage_result = db_query("SELECT DISTINCT {pi_stage_phase}.`stage_id` FROM {pi_stage_phase_activity} " .
+        "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.`psp_id` = {pi_stage_phase_activity}.`psp_id` " .
+        "WHERE ( {pi_stage_phase_activity}.`activity_id` = %d ) " .
+        "AND ({pi_stage_phase}.`phase_id` = %d)", $row['activity_id'], $phase_nid_row['phase_id']);
+    
+    if($stage_result!=NULL)
+    {
+      while($row=db_fetch_array($stage_result))
+      {
+        $node->activity_phases_stages['stages']['stage_select'][$row['stage_id']] = TRUE;
+      }
+    }    
+  }
+  else
+  {
+    $node->activity_phases_stages['phase_nid'] = NULL;
+    $node->activity_phases_stages['stages']['stage_select'] = array();    
+  }  
+  
+  return $node;
+}
+
+function _pi_activity_upgrade_copy_update_and_replace_table($table_name, $column_name, $new_node_ids)
+{
+  //Since activity_id and new nids may over lapyou have to move data from one table to another instead
+  // of changing on mass
+  db_query("CREATE TABLE {%s} LIKE {%s}", $table_name . '_tmp', $table_name);
+  //get the coulmn names to copy data using
+  $rows = db_query("SELECT * FROM {%s}", $table_name);
+  if(is_array($rows))
+  {
+    foreach($new_node_ids as $activity_id => $node_id)
+    {
+      _pi_activity_upgrade_copy_update_one_activity_id($table_name, array_keys($rows), $column_name, $activity_id, $node_id);
+    }
+  }
+  // now replace all the changed rows...
+  db_query('REPLACE INTO {%s} SELECT * FROM {%s}', $table_name, $table_name . '_tmp');
+  // and drop the temp table
+  db_query('DROP TABLE {%s}', $table_name . '_tmp');
+}
+
+function _pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_names, $id_column_name, $activity_id, $node_id)
+{
+  $columns_and_new_values = array_combine($column_names, $column_names);
+  $columns_and_new_values[$id_column_name] = $node_id;
+  
+  $query = "INSERT INTO {%s} . (" . implode($column_names, ', ') . ") " .
+  	" SELECT (" . implode($columns_and_new_values, ', ') . ") FROM {%s} WHERE `%s` = %d";
+  db_query($query, $table_name . '_tmp', $table_name, $id_column_name, $activity_id);
+}
+
+
+function pi_activity_schema() {
   $schema = array();
-  $schema['pi_activity'] = array(
+   $schema['pi_activity'] = array(
     'description' => 'PI Activity.',
     'fields' => array(
 	  'nid' => array(
@@ -47,21 +211,18 @@ function pi_activity_schema()
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => 0
       ),
 	  'vid' => array(
         'description' => 'Activity node id, used to be activity_id',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => 0
       ),
       'phase_nid' => array(
         'description' => 'The phase this activity is associated with.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-        'default' => 0
       ),
       'activity_type' => array(
         'type' => 'varchar',
@@ -81,6 +242,7 @@ function pi_activity_schema()
         'type' => 'text',
         'not null' => TRUE,
         'size' => 'big',
+        'default' => '',
         'description' => 'Parameters needed to create/use a node in an activity (optional).'
       ),
       'destination_after' => array(
@@ -94,177 +256,62 @@ function pi_activity_schema()
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
-        'default' => '',
         'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.'
-      )
+      ),
+      'actor' => array(
+        'description' => 'og group nid of the actor group',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
     ),
     'primary key' => array('nid', 'vid'),
     'indexes' => array(
       'nid' => array('nid'), 
-      'vid' => array('vid'), 
-    'activity_type' => array('activity_type')
+      'vid' => array('vid'),
+      'phase_nid' => array('phase_nid'), 
+      'activity_type' => array('activity_type'),
+      'actor' => array('actor')
     )
   );
-  return $schema;
-}
-
-
-function pi_activity_schema_full() {
-	
-	$schema = array();
-/* old chema for non-node pi_activity	
-	$schema['pi_activity'] = array(
-    'description' => 'PI Activity.',
+  $schema['pi_activity_stage_state'] = array(
+    'description' => 'State of an activity in a particular stage',
     'fields' => array(
-		'activity_id' => array(
-        	'type' => 'serial',
-        	'unsigned' => TRUE,
-        	'not null' => TRUE,
-       	 	'description' => 'Primary Key: Unique category ID.'	),
-      	'name' => array(
-			'type' => 'varchar',
-			'length' => 255,
-			'not null' => TRUE,
-			'default' => '',
-			'description' => 'Phase name.' ),
-      	'description' => array(
-			'type' => 'text',
-			'not null' => TRUE,
-			'size' => 'big',
-			'description' => 'Phase description.' ),
-      	'activity_type' => array(
-			'type' => 'varchar',
-			'length' => 255,
-			'not null' => TRUE,
-			'default' => '',
-			'description' => 'Activity type - category of activity e.g. data collection.' ),
-      	'node_type' => array(
-			'type' => 'varchar',
-			'length' => 255,
-			'not null' => TRUE,
-			'default' => '',
-			'description' => 'Node type - content type of a node created/used in an activity.' ),
-      	'parameters' => array(
-			'type' => 'text',
-			'not null' => TRUE,
-			'size' => 'big',
-			'description' => 'Parameters needed to create/use a node in an activity (optional).' ),
-      	'destination' => array(
-			'type' => 'varchar',
-			'length' => 255,
-			'not null' => TRUE,
-			'default' => '',
-			'description' => 'destination - form destination page after submission e.g. phase, self.' ),
-      	'audience' => array(
-			'type' => 'varchar',
-			'length' => 255,
-			'not null' => TRUE,
-			'default' => '',
-			'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.' ) ),
-	'primary key' => array('activity_id'),
-	'indexes' => array(	'activity_type' => array('activity_type') )	
-	);*/
-
-  $schema['pi_activity'] = array(
-    'description' => 'PI Activity.',
-    'fields' => array(
-	  'nid' => array(
-        'description' => 'Activity node id, used to be activity_id',
+      'pass_id' => array(
+        'description' => 'Primary key: Id column for this table',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'activity_nid' => array(
+        'description' => 'Activity node id for this stage-state definition',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0
       ),
-	  'vid' => array(
-        'description' => 'Activity node id, used to be activity_id',
+	  'stage_nid' => array(
+        'description' => 'Stage node id for this stage-state definition',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0
-      ),
-      'activity_type' => array(
+      ),      
+      'stage_state' => array(
         'type' => 'varchar',
-        'length' => 255,
+        'length' => 64,
         'not null' => TRUE,
-        'default' => '',
-        'description' => 'Activity type - category of activity e.g. data collection.'
-      ),
-      'node_type' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-        'description' => 'Node type - content type of a node created/used in an activity.'
-      ),
-      'parameters' => array(
-        'type' => 'text',
-        'not null' => TRUE,
-        'size' => 'big',
-        'description' => 'Parameters needed to create/use a node in an activity (optional).'
-      ),
-      'destination' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-        'description' => 'destination - form destination page after submission e.g. phase, self.'
-      ),
-      'audience' => array(
-        'type' => 'varchar',
-        'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-        'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.'
+        'default' => 'shown',
+        'description' => 'Activity state: the visible state of the activity in this stage'
       )
     ),
-    'primary key' => array('nid', 'vid'),
+    'primary key' => array('pass_id'),
     'indexes' => array(
-      'nid' => array('nid'), 
-      'activity_type' => array('activity_type')
+      'activity_id' => array('activity_nid'), 
+      'stage_nid' => array('stage_nid'), 
     )
   );
-	
-	$schema['pi_activity_actor'] = array(
-    'description' => 'PI activity actor',
-	'fields' =>	array(	
-		'paa_id' =>	array(
-			'type' => 'serial',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-	 		'description' => '' ),
-		'inquiry_id' => array(		
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-	 		'description' => '' ),
-		'activity_id' => array(		
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-	 		'description' => '' ),
-		'uid' => array(
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-			'description' => 'User id.' ),
-		'gid' => array(
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-			'description' => 'Group id.' )	),
-	'primary key' =>	array(	'paa_id' ),
-    'indexes' => 	array(	'inquiry_id' => array('inquiry_id'),
-      						'activity_id' => array('activity_id'),
-							'uid' => array('uid'),
-							'gid' => array('gid') 	)
-	);
-	
-	$schema['pi_activity_enter_focus'] = array(
+  $schema['pi_activity_enter_focus'] = array(
 	'description' => 'PI activity enter focus',
 	'fields' =>	array(	
 		'paef_id' => array(
