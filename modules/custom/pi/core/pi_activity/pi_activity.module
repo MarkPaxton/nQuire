@@ -265,7 +265,7 @@ function pi_activity_form(&$node, $form_state) {
     '#type' => 'select',
     '#title' => t('Inquiry for stage'),
     '#required' => TRUE,
-    '#weight' => -10,
+    '#weight' => -20,
     '#options' => $inquiry_options,
     '#allowed_inquiry_nids' => $inquiry_nids,
     '#default_value' => $inquiry_nid_default_value,
@@ -293,7 +293,7 @@ function pi_activity_form(&$node, $form_state) {
 
   $form['activity_phases_stages'] = array(
     '#tree' => true,
-	'#weight' => -10,
+	'#weight' => -9,
     '#prefix' => "<div id='activity-phases-stages-wrapper'>",
     '#suffix' => '</div>'  
   );
@@ -301,6 +301,15 @@ function pi_activity_form(&$node, $form_state) {
   $form['activity_phases_stages']['phase_nid'] = _pi_activity_form_generate_phase_select($inquiry_nid_default_value, $node->phase_nid);
 
   $stages_default_value = array();
+  if(is_array($form_state['storage']['activity_phases_stages']['stages']))
+  {
+    $stages_default_value = $form['storage']['activity_phases_stages']['stages'];
+  }
+  else
+  {
+    $stages_default_value = $node->activity_phases_stages['stages'];   
+  }
+  pi_debug_message($node->activity_phases_stages['stages']);
   $form['activity_phases_stages']['stages'] = _pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 
 
@@ -308,7 +317,7 @@ function pi_activity_form(&$node, $form_state) {
   $form['title'] = array(
     '#type' => 'textfield',
     '#title' => check_plain($type->title_label),
-    '#weight' => -9,
+    '#weight' => -8,
     '#description' => t('This is the title of the activity that will appear as the activity link in the phase view.'),
     '#required' => TRUE,
     '#default_value' => $node->title,
@@ -336,14 +345,14 @@ function pi_activity_form(&$node, $form_state) {
     '#title' => t('Activity Type'),
     '#required' => true,
     '#description' => t('Choose the type of activity you want to place into the inquiry from this list.'),
-    '#weight' => -9,
+    '#weight' => -7,
     '#options' => $node_type_options,
     '#default_value' => $node->activity_type,
     '#allowed_activity_types' => $allowed_activity_types,
   );
 
   $form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-  $form['body_field']['#weight'] = -9;
+  $form['body_field']['#weight'] = -6;
   $form['body_field']['#description'] = t('For some activity types the description will be shown at the top of the page (for example in the Hypothesis activity). Enter it here.');
   $form['body_field']['body']['#rows'] = 6;
   $form['body_field']['teaser_include']['#access'] = FALSE;
@@ -404,12 +413,21 @@ function pi_activity_form(&$node, $form_state) {
     'multiclass' => t('Share with multiclass')
     );
 
-    $form['groups']['selects']['audience'] = array(
+    
+  if(isset($form_state['storage']['selects']['audience']))
+  {
+    $default_audience = $form_state['storage']['selects']['audience'];
+  }
+  else
+  {
+    $default_audience = $node->audience;
+  }
+  $form['groups']['selects']['audience'] = array(
     '#type' => 'select',
     '#title' => t('Activity Audience'),
     '#weight' => 1,
     '#options' => $activity_audience_types,
-    '#default_value' => $result->audience,
+    '#default_value' => $default_audience,
     '#prefix' => "<div style='min-height:40px;'>",
     '#suffix' => '</div>',
     '#ahah' => array(
@@ -418,95 +436,104 @@ function pi_activity_form(&$node, $form_state) {
     ),
     '#prefix' => "<div style='min-height:40px;'>",
     '#suffix' => '</div>'		
-    );
+  );
 
-    $form['groups']['selects']['gid'] = array(
-	  '#type' => 'select',
-	  '#title' => t('Activity Group'),
-	  '#weight' => 2,
-	  '#options' => $group_options,
-	  '#default_value' => $node->gid,
-	  '#ahah' => array(
+  if(isset($form_state['storage']['selects']['gid']))
+  {
+    $default_actor = $form_state['storage']['selects']['gid'];
+  }
+  else
+  {
+    $default_actor = $node->actor;
+  }
+  
+  $form['groups']['selects']['gid'] = array(
+    '#type' => 'select',
+    '#title' => t('Activity Group'),
+    '#weight' => 2,
+    '#options' => $group_options,
+    '#default_value' => $default_actor,
+    '#ahah' => array(
       'path'    => ahah_helper_path(array('groups', 'info')),
       'wrapper' => 'groups-info-wrapper',
-	  ),
-	  '#prefix' => "<div style='min-height:40px;'>",
+    ),
+    '#prefix' => "<div style='min-height:40px;'>",
       '#suffix' => '</div>'		
-    );
+  );
 
-    $explanation_value = _pi_activity_explain_actor_and_audience($form_state['storage']['selects']['gid'], $form_state['storage']['selects']['audience']);
-    $form['groups']['info'] = array(
-      '#type' => 'item',
-      '#weight' => 3,
-      '#value' => $explanation_value,
-      '#prefix' => "<div id='groups-info-wrapper' style='clear:left;'>",
-      '#suffix' => '</div>'		
-    );
+  $explanation_value = _pi_activity_explain_actor_and_audience($default_actor, $default_audience);
+  $form['groups']['info'] = array(
+    '#type' => 'item',
+    '#weight' => 3,
+    '#value' => $explanation_value,
+    '#prefix' => "<div id='groups-info-wrapper' style='clear:left;'>",
+    '#suffix' => '</div>'		
+  );
 
 
-    $node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view',);
-    $form['node_function'] = array(
+  $node_function_options = array('add'=>'add','edit'=>'edit','view'=>'view',);
+  $form['node_function'] = array(
     '#type' => 'select',
     '#title' => t('Node Function'),
     '#weight' => 11,	
     '#options' => $node_function_options,
     '#default_value' => $node->node_function,
-    );
+  );
 
-    $visible_status_options = array(
+  $visible_status_options = array(
     'start'=>'start',
     'in_progress'=>'in_progress',
     'view'=>'view',
     'unavailable'=>'unavailable'
-    );
+  );
 
-    $form['visible_status'] = array(
+  $form['visible_status'] = array(
 	'#type' => 'select',
     '#title' => t('Visible Status'),
     '#options' => $visible_status_options,
     '#weight' => 12,
     '#default_value' => $result2->visible_status,
-    );
+  );
 
-    //nid options
-    $query = "SELECT nid, title, type FROM {node}";
-    $result = db_query($query);
-    $referenced_node_options = array();
-    //first is none -> is 0 as no nid is 0 they always start at 1
-    $referenced_node_options['none'] = 'none';
-    $max_string_length = 40;
-    while($referenced_node_option = db_fetch_object($result))
+  //nid options
+  $query = "SELECT nid, title, type FROM {node}";
+  $result = db_query($query);
+  $referenced_node_options = array();
+  //first is none -> is 0 as no nid is 0 they always start at 1
+  $referenced_node_options['none'] = 'none';
+  $max_string_length = 40;
+  while($referenced_node_option = db_fetch_object($result))
+  {
+    if(strlen($referenced_node_option->title) > $max_string_length)
     {
-      if(strlen($referenced_node_option->title) > $max_string_length)
-      {
-        $referenced_node_name = substr($referenced_node_option->title, 0, $max_string_length) . '...';
-      }
-      else
-      {
-        $referenced_node_name = $referenced_node_option->title;
-      }
-      $referenced_node_options[$referenced_node_option->nid] =  $referenced_node_name . ": " . $referenced_node_option->nid . " (" . $referenced_node_option->type . ")";
-    }
-
-    $query = "SELECT nid FROM {pi_activity_node} WHERE activity_id = %d";
-    $referenced_node = db_fetch_object(db_query($query, $node->nid));
-    if($referenced_node==NULL)
-    {
-      $referenced_node_id = 'none';
+      $referenced_node_name = substr($referenced_node_option->title, 0, $max_string_length) . '...';
     }
     else
     {
-      $referenced_node_id = $referenced_node->nid;
+      $referenced_node_name = $referenced_node_option->title;
     }
+    $referenced_node_options[$referenced_node_option->nid] =  $referenced_node_name . ": " . $referenced_node_option->nid . " (" . $referenced_node_option->type . ")";
+  }
 
-    $form['existing_nid'] = array(
+  $query = "SELECT nid FROM {pi_activity_node} WHERE activity_id = %d";
+  $referenced_node = db_fetch_object(db_query($query, $node->nid));
+  if($referenced_node==NULL)
+  {
+    $referenced_node_id = 'none';
+  }
+   else
+  {
+    $referenced_node_id = $referenced_node->nid;
+  }
+
+  $form['existing_nid'] = array(
     '#type' => 'select',
   	'#title' => t('Does The Activity Refer To An Existing Node? I.e. if you have selected view in view_type then to which node do you want to view?'),
     '#weight' => 13,
     '#options' => $referenced_node_options,
     '#default_value' => $referenced_node_id
-    );
-    return $form;
+  );
+  return $form;
 }
 
 
@@ -608,10 +635,14 @@ function _pi_activity_form_generate_stage_select($inquiry_nid, $default_values=a
     }
     else
     {
+      //pi_debug_message($default_values);  
       foreach ($stage_names as $stage_nid => $name)
       {
         $stage_options[$stage_nid] = $name;
-        $default_stage_options[$stage_nid] = (isset($default_values[$stage_nid]) ? $default_values[$stage_nid] : false );
+        if($default_values[$stage_nid]=='visible')
+        {
+          $default_stage_options[$stage_nid] = $stage_nid;
+        }
       }
       $description = t('The activity will only be visible to people in the selected stages.');
     }
@@ -841,27 +872,6 @@ function _pi_activity_explain_actor_and_audience($actor_gid, $audience_group_typ
 }
 
 /**
- *
- * Submit handler for the pi_activity_form
- * @param array $form
- * @param array $form_state
- */
-/*
- function pi_activity_form_submit($form, &$form_state)
- {
- $output = '';
- pi_debug_message($form_state);
- /*if($form_state['storage']['values']['selects']['gid'])
- {
-
- }
- */
-/*  $output="Test";
- return $output;
- }
- */
-
-/**
  * hook_load from Drupal API
  * Returns the activity_object from pi_activity table - used in the activity menu
  * CHANGED FOR ACTIVITY_NODE VERSION
@@ -875,12 +885,33 @@ function pi_activity_load($node)
   $activity = db_fetch_object($result);
   if ($activity!=NULL)
   {
+    //map activity_id to nid fgor backward compatability
     $activity->activity_id = &$activity->nid;
+    
+    // map destination_after to destination - using destination in forms overrides
+    // the form destination variable, and breaks  it, so this has to have a different name
+    // in the form
     if ($activity->destination!=NULL)
     {
-      $activity->destination = &$destination_after;
+      $activity->destination = &$activity->destination_after;
+    }
+    
+    //The constraints of the construction of the form mean that variable names are
+    // also in random places in the node object, so link them to sensible places too
+    $activity->activity_phases_stages['phase_nid'] = &$activity->phase_nid;
+    $activity->selects['audience'] = &$activity->audience;
+    $activity->selects['gid'] = &$activity->actor;
+    
+    //Now get the stage states:
+    $stages_result = _pi_activity_get_activity_stage_stages($node->nid);
+  
+    $activity->activity_phases_stages['stages'] = array();
+    foreach($stages_result as $stage_state_row)
+    {
+        $activity->activity_phases_stages['stages'][$stage_state_row->stage_nid] = $stage_state_row->stage_state;
     }
   }
+  
   else
   {
     drupal_set_message(t('Error: Activity data not found in pi_activity table'), 'error');
@@ -891,24 +922,112 @@ function pi_activity_load($node)
 function pi_activity_insert($node)
 {
   $pi_activity_row = _pi_activity_form_data_to_pi_activity_row($node);
-  pi_debug_message($pi_activity_row);
   $write_result = drupal_write_record('pi_activity', $pi_activity_row);
   if($write_result==FALSE)
   {
     drupal_set_message(t('Error saving new pi_activity data'), 'error');
   }
-
+  
   $selected_stages = array();
   foreach($node->activity_phases_stages['stages']['stage_select'] as $stage_nid => $selected)
   {
-    if($selected===TRUE)
+    if($selected!=0)
     {
       $selected_stages[$stage_nid] = 'visible';
     }
   }
+  
   foreach($selected_stages as $stage_nid => $stage_state)
   {
-    $pi_activity_stage_state = array('stage_nid'=>$stage_nid, 'stage_state' => $stage_state);
+    $pi_activity_stage_state = array('activity_nid'=>$node->nid, 'stage_nid'=>$stage_nid, 'stage_state' => $stage_state);
+    $write_result = drupal_write_record('pi_activity_stage_state', $pi_activity_stage_state);
+    if($write_result==FALSE)
+    {
+      drupal_set_message(
+        t('Error saving pi_activity stage state for stage !stage_nid',
+          array('!stage_nid' => $stage_nid)
+        ),
+        'error'
+      );
+    }       
+  }
+}
+
+/**
+ * 
+ * Drupal API hook_update() function for pi_activity
+ * @param $node
+ */
+function pi_activity_update($node)
+{
+  $activity_row_data = _pi_activity_form_data_to_pi_activity_row($node);
+  $update_result = drupal_write_record('pi_activity', $activity_row_data, array('nid', 'vid'));
+  if ($update_result == FALSE)
+  {
+    drupal_set_message('Error: Activity data not saved due to database problem; try saving again.', 'error');
+  }  
+  
+  // update associated pi_activity_stage_states
+  // get current ones; add new ones; delete old ones
+  
+  $existing_stage_states = _pi_activity_get_activity_stage_states($node->nid);
+  //make a list of stages and pass_ids
+  $stage_state_pass_ids = array();
+  foreach($existing_stage_states as $pass_id => $row)
+  {
+    $stage_state_pass_ids[$row['stage_nid']] = $pass_id;    
+  }
+  
+  $selected_stages = array();
+  $stage_states_to_add = array();
+  $stage_state_ids_to_remove = array();
+  
+  //Create a list of stage states to add and remove, by checking which ones exist already
+  // and by what is specified in the form
+  foreach($node->activity_phases_stages['stages']['stage_select'] as $stage_nid => $selected)
+  {
+    if($selected!=0)
+    {
+      //if a stage state is specified then set the state to visible - check if it the state is already
+      // set, if it is not already set then add it to the add list
+      $selected_stages[$stage_nid] = 'visible';
+      if(!array_key_exists($stage_nid, $stage_state_pass_ids) && !array_key_exists($stage_nid, $stage_states_to_add))
+      {
+        $stage_states_to_add[$stage_nid] = $selected_stages[$stage_nid];
+      }
+    }
+    else
+    {
+      // If the stage is not selected in the form, then check if a state is already set, and add it
+      // to the remove list if it is.
+      if(in_array($stage_nid, $stage_state_pass_ids) && !in_array($stage_nid, $stage_state_ids_to_remove))
+      {
+        $stage_state_ids_to_remove[$stage_nid] = $stage_state_pass_ids[$stage_nid];        
+      }
+    }
+  }
+  pi_debug_message($node->activity_phases_stages['stages']['stage_select']);
+  pi_debug_message($stage_state_pass_ids);
+  pi_debug_message('selected_stages');
+  pi_debug_message($selected_stages);
+  pi_debug_message('stage_states_to_add');
+  pi_debug_message($stage_states_to_add);
+  pi_debug_message('stage_state_ids_to_remove');
+  pi_debug_message($stage_state_ids_to_remove);
+  
+  //find any existing states for stages not given in the form and add them to the remove list
+  foreach($stage_state_pass_ids as $stage_nid => $pass_id)
+  {
+    if(!array_key_exists($stage_nid, $selected_stages) && !array_key_exists($stage_nid, $stage_state_ids_to_remove))
+    {
+      $stage_state_ids_to_remove[$stage_nid] = $pass_id;
+    }
+  }
+  
+  //Add only the non-exisitant state rows
+  foreach($stage_states_to_add as $stage_nid => $stage_state)
+  {
+    $pi_activity_stage_state = array('activity_nid'=>$node->nid, 'stage_nid'=>$stage_nid, 'stage_state' => $stage_state);
     $write_result = drupal_write_record('pi_activity_stage_state', $pi_activity_stage_state);
     if($write_result==FALSE)
     {
@@ -921,43 +1040,22 @@ function pi_activity_insert($node)
     }       
   }
   
-  //$stage_phase_ids = _pi_activity_form_get_pi_stage_phase_ids($selected_stages);
-  //$pi_stage_phase_activity_row = 
-}
-
-
-/**
- * 
- * Drupal API hook_update() function for pi_activity
- * @param $node
- */
-function pi_activity_update($node)
-{
-  $activity_row_data = _pi_activity_form_data_to_database_rows($node);
-  foreach($activity_row_data as $table => $rows)
+  // Remove all the unneeded state rows
+  foreach($stage_state_ids_to_remove as $pass_id)
   {
-    foreach($rows as $row)
-    {
-      $existing_key_fields = 
-      $update_result = drupal_write_record($table, $row); 
-    }
-  }
-  $current_stage_states = _pi_activity_get_activity_stage_states($node->nid);
-  if ($update_result == FALSE)
-  {
-    drupal_set_message('Error: Activity data not saved due to database problem; try saving again.', 'error');
+    db_query('DELETE FROM {pi_activity_stage_state} WHERE pass_id = %d', $pass_id);
   }
 }
 
 /**
  *
- * Take the data from $node provided by drupal API to and turn it into an array that can be saved using
+ * Take the data from $node provided by drupal API to and turn it into an object that can be saved using
  * drupal_write_record()
  * @param $node
  */
 function _pi_activity_form_data_to_pi_activity_row($node)
 {
-  $data_to_save = array();
+  $data_to_save = new StdClass();
   
   $property_to_column = array(
     'nid' => 'nid',
@@ -969,15 +1067,17 @@ function _pi_activity_form_data_to_pi_activity_row($node)
   );
   foreach($property_to_column as $column => $property)
   {
-    $data_to_save[$column] = $node->$property;
+    $data_to_save->$column = $node->$property;
   }
   
-  $data_to_save['phase_nid'] = $node->activity_phases_stages['phase_nid'];
-  $data_to_save['audience'] = $node->selects['audience'];
-  $data_to_save['actor'] = $node->selects['gid'];
+  $data_to_save->phase_nid = $node->activity_phases_stages['phase_nid'];
+  $data_to_save->audience = $node->selects['audience'];
+  $data_to_save->actor = $node->selects['gid'];
   
   return $data_to_save;
 }
+
+
 
 function pi_activity_delete(&$node)
 {
@@ -986,11 +1086,35 @@ function pi_activity_delete(&$node)
 
 /**
  * 
+ * Return an array of pi_activity_stage_states fior $nid
+ *  indexed by pass_id, filled with db_fetch_array() results:
+ *  array(pass_id => array(pass_id, stage_nid, activity_nid, stage_state)
+ * @param $nid id of node id of a valid activity
+ */
+function _pi_activity_get_activity_stage_stages($nid)
+{
+ //Now get the stage states:
+  $stage_states = array();
+  $stages_result = db_query('SELECT * FROM {pi_activity_stage_state} WHERE activity_nid = %d', $nid);
+  if($stages_result!=FALSE)
+  {
+    while($stage_state_row = db_fetch_array($stages_result))
+    {
+      $stage_states[$stage_state_row['pass_id']] = $stage_state_row;
+    }
+  }
+  return $stage_states;
+}
+
+
+/**
+ * 
  * Helper function to get pi_shtage_phase ids for inserting into 
  * pi_stage_phase_activity['psp_id'] column on activities
  * @param $selected_stages
  * @return array($nid) array of psp_ids 
  */
+//@todo delete me
 function _pi_activity_form_get_pi_stage_phase_ids($selected_phase, $selected_stages)
 {
   $return_data = array();
@@ -1058,7 +1182,7 @@ function _pi_activity_get_activity_stage_states($activity_nid)
   
   if($result!=FALSE)
   {
-    while($row = db_get_object($result))
+    while($row = db_fetch_array($result))
     {
       if(array_key_exists($row->stage_nid, $seen_stage_nids))
       {
