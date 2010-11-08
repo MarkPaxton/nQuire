@@ -681,63 +681,17 @@ function _pi_activity_form_generate_stage_select($inquiry_nid, $default_values=a
  */
 function _pi_activity_explain_actor_and_audience($actor_gid, $audience_group_type)
 {
-  $group_values = array(
-		'individual' => 0,
-		'group' => 1,
-		'class' => 2,
-		'multiclass' => 3
-  );
-  $group = node_load($actor_gid);
-
   if( ($group!=FALSE) && array_key_exists($audience_group_type, $group_values))
   {
-    $actor_group_type = pi_get_type_of_group($actor_gid);
+    $activity_setting = _pi_activity_get_actor_audience_type($actor_gid, $audience_group_type);
+    
+    $actor_group_type = pi_get_type_of_group($actor_gid);    
     $group_members = pi_get_members_of_group($actor_gid);
     $group_members_list = pi_group_get_name_list($actor_gid);
-
-    $setting_preview = array();
-
-    $audience_value = $group_values[$audience_group_type];
-    $actor_value = $group_values[$actor_group_type];
-
-    $activity_setting = NULL;
-
-    //This section sets up the type of explanation that is generated below in the switch
-    // statement.  It's easier to understand the input/outcomes here then sort out the
-    // explanations below.
-
-    //$audience_value == 0 (individual)
-    if ($audience_group_type=='individual')
-    {
-      // When individual audience is set, then it's an individual activity for everyone in
-      // the seleted actor group.
-      $activity_setting = 'done_as_individuals_in_group_not_shared';
-    }
-    elseif ($audience_value == $actor_value)
-    {
-      // If the actor group type is the same as the audience type then the activity is
-      // shared between all members of the actor group and only one activity content is generated
-      $activity_setting = 'done_as_single_group_not_shared';
-    }
-    elseif ($audience_value < $actor_value)
-    {
-      // When the audience is smaller than the actor group type, then all the
-      // groups of the audience type are given individual activities.
-      // for example all the groups within a class or multiclass.
-      $activity_setting = 'done_by_all_groups_in_larger_group_not_shared';
-    }
-    elseif ($audience_value > $actor_value)
-    {
-      // When the audience group type is larger than the actor group, then the
-      // actor group shares the generated content witht the members of the larger group
-      // and one item of generated for the actor group.
-      // for example a group shares one content item with a class,
-      // or a class shares one content item with a multiclass
-      $activity_setting = 'done_by_group_shared_with_larger_group';
-    }
-
-    // Now the type of activity actor/audience has been established, print the appropriate
-    // explanation messages.
+    
+    $setting_preview=array();
+      // Now the type of activity actor/audience has been established, print the appropriate
+      // explanation messages.
     switch($activity_setting)
     {
       case 'done_as_individuals_in_group_not_shared':
@@ -747,40 +701,40 @@ function _pi_activity_explain_actor_and_audience($actor_gid, $audience_group_typ
         array(
             '@group_type'=> $actor_group_type,
             '%group_name'=> $group->title
-        )
+          )
         );
         $setting_preview[] = t("Members of the @group_type are: %names",
         array(
             '@group_type'=> $actor_group_type,
             '%names' => $group_members_list
-        )
+          )
         );
         break;
-         
-      case 'done_as_single_group_not_shared':
-        $setting_explanation = t("This activity will be done as a %actor_group_type by %actor_group_type '%group_name'.",
-        array(
-            '%actor_group_type' => $actor_group_type,
-            '%group_name'=> $group->title
-        )
-        );
-        $setting_preview[] = t("One shared result for %group_name (%names).",
-        array(
-            '%group_name'=> $group->title,
-            '%names' => $group_members_list
-        )
-        );
-        break;
-      case 'done_by_all_groups_in_larger_group_not_shared':
-        // If audience is group then activity will be done as a group and shared within the specified audience group type
-        // All the groups of nquire group type 'group' within the selected group will do one item of content
-        $setting_explanation = t("The activity will be done by each @audience_group_type within the @group_type '%group_name'.",
-        array(
-            '@audience_group_type'=> $audience_group_type,
-            '@group_type'=> $actor_group_type,
-            '%group_name'=> $group->title,
-        )
-        );
+           
+        case 'done_as_single_group_not_shared':
+          $setting_explanation = t("This activity will be done as a %actor_group_type by %actor_group_type '%group_name'.",
+            array(
+                '%actor_group_type' => $actor_group_type,
+                '%group_name'=> $group->title
+            )
+          );
+          $setting_preview[] = t("One shared result for %group_name (%names).",
+            array(
+                '%group_name'=> $group->title,
+                '%names' => $group_members_list
+            )
+          );
+          break;
+        case 'done_by_all_groups_in_larger_group_not_shared':
+          // If audience is group then activity will be done as a group and shared within the specified audience group type
+          // All the groups of nquire group type 'group' within the selected group will do one item of content
+          $setting_explanation = t("The activity will be done by each @audience_group_type within the @group_type '%group_name'.",
+            array(
+                '@audience_group_type'=> $audience_group_type,
+                '@group_type'=> $actor_group_type,
+                '%group_name'=> $group->title,
+            )
+          );
         // Need to get all audience group within the hierarchy of the selected actor group.
         $associated_groups = pi_groups_get_associated_groups($actor_gid, $audience_group_type);
         $group_names = pi_util_get_names_from_nids($associated_groups);
@@ -915,7 +869,7 @@ function pi_activity_load($node)
     
     //Now get the default node function and visible status from the status table
     
-    $result = db_queryd("SELECT * from {pi_activity_status} WHERE activity_id = %d AND gid = %d",
+    $result = db_query("SELECT * from {pi_activity_status} WHERE activity_id = %d AND gid = %d",
       $node->nid, $activity->actor);
     while($row = db_fetch_array($result))
     {
@@ -999,7 +953,7 @@ function pi_activity_insert($node)
     }
   }
   
-  // Now update stagte_states
+  // Now set stage_states
   foreach($selected_stages as $stage_nid => $stage_state)
   {
     $pi_activity_stage_state = array('activity_nid'=>$node->nid, 'stage_nid'=>$stage_nid, 'stage_state' => $stage_state);
@@ -1015,9 +969,11 @@ function pi_activity_insert($node)
     }       
   }
   
-  // now update activity_status
-  // If it is a shared activity, then make a 'view' status for the share group
-  // otherwisese just make the standard activity status for the activity.
+  // now set activity_statuses - one for the main activity and one for the shared view modde part of
+  // activities
+  $activity_statuses_to_add = array();
+  
+  //Staert with the default status for all activity types
   $default_status = array(
     'activity_id'=>$node->nid,
     'uid' => NULL,
@@ -1025,17 +981,82 @@ function pi_activity_insert($node)
     'node_function' => $node->node_function,
     'visible_status' => $node->visible_status
   );
-  $result = druapl_write_record('pi_activity_status', $default_status);
-  if($result == FALSE)
+  
+  $activity_statuses_to_add[] = $default_status;
+  
+  // If it is a shared activity, then make a 'view' status for the share group
+  // otherwisese just make the standard activity status for the activity.  
+  $activity_actor_audience_result_type = _pi_activity_get_activity_actor_audience_result_type($node->actor, $node->audience); 
+  switch($activity_actor_audience_result_type)
   {
-    drupal_set_message(
-      t('Error saving pi_activity_status, node function !function, visible status !status)',
-        array('!function' => $node->node_function, '!status' => $node->visible_status)
-      ),
-      'error'
-    );
+    case 'done_as_individuals_in_group_not_shared':
+      //If audience is individual then everyone in the target group will create
+      // their own activity content and it wont be shared.
+      // do nothing - no view status needed for any other group
+      break;
+         
+    case 'done_as_single_group_not_shared':
+    // do nothing - no view status needed for any other group        
+    break;
+    case 'done_by_all_groups_in_larger_group_not_shared':
+      // If audience is group then activity will be done as a group and shared within the specified audience group type
+      // All the groups of nquire group type 'group' within the selected group will do one item of content
+      // Need to get all audience group within the hierarchy of the selected actor group.
+      // do nothing - no view status needed for any other group               
+    break;
+    case 'done_by_group_shared_with_larger_group':
+      $audience_id = pi_groups_get_associated_groups($actor_gid, $audience_group_type);
+      // There should only be one larger group, so if more than one is returned, there's a problem
+      // if 0 is returned then there is also a problem, but it's less bad as it means the parent hasn't
+      // been assigned, rather than it having 2 parents (that's a DB error!).
+      if(count($audience_id)==0)
+      {
+        drupal_set_message(t("Haven't set activity status to share the result of this activity as no associated group is defined for the actor group."), 'warning');
+      }
+      else
+      {
+        if(count($audience_id)>1)
+        {
+          drupal_set_message(t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type however there's more than one class associated with '%group_name' - please check the group hierarchy is set up correctly.",
+            array(
+                '@actor_group_type'=> $actor_group_type,
+                '%group_name'=> $group->title,
+                '@audience_group_type'=> $audience_group_type,
+            )), 'warning'
+          );
+        }
+        foreach($audience_id as $audience_nid)
+        {
+          $activity_statuses_to_add[] =  array(
+            'activity_id'=>$node->nid,
+            'uid' => NULL,
+            'gid' => $audience_nid,
+            'node_function' => 'view',
+            'visible_status' => 'view'
+          );
+        }
+      }        
+    break;
+    default:
+      //This bit should never be reached because the above options cover all eventualities!!
+    break;
+  }
+
+  foreach($activity_statuses_to_add as $status)
+  {
+    $result = druapl_write_record('pi_activity_status', $status);
+    if($result == FALSE)
+    {
+      drupal_set_message(
+        t('Error saving pi_activity_status, node function !function, visible status !status for group !gid',
+          array('!function' => $status['node_function'], '!status' => $sstatus['visible_status'], '!gid'=>$status['gid'])
+          ),
+        'error'
+      );
+    }
   }
   
+    
   // Finally the related node if necessary 
   if($node->existing_nid!='none')
   {
@@ -1140,9 +1161,21 @@ function pi_activity_update($node)
   }
   
   
-  // now update activity_status
-  // If it is a shared activity, then make a 'view' status for the share group
-  // otherwisese just make the standard activity status for the activity.
+  // now update activity_statuses - one for the main activity and one for the shared view modde part of
+  // activities
+  $existing_activity_statuses = array();
+  $result = db_query("SELECT * FROM {pi_activity_status} WHERE activity_id = %d", $node->nid);
+  if($result!=FALSE)
+  {
+    while($status_row = db_fetch_array($result))
+    {
+      $existing_activity_statuses[$status_row['gid']] = $status_row;
+    }
+  }
+  
+  $activity_statuses_to_add = array();
+  
+  //Staert with the default status for all activity types
   $default_status = array(
     'activity_id'=>$node->nid,
     'uid' => NULL,
@@ -1150,18 +1183,146 @@ function pi_activity_update($node)
     'node_function' => $node->node_function,
     'visible_status' => $node->visible_status
   );
-  $result = drupal_write_record('pi_activity_status', $default_status);
-  if($result == FALSE)
+  
+  $activity_statuses_to_add[] = $default_status;
+  
+  // If it is a shared activity, then make a 'view' status for the share group
+  // otherwisese just make the standard activity status for the activity.  
+  $activity_actor_audience_result_type = _pi_activity_get_activity_actor_audience_result_type($node->actor, $node->audience); 
+  switch($activity_actor_audience_result_type)
   {
-    drupal_set_message(
-      t('Error saving pi_activity_status, node function !function, visible status !status)',
-        array('!function' => $node->node_function, '!status' => $node->visible_status)
-      ),
+    case 'done_as_individuals_in_group_not_shared':
+      //If audience is individual then everyone in the target group will create
+      // their own activity content and it wont be shared.
+      // do nothing - no view status needed for any other group
+      break;
+         
+    case 'done_as_single_group_not_shared':
+    // do nothing - no view status needed for any other group        
+    break;
+    case 'done_by_all_groups_in_larger_group_not_shared':
+      // If audience is group then activity will be done as a group and shared within the specified audience group type
+      // All the groups of nquire group type 'group' within the selected group will do one item of content
+      // Need to get all audience group within the hierarchy of the selected actor group.
+      // do nothing - no view status needed for any other group               
+    break;
+    case 'done_by_group_shared_with_larger_group':
+      $audience_id = pi_groups_get_associated_groups($actor_gid, $audience_group_type);
+      // There should only be one larger group, so if more than one is returned, there's a problem
+      // if 0 is returned then there is also a problem, but it's less bad as it means the parent hasn't
+      // been assigned, rather than it having 2 parents (that's a DB error!).
+      if(count($audience_id)==0)
+      {
+        drupal_set_message(t("Haven't set activity status to share the result of this activity as no associated group is defined for the actor group."), 'warning');
+      }
+      else
+      {
+        if(count($audience_id)>1)
+        {
+          drupal_set_message(t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type however there's more than one class associated with '%group_name' - please check the group hierarchy is set up correctly.",
+            array(
+                '@actor_group_type'=> $actor_group_type,
+                '%group_name'=> $group->title,
+                '@audience_group_type'=> $audience_group_type,
+            )), 'warning'
+          );
+        }
+        foreach($audience_id as $audience_nid)
+        {
+          $activity_statuses_to_add[] =  array(
+            'activity_id'=>$node->nid,
+            'uid' => NULL,
+            'gid' => $audience_nid,
+            'node_function' => 'view',
+            'visible_status' => 'view'
+          );
+        }
+      }        
+    break;
+    default:
+      //This bit should never be reached because the above options cover all eventualities!!
+    break;
+  }
+
+  foreach($activity_statuses_to_add as $status)
+  {
+    // If one to add already exists then get the ID and add it to the lust for updating
+    if(array_key_exists($status['gid'], $existing_activity_statuses))
+    {
+      $status['pas_id'] = $existing_activity_statuses[$status['gid']]['pas_id'];
+      $activity_statuses_to_update[$status['pas_id']] = $status;      
+    }
+    
+    $result = druapl_write_record('pi_activity_status', $status);
+    if($result == FALSE)
+    {
+      drupal_set_message(
+        t('Error saving pi_activity_status, node function !function, visible status !status for group !gid',
+          array('!function' => $status['node_function'], '!status' => $sstatus['visible_status'], '!gid'=>$status['gid'])
+          ),
       'error'
-    );
+      );
+    }
+  }
+  
+  // Update any existing activity statuses that need to be updated
+  foreach($activity_status_to_update as $id => $status)
+  {
+    //checi it needs to be updating before doing anything...
+    if(($status['visible_status']!=$existing_activity_statuses[$status['gid']]['visible_status']) ||
+        ($status['node_function']!=$existing_activity_statuses[$status['gid']]['node_function']) )
+    {
+      $result = druapl_write_record('pi_activity_status', $status, $id);
+      if($result == FALSE)
+      {
+        drupal_set_message(
+          t('Error saving pi_activity_status, node function !function, visible status !status for group !gid',
+            array('!function' => $status['node_function'], '!status' => $sstatus['visible_status'], '!gid'=>$status['gid'])
+            ),
+        'error'
+        );
+      }  
+    }
+  }
+  
+  // If a status isn't to be updated, then remove it
+  foreach(array_keys($existing_activity_status) as $id)
+  {
+    if(!array_key_exists($id, $activity_status_to_update))
+    {
+      db_query('DELETE FROM {pi_activity_status} WHERE pas_id = %d', $id);
+    }    
   }
   
   // Finally the related node if necessary 
+  
+  // Check if there's an activity node with nid=0 - if so then update this
+  // Otherwise check if there's more than one activity node, if there is, then add the 0
+  // if there's only one activity node then
+  $result = db_query("SELECT * FROM {pi_activity_node} WHERE activity_id = %d ORDER BY nid", $node->nid);
+  $id_to_update = NULL;
+  if($result!=FALSE)
+  {
+    $activity_nodes = array();
+    while($row = db_fetch_array($result))
+    {
+      $activity_nodes[] = $row;
+    }
+    switch(count($activity_nodes))
+    {
+      case 0:
+        // id to update will be null and a node will be inserted
+      break;
+      case 1: 
+        // when 1 result is returned, this is the one to update     
+        $id_to_update = $activity_nodes[0]['pan_id'];   
+      break;    
+      default:
+        // if there's more than one activity_node id then do nothing as it's
+        // used in a different way
+      break;      
+    }   
+  }  
   if($node->existing_nid=='none')
   {
     $nid_to_write = 0; 
@@ -1171,19 +1332,24 @@ function pi_activity_update($node)
     $nid_to_write = $node->existing_nid;
   }
   $activity_node = array('activity_id'=>$node->nid, 'nid'=>$nid_to_write);
-  $result = drupal_write_record('pi_activity_node', $activity_node, $node->existing_nid_pan_id);
+  if($id_to_update!=NULL)
+  {
+    $result = drupal_write_record('pi_activity_node', $activity_node, $id_to_update);
+  }
+  else
+  {
+    $result = drupal_write_record('pi_activity_node', $activity_node);
+  }
+  
   if($result == FALSE)
   {
     drupal_set_message(
-    t('Error saving pi_activity_node (!nid)',
-    array('!nid' => $node->existing_nid)
-    ),
-        'error'
-        );
-    
+      t('Error saving pi_activity_node (!nid)',
+        array('!nid' => $node->existing_nid)
+      ),
+      'error'
+    );   
   }
-  
-  
 }
 
 /**
@@ -1191,7 +1357,7 @@ function pi_activity_update($node)
  * Take the data from $node provided by drupal API to and turn it into an object that can be saved using
  * drupal_write_record()
  * @param $node
- */
+ *//*
 function _pi_activity_form_data_to_pi_activity_row($node)
 {
   $data_to_save = new StdClass();
@@ -1214,10 +1380,10 @@ function _pi_activity_form_data_to_pi_activity_row($node)
   $data_to_save->actor = $node->selects['gid'];
   
   return $data_to_save;
-}
+}*/
 
 
-
+/*
 function pi_activity_delete(&$node)
 {
   //delete from pi_activity
@@ -1241,7 +1407,7 @@ function pi_activity_delete(&$node)
   db_query($query, $node->nid);
   $query = "DELETE FROM {pi_activity_leave_focus} WHERE activity_id = %d";
   db_query($query, $node->nid);
-}
+}*/
 
 /**
  * 
@@ -1249,7 +1415,7 @@ function pi_activity_delete(&$node)
  *  indexed by pass_id, filled with db_fetch_array() results:
  *  array(pass_id => array(pass_id, stage_nid, activity_nid, stage_state)
  * @param $nid id of node id of a valid activity
- */
+ *//*
 function _pi_activity_get_activity_stage_stages($nid)
 {
  //Now get the stage states:
@@ -1263,7 +1429,7 @@ function _pi_activity_get_activity_stage_stages($nid)
     }
   }
   return $stage_states;
-}
+}*/
 
 
 /**
@@ -1272,7 +1438,7 @@ function _pi_activity_get_activity_stage_stages($nid)
  * pi_stage_phase_activity['psp_id'] column on activities
  * @param $selected_stages
  * @return array($nid) array of psp_ids 
- */
+ *//*
 //@todo delete me
 function _pi_activity_form_get_pi_stage_phase_ids($selected_phase, $selected_stages)
 {
@@ -1330,7 +1496,7 @@ function _pi_activity_form_get_pi_stage_phase_ids($selected_phase, $selected_sta
  * array( $pass_id => array( 'stage_nid' => $stage_nid, 'stage_state' => $stage_state ), ... )
  * @param uint $activity_nid a valid activity node id
  * @returns array of array('stage_nid', 'stage_state') indexed by pass_id
- */
+ *//*
 function _pi_activity_get_activity_stage_states($activity_nid)
 {
   $query = 'SELECT * from {pi_activity_stage_state} WHERE activity_nid = %d';
@@ -1360,18 +1526,18 @@ function _pi_activity_get_activity_stage_states($activity_nid)
     }    
   }
   return $return_rows;  
-}
+}*/
 
-
+/*
 function pi_activity_get_activity_actors($activity_id)
 {
   $query = 'SELECT * FROM {pi_activity_actor} WHERE activity_id = %d';
   
-}
+}*/
 
 /**
  * hook_theme() for pi_activity content
- */
+ *//*
 function pi_activity_theme()
 {
   return array(
@@ -1385,11 +1551,11 @@ function pi_activity_theme()
 			)
 			);
 }
-
+*/
 
 /*
  *activity teaser
- */
+ *//*
 function pi_activity_teaser($node, $activity, $link_node_function) {
   if($link_node_function == 'view')
   {
@@ -1402,7 +1568,7 @@ function pi_activity_teaser($node, $activity, $link_node_function) {
     $output = $activity->description;
   }
   return $output;
-}
+}*/
 
 
 
@@ -1411,7 +1577,7 @@ function pi_activity_teaser($node, $activity, $link_node_function) {
  * @param uint $inquiry_id the id of a pi_inquiry to get all related nodes for the activity (n.b. this is probably not needed)
  * @param uint $activity_id the id of a pi_activity to get all related nodes for
  * @return array(uint) an array of all the activity content nids for the given activity_is
- */
+ *//*
 function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
 {
   $activity_content_nids = array();
@@ -1422,8 +1588,10 @@ function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
     $activity_content_nids[] = $row['nid'];
   }
   return $activity_content_nids;
-}
+}*/
 
+
+/*
 function pi_activity_nodeapi(&$node, $op)
 {
 	if ($node->type != 'image') {
@@ -1554,7 +1722,7 @@ function pi_activity_nodeapi(&$node, $op)
 	}
 
 }
-
+*/
 
 // ---------------------------------------------------------------------------
 
@@ -1566,11 +1734,11 @@ function pi_activity_nodeapi(&$node, $op)
  * Returns the activity_object from pi_activity table.
  * @param uint $nid Activity ID
  * @return node object from node_load($nid)
- */
+ *//*
 function load_activity($nid)
 {
   return node_load($nid);
-}
+}*/
 
 /**
  * Create the url to a particular activity
@@ -1580,7 +1748,7 @@ function load_activity($nid)
  * @param uint $activity_id
  * @param uint $uid
  * @return array ['url'] and ['title'] countaining link url (via drupal url()) and title (via chaeck_plain())
- */
+ *//*
 function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid)
 {
   $url = array('url'=>'', 'title'=>'');
@@ -1624,7 +1792,7 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
   $url['title'] = $activity_name_text . '&nbsp;' . $label_icon;
 
   return $url;
-}
+}*/
 
 
 /**
@@ -1633,7 +1801,7 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
  * @param uint $stage_nid
  * @param uint $phase_nid
  * @param uint $uid
- */
+ *//*
 function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid, $phase_nid, $uid)
 {
   // Get the first activity of the phase, if one exists...
@@ -1657,14 +1825,14 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
     }
   }
   return $activities_in_order;
-}
+}*/
 
 /**
  * Return the activity_id of an "Add $whatever"n activity for a given "Sort $whatever" function, if not return NULL
  * @param unknown_type $inquiry_nid The inquiry id that the activity belongs to
  * @param unknown_type $activity_ind The "Sort $whatever" activity id for the add activity.
  * @param unknown_type $uid The user id to find the add activity id for.
- */
+ *//*
 function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid)
 {
   $return_value = NULL;
@@ -1699,7 +1867,7 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
   }
 
   return $return_value;
-}
+}*/
 
 
 /**
@@ -1709,7 +1877,7 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
  * @param $inquiry_id the inquiry id that the nodes belong to
  * @param $type the node type to search for e.g. 'pi_data'
  *
- */
+ *//*
 function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
 {
   $return_nids = array();
@@ -1726,7 +1894,7 @@ function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
     $return_nids[] = $row->nid;
   }
   return $return_nids;
-}
+}*/
 
 
 /**
@@ -1738,7 +1906,7 @@ function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
  * @param $nids array(uint) nids to get data from
  * @param $field_mapping mapping of node attribute to field e.g. array('weight' => '#weight')
  * @return array [nid][{field_mapping_value}] node->{field_mapping_key}
- */
+ *//*
 function pi_activity_map_fields_from_nids($nids, $field_mapping)
 {
   $result = array();
@@ -1757,7 +1925,67 @@ function pi_activity_map_fields_from_nids($nids, $field_mapping)
     $result[$nid] = $node_fields;
   }
   return $result;
+}*/
+
+/**
+ * 
+ * Enter description here ...
+ * @param unknown_type $actor
+ * @param unknown_type $audience
+ *//*
+function _pi_activity_get_activity_actor_audience_result_type($actor_gid, $audience_group_type)
+{
+  $activity_setting = '';
+  $group_values = array(
+		'individual' => 0,
+		'group' => 1,
+		'class' => 2,
+		'multiclass' => 3
+  );
+  $group = node_load($actor_gid);
+
+  $actor_group_type = pi_get_type_of_group($actor_gid);
+
+  $audience_value = $group_values[$audience_group_type];
+  $actor_value = $group_values[$actor_group_type];
+
+  $activity_setting = NULL;
+
+  //This section sets up the type of explanation that is generated below in the switch
+  // statement.  It's easier to understand the input/outcomes here then sort out the
+  // explanations below.
+
+  //$audience_value == 0 (individual)
+  if ($audience_group_type=='individual')
+  {
+    // When individual audience is set, then it's an individual activity for everyone in
+    // the seleted actor group.
+    $activity_setting = 'done_as_individuals_in_group_not_shared';
+  }
+  elseif ($audience_value == $actor_value)
+  {
+    // If the actor group type is the same as the audience type then the activity is
+    // shared between all members of the actor group and only one activity content is generated
+    $activity_setting = 'done_as_single_group_not_shared';
+  }
+  elseif ($audience_value < $actor_value)
+  {
+    // When the audience is smaller than the actor group type, then all the
+    // groups of the audience type are given individual activities.
+    // for example all the groups within a class or multiclass.
+    $activity_setting = 'done_by_all_groups_in_larger_group_not_shared';
+  }
+  elseif ($audience_value > $actor_value)
+  {
+    // When the audience group type is larger than the actor group, then the
+    // actor group shares the generated content witht the members of the larger group
+    // and one item of generated for the actor group.
+    // for example a group shares one content item with a class,
+    // or a class shares one content item with a multiclass
+    $activity_setting = 'done_by_group_shared_with_larger_group';
+  }
+
+  return $activity_setting;
 }
-
-
+*/
 ?>
