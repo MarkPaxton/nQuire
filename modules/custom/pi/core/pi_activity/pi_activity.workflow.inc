@@ -51,7 +51,7 @@ function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id)
 	return find_unique_node_type_for_uid_and_inquiry('pi_sort_measures', $uid, $inquiry_id);
 }
 
-function find_selected_measures_nid_for_uid ($uid)
+function find_selected_measures_nid_for_uid($uid)
 {
 	$query = "SELECT {pi_sort_measures}.nid FROM {pi_sort_measures}, {node_access}, {og_uid} "
 	. "WHERE {pi_sort_measures}.nid = {node_access}.nid "
