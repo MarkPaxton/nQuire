@@ -168,6 +168,33 @@ function _pi_activity_upgrade_covert_to_node($activity)
     $node->activity_phases_stages['stages']['stage_select'] = array();    
   }  
   
+  /* Now get all linked nodes to update there too - if the first node for the activity ID in pi_activity_node is 0
+   * then it's anactivity that has multiple contents.  If it's not 0 then there should only be one value as it's 
+   * direcly referenced node, so that should be put into the table now.
+   * If the first isn't 0 and there's more than one entry, there's a problen somewhere!  
+   */
+  $query = "SELECT * FROM {pi_activity_node} WHERE activity_id = %d ORDER BY nid ASC";
+  $result = db_query($query, $activity['activity_id']);
+  $first_result = db_fetch_array($result);
+  if($first_result!=NULL)
+  {
+    if($first_result == 0)
+    {
+      // this is a multi-node activity
+      $node->referenced_node = NULL;
+    }
+    else
+    {
+      // this is a directly referenced node
+      // @todo - check this node exists?
+      $node->referenced_node = $first_result;
+      $delete_query = "DELETE FROM {pi_activity_node} WHERE pad_id = %d";
+      db_query($delete_query, $first_result['pan_id']);
+    }
+  }
+  
+  /** now check if this activity has a parent... */
+  
   return $node;
 }
 
@@ -225,12 +252,32 @@ function pi_activity_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'activity_type' => array(
+      'parent_activity' => array(
+        'description' => 'If this activity is created by another activity, then it is referenced here.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'default' => NULL
+      ),
+      'show_children_in_phase' => array(
+        'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it willbe set here.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => TRUE,
+      ),
+      'parent_activity' => array(
+        'description' => 'If this activity is created by another activity, then it is referenced here.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE,
+        'default' => NULL
+      ),
+      'referenced_node' => array(
         'type' => 'varchar',
         'length' => 255,
-        'not null' => TRUE,
-        'default' => '',
-        'description' => 'Activity type - category of activity e.g. data collection.'
+        'default' => NULL,
+        'description' => 'If the activity directly references a single node, it is set here.'
       ),
       'node_type' => array(
         'type' => 'varchar',
