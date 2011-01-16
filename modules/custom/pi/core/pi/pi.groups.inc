@@ -60,7 +60,11 @@ function pi_get_group_data_and_root_groups(&$all_groups_by_id, &$tree_roots)
 	
 	// Organise the groups into ones with parents and no parents and sort by type
 	// also add the names of nodes/groups if they're available 
-	$tree_roots = array();	
+	$tree_roots = array();
+
+	$tree_roots = array( 	'multiclass' => array(),
+				'class'	=> array() 		);	
+	
 	foreach(array_keys($groups_by_type) as $group_type)
 	{
 		// this will be an array of group type, then an array of nids and a pointer to the group details
