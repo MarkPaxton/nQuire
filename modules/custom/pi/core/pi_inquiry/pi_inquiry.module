@@ -283,13 +283,91 @@ function pi_activity_show_hide_from( $nid )
 	foreach( $activities as $module_name => $name )
 	{
 		$default = array();
+		$hidden_activities_link = array();
+		$hidden_activities_summary = array();
+		
+		if( is_array( $hidden_activities['link'] ) )
+		{
+			$hidden_activities_link = $hidden_activities['link'];
+		}
+		
+		if( is_array( $hidden_activities['summary'] ) )
+		{
+			$hidden_activities_summary = $hidden_activities['summary'];
+		}
 
-		if( array_search( $module_name, $hidden_activities['link'] ) !== FALSE )
+		if( array_search( $module_name, $hidden_activities_link ) !== FALSE )
 		{
 			$default[] = 'link';
 		}
 
-		if( array_search( $module_name, $hidden_activities['summary'] ) !== FALSE )
+		if( array_search( $module_name, $hidden_activities_summary ) !== FALSE )
+		{
+			$default[] = 'summary';
+		}
+
+		$form['activities_show_hide'][ $module_name ] = array(
+  			'#type' => 'checkboxes',
+  			'#title' => $name,
+			'#default_value' => $default,
+  			'#options' => $options
+		);
+
+	}
+	if($form_state['submitted'])
+	{
+		pi_activity_show_hide_from_submit($form, $form_state);
+	}
+
+	return $form;
+}
+
+function pi_activity_get_hidden_activities_from_inquiry( $inquiry_id )
+{
+	$query = "SELECT * FROM {pi_inquiry} WHERE nid = %d";
+
+	$result = db_query( $query, $inquiry_id);
+	$data = array();
+
+	if( $inquiry = db_fetch_object( $result) )
+	{
+		$data[ 'link' ] =  explode( ',', $inquiry->hide_activity_link ) ;
+		$data[ 'summary' ] = explode( ',', $inquiry->hide_activity_in_summary ) ;
+	}
+
+	return $data;
+}
+
+function theme_pi_activity_show_hide($form)
+{
+	$output .= drupal_render($form);
+	return $output;
+}
+
+
+/**
+ * Declare theme functions for pi_inquiry
+ */
+function pi_inquiry_theme() {
+	return array(
+    'inquiry_layout' => array(
+      'arguments' => array('node'),
+	),
+	);
+}
+
+
+/**
+ * Theme function to display the inquiry layout
+ * @param drupal node data $node Inquiry node details.
+ */
+function theme_inquiry_layout($node) {
+	$output .= '<div class="inquiry-layout">';
+	$output .= t("Layout: %layout", array('%layout' => check_plain($node->layout)));
+	$output .= '</div>';
+	return $output;
+}
+
 		{
 			$default[] = 'summary';
 		}
