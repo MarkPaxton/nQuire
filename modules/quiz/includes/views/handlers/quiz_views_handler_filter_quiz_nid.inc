@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz_views_handler_filter_quiz_nid.inc,v 1.1.2.4 2009/05/21 19:02:13 sivaji Exp $
+// $Id: quiz_views_handler_filter_quiz_nid.inc,v 1.2.2.1 2010/05/20 07:43:21 falcon Exp $
 
 /*
  * @file
@@ -132,7 +132,7 @@ class quiz_views_handler_filter_quiz_nid extends views_handler_filter {
     $operation = ($this->options['which_vid'] == 'initial' ? 'MIN' : 'MAX');
     $subalias = $this->secondary_table_alias . '__subselect';
     $subselect = "SELECT $operation($subalias.$this->secondary_vid) FROM ";
-    $subselect .= "$this->secondary_table $subalias WHERE ";
+    $subselect .= '{' . $this->secondary_table . "} $subalias WHERE ";
     $subselect .= "$subalias.$this->secondary_group_by = $this->secondary_table_alias.$this->secondary_group_by AND ";
     $subselect .= "$subalias.$this->secondary_nid = $this->secondary_table_alias.$this->secondary_nid";
     return $subselect;

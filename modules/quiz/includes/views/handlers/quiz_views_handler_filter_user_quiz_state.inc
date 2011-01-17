@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz_views_handler_filter_user_quiz_state.inc,v 1.1.2.5 2009/05/21 19:02:13 sivaji Exp $
+// $Id: quiz_views_handler_filter_user_quiz_state.inc,v 1.2.2.1 2009/12/30 11:58:17 falcon Exp $
 
 /*
  * @file
@@ -58,16 +58,16 @@ class quiz_views_handler_filter_user_quiz_state extends views_handler_filter {
   }
 
   function query() {
-    if (empty($this->value) || $this->value == 'any') {
+    $val = is_array($this->value) ? $this->value['quiz_state'] : $this->value;
+    if (empty($val) || $val == 'any') {
       return;
     }
-
     $this->ensure_my_table();
-    if ($this->value == 'not_started') {
+    if ($val == 'not_started') {
       $this->query->add_where(0, "$this->table_alias.time_end IS NULL");
     }
     else {
-      $operator = $this->value == 'in_progress' ? '=' : '>';
+      $operator = $val == 'in_progress' ? '=' : '>';
       $this->query->add_where(0, "$this->table_alias.time_end $operator 0");
     }
   }

@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz_question.install,v 1.1.2.3 2009/08/25 14:11:16 mbutcher Exp $
+// $Id: quiz_question.install,v 1.2.2.10 2010/11/05 16:14:47 falcon Exp $
 
 /**
  * The installer file for quiz_question.
@@ -7,33 +7,20 @@
  */
 
 /**
- * Implementation of hook_install().
+ * Implementation of hook_install
  */
 function quiz_question_install() {
   drupal_install_schema('quiz_question');
-  cache_clear_all('autoload:', 'cache');
 }
 
 /**
- * Implementation of hook_uninstall().
- */
-function quiz_question_uninstall() {
-  drupal_uninstall_schema('quiz_question');
-}
-
-/**
- * Implementation of hook_schema().
+ * Implementation of hook_schema
  */
 function quiz_question_schema() {
-
-  //////////////////////
-  // TRUE/FALSE tables.
-  //////////////////////
-
-  // Extensions to nodes for T/F
-  $schema['quiz_truefalse_node'] = array(
+  $schema = array();
+  $schema['quiz_question_properties'] = array(
+    'description' => 'Properties common for all quizzes',
     'fields' => array(
-      // Nid/vid of the question
       'nid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
@@ -44,62 +31,97 @@ function quiz_question_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      // The actual answer the user gave. True or false.
-      'correct_answer' => array(
+      'max_score' => array(
         'type' => 'int',
         'unsigned' => TRUE,
-        'size' => 'tiny',
         'default' => 0,
-      ),
-      'feedback' => array(
-        'type' => 'text',
       ),
     ),
     'primary key' => array(
-      'vid', 'nid'
+      'nid' , 'vid'
     ),
   );
-  // Place to store user answers for T/F questions
-  $schema['quiz_truefalse_user_answers'] = array(
+  $schema['quiz_question_latest_quizzes'] = array(
+    'description' => 'Stores the latest quizzes each user has been involved in',
     'fields' => array(
-      // Nid/vid of the question
-      'question_nid' => array(
+      'quiz_nid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'question_vid' => array(
+      'uid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      // User's result set
-      'result_id' => array(
-        'type' => 'int',
+      'id' => array(
+        'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
-      ),
-      // The actual answer the user gave. True or false.
-      'answer' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'size' => 'tiny',
-        'default' => 0,
-      ),
-      'score' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 0,
       ),
     ),
     'primary key' => array(
-      'result_id', 'question_nid', 'question_vid',
+      'id',
     ),
   );
-
   return $schema;
 }
 
+/**
+ * Implementation of hook_update_N()
+ */
+function quiz_question_update_6400() {
+  drupal_rebuild_theme_registry();
+  return array();
+}
 
+/**
+ * Implementation of hook_update_N()
+ *
+ * In 6.x-3.x truefalse was a part of quiz question. In 4.x it has been separated out into
+ * its own module. We automatically installs this module to avoid issues with truefalse questions
+ * that aren't working anymore because the module haven't been installed.
+ */
+function quiz_question_update_6401() {
+  if (!module_exists('truefalse') && db_table_exists('quiz_truefalse_node')) drupal_install_modules(array('truefalse'));
+  return array();
+}
 
+/**
+ * Implementation of hook_update_N
+ *
+ * Add table for storing info on the latest quizzes each user has been involved in editing
+ */
+function quiz_question_update_6402() {
+  $results = array();
+  db_create_table($results, 'quiz_question_latest_quizzes', array(
+    'fields' => array(
+      'quiz_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array(
+      'id',
+    ),
+  ));
+  return $results;
+}
+
+/**
+ * Implementation of hook_uninstall
+ */
+function quiz_question_uninstall() {
+  drupal_uninstall_schema('quiz_question');
+}

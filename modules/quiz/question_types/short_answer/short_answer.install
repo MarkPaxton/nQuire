@@ -1,5 +1,5 @@
 <?php
-// $Id: short_answer.install,v 1.1.2.2 2009/08/25 14:11:16 mbutcher Exp $
+// $Id: short_answer.install,v 1.2.2.6 2010/04/14 11:19:51 sivaji Exp $
 
 /**
  * The installer file for short_answer.
@@ -11,6 +11,7 @@
  */
 function short_answer_install() {
   drupal_install_schema('short_answer');
+  variable_set('node_options_short_answer', array('status'));
   cache_clear_all('autoload:', 'cache');
 }
 
@@ -38,12 +39,12 @@ function short_answer_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'maximum_score' => array(
+      /*'maximum_score' => array(
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 1,
-      ),
+      ),*/
       // One of (0) textfield and (1) textare
       'text_entry_type' => array(
         'type' => 'int',
@@ -75,7 +76,7 @@ function short_answer_schema() {
     ),
     'primary key' => array('nid', 'vid'),
   );
-  
+
   // User answers go in here.
   $schema['quiz_short_answer_user_answers'] = array(
     'fields' => array(
@@ -100,7 +101,7 @@ function short_answer_schema() {
         'not null' => TRUE,
       ),
       'score' => array(
-        'type' => 'int',
+        'type' => 'float',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
@@ -122,6 +123,23 @@ function short_answer_schema() {
       'ids' => array('result_id', 'question_nid', 'question_vid'),
     ),
   );
-  
   return $schema;
+}
+
+/**
+ * Implementation of hook_update_N()
+ *
+ * Convert the score columt to be of type float. This is to fit the new scoring system with different max
+ * scores in different quizzes.
+ */
+function short_answer_update_6400() {
+  $to_return = array();
+  $spec = array(
+    'type' => 'float',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  db_change_field($to_return, 'quiz_short_answer_user_answers', 'score', 'score', $spec);
+  return $to_return;
 }

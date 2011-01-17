@@ -1,16 +1,17 @@
 <?php
-// $Id: long_answer.install,v 1.1.2.2 2009/08/25 14:11:16 mbutcher Exp $
+// $Id: long_answer.install,v 1.2.2.13 2010/06/27 19:02:55 falcon Exp $
 
 /**
  * Long answer questions.
  * @file
  */
- 
+
 /**
  * Implementation of hook_install().
  */
 function long_answer_install() {
   drupal_install_schema('long_answer');
+  variable_set('node_options_long_answer', array('status'));
   cache_clear_all('autoload:', 'cache');
 }
 
@@ -18,15 +19,16 @@ function long_answer_install() {
  * Implementation of hook_uninstall().
  */
 function long_answer_uninstall() {
-  
+
   // Delete tables
   drupal_uninstall_schema('long_answer');
-  
+
   // Delete data from other tables
-  
+
   // Clear the cache.
   cache_clear_all('variables', 'cache');
   drupal_set_message(t('The Long Answer module has been uninstalled and related data has been deleted.'));
+
 }
 
 /**
@@ -40,22 +42,19 @@ function long_answer_schema() {
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-    ),
+      ),
       'vid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'maximum_score' => array(
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-        'default' => 1,
+      'rubric' => array(
+        'type' => 'text',
       ),
     ),
     'primary key' => array('nid', 'vid'),
   );
-  
+
   // User answers go in here.
   $schema['quiz_long_answer_user_answers'] = array(
     'fields' => array(
@@ -63,7 +62,7 @@ function long_answer_schema() {
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
-    ),
+      ),
       'question_nid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
@@ -80,7 +79,7 @@ function long_answer_schema() {
         'not null' => TRUE,
       ),
       'score' => array(
-        'type' => 'int',
+        'type' => 'float',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0,
@@ -101,6 +100,62 @@ function long_answer_schema() {
       'ids' => array('result_id', 'question_nid', 'question_vid'),
     ),
   );
-  
+
   return $schema;
+}
+
+/**
+ * Implementation of hook_update_N()
+ *
+ * Use float instead of int on the score field. This is to better suit the use of max score...
+ */
+function long_answer_update_6400() {
+  $results = array();
+  $spec = array(
+    'type' => 'float',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  db_change_field($results, 'quiz_long_answer_user_answers', 'score', 'score', $spec);
+  return $results;
+}
+
+/**
+ * Implementation of hook_update_N()
+ *
+ * Add a table for storing the rubric
+ *
+ * @return
+ */
+
+function long_answer_update_6401() {
+  $results = array();
+  if (db_table_exists('quiz_long_answer_node_properties') && !db_column_exists('quiz_long_answer_node_properties', 'rubric')) {
+    db_add_field($results, 'quiz_long_answer_node_properties', 'rubric', array('type' => 'text'));
+  }
+  else {
+    db_create_table($results, 'quiz_long_answer_node_properties', array(
+      'fields' => array(
+        'nid' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'vid' => array(
+          'type' => 'int',
+          'unsigned' => TRUE,
+          'not null' => TRUE,
+        ),
+        'rubric' => array(
+          'type' => 'text',
+        ),
+      ),
+      'primary key' => array('nid', 'vid'),
+    ));
+    $sql = "INSERT INTO {quiz_long_answer_node_properties} (nid, vid)
+            SELECT nid, vid FROM node WHERE `type` = 'long_answer'";
+    $results[] = update_sql($sql);
+  }
+  return $results;
 }

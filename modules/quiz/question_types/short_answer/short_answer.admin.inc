@@ -1,5 +1,5 @@
 <?php
-// $Id: short_answer.admin.inc,v 1.1.2.2 2009/05/21 19:02:13 sivaji Exp $
+// $Id: short_answer.admin.inc,v 1.2.2.8 2010/11/05 16:14:48 falcon Exp $
 /**
  * short_answer.admin
  *
@@ -7,7 +7,7 @@
  */
 
 /**
- * Generate a view of all unscored answer questions.
+ * Generate a view of all unscored short_answer questions.
  *
  * @see theme_short_answer_view_unscored()
  */
@@ -29,9 +29,6 @@ function short_answer_view_unscored() {
  *  Text to display.
  */
 function short_answer_edit_score($vid, $rid) {
-
-  // We have to do the vid -> nid lookup ourselves because node_load uses only node.vid,
-  // and we need to be able to access old nodes in node_revisions.vid.
   $nid = db_result(db_query("SELECT nid FROM {node_revisions} WHERE vid = %d", $vid));
   if (!$nid) {
     drupal_not_found();
@@ -48,6 +45,13 @@ function short_answer_edit_score($vid, $rid) {
   if (!$answer) {
     drupal_not_found();
     return;
+  }
+
+  if ($node->max_score > 0) {
+    $answer->rel_score = round($answer->score * $answer->rel_max_score / $node->max_score);
+  }
+  else {
+    $answer->rel_score = 0;
   }
 
   drupal_set_title(t('Score answer to "@title"', array('@title' => $node->title)));
@@ -76,25 +80,25 @@ function short_answer_score_form($context, $node, $answer) {
   $form['question'] = array(
     '#type' => 'item',
     '#title' => t('Question'),
-    '#value' => check_markup($node->body, $node->format),
+    '#value' => check_markup($node->body, $node->format, FALSE),
   );
   $form['answer'] = array(
     '#type' => 'item',
     '#title' => t('Answer'),
-    '#value' => check_markup($answer->answer, variable_get('short_answer_markup_filter', FILTER_FORMAT_DEFAULT)),
+    '#value' => check_markup($answer->answer, variable_get('short_answer_markup_filter', FILTER_FORMAT_DEFAULT), FALSE),
   );
   $form['show_max_score'] = array(
     '#type' => 'item',
     '#title' => t('Maximum Score'),
-    '#value' => (int) $node->maximum_score,
+    '#value' => (int) $answer->rel_max_score,
   );
   $form['score'] = array(
     '#type' => 'textfield',
     '#title' => t('Score'),
-    '#description' => t('The score for this essay, between 0 and @max', array('@max' => $node->maximum_score)) ,
-    '#size' => 6,
-    '#maxlength' => 6,
-    '#default_value' => (int) $answer->score,
+    '#description' => t('The score for this essay, between 0 and @max', array('@max' => $answer->rel_max_score)) ,
+    '#size' => 3,
+    '#maxlength' => 3,
+    '#default_value' => (int) $answer->rel_score,
     '#required' => TRUE,
   );
   $form['submit'] = array(
@@ -103,9 +107,13 @@ function short_answer_score_form($context, $node, $answer) {
   );
 
   // Save some work by keeping these.
-  $form['maximum_score'] = array(
+  $form['max_score'] = array(
     '#type' => 'value',
-    '#value' => $node->maximum_score,
+    '#value' => $node->max_score,
+  );
+  $form['rel_max_score'] = array(
+    '#type' => 'value',
+    '#value' => $answer->rel_max_score,
   );
   $form['question_nid'] = array(
     '#type' => 'value',
@@ -123,22 +131,27 @@ function short_answer_score_form($context, $node, $answer) {
   return $form;
 }
 
+/**
+ * Validate the score form
+ */
 function short_answer_score_form_validate($form, $form_state) {
   // Check to make sure that entered score is not higher than max allowed score.
-  $max = (int)$form_state['values']['maximum_score'];
+  $max = (int)$form_state['values']['rel_max_score'];
   $given = (int)$form_state['values']['score'];
 
-  if ($given > $max || $given < 0) {
+  if (!_quiz_is_int($form_state['values']['score'], 0, $max)) {
     $args = array('@score' => $given, '@max' => $max);
-    form_error($form['score'], t('The given score (@score) is higher than the maximum allowed score (@max)', $args));
+    form_error($form['score'], t('The score needs to be a number between 0 and @max', $args));
   }
 }
 
+/**
+ * Submit the score form
+ */
 function short_answer_score_form_submit($form, &$form_state) {
 
   $sql = 'SELECT nid, vid FROM {quiz_node_results} WHERE result_id = %d';
   $result = db_fetch_object(db_query($sql, $form_state['values']['result_id']));
-
   $quiz = node_load($result->nid, $result->vid);
 
   $nid = $form_state['values']['question_nid'];
@@ -150,48 +163,9 @@ function short_answer_score_form_submit($form, &$form_state) {
 
   if ($result == 1) {
     drupal_set_message("The score has been saved.");
-    $form_state['redirect'] = 'admin/quiz/score-short-answer';
+    $form_state['redirect'] = 'admin/quiz/reports/score-short-answer';
   }
   else {
-    drupal_set_message('Error saving the score. The selected answer was not scored.', 'error');
+    drupal_set_message(t('Error saving the score. The selected answer was not scored.'), 'error');
   }
 }
-
-/**
- * Theme the list of unscored short answer questions.
- *
- * @param $unscored
- *  An array of objects, each with the quist_nid, question_vid, and result_id of an unscored question.
- */
-function theme_short_answer_view_unscored($unscored) {
-  $output = '';
-  $header = array(
-    t('Quiz ID'),
-    t('Question'),
-    t('Time Finished'),
-    t('Action')
-  );
-  $rows = array();
-
-  foreach ($unscored as $item) {
-    if ($item->time_end > 0) {
-      $rows[] = array(
-        $item->result_id,
-        $item->title,
-        date('Y-m-d H:i', $item->time_end),
-        l('score this response', 'admin/quiz/score-short-answer/' . $item->question_vid . '/' . $item->result_id),
-      );
-    }
-
-  }
-
-  if (!empty($rows)) {
-    $output .= theme('table', $header, $rows);
-  }
-  else {
-    $output .= t('There are no unscored essays.');
-  }
-  return $output;
-}
-
-

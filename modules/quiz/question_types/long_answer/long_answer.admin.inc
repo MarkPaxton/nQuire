@@ -1,25 +1,10 @@
 <?php
-// $Id: long_answer.admin.inc,v 1.1.2.2 2009/05/21 17:26:38 sivaji Exp $
+// $Id: long_answer.admin.inc,v 1.2.2.10 2010/11/05 16:14:47 falcon Exp $
 
 /**
  * Administration pages for the long answer questions module.
  * @file
  */
-
-/**
- * Admin settings form.
- */
-function long_answer_admin_settings_form() {
-  $form['long_answer_default_maximum_score'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Default Maximum Score'),
-    // 1 to match default multichoice score.
-    '#default_value' => variable_get('long_answer_default_maximum_score', 1),
-    '#description' => t('The default maximum score for a long-answer question.'),
-    '#required' => TRUE,
-  );
-  return system_settings_form($form);
-}
 
 /**
  * Generate a view of all unscored answer questions.
@@ -28,7 +13,6 @@ function long_answer_admin_settings_form() {
  */
 function long_answer_view_unscored() {
   $unscored = long_answer_get_all_unscored_answers();
-
   return theme('long_answer_view_unscored', $unscored);
 }
 
@@ -47,8 +31,7 @@ function long_answer_view_unscored() {
 function long_answer_edit_score($vid, $rid) {
 
   // We have to do the vid -> nid lookup ourselves because node_load uses only node.vid,
-  // and we need to be able to access old nodes in node_revisions.vid. (BTW... why is node singular
-  // and node_revisions plural?).
+  // and we need to be able to access old nodes in node_revisions.vid.
   $nid = db_result(db_query("SELECT nid FROM {node_revisions} WHERE vid = %d", $vid));
   if (!$nid) {
     drupal_not_found();
@@ -66,9 +49,13 @@ function long_answer_edit_score($vid, $rid) {
     drupal_not_found();
     return;
   }
-
+  if ($node->max_score > 0) {
+    $answer->rel_score = round($answer->score * $answer->rel_max_score / $node->max_score);
+  }
+  else {
+    $answer->rel_score = 0;
+  }
   drupal_set_title(t('Score answer to "@title"', array('@title' => $node->title)));
-
   return drupal_get_form('long_answer_score_form', $node, $answer);
 }
 
@@ -82,8 +69,7 @@ function long_answer_edit_score($vid, $rid) {
  * @return
  *  The form (as a FAPI array).
  */
-function long_answer_score_form($context, $node, $answer) {
-
+function long_answer_score_form($form_state, $node, $answer) {
   if (!$node || $node->type != 'long_answer' || !$answer) {
     drupal_not_found();
     return;
@@ -93,36 +79,49 @@ function long_answer_score_form($context, $node, $answer) {
   $form['question'] = array(
     '#type' => 'item',
     '#title' => t('Question'),
-    '#value' => check_markup($node->body, $node->format),
+    '#value' => check_markup($node->body, $node->format, FALSE),
   );
-  $form['answer'] = array(
+  $form['rubric'] = array(
     '#type' => 'item',
-    '#title' => t('Answer'),
-    '#value' => check_markup($answer->answer, variable_get('long_answer_markup_filter', FILTER_FORMAT_DEFAULT)),
+    '#title' => t('Rubric'),
+    '#value' => check_markup($node->rubric, variable_get('long_answer_markup_filter', FILTER_FORMAT_DEFAULT), FALSE),
   );
   $form['show_max_score'] = array(
     '#type' => 'item',
     '#title' => t('Maximum Score'),
-    '#value' => (int) $node->maximum_score,
+    '#value' => (int) $answer->rel_max_score,
   );
-  $form['score'] = array(
+  $form['score_answer'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Score answer'),
+  );
+  $form['score_answer']['answer'] = array(
+    '#type' => 'item',
+    '#title' => t('Answer'),
+    '#value' => check_markup($answer->answer, variable_get('long_answer_markup_filter', FILTER_FORMAT_DEFAULT), FALSE),
+  );
+  $form['score_answer']['score'] = array(
     '#type' => 'textfield',
     '#title' => t('Score'),
-    '#description' => t('The score for this essay, between 0 and @max', array('@max' => $node->maximum_score)) ,
-    '#size' => 6,
-    '#maxlength' => 6,
-    '#default_value' => (int) $answer->score,
+    '#description' => t('The score for this essay, between 0 and @max', array('@max' => $answer->rel_max_score)) ,
+    '#size' => 3,
+    '#maxlength' => 3,
+    '#default_value' => (int) $answer->rel_score,
     '#required' => TRUE,
   );
-  $form['submit'] = array(
+  $form['score_answer']['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Save this score'),
   );
 
   // Save some work by keeping these.
-  $form['maximum_score'] = array(
+  $form['max_score'] = array(
     '#type' => 'value',
-    '#value' => $node->maximum_score,
+    '#value' => $node->max_score,
+  );
+  $form['rel_max_score'] = array(
+    '#type' => 'value',
+    '#value' => $answer->rel_max_score,
   );
   $form['question_nid'] = array(
     '#type' => 'value',
@@ -140,19 +139,23 @@ function long_answer_score_form($context, $node, $answer) {
   return $form;
 }
 
+/**
+ * Validates the long answer score form
+ */
 function long_answer_score_form_validate($form, $form_state) {
   // Check to make sure that entered score is not higher than max allowed score.
-  $max = (int)$form_state['values']['maximum_score'];
-  $given = (int)$form_state['values']['score'];
-
-  if ($given > $max || $given < 0) {
+  $max = (int)$form_state['values']['rel_max_score'];
+  $given = $form_state['values']['score'];
+  if (!_quiz_is_int($given, 0, $max)) {
     $args = array('@score' => $given, '@max' => $max);
-    form_error($form['score'], t('The given score (@score) is higher than the maximum allowed score (@max)', $args));
+    form_set_error('score', t('The given score (@score) must be an integer between 0 and @max', $args));
   }
 }
 
+/**
+ * Submit handler for the long answer score form
+ */
 function long_answer_score_form_submit($form, &$form_state) {
-
   $sql = 'SELECT nid, vid FROM {quiz_node_results} WHERE result_id = %d';
   $result = db_fetch_object(db_query($sql, $form_state['values']['result_id']));
 
@@ -166,47 +169,10 @@ function long_answer_score_form_submit($form, &$form_state) {
   $result = long_answer_score_an_answer($quiz, $nid, $vid, $rid, $score);
 
   if ($result == 1) {
-    drupal_set_message("The score has been saved.");
-    $form_state['redirect'] = 'admin/quiz/score-long-answer';
+    drupal_set_message(t('The score has been saved.'));
+    $form_state['redirect'] = 'admin/quiz/reports/score-long-answer';
   }
   else {
-    drupal_set_message('Error saving the score. The selected answer was not scored.', 'error');
+    drupal_set_message(t('Error saving the score. The selected answer was not scored.'), 'error');
   }
-}
-
-/**
- * Theme the list of unscored long answer questions.
- *
- * @param $unscored
- *  An array of objects, each with the quist_nid, question_vid, and result_id of an unscored question.
- */
-function theme_long_answer_view_unscored($unscored) {
-  $output = '';
-  $header = array(
-    t('Quiz ID'),
-    t('Question'),
-    t('Time Finished'),
-    t('Action')
-  );
-  $rows = array();
-
-  foreach ($unscored as $item) {
-    if ($item->time_end > 0) {
-      $rows[] = array(
-        $item->result_id,
-        $item->title,
-        date('Y-m-d H:i', $item->time_end),
-        l('score this response', 'admin/quiz/score-long-answer/' . $item->question_vid . '/' . $item->result_id),
-      );
-    }
-
-  }
-
-  if (!empty($rows)) {
-    $output .= theme('table', $header, $rows);
-  }
-  else {
-    $output .= t('There are no unscored essays.');
-  }
-  return $output;
 }

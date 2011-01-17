@@ -1,33 +1,36 @@
 <?php
-// $Id: quiz.pages.inc,v 1.2.2.21 2010/01/03 17:37:56 sivaji Exp $
+// $Id: quiz.pages.inc,v 1.3.2.60 2010/12/17 14:44:57 falcon Exp $
 
 /**
  * User pages.
  * @file
  */
 
-/*
- * Quiz Results User.
+/**
+ * Show result page for a given result id
+ *
+ * @param $result_id
+ *  Result id
  */
 function quiz_user_results($result_id) {
   global $user;
 
-  $sql = 'SELECT qnp.nid, qnrs.uid
+  $sql = 'SELECT qnp.nid, qnp.vid, qnrs.uid
     FROM {quiz_node_properties} qnp
-    INNER JOIN {quiz_node_results} qnrs ON qnrs.nid = qnp.nid
+    INNER JOIN {quiz_node_results} qnrs ON qnrs.vid = qnp.vid
     WHERE qnrs.result_id = %d';
-  $result = db_fetch_object(db_query( $sql, $result_id));
+  $result = db_fetch_object(db_query($sql, $result_id));
   if ($result->nid) {
 
     // User can view own results (quiz_menu sets access to 'own results').
     // User with role 'user results' can view other user's results.
-    if ($result->uid != $user->uid && !user_access('view user results')) {
+    if ($result->uid != $user->uid && !user_access('view any quiz results')) {
       drupal_access_denied();
       return;
     }
 
-    $quiz = node_load($result->nid);
-    $questions = _quiz_get_answers($result_id);
+    $quiz = node_load($result->nid, $result->vid);
+    $questions = _quiz_get_answers($quiz, $result_id);
     $score = quiz_calculate_score($quiz, $result_id);
     $summary = _quiz_get_summary_text($quiz, $score);
     return theme('quiz_user_summary', $quiz, $questions, $score, $summary);
@@ -38,174 +41,293 @@ function quiz_user_results($result_id) {
 }
 
 /**
+ * Form for showing feedback, and for editing the feedback if necessary...
+ *
+ * @param $form_state
+ *   FAPI form state(array)
+ * @param $questions
+ *   array of questions to inclide in the report
+ * @param $showpoints
+ *   Should points be included in the report? (Boolean)
+ * @param $showfeedback
+ *   Should feedback be included in the report? (Boolean)
+ * @param $allow_scoring
+ *   Should we allow the user to score results that needs manual scoring? (Boolean)
+ * @return $form
+ *   FAPI form array
+ */
+function quiz_report_form($form_state, $questions, $showpoints = TRUE, $showfeedback = TRUE, $allow_scoring = FALSE) {
+  $form = array();
+  // The submit button is only shown if one or more of the questions has input elements
+  $show_submit = FALSE;
+  foreach ($questions as $question) {
+    $module = quiz_question_module_for_type($question->type);
+    if (!$module) return array();
+    $function = $module .'_report_form';
+    $form_to_add = $function($question, $showpoints, $showfeedback, $allow_scoring);
+    if (isset($form_to_add['submit']))
+      $show_submit = TRUE;
+    $form[] = $form_to_add;
+  }
+  $form['#theme'] = 'quiz_report_form';
+  $form['#showpoints'] = $showpoints;
+  $form['#showfeedback'] = $showfeedback;
+  $form['#tree'] = TRUE;
+  if ($show_submit) {
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#submit' => array('quiz_report_form_submit'),
+      '#validate' => array('quiz_report_form_validate'),
+      '#value' => t('Submit'),
+    );
+  }
+  return $form;
+}
+
+/**
+ * Validate the report form
+ */
+function quiz_report_form_validate($form, &$form_state) {
+  /* We go through the form state values and validates all
+   * questiontypes with validation functions declared.
+   */
+  foreach ($form_state['values'] as $key => $q_values) {
+    // Questions has numeric keys in the report form
+    if (!is_numeric($key)) continue;
+    // Questions store the name of the validation function with the key 'validate'
+    if (!isset($q_values['validate'])) continue;
+    // The validation function must exist
+    if (!function_exists($q_values['validate'])) continue;
+    // We call the validation function provided by the question
+    call_user_func($q_values['validate'], $q_values, $key);
+  }
+}
+
+/**
+ * Submit the report form
+ */
+function quiz_report_form_submit($form, &$form_state) {
+  /* We go through the form state values and submit all
+   * questiontypes with validation functions declared.
+   */
+  foreach ($form_state['values'] as $key => $q_values) {
+    // Questions has numeric keys in the report form
+    if (!is_numeric($key)) continue;
+    // Questions store the name of the validation function with the key 'submit'
+    if (!isset($q_values['submit'])) continue;
+    // The submit function must exist
+    if (!function_exists($q_values['submit'])) continue;
+
+    // Load the quiz
+    if (!isset($quiz)) {
+      $sql = 'SELECT nid, vid FROM {quiz_node_results} WHERE result_id = %d';
+      $result = db_fetch_object(db_query($sql, $q_values['rid']));
+      $quiz = node_load($result->nid, $result->vid);
+      $rid = $q_values['rid'];
+    }
+
+    $q_values['quiz'] = $quiz;
+
+    // We call the submit function provided by the question
+    call_user_func($q_values['submit'], $q_values);
+  }
+  // Scores may have been changed. We take the necessary actions
+  quiz_update_total_score_fast($rid, $quiz->vid);
+  db_query('UPDATE {quiz_node_results} SET is_evaluated = 1 WHERE result_id = %d', $rid);
+  $results_got_deleted = _quiz_maintain_results($quiz, $rid);
+
+  // A message saying the quiz is unscored has already been set. We unset it here...
+  _quiz_remove_unscored_message();
+
+  // Notify the user if results got deleted as a result of him scoring an answer.
+  $add = $quiz->quiz_keep_results == QUIZ_KEEP_BEST && $results_got_deleted ? ' ' . t('Note that this quiz is set to only keep each users best answer.') : '';
+
+  $score_data = quiz_get_score_array($rid, $quiz->vid, TRUE);
+  module_invoke_all('quiz_scored', $quiz, $score_data, $rid);
+
+  drupal_set_message(t('The scoring data you provided has been saved.') . $add);
+  $form_state['redirect'] = 'node/' . $quiz->nid . '/results';
+}
+
+/**
+ * Helper function to remove the message saying the quiz haven't been scored
+ */
+function _quiz_remove_unscored_message() {
+  if (is_array($_SESSION['messages']['warning'])) {
+    // Search for the message, and remove it if we find it.
+    foreach ($_SESSION['messages']['warning'] as $key => $val) {
+      if ($val == t('This quiz has not been scored yet.')) {
+        unset($_SESSION['messages']['warning'][$key]);
+      }
+    }
+    // Clean up if the message array was left empty
+    if (empty($_SESSION['messages']['warning'])) {
+      unset($_SESSION['messages']['warning']);
+      if (empty($_SESSION['messages'])) {
+        unset($_SESSION['messages']);
+      }
+    }
+  }
+}
+
+/**
+ * Updates the total score using only one mySql query.
+ *
+ * @param $rid
+ *  Result id
+ * @param $quiz_vid
+ *  Quiz node version id
+ */
+function quiz_update_total_score_fast($rid, $quiz_vid) {
+  $sql = 'UPDATE {quiz_node_results} r
+          SET r.score = ROUND(
+            100 * (
+              SELECT SUM(a.points_awarded)
+              FROM {quiz_node_results_answers} a
+              WHERE a.result_id = %d
+            ) / (
+              SELECT max_score
+              FROM {quiz_node_properties} qnp
+              WHERE vid = %d
+            )
+          )
+          WHERE r.result_id = %d';
+  db_query($sql, $rid, $quiz_vid, $rid);
+}
+
+/**
+ * Returns an array of score information for a quiz
+ *
+ * @param unknown_type $rid
+ * @param unknown_type $quiz_vid
+ * @param unknown_type $is_evaluated
+ */
+function quiz_get_score_array($rid, $quiz_vid, $is_evaluated) {
+  $sql = 'SELECT max_score, number_of_random_questions
+          FROM {quiz_node_properties}
+          WHERE vid = %d';
+  $properties = db_fetch_object(db_query($sql, $quiz_vid));
+
+  $sql = 'SELECT SUM(points_awarded)
+          FROM (quiz_node_results_answers)
+          WHERE result_id = %d';
+  $total_score = db_result(db_query($sql, $rid));
+
+  return array(
+    'question_count' => $properties->number_of_random_questions + _quiz_get_num_always_questions($quiz_vid),
+    'possible_score' => $properties->max_score,
+    'numeric_score' => $total_score,
+    'percentage_score' => ($properties->max_score == 0) ? 0 : round(($total_score * 100) / $properties->max_score),
+    'is_evaluated' => $is_evaluated,
+  );
+}
+
+/**
  * Displays all the quizzes the user has taken part in.
  *
+ * @param $user_id
+ *  User id
  * @return
  *  HTML output for page.
  */
 function quiz_get_user_results($user_id) {
+  $results = array();
+  $sql = "SELECT n.nid, n.title, qnp.pass_rate, qnrs.result_id, qnrs.time_start, qnrs.time_end, qnrs.score, qnrs.is_evaluated
+    FROM {node} n
+    INNER JOIN {quiz_node_properties} qnp ON n.nid = qnp.nid
+    INNER JOIN {quiz_node_results} qnrs ON qnrs.nid = qnp.nid
+    INNER JOIN {users} u ON u.uid = qnrs.uid
+    WHERE n.type = 'quiz'
+      AND u.uid = %d
+    ORDER BY qnrs.result_id ASC";
+
+  $dbresult = db_query($sql, $user_id);
+  // Create an array out of the results.
+  while ($line = db_fetch_array($dbresult)) {
+    $results[$line['result_id']] = $line;
+  }
+  return theme('quiz_get_user_results', $results);
+}
+
+/**
+ * Show results for the current quiz
+ */
+function quiz_my_results($node) {
   global $user;
-
-  if ($user_id == $user->uid || user_access('view user results')) {
-    $results = array();
-    $sql = "SELECT n.nid, n.title, u.name, qnrs.result_id, qnrs.time_start, qnrs.time_end
-      FROM {node} n
-      INNER JOIN {quiz_node_properties} qnp ON n.nid = qnp.nid
-      INNER JOIN {quiz_node_results} qnrs ON qnrs.nid = qnp.nid
-      INNER JOIN {users} u ON u.uid = qnrs.uid
-      WHERE n.type = 'quiz'
-        AND u.uid = %d
-      ORDER BY qnrs.result_id ASC";
-
-    $dbresult = db_query($sql, $user_id);
-    // Create an array out of the results.
-    while ($line = db_fetch_array($dbresult)) {
-     $results[$line['result_id']] = $line;
-    }
-    return theme('quiz_get_user_results', $results);
+  $results = array();
+  $res = db_query("
+    SELECT qnp.nid, qnp.pass_rate, qnrs.result_id, qnrs.time_start, qnrs.time_end, qnrs.score
+    FROM {quiz_node_properties} qnp
+    INNER JOIN {quiz_node_results} qnrs ON qnrs.nid = qnp.nid
+    WHERE qnrs.uid = %d AND qnrs.nid = %d AND qnrs.is_evaluated = 1
+    ORDER BY qnrs.result_id DESC
+  ", $user->uid, $node->nid);
+  // Create an array out of the results.
+  while ($line = db_fetch_array($res)) {
+    $results[$line['result_id']] = $line;
   }
-  else {
-    return 'You have no permission to view the results of this user.';
-  }
+  return theme('quiz_my_results_for_quiz', $results);
 }
 
 // THEME FUNCTIONS
 
 /**
- * Theme a message about the quiz's availability for quiz takers.
+ * Theme the user results page.
+ *
+ * @param $results
+ *  An array of quiz information.
+ * @return
+ *  Themed html.
  *
  * @ingroup themeable
  */
-function theme_quiz_availability($node) {
-  $status = _quiz_availability($node);
-  $output = '<div class="quiz_availability"><p>';
-  switch ($status) {
-    case 'future':
-      $output .= t('This quiz will not be available until %time.', array('%time' => format_date($node->quiz_open)));
-      break;
-    case 'open':
-      $output .= t('This quiz closes %time.', array('%time' => format_date($node->quiz_close)));
-      break;
-    case 'closed':
-      $output .= t('This quiz is no longer available.');
-      break;
-  }
-  $output .= '</p></div>'."\n";
-  return $output;
-}
-
-
-/**
- * Theme the node view for quizzes.
- *
- * @ingroup themeable
- */
-function theme_quiz_view($node, $teaser = FALSE, $page = FALSE) {
-  $output = '';
-  // Output quiz options.
-  $output .= '<h3>'. t('@quiz Options', array('@quiz' => QUIZ_NAME)) .'</h3>';
-  $header = array(
-    t('# of Random Questions'),
-    t('Shuffle?'),
-    t('Feedback'),
-    t('Number of takes'),
-  );
-  $shuffle = $node->shuffle == 1 ? t('Yes') : t('No');
-  $feedback_options = _quiz_get_feedback_options();
-  $feedback = $feedback_options[$node->feedback_time];
-  $takes = $node->takes == 0 ? t('Unlimited') : check_plain($node->takes);
+function theme_quiz_get_user_results($results) {
   $rows = array();
-  $rows[] = array(
-    check_plain($node->number_of_random_questions),
-    $shuffle,
-    $feedback,
-    $takes,
-  );
-  $output .= theme('table', $header, $rows);
-  // Format Quiz Dates.
-  $output .= '<h3>'. t('@quiz start/end', array('@quiz' => QUIZ_NAME)) .'</h3>';
-  if (!$node->quiz_always) {
-    // If we are previewing, make sure the dates are timestamps and not form arrays.
-    if (is_array($node->quiz_open)) {
-      quiz_translate_form_date($node, 'quiz_open');
-    }
-    if (is_array($node->quiz_close)) {
-      quiz_translate_form_date($node, 'quiz_close');
-    }
 
-    // Format the availability info.
-    $output .= '<p>'. format_date($node->quiz_open) .' &mdash; '. format_date($node->quiz_close) .'</p>';
-    $output .= '<p><strong>'. t('Days @quiz live for: ', array('@quiz' => QUIZ_NAME))  .'</strong> '. floor(($node->quiz_close - $node->quiz_open) / 60 / 60 / 24) .'</p>';
-    $remaining = floor(($node->quiz_close - time()) / 60 / 60 / 24);
-    $remaining = ($remaining < 0) ? t('Expired') : $remaining;
-    $output .= '<p><strong>'. t('Days remaining:') . '</strong> '. $remaining .'</p>';
-    $elapsed = floor((time() - $node->quiz_open) / 60 / 60 / 24);
-    $elapsed = ($elapsed < 0)?(-$elapsed) . t(' days to go') : $elapsed;
-    $output .= '<p><strong>' . t('Days since start:') . '</strong> '. $elapsed .'</p>';
-  }
-  else {
-    $output .= '<p>'. t('This Quiz is always available.') .'</p>'."\n";
-  }
-
-  // Format taxonomy selection (if applicable).
-  if (function_exists('taxonomy_node_get_terms')) {
-    $output .= '<h3>'. t('Taxonomy selection') .'</h3>';
-    $terms = array();
-    foreach (taxonomy_node_get_terms($node) as $term) {
-      $terms[] = check_plain($term->name);
-    }
-    if (!empty($terms)) {
-      $terms = implode(', ', $terms);
-      $output .= "<p>$terms</p>";
-    }
+  while (list($key, $result) = each($results)) {
+    $interval = _quiz_format_duration($result['time_end'] - $result['time_start']);
+    $passed = $result['score'] >= $result['pass_rate'];
+    $grade = $passed ? t('Passed') : t('Failed');
+    $passed_class = $passed ? 'quiz-passed' : 'quiz-failed';
+    if (!is_numeric($result['score']))
+      $score = t('In progress');
+    elseif (!$result['is_evaluated'])
+      $score = t('Not evaluated');
     else {
-      $output .= '<p>'. t('No selected terms found') .'</p>';
-    }
-  }
-
-  // Format pass / fail and summary options.
-  if ($node->pass_rate || $node->summary_default || $node->summary_pass) {
-    if ($node->pass_rate) {
-      $output .= '<h3>'. t('Pass / fail and summary options') .'</h3>'."\n";
-      $output .= '<p><strong>'. t('Percentage needed to pass:') .'</strong> '. check_plain($node->pass_rate) .'</p>'."\n";
-      $output .= '<div><strong>'. t('Summary text if the user passed:') .'</strong> ';
-      $output .= ($node->summary_pass) ? check_markup($node->summary_pass, $node->format) : t('No text defined.');
-      $output .= '</div>'."\n";
-    }
-    $output .= '<div><strong>'. t('Default summary text:') .'</strong> ';
-    $output .= !empty($node->summary_default) ? check_markup($node->summary_default, $node->format) : t('No text defined.');
-    $output .= '</div>'."\n";
-  }
-
-  // Format result options if available.
-  if (!empty($node->resultoptions)) {
-    $scored_quiz = ($node->pass_rate > 0);
-
-    $output .= '<h3>'. t('@quiz Results', array('@quiz' => QUIZ_NAME)) .'</h3>';
-
-    $header = array(t('Name') => 'option_name', t('Summary') => 'option_summary');
-    if ($scored_quiz) {
-      $header = array_merge($header, array(t('Start') => 'option_start', t('End') => 'option_end'));
-    }
-    $values = array_values($header);
-
-    foreach ($node->resultoptions as $option) {
-      $row = array();
-      foreach ($values as $field) {
-        $row[] = $option[$field];
+      if (!empty($result['pass_rate']) && is_numeric($result['score'])) {
+        $pre_score = '<span class = "' . $passed_class . '">';
+        $post_score = ' %<br><em>'. $grade .'</em></span>';
       }
-      $option_rows[] = $row;
+      else {
+        $post_score = ' %';
+      }
+      $score = $pre_score . $result['score'] . $post_score;
     }
-    $output .= theme('table', array_keys($header), $option_rows);
+    $rows[] = array(
+      'title'       => l($result['title'], 'user/quiz/'. $result['result_id'] .'/userresults'),
+      'time_start'  => format_date($result['time_start'], 'small'),
+      'time_end'    =>($result['time_end'] > 0) ? format_date($result['time_end'], 'small') . '<br />' . t('Duration :  @value', array('@value' => $interval)) : t('In Progress'),
+
+      'score'       => $score,
+      'evaluated'   => $result['is_evaluated'] ? t('Yes') : t('No'),
+    );
 
   }
 
-  // Format quiz questions.
-  if (is_numeric(arg(1))) {
-    $output .= '<h3>'. t('@quiz Questions', array('@quiz' => QUIZ_NAME)) .'</h3>';
-    $questions = _quiz_get_questions($node->vid);
-    $output .= theme('quiz_question_table', $questions, $node->nid);
+  if (empty($rows)) {
+    return t('No @quiz results found.', array('@quiz' => QUIZ_NAME));
   }
+
+  $header = array(
+    t('@quiz Title', array('@quiz' => QUIZ_NAME)),
+    t('Started'),
+    t('Finished'),
+    t('Score'),
+    t('Evaluated'),
+  );
+
+  $output = theme('table', $header, $rows);
+  $output .= '<p><em>' . t('@quiz that are not evaluated may have different score and grade when it is done.', array('@quiz' => QUIZ_NAME)) . '</em></p>';
   return $output;
 }
 
@@ -219,98 +341,44 @@ function theme_quiz_view($node, $teaser = FALSE, $page = FALSE) {
  *
  * @ingroup themeable
  */
-function theme_quiz_get_user_results($results) {
-  $output = '';
+function theme_quiz_my_results_for_quiz($results) {
   $rows = array();
+  $with_passing = FALSE;
   while (list($key, $result) = each($results)) {
-    $rows[] = array(
-      l('view', 'user/quiz/'. $result['result_id'] .'/userresults'),
-      check_plain($result['title']),
-      check_plain($result['name']),
-      $result['result_id'],
-      format_date($result['time_start'], 'small'),
-      ($result['time_end'] > 0) ? format_date($result['time_end'], 'small') : t('In Progress'),
+    $interval = _quiz_format_duration($result['time_end'] - $result['time_start']);
+    $score = $result['score'] . ' %';
+    
+    $row = array(
+      'time_start'  => format_date($result['time_start'], 'small'),
+      'duration' => $interval,
+      'score'       => $score,
     );
+    if (!empty($result['pass_rate'])) {
+      $with_passing = TRUE;
+      $passed = $result['score'] >= $result['pass_rate'];
+      $grade = $passed ? t('Passed') : t('Failed');
+      $passed_class = $passed ? 'quiz-passed' : 'quiz-failed';
+      $pre = '<span class = "' . $passed_class . '">';
+      $row['passed'] = $pre . $grade . '</span>';
+    }
+    $row['more'] = l(t('More') . '...', 'node/' . $result['nid'] . '/myresults/' . $result['result_id']);
+    $rows[] = $row;
+  }
+
+  if (empty($rows)) {
+    return t('No @quiz results found.', array('@quiz' => QUIZ_NAME));
   }
 
   $header = array(
-    t('Action'),
-    t('@quiz Title', array('@quiz' => QUIZ_NAME)),
-    t('Username'),
-    t('Result<br />ID'),
-    t('Time Started'),
-    t('Finished?'));
-
-  if (!empty($rows)) {
-    $output .= theme('table', $header, $rows);
+    t('Started'),
+    t('Duration'),
+    t('Score'),
+  );
+  if ($with_passing) {
+    $header[] = t('Passed');
   }
-  else {
-    $output .= t('No @quiz results found.', array('@quiz' => QUIZ_NAME));
-  }
-  return $output;
-}
-
-/**
- * Theme the filtered question list.
- *
- * @ingroup themeable
- */
-function theme_quiz_filtered_questions($form) {
-  $quiz_id = is_numeric(arg(1)) ? arg(1) : NULL;
-  $header = array(t('Random'), t('Always'), t('Never'), t('Question'), t('Type'), t('Edit'));
-  $rows = array();
-  $output = '';
-
-  while (list($nid, $values) = each($form['question_status'])) {
-    if (is_numeric($nid)) {
-      $rows[] = array(
-        drupal_render($form['question_status'][$nid][QUIZ_FEEDBACK_END]),
-        drupal_render($form['question_status'][$nid][QUIZ_FEEDBACK_QUESTION]),
-        drupal_render($form['question_status'][$nid][QUIZ_FEEDBACK_NEVER]),
-        drupal_render($form['question'][$nid]),
-        drupal_render($form['type'][$nid]),
-        l(t('Edit'), 'node/'. $nid .'/edit/'. $quiz_id),
-      );
-    }
-  }
-  if (!empty($rows)) {
-    $output .= theme('table', $header, $rows);
-  }
-  else {
-    $output .= t('No questions found.');
-  }
-  return $output;
-}
-
-/**
- * Theme a table containing array of questions and options.
- *
- * @param $questions
- *  Array of question nodes.
- * @return
- *  HTML for a table.
- *
- * @ingroup themeable
- */
-function theme_quiz_question_table($questions, $quiz_id = NULL) {
-  $output = '';
-  $rows = array();
-  $status_descriptions = array(t('Random'), t('Always'), t('Never'));
-  while (list($key, $question) = each($questions)) {
-    $rows[] = array(
-      $status_descriptions[$question->question_status],
-      $question->question,
-      $question->type,
-      l(t('Edit'), 'node/'. $question->nid .'/edit/'. $quiz_id));
-  }
-  $header = array(t('Status'), t('Question'), t('Type'), t('Edit'));
-
-  if (!empty($rows)) {
-    $output .= theme('table', $header, $rows);
-  }
-  else {
-    $output .= t('No questions found.');
-  }
+  $header[] = '';
+  $output = theme('table', $header, $rows);
   return $output;
 }
 
@@ -344,47 +412,44 @@ function theme_quiz_score_incorrect() {
  *
  * @ingroup themeable
  */
-function theme_quiz_progress($question_number, $num_of_question) {
+function theme_quiz_progress($question_number, $num_of_question, $jumper = FALSE, $time_limit = FALSE) {
   // Determine the percentage finished (not used, but left here for other implementations).
   //$progress = ($question_number*100)/$num_of_question;
 
   // Get the current question # by adding one.
   $current_question = $question_number + 1;
 
+  if ($jumper) {
+    $current_question = theme('quiz_jumper', $current_question, $num_of_question);
+  }
+
   $output  = '';
   $output .= '<div id="quiz_progress">';
-  $output .= t('Page %x of %y', array('%x' => $current_question, '%y' => $num_of_question));
-  $output .= '</div><br />'."\n";
-  $output .= '<div class="countdown"></div>';
+  $output .= t('Question <span id="quiz-question-number">!x</span> of <span id="quiz-num-questions">@y</span>', array('!x' => $current_question, '@y' => $num_of_question));
+  $output .= '</div>'."\n";
+  // Add div to be used by jQuery countdown
+  if ($time_limit) {
+    $output .= '<div class="countdown"></div>';
+  }
   return $output;
 }
 
-/**
- * Theme a question page.
- *
- * @param $quiz
- *  The quiz node object.
- * @param $question_node
- *  The question node.
- * @return
- *  Themed html.
- *
- * @ingroup themeable
- *
- * @deprecated This should not be used. Rendering is now done through the standard node rendering system.
- */
-function theme_quiz_take_question($quiz, $question_node) {
-  //Calculation for quiz progress bar.
-  $number_of_questions = quiz_get_number_of_questions($quiz->vid, $quiz->nid);
-  $question_number = $number_of_questions - count($_SESSION['quiz_'. $quiz->nid]['quiz_questions']);
-  $question_node->question_number = $question_number;
-  // Set the title here in case themers want to do something different.
-  drupal_set_title(check_plain($quiz->title));
-
-  // Return the elements of the page.
-  $output = '';
-  $output .= theme('quiz_progress', $question_number, $number_of_questions);
-  $output .= module_invoke($question_node->type, 'render_question', $question_node);
+function theme_quiz_jumper($current, $num_questions) {
+  $output = '<select name="quiz-jumper" class="form-select" id="quiz-jumper">';
+  for ($i = 1; $i <= $num_questions; $i++) {
+    $extra = $i == $current ? ' selected="selected"' : '';
+    $output .= '<option value="' . $i . '"' . $extra . '>' . $i . '</option>';
+  }
+  $output .= '</select><span id="quiz-jumper-no-js">' . $current . '</span>';
+  drupal_add_js("
+    Drupal.behaviors.quizJumper = function () {
+      $('#quiz-jumper:not(.quizJumper-processed)').show().addClass('quizJumper-processed').change(function(){
+        $('#edit-jump-to-question').val($(this).val());
+        $('#edit-submit').trigger('click');
+      });
+      $('#quiz-jumper-no-js:not(.quizJumper-processed)').hide().addClass('quizJumper-processed');
+    };
+  ", 'inline');
   return $output;
 }
 
@@ -410,24 +475,22 @@ function theme_quiz_take_summary($quiz, $questions, $score, $summary) {
 
   // Display overall result.
   $output = '';
-
-  // Only display scoring information if this is not a personality test:
-  //if ($score['percentage_score']) {
   if (!empty($score['possible_score'])) {
     if (!$score['is_evaluated']) {
-      $msg = t(
-        'Parts of this @quiz have not been evaluated yet. The score below is not final.',
-        array('@quiz' => QUIZ_NAME)
-      );
-      drupal_set_message($msg, 'error');
+      $msg = t('Parts of this @quiz have not been evaluated yet. The score below is not final.', array('@quiz' => QUIZ_NAME));
+      drupal_set_message($msg, 'warning');
     }
     $output .= '<div id="quiz_score_possible">'. t('You got %num_correct of %question_count possible points.', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) .'</div>'."\n";
-    $output .= '<div id="quiz_score_percent">'. t('Your score: %score%', array('%score' => $score['percentage_score'])) .'</div><br />'."\n";
+    $output .= '<div id="quiz_score_percent">'. t('Your score: %score %', array('%score' => $score['percentage_score'])) .'</div>'."\n";
   }
-  $output .= '<div id="quiz_summary">'. check_markup($summary, $quiz->format) .'</div><br />'."\n";
-  // Get the feedback for all questions.
-  $output .= theme('quiz_feedback', $questions, ($quiz->pass_rate > 0), TRUE);
-
+  if (isset($summary['passfail']))
+    $output .= '<div id="quiz_summary">'. $summary['passfail'] .'</div>'."\n";
+  if (isset($summary['result']))
+    $output .= '<div id="quiz_summary">'. $summary['result'] .'</div>'."\n";
+  // Get the feedback for all questions. These are included here to provide maximum flexibility for themers
+  if ($quiz->display_feedback) {
+    $output .= drupal_get_form('quiz_report_form', $questions);
+  }
   return $output;
 }
 
@@ -459,87 +522,13 @@ function theme_quiz_user_summary($quiz, $questions, $score, $summary) {
   // Display overall result.
   $output = '';
   $output .= '<div id="quiz_score_possible">'. t('You got %num_correct of %question_count possible points.', array('%num_correct' => $score['numeric_score'], '%question_count' => $score['possible_score'])) .'</div>'."\n";
-  $output .= '<div id="quiz_score_percent">'. t('Your score was: @score%', array('@score' => $score['percentage_score'])) .'</div><br />'."\n";
-  $output .= '<div id="quiz_summary">'. check_markup($summary,$quiz->format) .'</div><br />'."\n";
+  $output .= '<div id="quiz_score_percent">'. t('Your score was: @score %', array('@score' => $score['percentage_score'])) .'</div>'."\n";
+  if (isset($summary['passfail']))
+    $output .= '<div id="quiz_summary">'. $summary['passfail'] .'</div>'."\n";
+  if (isset($summary['result']))
+    $output .= '<div id="quiz_summary">'. $summary['result'] .'</div>'."\n";
   // Get the feedback for all questions.
-  $output .= theme('quiz_feedback', $questions, TRUE, TRUE);
-  return $output;
-}
-
-/**
- * Theme the question feedback.
- *
- * @param $questions
- *  Array of quiz questions objects as returned by _quiz_get_answers.
- * @param showpoints
- *  Binary flag for whether to show the actual answers or not.
- * @param $showfeedback
- *  Binary flag for whether to show question feedback.
- * @return
- *  Themed html.
- *
- * @ingroup themeable
- */
-function theme_quiz_feedback($questions, $showpoints = TRUE, $showfeedback = FALSE) {
-  $header = array(format_plural(count($questions), 'Question Result', 'Question Results'));
-  $rows = array();
-
-  // Go through each of the questions.
-  foreach ($questions as $question) {
-    $cols = array();
-    // Ask each question to render a themed report of how the user did.
-    $module = quiz_module_for_type($question->type);
-
-    $report = theme($module .'_report', $question, $showpoints, $showfeedback);
-
-    // Only include reports with actual data:
-    if (!empty($report) && strlen($report) > 0) {
-
-      $cols[] = array('data' => $report, 'class' => 'quiz_summary_qrow');
-
-      // Get the score result for each question only if it's a scored quiz.
-      if ($showpoints) {
-
-        $theme = ($question->correct) ? 'quiz_score_correct' : 'quiz_score_incorrect';
-        $cols[] = array('data' => theme($theme), 'class' => 'quiz_summary_qcell');
-      }
-      // Pack all of this into a table row.
-      $rows[] = array('data' => $cols, 'class' => 'quiz_summary_qrow');
-    }
-  }
-
-  return theme('table', $header, $rows);
-}
-
-/**
- * Theme feedback for one question.
- *
- * @param $quiz
- *  Quiz node (may not be needed).
- * @param $question_node
- *  The question node giving feedback for.
- * @param $answer
- *  User's response to previous question.
- * @return
- *  Themed html.
- *
- * @ingroup themeable
- */
-function theme_quiz_single_question_feedback($quiz, $report) {
-  $output = '<div class="quiz-summary-question">';
-  $output .= theme($report->type .'_feedback', $quiz, $report);
-  $output .= '</div><br class="clear" />';
-  return $output;
-}
-
-/**
- * Allow the option to theme the questions form.
- *
- * @ingroup themeable
- */
-function theme_quiz_questions($form) {
-  $output = '';
-  $output .= drupal_render($form);
+  $output .= drupal_get_form('quiz_report_form', $questions, FALSE, TRUE);
   return $output;
 }
 
@@ -555,6 +544,78 @@ function theme_quiz_no_feedback() {
   return t('Thanks for taking the quiz!');
 }
 
+/**
+ * Theme the single question node
+ *
+ * @param $node
+ *  The question node
+ * @return
+ *  Themed html feedback
+ */
 function theme_quiz_single_question_node($node) {
+  // This might seem meaningless, but it is designed this way to allow themes to add more
+  // meaningful stuff here...
   return $node->body;
+}
+
+/**
+ * Theme the stats on the views page
+ *
+ * @param $node
+ *   The quiz node
+ */
+function theme_quiz_view_stats($node) {
+  // Fetch data
+  $stats = array(
+    array(
+      'title' => t('Questions'),
+      'data' => $node->number_of_questions,
+    ),
+  );
+  if ($node->show_attempt_stats) {
+    $takes = $node->takes == 0 ? t('Unlimited') : $node->takes;
+    $stats[] = array(
+      'title' => t('Attempts allowed'),
+      'data' => $takes,
+    );
+  }
+  if ($node->quiz_always) {
+    $stats[] = array(
+      'title' => t('Available'),
+      'data' => t('Always'),
+    );
+  }
+  else {
+    $stats[] = array(
+      'title' => t('Opens'),
+      'data' => format_date($node->quiz_open, 'small'),
+    );
+    $stats[] = array(
+      'title' => t('Closes'),
+      'data' => format_date($node->quiz_close, 'small'),
+    );
+  }
+  if (!empty($node->pass_rate)) {
+    $stats[] = array(
+      'title' => t('Pass rate'),
+      'data' => $node->pass_rate .' %',
+    );
+  }
+  if (!empty($node->time_limit)) {
+    $stats[] = array(
+      'title' => t('Time limit'),
+      'data' => _quiz_format_duration($node->time_limit),
+    );
+  }
+  $stats[] = array(
+    'title' => t('Backwards navigation'),
+    'data' => $node->backwards_navigation ? t('Allowed') : t('Forbidden'),
+  );
+  // Format and output the data
+  $out = '<table id="quiz-view-table">' . "\n";
+  foreach ($stats as $stat) {
+    $out .= '<tr><td class="quiz-view-table-title"><strong>'. $stat['title'] .':</strong></td><td class="quiz-view-table-data"><em>'. $stat['data'] .'</em></td></tr>' . "\n";
+  }
+  $out .= '</table>' . "\n";
+  return $out;
 }

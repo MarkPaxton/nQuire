@@ -1,5 +1,5 @@
 <?php
-// $Id: schema.module,v 1.43.2.2 2009/08/27 13:37:19 mikeryan Exp $
+// $Id: schema.module,v 1.43.2.9 2010/02/01 19:03:18 mikeryan Exp $
 
 /**
  * @file The Schema module provides functionality built on the Schema API.
@@ -44,9 +44,15 @@ function schema_phpprint_table($name, $table) {
         $index[] = "'$keyname' => ".schema_phpprint_key($key);
       }
     }
+    if ($table['description']) {
+      $description = $table['description'];
+    }
+    else {
+      $description = t('TODO: please describe this table!');
+    }
     $out = '';
     $out .= "\$schema['".$name."'] = array(\n";
-    $out .= "  'description' => t('TODO: please describe this table!'),\n";
+    $out .= "  'description' => t('$description'),\n";
     $out .= "  'fields' => array(\n    ";
     $out .= implode(",\n    ", $cols);
     $out .= ",\n  ),\n";
@@ -69,7 +75,14 @@ function schema_phpprint_table($name, $table) {
 
 function schema_phpprint_column($col, $multiline=FALSE) {
   $attrs = array();
-  $attrs[] = "'description' => t('TODO: please describe this field!')";
+  if ($col['description']) {
+    $description = $col['description'];
+  }
+  else {
+    $description = t('TODO: please describe this field!');
+  }
+  unset($col['description']);
+  $attrs[] = "'description' => t('$description')";
   if ($col['type'] == 'varchar' || $col['size'] == 'normal') {
     unset($col['size']);
   }
@@ -148,6 +161,10 @@ function schema_unprefix_table($name) {
 }
 
 function schema_invoke($op) {
+  $db_name = variable_get('schema_database_connection', 'default');
+  if($db_name !== 'default'){
+    db_set_active($db_name);
+  }
   // We could be called by other modules (notably Table Wizard or Migrate) in an update
   // function, which does not call hook_init(). So, make sure we get our include files included...
   schema_require();
@@ -156,7 +173,11 @@ function schema_invoke($op) {
   $function = 'schema_'.$db_type.'_'.$op;
   $args = func_get_args();
   array_shift($args);
-  return call_user_func_array($function, $args);
+  $return = call_user_func_array($function, $args);
+  if($db_name !== 'default'){
+    db_set_active('default');
+  }
+  return $return;
 }
 
 function schema_engine_invoke($engine, $op) {
@@ -182,7 +203,7 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
   } else {
     drupal_set_message(t('%table.%field: no %engine type for Schema type %type.',
                          array('%engine' => $engine, '%type' => $type, '%table' => $table, '%field' => $field)),
-      'error');
+      'warning');
     return $col['type'];
   }
 }
@@ -190,14 +211,14 @@ function schema_engine_type($col, $table, $field, $engine = NULL) {
 /**
  * Convert an engine-specific data type into a Schema type.
  */
-function schema_schema_type($type, $table, $field, $engine = NULL, $warn = TRUE) {
+function schema_schema_type($type, $table, $field, $engine = NULL) {
   $map = schema_engine_invoke($engine, 'schema_type_map');
   $type = strtolower($type);
   if (isset($map[$type])) {
     return explode(':', $map[$type]);
   } else {
-    if ($warn) {
-      drupal_set_message(t('Field @table.@field: no Schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), 'error');
+    if (!variable_get('schema_suppress_type_warnings', FALSE)) {
+      drupal_set_message(t('Field @table.@field: no Schema type for @engine type @type.', array('@engine' => $engine, '@type' => $type, '@table' => $table, '@field' => $field)), 'warning');
     }
     return array($type, 'normal');
   }
@@ -223,7 +244,7 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   // Error check: column type and default type must match
   foreach ($ref as $t_name => $table) {
     if (! isset($table['fields']) || !is_array($table['fields'])) {
-      drupal_set_message(t('Table %table: Missing or invalid \'fields\' array.', array('%table' => $t_name)), 'error');
+      drupal_set_message(t('Table %table: Missing or invalid \'fields\' array.', array('%table' => $t_name)), 'warning');
       continue;
     }
 
@@ -278,7 +299,12 @@ function schema_compare_schemas($ref, $inspect = NULL) {
   }
 
   foreach ($ref as $name => $table) {
-    $module = $table['module'];
+    if (isset($table['module'])) {
+      $module = $table['module'];
+    }
+    else {
+      $module = '';
+    }
     if (!isset($inspect[$name])) {
       $info['missing'][$module][$name] = array('status' => 'missing');
     } else {
@@ -330,8 +356,9 @@ function schema_compare_table($ref, $inspect = NULL) {
     //
     // Sadly, we need a special-case hack for 'serial'.
     $serial = ($col['type'] == 'serial' ? TRUE : FALSE);
-    $dbtype = schema_engine_type($col, $ref['name'], $colname);
-    list($col['type'], $col['size']) = schema_schema_type($dbtype, $ref['name'], $colname);
+    $name = isset($ref['name']) ? $ref['name'] : '';
+    $dbtype = schema_engine_type($col, $name, $colname);
+    list($col['type'], $col['size']) = schema_schema_type($dbtype, $name, $colname);
     if ($serial) {
       $col['type'] = 'serial';
     }
@@ -348,6 +375,13 @@ function schema_compare_table($ref, $inspect = NULL) {
       $reasons[] = "$colname: not in database";
       continue;
     }
+
+    // Account for schemas that contain unnecessary 'default' => NULL
+    if (!isset($col['default']) ||
+        (is_null($col['default']) && !isset($inspect['fields'][$colname]['default']))) {
+      unset($col['default']);
+    }
+
     $kdiffs = array();
     foreach ($col_keys as $key => $val) {
 
@@ -621,18 +655,19 @@ EOT;
         $desc = _schema_process_description($c_spec['description']);
         $rows[] = array(array('colspan' => count($row_hdrs), 'data' => $desc));
       } else {
-        drupal_set_message(_schema_process_description(t('Field {!table}.@field has no description.', array('!table' => $t_name, '@field' => $c_name))), 'error');
+        drupal_set_message(_schema_process_description(t('Field {!table}.@field has no description.', array('!table' => $t_name, '@field' => $c_name))), 'warning');
       }
     }
 
     if (empty($t_spec['description']) || $t_spec['description'] == $default_table_description) {
-      drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'error');
+      drupal_set_message(_schema_process_description(t('Table {!table} has no description.', array('!table' => $t_name))), 'warning');
     }
 
     $form = array();
     $form[$t_name] = array(
       '#type' => 'fieldset',
-      '#title' => t('@table (@module module)', array('@table' => $t_name, '@module' => $t_spec['module'])),
+      '#title' => t('@table (@module module)',
+        array('@table' => $t_name, '@module' => isset($t_spec['module']) ? $t_spec['module'] : '')),
       '#description' => !empty($t_spec['description']) ? _schema_process_description($t_spec['description']) : '',
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
@@ -678,7 +713,7 @@ function schema_report() {
     }
     else if ($state == 'warn') {
       foreach ($modules as $msg) {
-        drupal_set_message($msg, 'error');
+        drupal_set_message($msg, 'warning');
       }
       continue;
     }
@@ -757,7 +792,7 @@ function schema_inspect() {
   $schema = drupal_get_schema(NULL, TRUE);
   $inspect = schema_invoke('inspect');
   foreach ($inspect as $name => $table) {
-    $module = isset($schema[$name]) ? $schema[$name]['module'] : 'Unknown';
+    $module = isset($schema[$name]['module']) ? $schema[$name]['module'] : 'Unknown';
     if (!isset($form[$module])) {
       $form[$module] = array(
         '#type' => 'fieldset',
@@ -838,12 +873,30 @@ EOT;
 }
 
 function schema_settings() {
+  global $db_url;
+  if(is_array($db_url) && count($db_url) > 1){
+    $form['schema_database_connection'] = array(
+      '#type' => 'select',
+      '#title' => t('Database connection to use'),
+      '#default_value' => variable_get('schema_database_connection', 'default'),
+      '#options' => array_combine(array_keys($db_url), array_keys($db_url)),
+      '#description' => t('If you use a secondary database other than the default
+        Drupal database you can select it here and use schema\'s "compare" and
+        "inspect" functions on that other database.'),
+    );
+  }
   $form['schema_status_report'] = array(
     '#type' => 'checkbox',
     '#title' => t('Include schema comparison reports in site status report'),
     '#default_value' => variable_get('schema_status_report', TRUE),
     '#description' => t('When checked, schema comparison reports are run on
       the Administer page, and included in the site status report.'),
+  );
+  $form['schema_suppress_type_warnings'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Suppress schema warnings.'),
+    '#default_value' => variable_get('schema_suppress_type_warnings', FALSE),
+    '#description' => t('When checked, missing schema type warnings will be suppressed.'),
   );
   return system_settings_form($form);
 }

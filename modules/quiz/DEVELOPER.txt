@@ -9,47 +9,54 @@ Hooks for interacting with a quiz:
 
 DEVELOPING NEW QUESTION TYPES:
 
-There are two different ways to create a new question type: the "old" way, which 
-uses traditional Drupal hooks, but requires substantial coding, and the "new" OO
-way, which is much faster to develop.
-
-1. Creating a question type the old way
-=======================================
-
-To create a question type the "old" way, you will need to develop a custom 
-module that parforms all of the necessary actions. There are several hooks you 
-will need to implement. The best place to start is with the multichoice module.
-
-Hooks you need to implement when developing a new question type:
-
-hook_list_questions() // List of questions
-hook_quiz_question_info() // Info about a question type.
-hook_evaluate_question() // Check whether question is correct or not.
-hook_get_report()
-hook_render_question()
-
-hook_quiz_question_score() // Given information about a quiz question, determine the score
-hook_quiz_personality_question_score() // Given information about a quiz question, determine the personality category
-
-Theme functions
-===============
-Where {$type} is the question type, e.g. multichoice or long_answer...
-
-theme_{$type}_report() // Report at end of quiz
-theme_{$type}_feedback() // Feedback given during the taking of the quiz.
-
-
-2. Creating a new question type using quiz_question
-===================================================
-
-In this method, you need to create a new module that extends the existing 
-question type core. The True/False question type provides a precise example.
+You need to create a new module that extends the existing 
+question type core. The multichoice question type provides a precise example.
 
 Here are the steps:
 
 1. Create a new module
 2. Use your module's .install file to create the necessary tables
 3. Make sure you module implements hook_quiz_question_info()
-4. Define classes that implement QuizQuestion and QuizQuestionResponse.
-  (Hint: You may want to extend the Abstract classes where available.)
-  For a complete example, see quiz_question.truefalse.inc.
+4. Define classes that extends QuizQuestion and QuizQuestionResponse.
+   For a complete example, see multichoice.classes.inc.
+  
+  
+  
+  
+==================================================
+How to clean up the database during development
+==================================================
+
+# see what questions are deleted but still in quizzes
+SELECT qnr.* FROM quiz_node_relationship qnr
+LEFT JOIN node n ON qnr.child_nid = n.nid 
+WHERE n.nid IS NULL
+
+# delete questions that are deleted but still in quizzes
+DELETE qnr
+FROM quiz_node_relationship qnr
+LEFT JOIN node n ON qnr.child_nid = n.nid 
+WHERE n.nid IS NULL
+
+# see what quizzes are deleted but still have questions
+SELECT qnr.* FROM quiz_node_relationship qnr
+LEFT JOIN node n ON qnr.parent_nid = n.nid 
+WHERE n.nid IS NULL
+
+# delete quizzes that are deleted but still have questions
+DELETE qnr
+FROM quiz_node_relationship qnr
+LEFT JOIN node n ON qnr.parent_nid = n.nid 
+WHERE n.nid IS NULL
+
+# see what revisions are stored for nodes that are deleted
+SELECT nr.* FROM node_revisions nr
+LEFT JOIN node n ON nr.nid = n.nid 
+WHERE n.nid IS NULL
+
+# delete orphaned revisions
+DELETE nr
+FROM node_revisions nr
+LEFT JOIN node n ON nr.nid = n.nid 
+WHERE n.nid IS NULL
+

@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz_views_handler_field_number_questions.inc,v 1.1.2.2 2009/05/21 19:02:13 sivaji Exp $
+// $Id: quiz_views_handler_field_number_questions.inc,v 1.2 2009/05/28 16:52:07 mbutcher Exp $
 
 /*
  * @file

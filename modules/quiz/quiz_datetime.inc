@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz_datetime.inc,v 1.2.8.1 2009/05/21 19:02:12 sivaji Exp $
+// $Id: quiz_datetime.inc,v 1.3.2.4 2010/11/05 16:14:47 falcon Exp $
 
 /////////////////////////////////
 // Date and time routines for use with quiz module.
@@ -20,12 +20,14 @@
 function quiz_translate_form_date(&$node, $date) {
   $prefix = $node->$date;
   // If we have all the parameters, re-calculate $node->event_$date .
-  if (isset($prefix['year']) && isset($prefix['month']) && isset($prefix['day'])) {
+  if (is_array($prefix) && isset($prefix['year']) && isset($prefix['month']) && isset($prefix['day'])) {
     // Build a timestamp based on the date supplied and the configured timezone.
     $node->$date = _quiz_mktime(0, 0, 0, $prefix['month'], $prefix['day'], $prefix['year'], 0);
   }
   else {
-    form_set_error('quiz_open', t('Please supply a valid date.'));
+    if (!_quiz_is_int($prefix, 1, 2147483647)) {
+      form_set_error('quiz_open', t('Please supply a valid date.'));
+    }
   }
 }
 
@@ -38,10 +40,15 @@ function quiz_translate_form_date(&$node, $date) {
  * 2. If user time zones are enabled, user time zone offset is applied
  * 3. If neither 1 nor 2 apply, the site time zone offset is applied
  *
- * @param $format The date() format to apply to the timestamp.
- * @param $timestamp The GMT timestamp value.
- * @param $offset Time zone offset to apply to the timestamp.
- * @return gmdate() formatted date value
+ * @param $hour
+ * @param $minute
+ * @param $second
+ * @param $month
+ * @param $day
+ * @param $year
+ * @param $offset
+ *   Time zone offset to apply to the timestamp.
+ * @return timestamp
  */
 function _quiz_mktime($hour, $minute, $second, $month, $day, $year, $offset = NULL) {
   global $user;
@@ -66,9 +73,12 @@ function _quiz_mktime($hour, $minute, $second, $month, $day, $year, $offset = NU
  * 2. If user time zones are enabled, user time zone offset is applied
  * 3. If neither 1 nor 2 apply, the site time zone offset is applied
  *
- * @param $format The date() format to apply to the timestamp.
- * @param $timestamp The GMT timestamp value.
- * @param $offset Time zone offset to apply to the timestamp.
+ * @param $format
+ *   The date() format to apply to the timestamp.
+ * @param $timestamp
+ *   The GMT timestamp value.
+ * @param $offset
+ *   Time zone offset to apply to the timestamp.
  * @return gmdate() formatted date value
  */
 function _quiz_date($format, $timestamp, $offset = NULL) {

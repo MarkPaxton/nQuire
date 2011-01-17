@@ -1,5 +1,5 @@
 <?php
-// $Id: quiz.views.inc,v 1.1.2.14 2009/05/20 15:42:32 mbutcher Exp $
+// $Id: quiz.views.inc,v 1.2.2.8 2010/11/05 16:14:47 falcon Exp $
 
 /**
  * @file
@@ -14,6 +14,9 @@ function quiz_views_handlers() {
     'handlers' => array(
       // Fields
       'quiz_views_handler_field_takes' => array(
+        'parent' => 'views_handler_field',
+      ),
+      'quiz_views_handler_field_time' => array(
         'parent' => 'views_handler_field',
       ),
       'quiz_views_handler_field_question_status' => array(
@@ -92,23 +95,6 @@ function quiz_views_data() {
     ),
 
     // Field definitions
-    'property_id' => array(
-      'title' => t('Quiz node property ID'),
-      'help' => 'The unique ID for a property.',
-      'argument' => array(
-        'handler' => 'views_handler_argument_numeric',
-        //'name_field' => 'title',
-        'numeric' => TRUE,
-        'validate type' => 'nid',
-      ),
-      'sort' => array('handler' => 'views_handler_sort'),
-      'relationship' => array(
-        'handler' => 'views_handler_relationship',
-        'base' => 'node',
-        'field' => 'nid',
-        'label' => t('node'),
-      ),
-    ),
     'nid' => array(
       'title' => t('Quiz Node NID'),
       'help' => t('The ID of the Quiz Node.'),
@@ -188,10 +174,10 @@ function quiz_views_data() {
       'sort' => array('handler' => 'views_handler_sort'),
     ),
     'shuffle' => array(
-      'title' => t('Shuffle'),
-      'help' => t('Indicates whether questions will be shuffled.'),
+      'title' => t('Randomization'),
+      'help' => t('Indicates how questions will be randomized.'),
       'field' => array(
-        'handler' => 'views_handler_field_boolean',
+        'handler' => 'views_handler_field_numeric',
         'click sortable' => TRUE,
       ),
     'sort' => array('handler' => 'views_handler_sort'),
@@ -205,6 +191,16 @@ function quiz_views_data() {
       ),
     'sort' => array('handler' => 'views_handler_sort'),
     ),
+    'repeat_until_correct' => array(
+      'title' => t('Repeat until correct'),
+      'help' => t('Require the user to re-try the question until they answer it correctly.'),
+      'field' => array(
+        'handler' => 'views_handler_field_boolean',
+        'click sortable' => TRUE,
+      ),
+    'sort' => array('handler' => 'views_handler_sort'),
+    ),
+
     'feedback_time' => array(
       'title' => t('Feedback Time'),
       'help' => t('Indicates whether quiz takers will get feedback after every question.'),
@@ -218,7 +214,7 @@ function quiz_views_data() {
       'title' => t('Time limit'),
       'help' => t('The time limit on a quiz.'),
       'field' => array(
-        'handler' => 'views_handler_field_numeric',
+        'handler' => 'quiz_views_handler_field_time',
         'click sortable' => TRUE,
       ),
       'argument' => array(
@@ -314,6 +310,10 @@ function quiz_views_data() {
     'parent_nid' => array(
       'title' => t('Quiz Node ID'),
       'help' => t('The node id of the quiz to which the question is attached.'),
+      'field' => array(
+        'handler' => 'views_handler_field_numeric',
+        'click sortable' => TRUE,
+      ),
       'argument' => array(
         // This'll get us the node title for the title, which may or may not be
         // preferable; that's the only difference between this handler and the
@@ -578,7 +578,7 @@ function quiz_views_data() {
       'title' => t('Score'),
       'help' => t('Score on the Quiz.'),
       'field' => array(
-        'handler' => 'views_handler_field',
+        'handler' => 'views_handler_field_numeric',
         'click sortable' => TRUE,
       ),
       'argument' => array(
@@ -605,6 +605,7 @@ function quiz_views_data() {
       'real field' => 'score',
       'field' => array(
         'handler' => 'quiz_views_handler_field_score_aggregate',
+        'float' => TRUE,
         'group field' => 'nid',
       ),
     ),

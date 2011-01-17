@@ -1,6 +1,6 @@
 <?php
 
-// $Id: quiz_directions.classes.inc,v 1.1.2.5 2010/03/20 18:24:28 sivaji Exp $
+// $Id: quiz_directions.classes.inc,v 1.2.2.30 2010/11/05 16:14:47 falcon Exp $
 /**
  * quiz_directions.classes
  *
@@ -10,91 +10,112 @@
  * of times into a quiz. Example uses may include:
  *
  * - Initial quiz-wide directions
- * - Section directions, e.g. "The next five questions are multiple choice, please..."
+ * - Section directions, e.g. "The next five questions are multiple choice, please..." (Won't work if the question order is randomized)
  * - Final confirmation, e.g. "You have answered all questions. Click submit to submit this quiz."
  *
  * @file
  */
 
 /**
- * Implementation of QuizQuestion.
+ * Extension of QuizQuestion.
  */
-class QuizDirectionsQuestion implements QuizQuestion {
+class QuizDirectionsQuestion extends QuizQuestion {
 
   /**
-   * The current node for this question.
+   * Constructor
    */
-  protected $node = NULL;
-
-  public function __construct($node) {
-    $this->node = $node;
-    //$this->node->no_skip_button = TRUE; // No skip button
-    //$this->node->not_a_question = TRUE;
+  public function __construct(stdClass $node) {
+    parent::__construct($node);
+    $this->node->no_skip_button = TRUE; // No skip button
+    $this->node->not_a_question = TRUE;
   }
 
-  public function save($is_new = FALSE) {}
+  /**
+   * Implementation of validateNode
+   *
+   * @see QuizQuestion#validateNode($form)
+   */
+  public function validateNode(array &$form) {}
 
-  public function validate($node, &$form) {}
+  /**
+   * Implementation of saveNodeProperties
+   *
+   * @see QuizQuestion#saveNodeProperties($is_new)
+   */
+  public function saveNodeProperties($is_new = FALSE) {}
 
-  public function delete($only_this_version = FALSE) {}
+  /**
+   * Implementation of getAnsweringForm
+   *
+   * @see QuizQuestion#getAnsweringForm($form_state, $rid)
+   */
+  public function getAnsweringForm(array $form_state = NULL, $rid) {
+    $form = parent::getAnsweringForm($form_state, $rid);
+    $form['#theme'] = 'quiz_directions_answering_form';
 
-  public function load() {}
-
-  public function view() {
-    return $this->getQuestionForm($this->node);
-  }
-
-  // This is called whenever a question is rendered, either
-  // to an administrator or to a quiz taker.
-  public function getQuestionForm($node, $context = NULL) {
-    $form['question'] = array(
-       '#type' => 'markup',
-       '#value' => check_markup($node->body, $node->format),
-     );
-     $form['tries'] = array(
-       '#type' => 'hidden',
-       '#value' => 0,
-     );
-
-     $form['empty_space'] = array(
-       '#type' => 'markup',
-       '#value' => '<br/>',
-     );
-
-     return $form;
-  }
-  public function getAdminForm($edit = NULL) {
-    $form['settings'] = array(
+    $form['tries'] = array(
+      '#type' => 'hidden',
+      '#value' => 0,
+    );
+    $form['empty_space'] = array(
       '#type' => 'markup',
-      '#value' => t('There are no settings for this question type.'),
+      '#value' => '<br/>',
     );
     return $form;
   }
-  public function getCreationForm($edit) {
+
+  /**
+   * Implementation of getBodyFieldTitle
+   *
+   * @see QuizQuestion#getBodyFieldTitle()
+   */
+  public function getBodyFieldTitle() {
+    return t('Direction');
+  }
+
+  /**
+   * Implementation of getCreationForm
+   *
+   * @see QuizQuestion#getCreationForm($form_state)
+   */
+  public function getCreationForm(array $form_state = NULL) {
     return array();
   }
+
+  /**
+   * Implementation of getMaximumScore
+   *
+   * @see QuizQuestion#getMaximumScore()
+   */
   public function getMaximumScore() {
     return 0;
   }
-
 }
 
 /**
- * Class that describes a "Directions question response". For
- * the most part, no real scoring takes place for a direction
- * node. However, there are a few behind-the-scenes tricks that
- * are done here to make the quiz-taking process a little easier.
+ * Extension of QuizQuestionResponse
  */
-class QuizDirectionsResponse extends AbstractQuizQuestionResponse {
+class QuizDirectionsResponse extends QuizQuestionResponse {
 
-  public function __construct($rid, $question, $answer = NULL) {
-    $this->answer = $answer;
-    $this->question = $question;
-    $this->rid = $rid;
-  }
-
+  /**
+   * Implementation of save
+   *
+   * @see QuizQuestionResponse#save()
+   */
   public function save() {}
+
+  /**
+   * Implementation of delete
+   *
+   * @see QuizQuestionResponse#delete()
+   */
   public function delete() {}
+
+  /**
+   * Implementation of score
+   *
+   * @see QuizQuestionResponse#score()
+   */
   public function score() {
     // First, due to popular demand, if the directions are at the beginning of
     // the quiz, we restart the timer after the user has read the question.
@@ -110,14 +131,34 @@ class QuizDirectionsResponse extends AbstractQuizQuestionResponse {
     $this->score = 0;
     return 0;
   }
+
+  /**
+   * Implementation of isCorrect
+   *
+   * @see QuizQuestionResponse#isCorrect()
+   */
   public function isCorrect() {
     return TRUE;
   }
+
+  /**
+   * Implementation of getResponse
+   *
+   * @see QuizQuestionResponse#getResponse()
+   */
   public function getResponse() {
     return $this->answer;
   }
-  public function formatReport($showpoints = TRUE, $showfeedback = TRUE) {
-    return '';
+
+  /**
+   * Implementation of getReportForm
+   *
+   * @see QuizQuestionResponse#getReportForm($showpoints, $showfeedback, $allow_scoring)
+   */
+  public function getReportForm($showpoints = TRUE, $showfeedback = TRUE) {
+    return array(
+      '#no_report' => TRUE,
+    );
   }
 }
 

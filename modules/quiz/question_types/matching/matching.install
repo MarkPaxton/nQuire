@@ -1,17 +1,28 @@
 <?php
-// $Id: matching.install,v 1.1.2.2 2009/08/25 14:11:16 mbutcher Exp $
+// $Id: matching.install,v 1.2.2.5 2010/04/14 11:19:51 sivaji Exp $
 
-/*
+/**
  * @file
- * matching schema file.
+ * matching install file.
  */
 
+/**
+ * Implementation of hook_update_N().
+ *
+ * Add index to improve performance
+ */
+function matching_update_6400() {
+  $results = array();
+  db_add_index($results, 'quiz_matching_node', 'question_id', array('nid', 'vid'));
+  return $results;
+}
 
 /**
  * Implementation of hook_install().
  */
 function matching_install() {
   drupal_install_schema('matching');
+  variable_set('node_options_matching', array('status'));
   cache_clear_all('autoload:', 'cache');
 }
 
@@ -66,6 +77,9 @@ function matching_schema() {
       ),
     ),
     'primary key' => array('match_id'),
+    'indexes' => array(
+      'question_id' => array('nid', 'vid'),
+    ),
   );
 
   // User answers go in here.

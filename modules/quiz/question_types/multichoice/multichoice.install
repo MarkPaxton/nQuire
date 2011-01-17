@@ -1,22 +1,13 @@
 <?php
-// $Id: multichoice.install,v 1.1.2.3 2009/08/25 14:11:16 mbutcher Exp $
+// $Id: multichoice.install,v 1.2.2.16 2010/11/15 08:12:29 falcon Exp $
 
 /**
+ * Sponsored by: Norwegian Centre for Telemedicine
+ * Code: falcon
+ *
  * @file
- * Multichoice Install (a quiz question type)
+ * multichoice Install (a quiz question type)
  */
-
-
-/**
- * Implementation of hook_update_N().
- * Change the question field to a text field to allow long questions.
- */
-function multichoice_update_6300() {
-  $ret = array();
-  $spec = array('type' => 'text');
-  db_change_field($ret, 'quiz_multichoice_answers', 'answer', 'answer', $spec);
-  return $ret;
-}
 
 
 /**
@@ -25,18 +16,26 @@ function multichoice_update_6300() {
 function multichoice_install() {
   drupal_install_schema('multichoice');
   cache_clear_all('autoload:', 'cache');
+  variable_set('node_options_multichoice', array('status'));
 }
 
 /**
  * Implementation of hook_schema().
  */
 function multichoice_schema() {
-  /**
-   * Stores correct answers for multichoice quiz.
-   */
-  // Create the quiz node user answers multichoice table.
+  // Stores the users answers to a question.
   $schema['quiz_multichoice_user_answers'] = array(
     'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'result_id' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
       'question_nid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
@@ -47,7 +46,21 @@ function multichoice_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      'result_id' => array(
+      'choice_order' => array(
+        'type' => 'text',
+      ),
+    ),
+    'primary key' => array(
+      'id'
+    ),
+    'indexes' => array(
+      'answer_id' => array('result_id', 'question_nid', 'question_vid'),
+    ),
+  );
+
+  $schema['quiz_multichoice_user_answer_multi'] = array(
+    'fields' => array(
+      'user_answer_id' => array(
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
@@ -59,21 +72,15 @@ function multichoice_schema() {
       ),
     ),
     'primary key' => array(
-      'result_id', 'question_nid', 'question_vid', 'answer_id',
+      'user_answer_id', 'answer_id'
+    ),
+    'indexes' => array(
+      'answer_id' => array('user_answer_id'),
     ),
   );
 
-  /**
-   * Stores user answers for multichoice quiz.
-   */
-  // Create the quiz node answers multichoice table.
-  $schema['quiz_multichoice_answers'] = array(
+  $schema['quiz_multichoice_properties'] = array(
     'fields' => array(
-      'answer_id' => array(
-        'type' => 'serial',
-        'unsigned' => TRUE,
-        'not null' => TRUE,
-      ),
       'nid' => array(
         'type' => 'int',
         'unsigned' => TRUE,
@@ -84,36 +91,233 @@ function multichoice_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
-      //'answer' => array( 'type' => 'varchar', 'length' => 255, 'not null' => TRUE),
-      'answer' => array(
-        'type' => 'text'
-      ),
-      'feedback' => array(
-        'type' => 'text',
-      ),
-      'result_option' => array(
+      'choice_multi' => array(
         'type' => 'int',
         'unsigned' => TRUE,
+        'not null' => TRUE,
         'default' => 0,
       ),
-     'is_correct' => array(
+      'choice_random' => array(
         'type' => 'int',
-        'size' => 'tiny',
         'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'choice_boolean' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
         'default' => 0,
       ),
     ),
     'primary key' => array(
-      'answer_id',
+      'nid', 'vid'
     ),
   );
 
-  // Default the "Show Author and Date" for this question type to OFF.
-  $temp_array = variable_get('theme_settings', '' /*$default*/);
-  $temp_array['toggle_node_info_multichoice'] = 0;
-  variable_set('theme_settings', $temp_array);
+  /*
+   * Holds each answer in the answer_collections.
+   */
+  $schema['quiz_multichoice_answers'] = array(
+    'fields' => array(
+      'id' => array(
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'answer' => array(
+        'type' => 'text',
+      ),
+      'answer_format' => array(
+        'type' => 'int',
+      ),
+      'feedback_if_chosen' => array(
+        'type' => 'text',
+      ),
+      'feedback_if_chosen_format' => array(
+        'type' => 'int',
+      ),
+      'feedback_if_not_chosen' => array(
+        'type' => 'text',
+      ),
+      'feedback_if_not_chosen_format' => array(
+        'type' => 'int',
+      ),
+      'score_if_chosen' => array(
+        'type' => 'int',
+        'unsigned' => FALSE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'score_if_not_chosen' => array(
+        'type' => 'int',
+        'unsigned' => FALSE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'question_nid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'question_vid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
 
+    ),
+    'primary key' => array(
+      'id',
+    ),
+    'indexes' => array(
+      'quiz_id' => array('question_nid', 'question_vid'),
+    )
+  );
+
+  $schema['quiz_multichoice_user_settings'] = array(
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'choice_multi' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'choice_random' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'choice_boolean' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array(
+      'uid'
+    ),
+  );
   return $schema;
+}
+
+/**
+ * Implementation of hook_update_N().
+ */
+function multichoice_update_6300() {
+  $ret = array();
+  $spec = array('type' => 'text');
+  db_change_field($ret, 'quiz_multichoice_answers', 'answer', 'answer', $spec);
+  return $ret;
+}
+/**
+ * Implementation of hook_update_N().
+ *
+ * Multichoice has been rewritten to extend quiz question for quiz 4.x
+ * This update hook converts the database
+ */
+
+function multichoice_update_6400(&$sandbox = NULL) {
+  if (!module_exists('autoload')) {
+    drupal_install_modules(array('autoload' ,'quiz_question'));
+    if (!module_exists('autoload')) {
+      return array('#abort' => array('success' => FALSE, 'query' => 'The <a href="http://drupal.org/project/autoload">Autoload</a> module is missing. You need to <a href="http://drupal.org/project/autoload">download</a> and enable autoload before you run update.php.'));
+    }
+  }
+  $path = drupal_get_path('module', 'multichoice');
+  // This is a big update. We have put it in its own file to avoid cluttering
+  // this install file
+  require_once("$path/multichoice_update_6400.inc");
+  return _multichoice_update_6400($sandbox);
+}
+
+/**
+ * Implementation of hook_update_N().
+ *
+ * Change how we store the user settings
+ */
+function multichoice_update_6401(&$sandbox = NULL) {
+  $results = array();
+  db_drop_field($results, 'quiz_multichoice_user_settings', 'last_nid');
+  db_drop_field($results, 'quiz_multichoice_user_settings', 'last_vid');
+  db_add_field($results, 'quiz_multichoice_user_settings', 'choice_boolean', array(
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  ));
+  db_add_field($results, 'quiz_multichoice_user_settings', 'choice_random', array(
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  ));
+  db_add_field($results, 'quiz_multichoice_user_settings', 'choice_multi', array(
+    'type' => 'int',
+    'unsigned' => TRUE,
+    'not null' => TRUE,
+    'default' => 0,
+  ));
+  return $results;
+}
+
+/**
+ * Implementation of hook_update_N().
+ *
+ * Add indexes to improve performance
+ */
+function multichoice_update_6402() {
+  $results = array();
+  db_add_index($results, 'quiz_multichoice_answers', 'quiz_id', array('question_nid', 'question_vid'));
+  db_add_index($results, 'quiz_multichoice_user_answers', 'answer_id', array('result_id', 'question_nid', 'question_vid'));
+  return $results;
+}
+
+/**
+ * Implementation of hood_update_N
+ *
+ * Allow negative score values.
+ */
+function multichoice_update_6403() {
+  $results = array();
+  foreach(array('score_if_chosen', 'score_if_not_chosen') as $field) {
+    db_change_field($results, 'quiz_multichoice_answers', $field, $field, array(
+      'type' => 'int',
+      'unsigned' => FALSE,
+      'not null' => TRUE,
+      'default' => 0,
+    ));
+  }
+  return $results;
+}
+
+/**
+ * Implementation of hood_update_N
+ *
+ * Make sure that the quiz_question module is used to show the multichoice questions.
+ */
+function multichoice_update_6404() {
+  $results = array();
+  $results[] = update_sql("UPDATE {node_type} SET module = 'quiz_question' WHERE type = 'multichoice'");
+  return $results;
+}
+
+/**
+ * Implementation of hook_update_N().
+ *
+ * Add index to improve performance
+ */
+function multichoice_update_6405() {
+  $results = array();
+  db_add_index($results, 'quiz_multichoice_user_answer_multi', 'answer_id', array('user_answer_id'));
+  return $results;
 }
 
 /**
@@ -121,24 +325,12 @@ function multichoice_schema() {
  */
 function multichoice_uninstall() {
   drupal_uninstall_schema('multichoice');
-
-  // Delete from nodes and node_revisions.
-  /*
-  switch ($GLOBALS['db_type']) {
-    case 'mysql':
-    case 'mysqli':
-      db_query('DELETE FROM {node}, {node_revisions}, {quiz_node_question_properties} USING {node} LEFT JOIN {node_revisions} USING (nid) LEFT JOIN {quiz_node_question_properties} USING (nid) WHERE type IN ("multichoice")');
-      break;
-    case 'pgsql':
-      db_query("DELETE FROM {quiz_node_question_properties} WHERE nid IN (SELECT nid FROM {node} WHERE type IN ('multichoice'))");
-      db_query("DELETE FROM {node_revisions} WHERE nid IN (SELECT nid FROM {node} WHERE type IN ('multichoice'))");
-      db_query("DELETE FROM {node} WHERE type IN ('multichoice')");
-      break;
+  $var = array(
+    'multichoice_def_scoring',
+    'multichoice_def_num_of_alts',
+  );
+  foreach ($var as $v) {
+    variable_del($v);
   }
-  */
-  // Truncate the cache so users don't run into any unexpected errors.
-  cache_clear_all('variables', 'cache');
-
-  // Inform the user that uninstall was sucessful.
-  drupal_set_message(t("The Multichoice module has been uninstalled. Multichoice nodes may still exist, but they will not function properly."));
+  drupal_set_message(t("The multichoice module has been uninstalled. multichoice nodes may still exist, but they will not function properly."));
 }
