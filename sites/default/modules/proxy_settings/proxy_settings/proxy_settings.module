@@ -1,0 +1,155 @@
+<?php
+
+/**
+ * @file
+ */
+
+function proxy_settings_help($section='') {
+
+	$output = 'Help';
+
+	return $output;
+}
+
+function proxy_settings_perm() {
+	return array('access administer');
+}
+
+function proxy_settings_menu() {
+	$items = array();
+
+	$items['admin/settings/proxy'] = array(
+      'title' => 'Proxy Settings',
+  	  'page callback' => 'proxy_settings',
+  	  'type' => MENU_NORMAL_ITEM,
+      'access arguments' => array('access administer'),
+	);
+
+	return $items;
+}
+
+function proxy_settings(){
+
+	$content = '';
+
+	_proxy_settings_check_for_patch();
+
+	$content .= drupal_get_form('proxy_settings_form', $node);
+
+	return $content;
+}
+
+function proxy_settings_form($form_state){
+
+	$form['proxy_settings'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Forward Proxy Settings'),
+    '#description' => t('The proxy server used when Drupal needs to connect to other sites on the Internet.'),
+	);
+
+	$form['proxy_settings']['proxy_server'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Proxy host name'),
+    '#default_value' => variable_get('proxy_server', ''),
+    '#description' => t('The host name of the proxy server, eg. localhost. If this is empty Drupal will connect directly to the internet.')
+	);
+
+	$form['proxy_settings']['proxy_port'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Proxy port number'),
+    '#default_value' => variable_get('proxy_port', 8080),
+    '#description' => t('The port number of the proxy server, eg. 8080'),
+	);
+
+	$form['proxy_settings']['proxy_username'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Proxy username'),
+    '#default_value' => variable_get('proxy_username', ''),
+    '#description' => t('The username used to authenticate with the proxy server.'),
+	);
+
+	$form['proxy_settings']['proxy_password'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Proxy password'),
+    '#default_value' => variable_get('proxy_password', ''),
+    '#description' => t('The password used to connect to the proxy server. This is kept as plain text.', '')
+	);
+
+	$form['proxy_settings']['proxy_exceptions'] = array(
+    '#type' => 'textfield',
+    '#title' => t('No proxy for'),
+    '#default_value' => variable_get('proxy_exceptions', 'localhost'),
+    '#description' => t('Example: .example.com,localhost,192.168.1.2', '')
+	);
+
+	$form['proxy_settings']['proxy_skip_selftest'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Skip HTTP self test'),
+    '#description' => t('Skip HTTP request self test.'),
+    '#default_value' => variable_get('proxy_skip_selftest', '0'),
+	);
+
+	$form['#validate'][] = 'proxy_settings_form_validate';
+
+	$form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save'),
+	);
+
+	return $form;
+}
+
+function proxy_settings_form_validate($form, &$form_state) {
+
+	// Validate the proxy settings
+	$form_state['values']['proxy_server'] = trim($form_state['values']['proxy_server']);
+	if($form_state['values']['proxy_server'] != '')
+	{
+		// TCP allows the port to be between 0 and 65536 inclusive
+		if (!is_numeric($form_state['values']['proxy_port']))
+		{
+			form_set_error('proxy_port', t('The proxy port is invalid. It must be a number between 0 and 65535.'));
+		}
+		elseif ($form_state['values']['proxy_port'] < 0 || $form_state['values']['proxy_port'] >= 65536)
+		{
+			form_set_error('proxy_port', t('The proxy port is invalid. It must be between 0 and 65535.'));
+		}
+	}
+}
+
+
+function proxy_settings_form_submit( $form, &$form_state ) {
+
+	variable_set('proxy_server', $form_state['values']['proxy_server'] );
+	variable_set('proxy_port', $form_state['values']['proxy_port'] );
+
+	variable_set('proxy_username', $form_state['values']['proxy_username'] );
+	variable_set('proxy_password', $form_state['values']['proxy_password'] );
+	variable_set('proxy_exceptions', $form_state['values']['proxy_exceptions'] );
+	variable_set('proxy_skip_selftest', $form_state['values']['proxy_skip_selftest'] );
+
+	drupal_set_message( 'Your settings have been changed' );
+}
+
+function _proxy_settings_check_for_patch() {
+
+	if( file_exists('includes/common.inc') )
+	{
+		$file = file_get_contents('includes/common.inc');
+		
+		if(strpos($file, "variable_get('proxy_server'") !== FALSE) 
+		{
+			drupal_set_message( 'Your common.inc file seems to be patched to support proxy settings' );
+		}
+		else 
+		{
+			drupal_set_message( 'Patch not found', 'error' );
+		}
+	}
+	else
+	{
+		drupal_set_message( 'Unable to find the file common.inc', 'error' );
+	}
+}
+
+?>
