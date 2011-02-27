@@ -254,24 +254,15 @@ function pi_activity_schema() {
       ),
       'parent_activity' => array(
         'description' => 'If this activity is created by another activity, then it is referenced here.',
-        'type' => 'int',
-        'unsigned' => TRUE,
+        'type' => 'blob',
+        'length' => 1,
         'default' => NULL
       ),
       'show_children_in_phase' => array(
         'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it willbe set here.',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'size' => 'tiny',
+        'type' => 'blob',
+        'length' => 1,
         'not null' => TRUE,
-        'default' => TRUE,
-      ),
-      'parent_activity' => array(
-        'description' => 'If this activity is created by another activity, then it is referenced here.',
-        'type' => 'int',
-        'unsigned' => TRUE,
-        'not null' => FALSE,
-        'default' => NULL
       ),
       'referenced_node' => array(
         'type' => 'varchar',
@@ -283,7 +274,13 @@ function pi_activity_schema() {
       	'type' => 'varchar',
        	'length' => 64,
        	'not null' => FALSE,
-		'description' => ''
+		'description' => 'What kind of node type is this activity working with.'
+      ),
+      'show_activity' => array(
+        'type' => 'blob',
+        'length' => 1,
+        'not null' => TRUE,
+        'description' => 'Show the activity in the phase list or not: true/false.'
       ),
       'node_type' => array(
         'type' => 'varchar',
@@ -296,7 +293,6 @@ function pi_activity_schema() {
         'type' => 'text',
         'not null' => TRUE,
         'size' => 'big',
-        'default' => '',
         'description' => 'Parameters needed to create/use a node in an activity (optional).'
       ),
       'destination_after' => array(
@@ -512,37 +508,38 @@ function pi_activity_schema() {
 						'nid' => array('nid') ),
 	);
 
-	$schema['pi_activity_preference'] = array(
-	'description' => 'PI Activity Preference.',
-	'fields' =>	array(
-		'pap_id' =>	array(
-			'type' => 'serial',
-			'length' => 10,
-			'unsigned' => TRUE,
-			'not null' => FALSE,
-			'default' => NULL,
-			'description' => '' ),
-		'show_activity' => array(	
-			'type' => 'blob',
-  			'mysql_type' => 'binary',
-			'description' => '' ),
-		'uid' => array(	
-			'type' => 'int',
-			'length' => 10,	
-			'unsigned' => TRUE,
-			'not null' => FALSE,
-			'default' => NULL,
-			'description' => 'User id' ),
-		'gid' => array(
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => FALSE,
-			'default' => NULL,
-			'length' => 10,
-			'description' => 'Group id' )	),
-	'primary key' =>	array(	'pap_id'),
-    'indexes' => 		array(	'uid' => array('uid', 'gid') )
-	);
+  $schema['pi_activity_preference'] = array(
+    'description' => 'PI Activity Preference',
+    'fields' =>	array(
+    	'pap_id' =>	array(
+    		'type' => 'serial',
+    		'length' => 10,
+    		'unsigned' => TRUE,
+    		'not null' => TRUE,
+    		'description' => '' ),
+    	'show_activity' => array(	
+    		'type' => 'blob',
+            'length' => 1,
+    		'description' => '' ),
+    	'uid' => array(	
+    		'type' => 'int',
+    		'length' => 10,	
+    		'unsigned' => TRUE,
+    		'not null' => FALSE,
+    		'default' => NULL,
+    		'description' => 'User id' ),
+    	'gid' => array(
+    		'type' => 'int',
+    		'unsigned' => TRUE,
+    		'not null' => FALSE,
+    		'default' => NULL,
+    		'length' => 10,
+    		'description' => 'Group id' )
+  	  ),
+  	  'primary key' => array('pap_id'),
+      'indexes' => array('uid' => array('uid', 'gid')
+  	)
+  );
 
 	$schema['pi_activity_status'] = array(
     'description' => 'PI Activity status.',
