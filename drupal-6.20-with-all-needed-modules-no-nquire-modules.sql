@@ -2586,7 +2586,7 @@ CREATE TABLE IF NOT EXISTS `users` (
 
 INSERT INTO `users` (`uid`, `name`, `pass`, `mail`, `mode`, `sort`, `threshold`, `theme`, `signature`, `signature_format`, `created`, `access`, `login`, `status`, `timezone`, `language`, `picture`, `init`, `data`) VALUES
 (0, '', '', '', 0, 0, 0, '', '', 0, 0, 0, 0, 0, NULL, '', '', '', NULL),
-(1, 'admin', '21232f297a57a5a743894a0e4a801fc3', 'mcp@cs.nott.ac.uk', 0, 0, 0, '', '', 0, 1295271443, 1295284821, 1295274834, 1, NULL, '', '', 'mcp@cs.nott.ac.uk', 'a:0:{}');
+(1, 'admin', '06fecfe6b82878a69fe9a12cf82ff7d9', 'mcp@cs.nott.ac.uk', 0, 0, 0, '', '', 0, 1295271443, 1295284821, 1295274834, 1, NULL, '', '', 'mcp@cs.nott.ac.uk', 'a:0:{}');
 
 -- --------------------------------------------------------
 
