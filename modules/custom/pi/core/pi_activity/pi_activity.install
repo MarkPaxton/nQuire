@@ -67,7 +67,7 @@ function _pi_activity_upgrade_execute()
     $activity_id = $row['activity_id'];
 
     $new_node = _pi_activity_upgrade_covert_to_node($row);
-    pi_debug_message($new_node);
+    //pi_debug_message($new_node);
     node_save($new_node);
     $new_node_id = $new_node->nid;
     $new_node_ids[$activity_id] = $new_node_id;
@@ -124,6 +124,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
   // Find the actor for the activity and add it to the new table schema 
   // only get the first actor in the database, since multiple actors doesn't make sense in the system now
   $actor_result = db_query("SELECT * FROM {pi_activity_actor} WHERE `activity_id` = %d LIMIT 1", $row['activity_id']);
+  pi_debug_message($actor_result);
   if($actor_result!=NULL)
   {
     $actor_row = db_fetch_object($actor_result);
@@ -314,6 +315,14 @@ function pi_activity_schema() {
         'unsigned' => TRUE,
         'not null' => TRUE,
       ),
+      'weight' => array(
+        'description' => 'The default layout order in the phase list.',
+    	'type' => 'int',
+		'length' => 10,
+        'unsigned' => TRUE,
+		'not null' => TRUE,
+        'default' => 0	
+      )
     ),
     'primary key' => array('nid', 'vid'),
     'indexes' => array(

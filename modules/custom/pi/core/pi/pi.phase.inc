@@ -34,7 +34,7 @@ function pi_inquiry_phase_view($phase)
 		foreach($activities as $activity)
 		{
 			$loaded_activity = load_activity($activity->activity_id);
-			//$loaded_activity_status = load_activity_status($phase->inquiry_nid, $activity->activity_id, $user->uid);
+			//$loaded_activity_status = load_activity_status($activity->activity_id, $user->uid);
 
 			// only display activities that are not in the hidden list
 			if(!(in_array($loaded_activity->node_type, $hidden_created_activity_types)))
@@ -46,7 +46,7 @@ function pi_inquiry_phase_view($phase)
 				
 				$loaded_actvity_node = node_load($nid);			
 				
-				$loaded_activity_status = load_activity_status($phase->inquiry_nid, $activity->activity_id, $user->uid);
+				$loaded_activity_status = load_activity_status($activity->activity_id, $user->uid);
 
 				// so that (by default) always open an exitsing node in view
 				// if node_function for link is edit or view then set node function to view

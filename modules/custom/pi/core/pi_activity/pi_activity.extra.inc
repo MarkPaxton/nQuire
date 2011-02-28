@@ -202,7 +202,7 @@ function add_pi_activity_node($inquiry_id, $activity_id, $nid) {
  * Returns visible_status from pi_activity_status (can be start, in_progress, view or unavailable).
  */
 function get_visible_status_of_activity($inquiry_id, $activity_id, $uid) {
-  $activity_status = load_activity_status($inquiry_id, $activity_id, $uid);
+  $activity_status = load_activity_status($activity_id, $uid);
   $result = $activity_status->visible_status;
   return $result ;
 }
@@ -234,7 +234,7 @@ function check_visible_status_of_activity ($inquiry_id, $activity_id, $uid, $sta
  * This will set dependent on the audience in pi_activity.
  */
 function set_visible_status_of_activity($inquiry_id, $activity_id, $uid, $status) {
-  $activity_status = load_activity_status($inquiry_id, $activity_id, $uid);
+  $activity_status = load_activity_status($activity_id, $uid);
 
   $activity_status->visible_status = $status;
 
@@ -292,7 +292,7 @@ function set_visible_status_of_activity_type($inquiry_id, $activity_type, $uid, 
  * @return unknown_type
  */
 function get_node_function_of_activity($inquiry_id, $activity_id, $uid) {
-  $activity_status = load_activity_status($inquiry_id, $activity_id, $uid);
+  $activity_status = load_activity_status($activity_id, $uid);
   $result = $activity_status->node_function;
   return $result ;
   /*
@@ -345,7 +345,7 @@ function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $funct
  * @return unknown_type
  */
 function set_node_function_of_activity($inquiry_id, $activity_id, $uid, $function) {
-  $activity_status = load_activity_status($inquiry_id, $activity_id, $uid);
+  $activity_status = load_activity_status($activity_id, $uid);
   $activity_status->node_function = $function;
   save_activity_status($activity_status);
   /*
@@ -564,19 +564,34 @@ function update_activity_actor($actor) {
 
 /**
  * Returns array from pi_activity_status table objects.
- * @param unknown_type $inquiry_id
- * @param unknown_type $activity_id
- * @param unknown_type $uid
- * @return unknown|number
+ * @param uint $activity_id
+ * @param uint $uid
+ * @return array(activity_id, uid, status)
  */
-function load_activity_status($inquiry_id, $activity_id = NULL, $uid = NULL)
+function load_activity_status($activity_id, $uid = NULL)
 {
-  $activity_node_found = FALSE;
+  $return_data = array();
+  if($activity_id==NULL)
+  {
+    drupal_set_message('load_activity_status: null value for activity_id passed', 'warning');
+    $query = 'SELECT * FROM {pi_activity_status}';
+  }  
+  else
+  {
+    $activity = node_load($activity_id);
+    if ($activity!=NULL)
+    {
+      if($activity->type == 'pi_activity')
+      {
+        $activity_node_found=FALSE;
+      }
+    }        
+  }
+  
   $newitems = 0;
 
   $query = "SELECT {pi_activity_status}.* FROM {pi_activity_status} "
-  . "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid "
-  . "WHERE inquiry_id = %d ";
+  . "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid ";
 
   $parameters[] = $inquiry_id;
 

@@ -168,7 +168,7 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	$new_details->activity_id = $new_activity_id;
 
 	//set status for the new activity
-	$activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
+	$activity_status = load_activity_status($details->activity_id, $user->uid);
 
 	$new_activity_status = new stdClass;
 	$new_activity_status->inquiry_id = $activity_status->inquiry_id;
@@ -244,7 +244,7 @@ function add_new_pi_activity_node($node, $node_function, $visible_status, $detai
 
 	$activity = load_activity($details->activity_id);
 
-	$activity_status = load_activity_status($details->inquiry_id, $details->activity_id, $user->uid);
+	$activity_status = load_activity_status($details->activity_id, $user->uid);
 
 	//if the status was not set specifically for this user and it is an individual activity
 	if ($activity->audience == "individual")
