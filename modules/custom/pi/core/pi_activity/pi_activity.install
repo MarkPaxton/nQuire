@@ -60,7 +60,7 @@ function _pi_activity_upgrade_execute()
   $new_node_ids = array();
   
   $node_count = 0;
-  $result = db_query('SELECT * FROM {pi_activity_old} LIMIT 10');
+  $result = db_query('SELECT * FROM {pi_activity_old} LIMIT 300');
   while($row = db_fetch_array($result))
   {
     $node_count++;
@@ -72,7 +72,7 @@ function _pi_activity_upgrade_execute()
     $new_node_id = $new_node->nid;
     $new_node_ids[$activity_id] = $new_node_id;
   }
-  drupal_set_message("Total activities to change $node_count...");
+  drupal_set_message(t("Total activities to change %node_count.", array('%node_count' => $node_count)) );
 
   $tables_and_columns_to_change = array(
     'pi_activity_enter_focus' => 'activity_id',  
@@ -86,7 +86,7 @@ function _pi_activity_upgrade_execute()
   foreach($tables_and_columns_to_change as $table => $column)
   {
      _pi_activity_upgrade_copy_update_and_replace_table($table, $column, $new_node_ids);
-     drupal_set_message("Updated $table [$column]");
+     drupal_set_message(t("Updated %table[%column]", array('%table' => $table, '%column' => $column)), 'info');
   }
 }
 
@@ -102,6 +102,9 @@ function _pi_activity_upgrade_execute()
  */
 function _pi_activity_upgrade_covert_to_node($activity)
 {
+  //drupal_set_message(t('Processing activity %activity_id.', array('%activity_id' => $activity['activity_id'])), 'info');
+  //pi_debug_message($activity);
+  
   $node = new stdClass();
   $node->type = 'pi_activity';
 
@@ -114,20 +117,23 @@ function _pi_activity_upgrade_covert_to_node($activity)
     'destination' => 'destination',
   );  
 
+  // Convert fields that are a one-to-one copy
   foreach($rows_to_properties as $row => $property)
   {
     $node->$property = $activity[$row];
   }
 
+  //Then do ones that are more complicated
   $node->selects['audience'] = $activity['audience'];
   
   // Find the actor for the activity and add it to the new table schema 
   // only get the first actor in the database, since multiple actors doesn't make sense in the system now
-  $actor_result = db_query("SELECT * FROM {pi_activity_actor} WHERE `activity_id` = %d LIMIT 1", $row['activity_id']);
-  pi_debug_message($actor_result);
-  if($actor_result!=NULL)
+  //@TODO - remove limit im place for testing purposes
+  $actor_result = db_query("SELECT * FROM {pi_activity_actor} WHERE `activity_id` = %d LIMIT 1", $activity['activity_id']);
+  if(!is_null($actor_result))
   {
-    $actor_row = db_fetch_object($actor_result);
+    $actor_row = db_fetch_object($actor_result);    
+    pi_debug_message($actor_row);
     $node->selects['gid'] = $actor_result->gid;
   }
   else
@@ -140,34 +146,49 @@ function _pi_activity_upgrade_covert_to_node($activity)
   //again only use the first phase found as activities can only belong to one phase
   $phase_result = db_query("SELECT DISTINCT {pi_stage_phase}.`phase_id` FROM {pi_stage_phase_activity} " .
       "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.`psp_id` = {pi_stage_phase_activity}.`psp_id` " .
-      "WHERE {pi_stage_phase_activity}.`activity_id` = %d LIMIT 1", $row['activity_id']);
+      "WHERE {pi_stage_phase_activity}.`activity_id` = %d LIMIT 1", $activity['activity_id']);
   if($phase_result!=NULL)
   {
     $phase_nid_row = db_fetch_array($phase_result);
     $node->activity_phases_stages['phase_nid'] = $phase_nid_row['phase_id'];
-    
+    //drupal_set_message(t('Activity %activity_name, phase %phase_id', array('%activity_name'=> $node->title, '%phase_nid', $phase_nid_row['phase_id'])), 'info');
     // Assuming the activity doeds belong to a phase, find the corresponding stage states for the activity
     // and map them to the new schema
     $node->activity_phases_stages['stages']['stage_select'] = array();
     
-    $stage_result = db_query("SELECT DISTINCT {pi_stage_phase}.`stage_id` FROM {pi_stage_phase_activity} " .
+    $stage_result = db_query("SELECT DISTINCT {pi_stage_phase}.`stage_id`, {pi_stage_phase_activity}.`position` FROM {pi_stage_phase_activity} " .
         "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.`psp_id` = {pi_stage_phase_activity}.`psp_id` " .
         "WHERE ( {pi_stage_phase_activity}.`activity_id` = %d ) " .
-        "AND ({pi_stage_phase}.`phase_id` = %d)", $row['activity_id'], $phase_nid_row['phase_id']);
-    
+        "AND ({pi_stage_phase}.`phase_id` = %d)", $activity['activity_id'], $phase_nid_row['phase_id']);
+    $activity_position = NULL;
     if($stage_result!=NULL)
     {
-      while($row=db_fetch_array($stage_result))
+      while($stage_phase_row = db_fetch_array($stage_result))
       {
-        $node->activity_phases_stages['stages']['stage_select'][$row['stage_id']] = TRUE;
+        $node->activity_phases_stages['stages']['stage_select'][$stage_phase_row['stage_id']] = TRUE;
+        if($activity_position != $stage_phase_row['position'])
+        {
+          if(is_null($activity_position))
+          {
+            $activity_position = $stage_phase_row['position'];
+          }
+          else
+          {
+            //drupal_set_message(t("Activity weights conflict for activity '%activity_title' between stages, using initial position %p and not %not_p", array('activity_title' => $node->title, '%p' => $activity_position, '%not_p' => $row['position']), 'warning'));
+          }
+        }
+        
+        $node->activity_phases_stages['weight'] = $activity_position;
       }
     }    
   }
   else
   {
+    //drupal_set_message(t('Skipping orphaned activity %number, %title', array('%number', $activity['activity_id'], '%title' => $activity['name'])), 'info');
     $node->activity_phases_stages['phase_nid'] = NULL;
-    $node->activity_phases_stages['stages']['stage_select'] = array();    
-  }  
+    $node->activity_phases_stages['stages']['stage_select'] = array();
+    return NULL;   
+  } 
   
   /* Now get all linked nodes to update there too - if the first node for the activity ID in pi_activity_node is 0
    * then it's anactivity that has multiple contents.  If it's not 0 then there should only be one value as it's 
@@ -189,7 +210,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
       // this is a directly referenced node
       // @todo - check this node exists?
       $node->referenced_node = $first_result;
-      $delete_query = "DELETE FROM {pi_activity_node} WHERE pad_id = %d";
+      $delete_query = "DELETE FROM {pi_activity_node} WHERE pan_id = %d";
       db_query($delete_query, $first_result['pan_id']);
     }
   }
@@ -255,14 +276,14 @@ function pi_activity_schema() {
       ),
       'parent_activity' => array(
         'description' => 'If this activity is created by another activity, then it is referenced here.',
-        'type' => 'blob',
-        'length' => 1,
+        'type' => 'int',
+        'size' => 'tiny',
         'default' => NULL
       ),
       'show_children_in_phase' => array(
         'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it willbe set here.',
-        'type' => 'blob',
-        'length' => 1,
+        'type' => 'int',
+        'size' => 'tiny',
         'not null' => TRUE,
       ),
       'referenced_node' => array(
@@ -278,8 +299,8 @@ function pi_activity_schema() {
 		'description' => 'What kind of node type is this activity working with.'
       ),
       'show_activity' => array(
-        'type' => 'blob',
-        'length' => 1,
+        'type' => 'int',
+        'size' => 'tiny',
         'not null' => TRUE,
         'description' => 'Show the activity in the phase list or not: true/false.'
       ),
@@ -527,9 +548,9 @@ function pi_activity_schema() {
     		'not null' => TRUE,
     		'description' => '' ),
     	'show_activity' => array(	
-    		'type' => 'blob',
-            'length' => 1,
-    		'description' => '' ),
+    		'type' => 'int',
+        	'size' => 'tiny',
+        	'description' => '' ),
     	'uid' => array(	
     		'type' => 'int',
     		'length' => 10,	
