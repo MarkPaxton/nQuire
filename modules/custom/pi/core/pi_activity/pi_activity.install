@@ -60,7 +60,8 @@ function _pi_activity_upgrade_execute()
   $new_node_ids = array();
   
   $node_count = 0;
-  $result = db_query('SELECT * FROM {pi_activity_old} LIMIT 300');
+  //@TODO - remove limit im place for testing purposes  
+  $result = db_query('SELECT * FROM {pi_activity_old} LIMIT 300, 10');
   while($row = db_fetch_array($result))
   {
     $node_count++;
@@ -128,17 +129,16 @@ function _pi_activity_upgrade_covert_to_node($activity)
   
   // Find the actor for the activity and add it to the new table schema 
   // only get the first actor in the database, since multiple actors doesn't make sense in the system now
-  //@TODO - remove limit im place for testing purposes
   $actor_result = db_query("SELECT * FROM {pi_activity_actor} WHERE `activity_id` = %d LIMIT 1", $activity['activity_id']);
-  if(!is_null($actor_result))
+  
+  $node->selects['gid'] = NULL;
+  if( !is_null($actor_result) && ($actor_result!=FALSE) )
   {
     $actor_row = db_fetch_object($actor_result);    
-    pi_debug_message($actor_row);
-    $node->selects['gid'] = $actor_result->gid;
-  }
-  else
-  {
-    $node->selects['gid'] = NULL;
+    if($actor_row!=FALSE)
+    {
+      $node->selects['gid'] = $actor_row->gid;
+    }
   }
 
   // Find the stage associated with the activity and 
@@ -147,12 +147,12 @@ function _pi_activity_upgrade_covert_to_node($activity)
   $phase_result = db_query("SELECT DISTINCT {pi_stage_phase}.`phase_id` FROM {pi_stage_phase_activity} " .
       "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.`psp_id` = {pi_stage_phase_activity}.`psp_id` " .
       "WHERE {pi_stage_phase_activity}.`activity_id` = %d LIMIT 1", $activity['activity_id']);
-  if($phase_result!=NULL)
+  if(!is_null($phase_result) && ($phase_result!=FALSE) )
   {
     $phase_nid_row = db_fetch_array($phase_result);
     $node->activity_phases_stages['phase_nid'] = $phase_nid_row['phase_id'];
-    //drupal_set_message(t('Activity %activity_name, phase %phase_id', array('%activity_name'=> $node->title, '%phase_nid', $phase_nid_row['phase_id'])), 'info');
-    // Assuming the activity doeds belong to a phase, find the corresponding stage states for the activity
+    drupal_set_message(t('Activity %activity_name, phase %phase_nid', array('%activity_name'=> $node->title, '%phase_nid' => $phase_nid_row['phase_id'])), 'info');
+    // Assuming the activity does belong to a phase, find the corresponding stage states for the activity
     // and map them to the new schema
     $node->activity_phases_stages['stages']['stage_select'] = array();
     
@@ -161,7 +161,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
         "WHERE ( {pi_stage_phase_activity}.`activity_id` = %d ) " .
         "AND ({pi_stage_phase}.`phase_id` = %d)", $activity['activity_id'], $phase_nid_row['phase_id']);
     $activity_position = NULL;
-    if($stage_result!=NULL)
+    if( !is_null($stage_result) && ($stage_result!=FALSE) )
     {
       while($stage_phase_row = db_fetch_array($stage_result))
       {
@@ -174,7 +174,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
           }
           else
           {
-            //drupal_set_message(t("Activity weights conflict for activity '%activity_title' between stages, using initial position %p and not %not_p", array('activity_title' => $node->title, '%p' => $activity_position, '%not_p' => $row['position']), 'warning'));
+            drupal_set_message(t("Activity weights conflict for activity '%activity_title' between stages, using initial position %p and not %not_p", array('activity_title' => $node->title, '%p' => $activity_position, '%not_p' => $row['position']), 'warning'));
           }
         }
         
@@ -184,7 +184,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
   }
   else
   {
-    //drupal_set_message(t('Skipping orphaned activity %number, %title', array('%number', $activity['activity_id'], '%title' => $activity['name'])), 'info');
+    drupal_set_message(t('Skipping orphaned activity %number, %title', array('%number', $activity['activity_id'], '%title' => $activity['name'])), 'info');
     $node->activity_phases_stages['phase_nid'] = NULL;
     $node->activity_phases_stages['stages']['stage_select'] = array();
     return NULL;   
@@ -198,7 +198,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
   $query = "SELECT * FROM {pi_activity_node} WHERE activity_id = %d ORDER BY nid ASC";
   $result = db_query($query, $activity['activity_id']);
   $first_result = db_fetch_array($result);
-  if($first_result!=NULL)
+  if((!is_null($result)) &&($first_result!=FALSE))
   {
     if($first_result == 0)
     {
