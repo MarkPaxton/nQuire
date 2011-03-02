@@ -51,7 +51,7 @@ function pi_activity_update_6000()
   db_drop_table($results, 'pi_activity_actor');
   db_drop_table($results, 'pi_stage_phase_activity');
   db_drop_field($results, 'pi_activity_node', 'inquiry_id');
-  db_drop_field($results, 'pi_activity_status', 'inquiry_id');
+  db_drop_field($results, 'pi_activity_status', 'inquiry_id');  
   return $results;
 }
 
@@ -61,20 +61,20 @@ function _pi_activity_upgrade_execute()
   
   $node_count = 0;
   //@TODO - remove limit im place for testing purposes  
-  $result = db_query('SELECT * FROM {pi_activity_old} LIMIT 300, 10');
+  $result = db_query('SELECT * FROM {pi_activity_old}');
   while($row = db_fetch_array($result))
   {
     $node_count++;
     $activity_id = $row['activity_id'];
 
     $new_node = _pi_activity_upgrade_covert_to_node($row);
-    //pi_debug_message($new_node);
-    node_save($new_node);
+        node_save($new_node);
     $new_node_id = $new_node->nid;
     $new_node_ids[$activity_id] = $new_node_id;
   }
-  drupal_set_message(t("Total activities to change %node_count.", array('%node_count' => $node_count)) );
-
+  drupal_set_message(t("Total activities being changed: %node_count.", array('%node_count' => $node_count)) );
+  
+  // Change over activity_ids to nids in the following tables and columns: 
   $tables_and_columns_to_change = array(
     'pi_activity_enter_focus' => 'activity_id',  
     'pi_activity_leave_focus' => 'activity_id',  
@@ -83,12 +83,13 @@ function _pi_activity_upgrade_execute()
     'pi_activity_status' => 'activity_id',  
     'pi_inquiry_grouping' => 'activity_id',  
   );
-  
   foreach($tables_and_columns_to_change as $table => $column)
   {
      _pi_activity_upgrade_copy_update_and_replace_table($table, $column, $new_node_ids);
      drupal_set_message(t("Updated %table[%column]", array('%table' => $table, '%column' => $column)), 'info');
   }
+  //Set up directly referenced nodes and activity parent activities after all the nids and activity_ids have been changed.
+  _pi_activity_upgrade_set_activity_direct_references_and_parents();
 }
 
 
@@ -103,9 +104,6 @@ function _pi_activity_upgrade_execute()
  */
 function _pi_activity_upgrade_covert_to_node($activity)
 {
-  //drupal_set_message(t('Processing activity %activity_id.', array('%activity_id' => $activity['activity_id'])), 'info');
-  //pi_debug_message($activity);
-  
   $node = new stdClass();
   $node->type = 'pi_activity';
 
@@ -151,7 +149,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
   {
     $phase_nid_row = db_fetch_array($phase_result);
     $node->activity_phases_stages['phase_nid'] = $phase_nid_row['phase_id'];
-    drupal_set_message(t('Activity %activity_name, phase %phase_nid', array('%activity_name'=> $node->title, '%phase_nid' => $phase_nid_row['phase_id'])), 'info');
+    
     // Assuming the activity does belong to a phase, find the corresponding stage states for the activity
     // and map them to the new schema
     $node->activity_phases_stages['stages']['stage_select'] = array();
@@ -179,6 +177,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
         }
         
         $node->activity_phases_stages['weight'] = $activity_position;
+        pi_debug_message($node->title. " " . $activity_position);
       }
     }    
   }
@@ -189,35 +188,107 @@ function _pi_activity_upgrade_covert_to_node($activity)
     $node->activity_phases_stages['stages']['stage_select'] = array();
     return NULL;   
   } 
-  
-  /* Now get all linked nodes to update there too - if the first node for the activity ID in pi_activity_node is 0
-   * then it's anactivity that has multiple contents.  If it's not 0 then there should only be one value as it's 
-   * direcly referenced node, so that should be put into the table now.
-   * If the first isn't 0 and there's more than one entry, there's a problen somewhere!  
-   */
-  $query = "SELECT * FROM {pi_activity_node} WHERE activity_id = %d ORDER BY nid ASC";
-  $result = db_query($query, $activity['activity_id']);
-  $first_result = db_fetch_array($result);
-  if((!is_null($result)) &&($first_result!=FALSE))
+  return $node;
+}
+
+/**
+ * This is an internal upgrade function that identifies and sets the directly refgerenced content nodes for
+ * activities and also sets the parent activity for all generated activities in the system
+ * see comment at the end of _pi_activity_upgrade_covert_to_node() for details
+ */
+function _pi_activity_upgrade_set_activity_direct_references_and_parents()
+{
+  $query = "SELECT nid from {pi_activity}";
+  $activity_result = db_query($query);
+  while($row = db_fetch_array($activity_result))
   {
-    if($first_result == 0)
+    $activity_nid = $row['nid'];
+  
+     /* Get all linked nodes to update there - if the first node for the activity ID in pi_activity_node is 0
+     * then it's an activity that has multiple contents.  If it's not 0 then there should only be one value as it's 
+     * direcly referenced node, so that should be put into the table now.
+     * If the first isn't 0 and there's more than one entry, there's a problen somewhere!  
+     */
+    $query = "SELECT * FROM {pi_activity_node} WHERE activity_id = %d ORDER BY nid ASC";
+    $result = db_query($query, $activity_nid);
+    $first_result = db_fetch_array($result);
+    if((!is_null($result)) && ($first_result!=FALSE))
     {
-      // this is a multi-node activity
-      $node->referenced_node = NULL;
-    }
-    else
-    {
-      // this is a directly referenced node
-      // @todo - check this node exists?
-      $node->referenced_node = $first_result;
-      $delete_query = "DELETE FROM {pi_activity_node} WHERE pan_id = %d";
-      db_query($delete_query, $first_result['pan_id']);
+      if($first_result != 0)
+      {
+        // This is a directly referenced node
+        // @todo - check this node exists?
+        $node = load_node($activity_nid);
+        $node->referenced_node = $first_result;
+        node_save($node);
+        $delete_query = "DELETE FROM {pi_activity_node} WHERE pan_id = %d";
+        db_query($delete_query, $first_result['pan_id']);
+      }
     }
   }
   
-  /** now check if this activity has a parent... */
+  /* Check if each activity has a parent; this is done by checking for activities in the same phase
+   * that are of the type this activity generates e.g. for pi_sort_data it generates pi_data 
+   * This can't be done until all the activities are upgraded hovever, since activity ids will be changing when
+   * they are are being processed one by one.
+   * This works because activities currently can only have one "sort" instance per inquiry, and an activity
+   * can only be on one phase (so if child activities appear in another phase, they'll not be linked any more.
+   * This will be different in the new version activities, which will directly set parent data on creation, and
+   * conceivably they could appear in a different phase, but this would be rather strange. */
   
-  return $node;
+  // First of all find the name of the module that provides the activity content
+  $query = "SELECT `nid`, `phase_nid`, `activity_type` from {pi_activity} ";
+  $activity_result = db_query($query);
+  while($row = db_fetch_array($activity_result))
+  {
+    $activity_type = $row['activity_type'];
+    
+    // Then get the type of data that activity content module provides
+    $info_function_name = $activity_type . '_node_info'; 
+    if(function_exists($info_function_name))
+    {
+      $node_info = $info_function_name();
+      $generated_node_type = $node_info['add_node_type'];
+      //When it does generate nodes, check what type those nodes are and get the nids of the content
+      // of that type in the activity's phase.
+      if(!is_null($generated_node_type))
+      {
+        $child_nodes_query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+          "LEFT JOIN {node} on {pi_activity_node}.`nid` " .
+          "WHERE {node}.`type` = '%s' AND {pi_activity_node}.`phase_nid` = %d";
+        pi_debug_message("SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+          "LEFT JOIN {node} on {pi_activity_node}.`nid` " .
+          "WHERE {node}.`type` = '$generated_node_type' AND {pi_activity_node}.`phase_nid` = " . $row['phase_nid']);
+        $result_for_child_nodes = db_query($child_nodes_query, $generated_node_type, $row['phase_nid']);
+        
+        // finally for each child activity content node, get their activity node and set the parent_activity nid
+        // from the directly referenced nodes
+        while($child_nid_row = db_fetch_array($result_for_child_nodes))
+        {
+          // First version for directly referenced nodes
+          $child_activity_node_query = "SELECT `nid` FROM {pi_activity} WHERE `referenced_node` = %d";
+          $result_for_child_activity_node = db_query($child_activity_node_query, $child_nid_row['nid']);
+          while($child_activity_node_row = db_fetch_array($result_for_child_activity_node))
+          {
+            $child_activity_node = node_load($child_activity_node_row['nid']);
+            if($child_activity_node!=FALSE)
+            {
+              $child_activity_node->parent_activity = $row['nid'];
+              node_save($child_activity_node);
+            }
+          }                              
+        }                 
+      }
+      else
+      {
+        drupal_set_message(t("Node type %type doesn't have a generated node type", array('%type' => $row['activity_type'])), 'warning');
+      }
+    }
+    else
+    {
+      drupal_set_message(t("Node type %type doesn't have a node info function", array('%type' => $row['activity_type'])), 'warning');
+    }
+  }
 }
 
 function _pi_activity_upgrade_copy_update_and_replace_table($table_name, $column_name, $new_node_ids)
@@ -277,11 +348,11 @@ function pi_activity_schema() {
       'parent_activity' => array(
         'description' => 'If this activity is created by another activity, then it is referenced here.',
         'type' => 'int',
-        'size' => 'tiny',
+        'unsigned' => TRUE,
         'default' => NULL
       ),
       'show_children_in_phase' => array(
-        'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it willbe set here.',
+        'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it will be set here.',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
