@@ -86,10 +86,40 @@ function pi_inquiry_form($node) {
 	),
 	);
 
+	$inquiry_groups = pi_get_defined_group_nids();
+	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
+	$form['#allowed_inquiry_actors'] = $all_defined_groups;	
+	$group_names['none'] = "Select a group...";
+	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
+	
+	$form['actor_gid'] = array(
+		'#type' => 'select',
+		'#title' => t('Who is this inquiry for'),
+		'#description' => t('Select the group that will be see this inquiry'),
+		'#weight' => 2,
+		'#default_value' =>  isset($node->actor_gid) ? $node->actor_gid : 'none',
+		'#options' => $group_names,
+	);
+	
+	
+	
 	$form['activities'] = pi_activity_show_hide_from( $node->nid );
-	$form['activities']['#weight'] = 2;
+	$form['activities']['#weight'] = 3;
   
 	return $form;
+}
+
+/**
+ * This is the validation function to make sure that pi_inquiry.actor_gid is a valid group
+ * @param array $element 
+ * @param array $form_state
+ */
+function pi_inquiry_form_actor_gid_validate($element, $form_state)
+{
+	if(!in_array($form_state['values']['actor_gid'], $element['#allowed_inquiry_actors']))
+	{
+		form_error($element, t('The selected inquiry actor group is not valid, please choose a group from the list.'));				
+	}
 }
 
 
@@ -99,7 +129,7 @@ function pi_inquiry_form($node) {
 function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
 	if($form_id == 'pi_inquiry_node_form')
 	{
-		$form['menu']['#weight'] = 3;
+		$form['menu']['#weight'] = 4;
 	}
 }
 
@@ -107,31 +137,41 @@ function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
 /**
  * INSERT command for a new inquiry
  */
-function pi_inquiry_insert($node) {
+function pi_inquiry_insert($node)
+{
 	// Query the database first to set the weight to place the item at the end of lists.
 	// If the query result is NULL then the the field will to default=0 since the weight
 	// column is defined with NOT NULL DEFAULT 0
-
 	foreach( $node->activities_show_hide as $module_name => $show_hide )
 	{
 		if( $show_hide['link'] !== 0 )
 		{
 			$link[] = $module_name;
 		}
-
 		if( $show_hide['summary'] !== 0 )
 		{
 			$summary[] = $module_name;
 		}
 	}
 
-	$links = implode( ',', $link ) ;
-	$summaries = implode( ',', $summary ) ;
-
+	$links = implode( ',', $link );
+	$summaries = implode( ',', $summary );
 
 	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_inquiry}"));
-	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight, hide_activity_link, hide_activity_in_summary ) VALUES (%d, %d, '%s', %d, '%s', '%s')",
-	$node->nid, $node->vid, $node->layout, $initial_weight, $links, $summaries);
+	$data_to_write = new stdClass();
+	$data_to_write->nid = $node->nid;
+	$data_to_write->vid = $node->vid;
+	$data_to_write->layout = $node->layout;
+	$data_to_write->weight = $initial_weight;
+	$data_to_write->hide_activity_link = $links;
+	$data_to_write->hide_activity_in_summary = $summaries;
+	$data_to_write->actor_gid = $node->actor_gid;
+	$result = drupal_write_record('pi_inquiry', $data_to_write);
+	if($result != SAVED_NEW)
+	{
+      $result_string = _pi_write_record_result_string($result);
+      drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+	}
 }
 
 /**
@@ -139,42 +179,49 @@ function pi_inquiry_insert($node) {
  */
 function pi_inquiry_update($node)
 {
-	if ($node->revision)
-	{
-		// New revision; treat it as a new record.
-		pi_inquiry_insert($node);
-	}
-	else
-	{
-		foreach( $node->activities_show_hide as $module_name => $show_hide )
-		{
-			if( $show_hide['link'] !== 0 )
-			{
-				$link[] = $module_name;
-			}
+  if ($node->revision)
+  {
+    // New revision; treat it as a new record.
+    pi_inquiry_insert($node);
+  }
+  else
+  {
+    $link = array();
+    $summary = array();
+    foreach($node->activities_show_hide as $module_name => $show_hide )
+    {
+      if( $show_hide['link'] !== 0 )
+      {
+        $link[] = $module_name;
+      }
 
-			if( $show_hide['summary'] !== 0 )
-			{
-				$summary[] = $module_name;
-			}
-		}
+      if( $show_hide['summary'] !== 0 )
+      {
+        $summary[] = $module_name;
+      }
+    }
 
-		if( is_array($link) )
-		{
-			$links = implode( ',', $link ) ;
-		}
-		
-		if( is_array($summary) )
-		{
-			$summaries = implode( ',', $summary ) ;
-		}
+    $links = implode(',', $link) ;
+    $summaries = implode(',', $summary) ;
 
-		drupal_set_message( $links );
-		drupal_set_message( $summaries );
-		
-		db_query("UPDATE {pi_inquiry} SET layout = '%s', weight= %d, hide_activity_link = '%s', hide_activity_in_summary = '%s' WHERE vid = %d",
-		$node->layout, $node->weight, $links, $summaries, $node->vid);
-	}
+    //pi_debug_message("L: " . $links . " S: " . $summaries);
+
+    $data_to_write = new stdClass();
+    $data_to_write->nid = $node->nid;
+    $data_to_write->vid = $node->vid;
+    $data_to_write->layout = $node->layout;
+    $data_to_write->weight = $initial_weight;
+    $data_to_write->hide_activity_link = $links;
+    $data_to_write->hide_activity_in_summary = $summaries;
+    $data_to_write->actor_gid = $node->actor_gid;
+    //pi_debug_message($data_to_write);
+    $result = drupal_write_record('pi_inquiry', $data_to_write, array('vid', 'nid'));
+    if($result != SAVED_UPDATED)
+    {
+      $result_string = _pi_write_record_result_string($result);
+      drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+    }
+  }
 }
 
 /**
@@ -206,7 +253,29 @@ function pi_inquiry_delete(&$node) {
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-	return db_fetch_object(db_query('SELECT layout, weight FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+  $inquiry_row = db_fetch_array(db_query('SELECT `layout`, `hide_activity_link`, `hide_activity_in_summary`, `weight`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+  $inquiry = new stdClass();
+  $inquiry->layout = $inquiry_row['layout'];
+  $inquiry->hide_activity_link = $inquiry_row['hide_activity_link'];
+  $inquiry->hide_activity_in_summary = $inquiry_row['hide_activity_in_summary'];
+  $inquiry->weight = $inquiry_row['weight'];
+  $inquiry->actor_gid = $inquiry_row['actor_gid'];
+  
+  $link = explode(',', $inquiry_row['hide_activity_link']);
+  $summary = explode(',', $inquiry_row['hide_activity_in_summary']);
+  foreach($link as $activity)
+  {
+    $inquiry->activities_show_hide[$activity] = array('link'=> true, 'summary' => in_array($activity, $summary));
+  }
+  foreach($summary as $activity)
+  {
+    if(!in_array($activity, $summary))
+    {
+      $inquiry->activities_show_hide[$activity] = array('link'=> false, 'summary' => true);
+    }
+  }
+  
+  return $inquiry;
 }
 
 /**

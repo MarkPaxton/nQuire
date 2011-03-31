@@ -9,11 +9,14 @@
 
 function find_unique_node_type_for_uid_and_inquiry($node_type, $uid, $inquiry_id)
 {
-	$query = "SELECT {%s}.nid FROM {%s} LEFT JOIN {node_access} ON {node_access}.nid = {%s}.nid "
-	. "LEFT JOIN {node} ON {node}.nid = {%s}.nid "
-	. "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.nid = {%s}.nid "
-	. "LEFT JOIN {og_uid} ON {node_access}.gid = {og_uid}.nid "
-	. "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) AND {pi_activity_node}.inquiry_id = %d ORDER BY nid DESC";
+	$query = "SELECT {%s}.nid FROM {%s} LEFT JOIN {node_access} ON {node_access}.nid = {%s}.nid " .
+	  "LEFT JOIN {node} ON {node}.nid = {%s}.nid " . 
+	  "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.nid = {%s}.nid " .
+	  "LEFT JOIN {pi_activity} ON {pi_activity_node}.`activity_id` = {pi_activity_node}.`nid` " .
+	  "LEFT JOIN {pi_phase} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
+  	  "LEFT JOIN {og_uid} ON {node_access}.gid = {og_uid}.nid " .
+	  "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " . 
+	  "AND {pi_phase}.`inquiry_nid` = %d ORDER BY `nid` DESC";
 	$result = db_result(db_query($query, $node_type, $node_type, $node_type, $node_type, $node_type, $uid, $uid, $inquiry_id));
 
 	return $result;

@@ -60,6 +60,13 @@ function pi_inquiry_schema() {
 				'length' => '255',
 				'not null' => TRUE,
 		        'default' => 'pi_key_questions,pi_measure_filter,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary' ),
+			'actor_gid' => array(
+            	'type' => 'int',
+            	'length' => 10,	
+            	'unsigned' => TRUE,
+            	'not null' => FALSE,
+            	'default' => NULL,
+            	'description' => 'The inquiry actor group id' ),
 			'weight' => array(
 		        'description' => 'The default layout order in the inquiry list.',
 		    	'type' => 'int',
@@ -70,37 +77,6 @@ function pi_inquiry_schema() {
 		'primary key' => array( 'nid', 'vid'),
 		'unique keys' => array( 'vid' => array('vid') ),
 		'indexes' => array( 'nid' => array('nid') )
-	);
-
-	$schema['pi_inquiry_actor'] = array(
-    'description' => 'PI Inquiry actor.',
-    'fields' => array(
-		'pia_id' => array(
-        	'type' => 'serial',
-        	'unsigned' => TRUE,
-        	'not null' => TRUE,
-	        'description' => 'Primary Key: Unique category ID.'	),
-      	'inquiry_id' => array(
-    	    'type' => 'int',
-        	'unsigned' => TRUE,
-        	'not null' => FALSE,
-        	'description' => 'PI Inquiry id' ),
-      	'uid' => array(
-        	'type' => 'int',
-        	'length' => 10,
-        	'unsigned' => TRUE,
-        	'not null' => FALSE,
-        	'default' => NULL,
-        	'description' => 'user id' ),
-		'gid' => array(
-        	'type' => 'int',
-        	'length' => 10,	
-        	'unsigned' => TRUE,
-        	'not null' => FALSE,
-        	'default' => NULL,
-        	'description' => 'group id' ) ),
-    'primary key' => array('pia_id'),
-    'indexes' => array(	'inquiry_id' => array('inquiry_id')	)
 	);
 
 	$schema['pi_inquiry_grouping'] = array(
@@ -237,3 +213,54 @@ function pi_inquiry_schema() {
 	
 	return $schema;
 }
+
+/**
+ * Update to roll inquiry actor into the same table as pi_inquiry
+ */
+function pi_inquiry_update_6000()
+{
+  //Get the new schema definition and make sure cache is updated
+  $return_value = null;
+  $schema = pi_inquiry_schema();
+  db_add_field($return_value, 'pi_inquiry', 'actor_gid', $schema['pi_inquiry']['fields']['actor_gid']);
+  //rebuild the schema cache after the change
+  $new_schema = drupal_get_schema('pi_inquiry', true);
+  $query = "SELECT * FROM {pi_inquiry_actor} ORDER BY 'inquiry_id'";
+  $result = db_query($query);
+  while($actor = db_fetch_array($result))
+  {
+    $inquiry = node_load($actor['inquiry_id']);
+    //pi_debug_message($actor);
+    if($inquiry && ($actor['gid'] != null))
+    {
+      if($inquiry->type == 'pi_inquiry')
+      {
+        $inquiry->actor_gid = $actor['gid'];
+        //pi_debug_message($inquiry);
+        node_save($inquiry);
+      }
+      else
+      {
+        drupal_set_message(t(
+        'Inquiry actor %pia, was a %type, not an Inquiry - not upgraded.',
+          array('%pia' => $actor['pia_id'], '%type' => $inquiry->type)));
+      }
+    }
+    else
+    {
+      if($inquiry==false)
+      {
+        drupal_set_message(t('Inquiry actor %pia, did not reference an existing node - not upgraded.',
+          array('%pia' => $actor['pia_id'])));
+      }
+      if($actor['gid'] != null)
+      {
+        drupal_set_message(t('Inquiry actor %pia, did not reference a group - not upgraded.',
+          array('%pia' => $actor['pia_id'])));
+      }
+    }
+  }
+  db_drop_table($return_value, 'pi_inquiry_actor'); 
+  return $return_value;
+}
+

@@ -18,6 +18,32 @@ function pi_debug_message($var_to_dump)
 }
 
 
+/**
+ * Convert a result constant from drupal_write_record to a string for debug purposes 
+ * @param int $result Result variable as a defined consant from drupal_write_record, as defined in common.int
+ * @return string A string representing the result status, or the number if it's an undefined value
+ */
+function _pi_write_record_result_string($result)
+{
+  $result_string = "";
+  switch($result)
+  {
+    case(SAVED_NEW):
+      $result_string = "SAVED_NEW";
+      break;
+    case SAVED_UPDATED:
+      $result_string = "SAVED_UPDATED";
+      break;
+    case SAVED_UPDAED:
+      $result_string = "SAVED_DELETED";
+      break;
+    default:
+      $result_string = "$result";
+  }
+  return $result_string;
+}
+
+
 
 /**
  * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry

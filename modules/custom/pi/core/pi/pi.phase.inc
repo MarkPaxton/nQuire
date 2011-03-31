@@ -16,8 +16,7 @@ function pi_inquiry_phase_view($phase)
 	$details = get_inquiry_details_from_current_path();
 	drupal_set_title($phase->title);
 
-	//stage is set to NULL to show all activities of the phase
-	$activities = get_activities_of_stage_phase_and_user($phase->inquiry_nid, NULL, $phase->nid, $user->uid);
+	$activities = pi_get_activities_for_phase_and_user($phase->nid, $user->uid);
 
 	$output = "";
 	$output .= t("<p>" . $phase->body . "</p>");
@@ -25,30 +24,30 @@ function pi_inquiry_phase_view($phase)
 
 	$hidden_created_activity_types = get_hidden_summary_activities($phase->inquiry_nid);
 
+	pi_debug_message(count($activities) . " activities found...");
 	if ($activities)
 	{
 		$list = array();
-
 		$active_activity_flag = 0;
-
-		foreach($activities as $activity)
+		foreach($activities as $activity_nid)
 		{
-			$loaded_activity = load_activity($activity->activity_id);
+			$activity = node_load($activity_nid);
+			pi_debug_message($activity->title);
 			//$loaded_activity_status = load_activity_status($activity->activity_id, $user->uid);
 
 			// only display activities that are not in the hidden list
-			if(!(in_array($loaded_activity->node_type, $hidden_created_activity_types)))
+			if(!(in_array($activity->node_type, $hidden_created_activity_types)))
 			{
 				//Changed the order of the code execution because this function can possibly generate
 				//the missing node instance (pi_fooddiary_data).
 				//Therefore activity status and build activity link has to be executed later.
-				$nid = get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
+				$nid = pi_get_activity_content_node_for_activity_and_user($activity->nid, $user->uid); 
+				//get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
 				
 				$loaded_actvity_node = node_load($nid);			
-				
-				$loaded_activity_status = load_activity_status($activity->activity_id, $user->uid);
+				$loaded_activity_status = load_activity_status($activity->nid, $user->uid);
 
-				// so that (by default) always open an exitsing node in view
+				// so that (by default) always open an existing node in view
 				// if node_function for link is edit or view then set node function to view
 				$link_node_function = $loaded_activity_status->node_function;
 
@@ -57,7 +56,7 @@ function pi_inquiry_phase_view($phase)
 					$link_node_function = 'view';
 				}
 
-				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity->activity_id, $user->uid, 'heading');
+				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity->nid, $user->uid, 'heading');
 				if (($active_activity_flag == 0) && $loaded_activity)
 				{
 					$active_activity_flag = 1;

@@ -48,127 +48,136 @@ function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id)
 
 function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
-	switch ($op) {
+  switch ($op)
+  {
+	case 'list':
+	  $blocks[0]['info'] = t('New Activity Guide');
+	  return $blocks;
 
-		case 'list':
-			$blocks[0]['info'] = t('New Activity Guide');
-			return $blocks;
+	case 'view':
+	  global $user;
+	  $block = array();
+	  
+	  if($user!=null)
+	  {
+	    $show_activities = show_activites($user->uid);
+	    $show_phases = show_phases($user->uid);
 
-		case 'view':
-			global $user;
+	    $node_details = get_inquiry_details_from_current_path();
 
-			$show_activities = show_activites($user->uid);
-			$show_phases = show_phases($user->uid);
-				
-			$node_details = get_inquiry_details_from_current_path();
-				
-			$hidden_created_activity_types = get_hidden_link_activities($node_details->inquiry_id);
-			//$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers', 'pi_fooddiary');
-			//$hidden_created_activity_types = array('pi_measure_filter');
+        $hidden_created_activity_types = get_hidden_link_activities($node_details->inquiry_id);
+        //$hidden_created_activity_types = array('pi_key_questions', 'pi_measure_filter', 'pi_available_measures', 'pi_result_presentations', 'pi_data', 'pi_key_answers', 'pi_fooddiary');
+        //$hidden_created_activity_types = array('pi_measure_filter');
+        
+        $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+        
+        if(arg(0) == 'phase' || arg(0) == 'activity')
+        {
+          $phases = pi_phase_load_nids_for_user($node_details->inquiry_id, $user->uid);
+          $current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
+          
+          if (isset($current_stage->stage_id))
+          {
+            $current_stage_id = $current_stage->stage_id;
+          }
+          else
+          {
+            $current_stage_id = '';
+          }
+          
+          $stage = node_load($current_stage_id);
+          $phases_of_current_stage = $stage->phases;
+          
+          $phase_menu_items = array();
+          $phase_menu_item = array();
 
-			$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+          foreach($phases as $phase_nid)
+          {
+            $phase = node_load($phase_nid);
+            $teacher_only = pi_check_teacher_flag_on_phase($phase->nid);
+          
+            if ($phase_nid == $node_details->phase_id && arg(0) == 'phase')
+            {
+              $phase_link = t($phase->title);
+            }
+            else
+            {
+              $phase_link = l($phase->title . _pi_ag_teacher_only_flag($teacher_only), "phase/" . $phase->nid, array('html' => true));
+            }
+          
+            $activity_menu_items = array();
 
-			if(arg(0) == 'phase' || arg(0) == 'activity')
-			{
+            //expand activities of the phase if it is current
+            if ($phase->nid == $node_details->phase_id && $show_activities)
+            {
+              //$activities = get_activities_of_stage_phase_and_user(NULL, NULL, 1);
+              $activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->nid, $user->uid);
+            
+              foreach($activities as $activity)
+              {
+                $loaded_activity = load_activity($activity->activity_id);
+            
+                //do not show activity if created and on the hidden list
+                //this applies to e.g. created measures or data that you
+                //do not want to show
+                $loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
+                //$visible_status = get_visible_status_of_activity($node_details->inquiry_id, $activity->activity_id, $user->uid);
+            
+                if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types)))
+                {
+                  $activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->nid, $activity->activity_id, $user->uid);
+                }
+              }
+            }
 
-				$phases = pi_phase_load_nids_for_user($node_details->inquiry_id, $user->uid);
-				$current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
+            if ($phase->nid == $node_details->phase_id)
+            {
+              $phase_class = 'expanded active-trail';
+            }
+            else
+            {
+              $phase_class = 'collapsed';
+            }
+            if (in_array($phase->nid, $phases_of_current_stage) && $phase->nid == $node_details->phase_id)
+            {
+              //icon changed from folder_empty_current.png
+              $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
+            }
+            elseif (in_array($phase->nid, $phases_of_current_stage) && $show_phases)
+            {
+              $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
+            }
+            elseif ($phase->nid == $node_details->phase_id && $show_activities)
+            {
+              $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
+            }
+            elseif ($show_phases)
+            {
+              $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
+            }
+	      }
 
-				if (isset($current_stage->stage_id)) {
-					$current_stage_id = $current_stage->stage_id;
-				}
-				else {
-					$current_stage_id = '';
-				};
-
-				$stage = node_load($current_stage_id);
-				$phases_of_current_stage = $stage->phases;
-
-				$phase_menu_items = array();
-				$phase_menu_item = array();
-
-				foreach($phases as $phase_nid)
-				{
-					$phase = node_load($phase_nid);
-					$teacher_gid = check_teacher_phase_for_inquiry_phase_user($node_details->inquiry_id, $phase->nid, $user->uid);
-
-					if ($phase_nid == $node_details->phase_id && arg(0) == 'phase') {
-						$phase_link = t($phase->title);
-					}
-					else {
-						$phase_link = l($phase->title . teacher_only_flag($teacher_gid), "phase/" . $phase->nid, array('html' => true));
-					}
-
-					$activity_menu_items = array();
-
-					//expand activities of the phase if it is current
-					if ($phase->nid == $node_details->phase_id && $show_activities) {
-
-						//$activities = get_activities_of_stage_phase_and_user(NULL, NULL, 1);
-					  $activities = get_activities_of_stage_phase_and_user($node_details->inquiry_id, NULL, $phase->nid, $user->uid);
-
-						foreach($activities as $activity) {
-
-							$loaded_activity = load_activity($activity->activity_id);
-
-							//do not show activity if created and on the hidden list
-							//this applies to e.g. created measures or data that you
-							//do not want to show
-							$loaded_activity_nid = get_nid_for_inquiry_activity_and_user($node_details->inquiry_id, $activity->activity_id, $user->uid);
-							//$visible_status = get_visible_status_of_activity($node_details->inquiry_id, $activity->activity_id, $user->uid);
-
-							if (!(in_array($loaded_activity->node_type, $hidden_created_activity_types))) {
-								$activity_menu_items[] = build_activity_link($node_details->inquiry_id, $node_details->stage_id, $phase->nid, $activity->activity_id, $user->uid);
-							}
-						};
-
-					};
-
-					if ($phase->nid == $node_details->phase_id) {
-						$phase_class = 'expanded active-trail';
-					}
-					else {
-						$phase_class = 'collapsed';
-					}
-					if (in_array($phase->nid, $phases_of_current_stage) && $phase->nid == $node_details->phase_id) {
-						//icon changed from folder_empty_current.png
-						$phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
-				}
-				elseif (in_array($phase->nid, $phases_of_current_stage) && $show_phases) {
-					$phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
-			}
-			elseif ($phase->nid == $node_details->phase_id && $show_activities) {
-				$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
-			}
-			elseif ($show_phases) {
-				$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
-			}
-
-	}
-
-	$home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-
-	$previous_answers = array("title" => "my title", "author" => "my author");
-
-	$block_content = t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')));
-
+    	  $home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+    	  $previous_answers = array("title" => "my title", "author" => "my author");
+    	  $block_content = t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')));
+        }
+        if(arg(0) == 'phase' && $show_phases || arg(0) == 'activity' && ($show_phases || $show_activities))
+        {
+          $loaded_inquiry = node_load($node_details->inquiry_id);
+          $block['subject'] = t('Navigation');
+          $block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
+        }
+      }
+      return $block;
+  }
 }
-if(arg(0) == 'phase' && $show_phases || arg(0) == 'activity' && ($show_phases || $show_activities)) {
-	$loaded_inquiry = node_load($node_details->inquiry_id);
-	$block['subject'] = t('Navigation');
-	$block['content'] = "<div class='activity-guide'>" . $ag_content . $inquiry_stage_info . $block_content . "</div>";
-}
-return $block;
-    };
-}
 
-function teacher_only_flag ($gid) {
-	if ($gid) {
-		return " (T)";
-	}
-	else {
-		return "";
-	}
+/** Generate teacher only suffix given the flag
+ * @param bool $teacher_only
+ * @todo theme this instead
+ */
+function _pi_ag_teacher_only_flag($teacher_only) {
+	return $teacher_only ? " (T)" : "";
 }
 
 /*
@@ -200,7 +209,7 @@ function new_activity_list_count($inquiry_id, $phase_id, $uid) {
 function get_ag_content() {
 	$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';    // get list of inquiries for current user
 	global $user;
-	$inquiries = get_inquiries_of_user($user->uid);
+	$inquiries = pi_get_inquiries_of_user($user->uid);
 	$node_details = get_inquiry_details_from_current_path();
 
 	$home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);

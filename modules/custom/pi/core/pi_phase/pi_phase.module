@@ -152,52 +152,76 @@ function pi_phase_form_phase_actor_validate($element, $form_state)
  * hook_insert() - INSERT command for a new inquiry phase
  */
 function pi_phase_insert($node) {
-	// Query the database first to set the weight to place the item at the end of lists.
-	// If the query result is NULL then the the field will to default=0 since the weight
-	// column is defined with NOT NULL DEFAULT 0   
-	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_phase} WHERE inquiry_nid=%d", $node->inquiry_nid));
-	db_query("INSERT INTO {pi_phase} (nid, vid, inquiry_nid, weight) VALUES (%d, %d, %d, %d)",
-	$node->nid, $node->vid, $node->inquiry_nid, $initial_weight);
-	//Then add phase actor
-	pi_phase_set_actor($node->nid, $node->phase_actor);	
+  // Query the database first to set the weight to place the item at the end of lists.
+  // If the query result is NULL then the the field will to default=0 since the weight
+  // column is defined with NOT NULL DEFAULT 0
+  $initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_phase} WHERE inquiry_nid=%d", $node->inquiry_nid));
+  $data_to_write = new stdClass();
+  $data_to_write->nid = $node->nid;
+  $data_to_write->vid = $node->vid;
+  $data_to_write->inquiry_nid = $node->inquiry_nid;
+  $data_to_write->weight = $initial_weight;
+  $data_to_write->phase_actor = $node->phase_actor;
+  $result = drupal_write_record('pi_phase', $data_to_write);
+  if($result != SAVED_NEW)
+  {
+    $result_string = _pi_write_record_result_string($result);
+    drupal_set_message(t('Problem saving Phase data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+  }
 }
 
 /**
  * hook_update() - UPDATE command for an existing inquiry phase
  */
 function pi_phase_update($node) {
-	if ($node->revision)
-	{
-		// New revision; treat it as a new record.
-		pi_phase_insert($node);
-	}
-	else 
-	{
-		db_query("UPDATE {pi_phase} SET inquiry_nid = %d, weight = %d WHERE vid = %d",
-			$node->inquiry_nid, $node->weight, $node->vid);
-	}
-	pi_phase_set_actor($node->nid, $node->phase_actor);	
+  if ($node->revision)
+  {
+    // New revision; treat it as a new record.
+    pi_phase_insert($node);
+  }
+  else
+  {
+    $data_to_write = new stdClass();
+    $data_to_write->nid = $node->nid;
+    $data_to_write->vid = $node->vid;
+    $data_to_write->inquiry_nid = $node->inquiry_nid;
+    $data_to_write->weight = $initial_weight;
+    $data_to_write->phase_actor = $node->phase_actor;
+    $result = drupal_write_record('pi_phase', $data_to_write, array('nid', 'vid'));
+    if($result != SAVED_UPDATED)
+    {
+      $result_string = _pi_write_record_result_string($result);
+      drupal_set_message(t('Problem saving Phase data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+    }
+  }
 }
 
 /**
  * 
- * Insert or update phase actor in the pi_inquiry_actor table
+ * Insert or update phase actor
  * @param uint $phase_id nid
  * @param uint $actor_id nid of an og/nquire group
  */
 function pi_phase_set_actor($phase_id, $actor_id)
 {
-	$do_update = pi_db_ensure_unique('pi_phase_actor', 'phase_id', $phase_id);
-	if($do_update)
+	$phase = $node_load($phase_id);
+	if($phase)
 	{
-		$query = "UPDATE {pi_phase_actor} SET gid=%d WHERE phase_id=%d";
+	  if($phase->type=='pi_phase')
+	  {
+	    $phase->phase_actor = $actor_id;
+	    node_save($phase);
+	  }
+	  else
+	  {
+	    drupal_set_message(t("Trying to update phase actor for node that isn't a phase %nid - it is of type %type.", 
+	     array('%nid' => $phase_id, '%type' => $phase->type)), 'error');
+	  }
 	}
 	else
 	{
-		$query = "INSERT INTO {pi_phase_actor} (gid, phase_id) VALUES (%d, %d)";		
+	  drupal_set_message(t("Trying to update phase actor for none existant node %nid", array('%nid' => $phase_id)), 'error');
 	}
-	//pi_debug_message(sprintf($query, $actor_id, $phase_id));
-	db_query($query, $actor_id, $phase_id);
 }
 
 /**
@@ -223,24 +247,13 @@ function pi_phase_nodeapi(&$node, $op, $teaser, $page) {
 function pi_phase_delete(&$node) {
 	// Delete the related information we were saving for this node.
 	db_query('DELETE FROM {pi_phase} WHERE nid = %d', $node->nid);
-	db_query('DELETE FROM {pi_phase_actor} WHERE phase_id = %d', $node->nid);
 }
 
 /**
  * Custom loader for phase type (called when %phase is specified in a menu parameter)
  */
 function pi_phase_load($node) {
-	$return = db_fetch_object(db_query('SELECT inquiry_nid, weight FROM {pi_phase} WHERE vid = %d', $node->vid));
-	
-	if($return!=NULL)
-	{
-		$query = "SELECT gid FROM {pi_phase_actor} WHERE phase_id = %d ORDER BY ppa_id ASC LIMIT 1";
-		$result = db_fetch_array(db_query($query, $node->nid));
-		$return->phase_actor = $result['gid'];
-		
-		//$return->inquiry_id = $return->inquiry_nid;
-	}
-	
+	$return = db_fetch_object(db_query('SELECT `inquiry_nid`, `weight`, `phase_actor` FROM {pi_phase} WHERE vid = %d', $node->vid));
 	return $return;
 }
 
@@ -273,11 +286,10 @@ function pi_phase_load_nids($inquiry_nid)
  */
 function pi_phase_load_nids_for_user($inquiry_nid, $uid)
 {
-	$query = "SELECT DISTINCT pi_phase.nid AS nid FROM {pi_phase} AS pi_phase " .
-		"LEFT JOIN {pi_phase_actor} AS pi_phase_actor ON pi_phase_actor.phase_id=pi_phase.nid " .
-		"LEFT JOIN {og_uid} AS og_uid ON og_uid.nid = pi_phase_actor.gid " .
-		"WHERE pi_phase.inquiry_nid = %d " .
-		"AND og_uid.uid = %d";	
+	$query = "SELECT DISTINCT {pi_phase}.`nid` AS nid FROM {pi_phase} AS pi_phase " .
+		"LEFT JOIN {og_uid} AS og_uid ON og_uid.`nid` = pi_phase.`phase_actor` " .
+		"WHERE pi_phase.`inquiry_nid` = %d " .
+		"AND og_uid.`uid` = %d";	
 	//pi_debug_message(sprintf($query, $inquiry_nid, $uid));
 	$result = db_query($query, $inquiry_nid, $uid);
 	$phase_nodes = array();

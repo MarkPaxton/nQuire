@@ -36,7 +36,7 @@ function pi_activity_uninstall() {
 /**
  * Implementation of hook_schema().
  */
-function pi_activity_update_6000()
+function pi_activity_update_6001()
 {
   //Get the new schema definition and make sure cache is updated
   
@@ -52,6 +52,8 @@ function pi_activity_update_6000()
   db_drop_table($results, 'pi_stage_phase_activity');
   db_drop_field($results, 'pi_activity_node', 'inquiry_id');
   db_drop_field($results, 'pi_activity_status', 'inquiry_id');  
+  //rebuild the schema cache after the changes
+  $new_schema = drupal_get_schema(NULL, true);
   return $results;
 }
 
@@ -68,7 +70,7 @@ function _pi_activity_upgrade_execute()
     $activity_id = $row['activity_id'];
 
     $new_node = _pi_activity_upgrade_covert_to_node($row);
-        node_save($new_node);
+    node_save($new_node);
     $new_node_id = $new_node->nid;
     $new_node_ids[$activity_id] = $new_node_id;
   }

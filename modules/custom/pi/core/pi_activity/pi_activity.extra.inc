@@ -26,43 +26,73 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 
 
 /**
- * get_nid_for_inquiry_activity_and_user
- **/
+ * @see pi_get_activity_content_node_for_activity_and_user
+ * @param $inquiry_id
+ * @param $activity_id
+ * @param $uid
+ */
 function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) {
-  //find if uid is author of the node
-  $query1 = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} "
-  . "LEFT JOIN {node} ON {node}.nid = {pi_activity_node}.nid "
-  . "WHERE {pi_activity_node}.inquiry_id = %d "
-  . "AND {pi_activity_node}.activity_id = %d AND {node}.uid = %d "
-  . "ORDER BY {pi_activity_node}.pan_id DESC";
-
-  /*	$query1 = "SELECT pi_activity_node.nid FROM pi_activity_node, node";
-   $query1 .= " WHERE  pi_activity_node.inquiry_id = " . $inquiry_id;
-   $query1 .= " AND pi_activity_node.activity_id = " . $activity_id;
-   $query1 .= " AND node.nid = pi_activity_node.nid";
-   $query1 .= " AND node.uid = '" . $uid . "' ";
-   $query1 .= " ORDER BY pan_id DESC";*/
+  //@todo depricate this function
+  return pi_get_activity_content_node_for_activity_and_user($activity_id, $uid);
+}
 
 
-  $result = db_fetch_object(db_query($query1, $inquiry_id, $activity_id, $uid));
-  if (isset($result))
+/**
+ * Get the activity content node id for an activity and user
+ * @param $activity_id
+ * @param $uid
+ */
+function pi_get_activity_content_node_for_activity_and_user($activity_id, $uid) {
+  $nid_to_return = null;
+   
+  // first of all see if a user has directly created a node
+  $query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+    "LEFT JOIN {node} ON {node}.`nid` = {pi_activity_node}.`nid` " .
+    "WHERE {pi_activity_node}.`activity_id` = %d AND {node}.`uid` = %d " .
+    "ORDER BY {pi_activity_node}.`nid` DESC";
+
+  $result = db_query($query, $activity_id, $uid);
+  $nids_returned = array();
+  while($nid_result = db_fetch_object($result))
   {
-    if(isset($result->nid))
+    $nids_returned[] = $nid_result->nid;
+  }
+  if (count($nids_returned)>0)
+  {
+    $nid_to_return = $nids_returned[0];
+    if(count($nids_returned>1))
     {
-      return $result->nid;
+      drupal_set_message(t("Multiple nids returned for content for activity %id and user %user - using highest nid", array("%id" => $activity_id, "%user" => $uid)), 'warning');
     }
   }
-
-  //find if uid is member of a group for the node
-  $query2 = "SELECT {pi_activity_node}.nid FROM {pi_activity_node}, {node_access}, {og_uid} "
-  . "WHERE  {pi_activity_node}.inquiry_id = %d "
-  . "AND {pi_activity_node}.activity_id = %d "
-  . "AND {node_access}.nid = {pi_activity_node}.nid "
-  . "AND ( ( {node_access}.gid = gid AND {node_access}.gid = og_uid.nid AND {og_uid}.uid = %d ) "
-  . "OR {node_access}.realm = 'all')";
-
-  $result = db_fetch_object(db_query($query2, $inquiry_id, $activity_id, $uid));
-  return $result->nid;
+  
+  // If there isn't a content nid directly owned by this user, then check the group ownerships
+  if($nid_to_return==null)
+  {
+    $query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+      "LEFT JOIN {pi_activity} ON {pi_activity}.`nid` = {pi_activity_node}.`activity_id` " .
+      "LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity}.`actor` " .
+      "LEFT JOIN {node_access} ON {pi_activity_node}.`nid` = {node_access}.`nid` " .
+      "WHERE {pi_activity_node}.`activity_id` = %d " .
+      "AND ( ( {node_access}.`gid` = {og_uid}.`nid` AND {og_uid}.`uid` = %d ) " .
+      "OR {node_access}.`realm` = 'all')";
+  
+    $result = db_query($query, $activity_id, $uid);
+    $nids_returned = array();
+    while($nid_result = db_fetch_object($result))
+    {
+      $nids_returned[] = $nid_result->nid;
+    }
+    if (count($nids_returned)>0)
+    {
+      $nid_to_return = $nids_returned[0];
+      if(count($nids_returned>1))
+      {
+        drupal_set_message(t("Multiple nids returned for content for activity %id and user %user - using highest nid", array("%id" => $activity_id, "%user" => $uid)), 'warning');
+      }
+    }
+  } 
+  return $nid_to_return;
 }
 
 
@@ -712,7 +742,7 @@ function delete_activity_type_for_user($activity_type, $user) {
 function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid, $class = 'menu')
 {
   $link = pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid);
-
+pi_debug_message($link);
   $options['html'] = TRUE;
   $options['query'] = $link['destination'];
   $options['attributes'] = array( 'class' => $class);
