@@ -168,6 +168,7 @@ function pi_stage_form(&$node, $form_state) {
 	
 	$form['stage_actor'] = array(
 		'#type' => 'select',
+		'#required' => TRUE,
 		'#title' => t('Who is this stage for'),
 		'#description' => t('Select the group that will be see this stage'),
 		'#weight' => 2,
@@ -192,6 +193,20 @@ function pi_stage_form(&$node, $form_state) {
 	//Add some javascript to load the phases if needed on page load (e.g. when the browser pre-selects a value) 
 	//drupal_add_js('document.onLoad=function(){$[\'edit-inquiry-nid\'].onChange();}', 'inline');	
 	return $form;
+}
+
+/**
+ * hook_form_alter - changes the form to change it from default node layout
+ */
+function pi_stage_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'pi_stage_node_form')
+	{
+		$form['menu']['#weight'] = 3;
+		
+		//Remove attachments and comment settings
+		unset( $form['attachments'] );
+		unset( $form['comment_settings'] );
+	}
 }
 
 /**
