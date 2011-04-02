@@ -5,52 +5,60 @@
  * Implementation of hook_install().
  */
 function pi_stage_install() {
-  // Create tables.
-  drupal_install_schema('pi_stage');
+	// Create tables.
+	drupal_install_schema('pi_stage');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_stage", array('status'));
+	variable_set("comment_pi_stage", COMMENT_NODE_DISABLED);
+	variable_set('upload_pi_stage', 0);
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function pi_stage_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_stage');
+	// Remove tables.
+	drupal_uninstall_schema('pi_stage');
+	//Options are status, promote, sticky, revision
+	variable_del("node_options_pi_stage");
+	variable_del("comment_pi_stage");
+	variable_del('upload_pi_stage');
 }
 
 /**
  * Implementation of hook_schema().
  */
 function pi_stage_schema() {
-	
+
 	$schema = array();
-	
+
 	$schema['pi_stage'] = array(
 		'description' => 'PI Inquiry Stage',
 		'fields' => array(
 			'nid' => array(
 		        'description' => t('node id'),
 		        'type' => 'int',
-				'length' => 10,
+				'size' => 'normal',
 		        'unsigned' => TRUE,
 		        'not null' => TRUE,
 		        'default' => 0 ),
 			'vid' => array(
 		        'description' => t('The current vid version identifier'),
 		        'type' => 'int',
-				'length' => 10,
+				'size' => 'normal',
 		        'unsigned' => TRUE,
 		        'not null' => TRUE,
 		      	'default' => 0 ),
 			'inquiry_nid' => array(
 		        	'description' => 'The nid for the inquiry this stage is attached to.',
 					'type' => 'int',
-					'length' => 10,
+					'size' => 'normal',
 		        	'unsigned' => TRUE,
 					'not null' => TRUE ),
 			'weight' => array(
 		        	'description' => 'The order of the stage in the inquiry.',
 					'type' => 'int',
-					'length' => 10,
+					'size' => 'normal',
 		        	'unsigned' => TRUE,
 					'not null' => TRUE,
 		    	  	'default' => 0 )),
@@ -58,7 +66,7 @@ function pi_stage_schema() {
 		'unique keys' => array( 'vid' => array('vid') ),
 		'indexes' => array( 'nid' => array('nid') )
 	);
-	
+
 	$schema['pi_stage_actor'] = array(
     	'description' => 'PI Stage actor.',
     	'fields' => array(
@@ -93,7 +101,7 @@ function pi_stage_schema() {
     'indexes' => array(	'inquiry_id' => array('inquiry_id'),
       					'stage_id' => array('stage_id') )
 	);
-	
+
 	$schema['pi_stage_phase'] = array(
 		'description' => 'nQuire Stage-Phase link table',
 		'fields' => array(
@@ -104,13 +112,13 @@ function pi_stage_schema() {
 				'description' => 'Stage-Phase link id (used for stage-phase-activity links)' ),		
 			'stage_id' => array(
 		        'type' => 'int',
-				'length' => 10,
+				'size' => 'normal',
 		        'unsigned' => TRUE,
 		        'not null' => TRUE,
 				'description' => 'Stage node id' ),
 			'phase_id' => array(
 		        'type' => 'int',
-				'length' => 10,
+				'size' => 'normal',
 		        'unsigned' => TRUE,
 		        'not null' => TRUE,
 				'description' => 'Phase node id' ) ),
@@ -119,7 +127,7 @@ function pi_stage_schema() {
 		'indexes' => array( 'stage_id' => array('stage_id'),
 							'phase_id' => array('phase_id') )
 	);
-	
+
 	$schema['pi_stage_phase_activity'] = array(
     	'description' => 'PI Stage Phase Activity.',
     	'fields' => array(
@@ -130,26 +138,26 @@ function pi_stage_schema() {
         		'description' => 'Primary Key: Unique category ID.' ),
 			'psp_id' => array(
 				'type' => 'int',
-				'length' => 10,
+				'size' => 'normal',
 				'unsigned' => TRUE,
 				'not null' => TRUE,
 				'description' => 'PI Stage Phase id.' ),
 			'activity_id' => array(
 				'type' => 'int',
-				'length' => 10,
+				'size' => 'normal',
 				'unsigned' => TRUE,
 				'not null' => TRUE,
 				'description' => 'Activity id.' ),
 			'position' => array(
 				'type' => 'int',
-				'length' => 10,
+				'size' => 'normal',
 				'not null' => TRUE,
 				'default' => 0,
 				'description' => 'The order of activities in a phase in a stage.' ) ),
     'primary key' => array('pspa_id'),
     'indexes' => array( 'activity_id' => array('activity_id') )
 	);
-	
+
 	$schema['pi_current_stage'] = array(
     	'description' => 'PI grouping group.',
     	'fields' => array(
@@ -160,7 +168,7 @@ function pi_stage_schema() {
         	'description' => 'Primary Key: Unique category ID.' ),
       	'inquiry_id' => array(
         	'type' => 'int',
-			'length' => 10,
+			'size' => 'normal',
         	'unsigned' => TRUE,
         	'not null' => FALSE,
         	'description' => 'Inquiry id.' ),
@@ -186,6 +194,6 @@ function pi_stage_schema() {
       						'uid' => array('uid'),
       						'gid' => array('gid') ) 
 	);
-	
+
 	return $schema;
 }
