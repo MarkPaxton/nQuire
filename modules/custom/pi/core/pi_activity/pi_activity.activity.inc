@@ -24,7 +24,7 @@ function pi_activity_view($activity, $arg_node_function) {
 				
 	// Check that the node function given in the URL is allowed by comparing it with the 
 	//   node function in the database for this inquiry and user
-	//$node_function = get_node_function_of_activity($details->inquiry_id, $activity_id, $uid);
+	//$node_function = pi_activity_get_node_function($details->inquiry_id, $activity_id, $uid);
 	// this is now handled with the access callback pi_activity_item_access
 	switch($arg_node_function)
 	{
@@ -51,12 +51,12 @@ function pi_activity_view($activity, $arg_node_function) {
 			// The other is if the activity node exists, but its acts as a shortcut to another
 			// activity (for example a shortcut to add a key question from the sort key question page.)
 			// The conditions are determined by:
-			// 1) If  "get_node_function_of_activity" returns that it is in the "add" state, then it is condition one
+			// 1) If  "pi_activity_get_node_function" returns that it is in the "add" state, then it is condition one
 			//		i.e. performing an add of the activity node_type as normal
-			// 2) If "get_node_function_of_activity" is not add, then this indicates an add shortcut COULD be used
+			// 2) If "pi_activity_get_node_function" is not add, then this indicates an add shortcut COULD be used
 			// 3) If an "Add x" activity of the correct node type exists, then the add function is available to be
 			//		called, so forward to that page using drupal_goto().
-			$node_function = get_node_function_of_activity($details->inquiry_id, $activity->activity_id, $uid);
+			$node_function = pi_activity_get_node_function($details->inquiry_id, $activity->activity_id, $uid);
 			if($node_function == 'add')
 			{
 				// Normal add activity

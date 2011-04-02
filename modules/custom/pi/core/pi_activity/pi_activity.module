@@ -1272,7 +1272,7 @@ function pi_activity_update($node)
     if(($status['visible_status']!=$existing_activity_statuses[$status['gid']]['visible_status']) ||
         ($status['node_function']!=$existing_activity_statuses[$status['gid']]['node_function']) )
     {
-      $result = drupal_write_record('pi_activity_status', $status, $id);
+      $result = drupal_write_record('pi_activity_status', $status, 'pas_id');
       if($result == FALSE)
       {
         drupal_set_message(
@@ -1334,7 +1334,7 @@ function pi_activity_update($node)
   $activity_node = array('activity_id'=>$node->nid, 'nid'=>$nid_to_write);
   if($id_to_update!=NULL)
   {
-    $result = drupal_write_record('pi_activity_node', $activity_node, $id_to_update);
+    $result = drupal_write_record('pi_activity_node', $activity_node, 'pan_id');
   }
   else
   {
@@ -1513,7 +1513,7 @@ function _pi_activity_get_activity_stage_states($activity_nid)
       if(array_key_exists($row['stage_nid'], $seen_stage_nids))
       {
         $previous_state = $return_rows[$seen_stage_nids[$row['stage_nid']]['stage_state']];
-        pi_debug_message($previous_state);
+        //pi_debug_message($previous_state);
         drupal_set_message(
           t("More than one stage state set for activity @activity_nid and stage @stage_nid - using state @state", 
           array('@activity_nid' => $activity_nid, '@stage_nid' => $row['stage_nid'], '@state' => $previous_state))
@@ -1740,17 +1740,16 @@ function load_activity($nid)
   return node_load($nid);
 }
 
+
 /**
  * Create the url to a particular activity
- * @param uint $inquiry_id
- * @param uint $stage_id
- * @param uint $phase_id
  * @param uint $activity_id
  * @param uint $uid
  * @return array ['url'] and ['title'] countaining link url (via drupal url()) and title (via chaeck_plain())
  */
-function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid)
+function pi_activity_get_link($activity_id, $uid)
 {
+  pi_debug_message("Getting link for $activity_id and $uid");
   $url = array('url'=>'', 'title'=>'');
 
   $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
@@ -1760,8 +1759,9 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
 							'unavailable' => 'unavailable.png' );
 
   $loaded_activity = node_load($activity_id);
-  $visible_status = get_visible_status_of_activity($inquiry_id, $activity_id, $uid);
-  $node_function = get_node_function_of_activity($inquiry_id, $activity_id, $uid);
+  $visible_status = pi_activity_get_visible_status_of_activity($activity_id, $uid);
+  pi_debug_message($visible_status);
+  $node_function = pi_activity_get_node_function($activity_id, $uid);
 
   switch ($loaded_activity->destination)
   {
@@ -1769,10 +1769,11 @@ function pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $
       $destination = "destination=activity/" . $activity_id . "/view";
       break;
     case "phase":
-      $destination = "destination=phase/" . $phase_id;
+      $destination = "destination=phase/" . $activity->phase_nid;
       break;
     default:
-      $destination = "destination=inquiry/" . $inquiry_id;
+      $phase = node_load($activity->phase_nid);
+      $destination = "destination=inquiry/" . $phase->inquiry_nid;
       break;
   }
 

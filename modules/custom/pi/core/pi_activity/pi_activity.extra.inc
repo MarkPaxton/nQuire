@@ -231,8 +231,8 @@ function add_pi_activity_node($inquiry_id, $activity_id, $nid) {
 /**
  * Returns visible_status from pi_activity_status (can be start, in_progress, view or unavailable).
  */
-function get_visible_status_of_activity($inquiry_id, $activity_id, $uid) {
-  $activity_status = load_activity_status($activity_id, $uid);
+function pi_activity_get_visible_status_of_activity($activity_id, $uid) {
+  $activity_status = pi_activity_load_status($activity_id, $uid);
   $result = $activity_status->visible_status;
   return $result ;
 }
@@ -242,20 +242,17 @@ function get_visible_status_of_activity($inquiry_id, $activity_id, $uid) {
  * Returns FALSE if that user does not have that permission for the
  * specified activity, otherwise it returns TRUE.
  */
-function check_visible_status_of_activity ($inquiry_id, $activity_id, $uid, $status) {
-
-
-  $visible_status = get_visible_status_of_activity($inquiry_id, $activity_id, $uid);
-
-  if ($visible_status == $status) {
+function pi_activity_check_visible_status_of_activity ($activity_id, $uid, $status) {
+  $visible_status = pi_activity_get_visible_status_of_activity($activity_id, $uid);
+  if ($visible_status == $status)
+  {
     $result = TRUE;
   }
-  else {
+  else
+  {
     $result = FALSE;
-  };
-
+  }
   return $result;
-
 }
 
 /**
@@ -264,7 +261,7 @@ function check_visible_status_of_activity ($inquiry_id, $activity_id, $uid, $sta
  * This will set dependent on the audience in pi_activity.
  */
 function set_visible_status_of_activity($inquiry_id, $activity_id, $uid, $status) {
-  $activity_status = load_activity_status($activity_id, $uid);
+  $activity_status = pi_activity_load_status($activity_id, $uid);
 
   $activity_status->visible_status = $status;
 
@@ -321,8 +318,8 @@ function set_visible_status_of_activity_type($inquiry_id, $activity_type, $uid, 
  * @param $uid
  * @return unknown_type
  */
-function get_node_function_of_activity($inquiry_id, $activity_id, $uid) {
-  $activity_status = load_activity_status($activity_id, $uid);
+function pi_activity_get_node_function($activity_id, $uid) {
+  $activity_status = pi_activity_load_status($activity_id, $uid);
   $result = $activity_status->node_function;
   return $result ;
   /*
@@ -352,7 +349,7 @@ function get_node_function_of_activity($inquiry_id, $activity_id, $uid) {
  * @return unknown_type
  */
 function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $function) {
-  $node_function = get_node_function_of_activity($inquiry_id, $activity_id, $uid);
+  $node_function = pi_activity_get_node_function($activity_id, $uid);
   if ($node_function == $function)
   {
     $result = TRUE;
@@ -375,7 +372,7 @@ function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $funct
  * @return unknown_type
  */
 function set_node_function_of_activity($inquiry_id, $activity_id, $uid, $function) {
-  $activity_status = load_activity_status($activity_id, $uid);
+  $activity_status = pi_activity_load_status($activity_id, $uid);
   $activity_status->node_function = $function;
   save_activity_status($activity_status);
   /*
@@ -593,55 +590,92 @@ function update_activity_actor($actor) {
 }
 
 /**
- * Returns array from pi_activity_status table objects.
+ * Returns activity visible status and node function, prioritising specific user status (set as uid in table) rather than group ids.
  * @param uint $activity_id
  * @param uint $uid
- * @return array(activity_id, uid, status)
+ * @return array(visible_status, node_function)
  */
-function load_activity_status($activity_id, $uid = NULL)
+function pi_activity_load_status($activity_id, $uid)
 {
-  $return_data = array();
+  $return_status = array('visible_status' => '', 'node_function' => '');
+
   if($activity_id==NULL)
   {
-    drupal_set_message('load_activity_status: null value for activity_id passed', 'warning');
-    $query = 'SELECT * FROM {pi_activity_status}';
+    drupal_set_message('pi_activity_load_status: null value for activity_id passed', 'warning');
   }  
   else
   {
+    $activity_node_found=FALSE;
     $activity = node_load($activity_id);
     if ($activity!=NULL)
     {
       if($activity->type == 'pi_activity')
       {
-        $activity_node_found=FALSE;
+        $activity_node_found=TRUE;
       }
-    }        
+    }
+    if($activity_node_found)
+    {
+      $query = "SELECT {pi_activity_status}.`visible_status`, {pi_activity_status}.`node_function`, {og_uid}.`nid` FROM {pi_activity_status} " .
+        "LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity_status}.`gid` " .
+        "WHERE ( {pi_activity_status}.`activity_id` = %d ) " .
+        "AND ( ({pi_activity_status}.`uid`) = %d OR ( {og_uid}.`uid` = %d ) ) ";
+
+      $result = db_query($query, $activity_id, $uid, $uid);
+      $status_values_for_group = array();
+      $status_groups = array();
+      $status_values_for_user = array();
+      while($status_value_row = db_fetch_object($result))
+      {
+        if($status_value_row->uid != NULL)
+        {
+          $status_values_for_user[] = $status_value_row;
+         }
+        else
+        {
+          $status_values_for_group[] = $status_value_row;
+          $status_groups[$status_value_row->nid] = $status_value_row->visible_status;
+        }
+      }
+      if(count($status_values_for_user)>0)
+      {
+        $return_status['visible_status'] = $status_values_for_user[0]->visible_status;
+        $return_status['node_function'] = $status_values_for_user[0]->node_function;
+        if(count($status_values_for_user)>1)
+        {
+          drupal_set_message(t("More than one status set for activity %activity for user %uid - using first: %status, %function.",
+          array('%activity' => $activity_id, '%uid' => $uid, 
+          	'%status' => $return_status['visible_status'],
+          	'%function' => $return_status['node_function'])), 'warning');
+        }
+      }
+      else
+      {
+        if(count($status_values_for_group)>0)
+        {
+          $return_status['visible_status'] = $status_values_for_group[0]->visible_status;
+          $return_status['node_function'] = $status_values_for_group[0]->node_function;
+          if(count($status_values_for_group)>1)
+          {
+            drupal_set_message(t("More than one status set for activity %activity for group(s) %gid - using first: %status, %function.",
+            array('%activity' => $activity_id, '%gid' => implode(', ', $status_groups), 
+             '%status' => $status_values_for_group[0], '%function' => $return_status['node_function'])), 'warning');
+          }
+        }
+        else
+        {
+          drupal_set_message(t("No status set for activity %activity for user %uid.",
+          array('%activity' => $activity_id, '%uid' => $uid)), 'warning');
+        }
+      }
+    }
+    else
+    {
+      drupal_set_message(t("No activity %activity found when checking status for user %uid.",
+          array('%activity' => $activity_id, '%uid' => $uid)), 'warning');
+    }
   }
-  
-  $newitems = 0;
-
-  $query = "SELECT {pi_activity_status}.* FROM {pi_activity_status} "
-  . "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_status}.gid ";
-
-  $parameters[] = $inquiry_id;
-
-  if ($activity_id)
-  {
-    $query .= "AND activity_id = %d ";
-    $parameters[] = $activity_id;
-  }
-  if ($uid)
-  {
-    $query .= "AND ( {pi_activity_status}.uid = %d OR {og_uid}.uid = %d ) ";
-    $parameters[] = $uid;
-    $parameters[] = $uid;
-  }
-
-  $query .= "ORDER BY pi_activity_status.pas_id DESC";
-
-  $newitems = db_fetch_object(db_query($query, $parameters));
-
-  return $newitems;
+  return $return_status;
 }
 
 /**
@@ -739,22 +773,23 @@ function delete_activity_type_for_user($activity_type, $user) {
  * @param uint $activity_id
  * @param uint $uid
  */
-function build_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid, $class = 'menu')
+function pi_activity_build_link($activity_id, $uid, $class = 'menu')
 {
-  $link = pi_activity_get_link($inquiry_id, $stage_id, $phase_id, $activity_id, $uid);
-pi_debug_message($link);
+  $link = pi_activity_get_link($activity_id, $uid);
+
   $options['html'] = TRUE;
   $options['query'] = $link['destination'];
   $options['attributes'] = array( 'class' => $class);
 
-  $visible_status = get_visible_status_of_activity($inquiry_id, $activity_id, $uid);
-  if($visible_status == 'unavailable') {
+  $visible_status = pi_activity_get_visible_status_of_activity($activity_id, $uid);
+  if($visible_status == 'unavailable')
+  {
     $output = t($link['title'].'<br/>');
   }
-  else {
+  else
+  {
     $output = l($link['title'], $link['url'], $options );
   }
-
   return $output;
 }
 
@@ -770,7 +805,7 @@ function make_add_activity_link($inquiry_id, $stage_id, $phase_id, $activity_id,
 
   if ($add_activity_id)
   {
-    $activity_link = build_activity_link($inquiry_id, $stage_id, $phase_id, $add_activity_id, $uid);
+    $activity_link = pi_activity_build_link($add_activity_id, $uid);
     $add_activity_link = '<div class="add_activity_link">' . $activity_link . '</div>';
   }
 

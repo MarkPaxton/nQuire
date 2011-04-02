@@ -32,8 +32,6 @@ function pi_inquiry_phase_view($phase)
 		foreach($activities as $activity_nid)
 		{
 			$activity = node_load($activity_nid);
-			pi_debug_message($activity->title);
-			//$loaded_activity_status = load_activity_status($activity->activity_id, $user->uid);
 
 			// only display activities that are not in the hidden list
 			if(!(in_array($activity->node_type, $hidden_created_activity_types)))
@@ -45,7 +43,7 @@ function pi_inquiry_phase_view($phase)
 				//get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
 				
 				$loaded_actvity_node = node_load($nid);			
-				$loaded_activity_status = load_activity_status($activity->nid, $user->uid);
+				$loaded_activity_status = pi_activity_load_status($activity->nid, $user->uid);
 
 				// so that (by default) always open an existing node in view
 				// if node_function for link is edit or view then set node function to view
@@ -56,13 +54,13 @@ function pi_inquiry_phase_view($phase)
 					$link_node_function = 'view';
 				}
 
-				$activity_link = build_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity->nid, $user->uid, 'heading');
-				if (($active_activity_flag == 0) && $loaded_activity)
+				$activity_link = pi_activity_build_link($activity_nid, $user->uid);
+				if (($active_activity_flag == 0) && $activity)
 				{
 					$active_activity_flag = 1;
 				}
 
-				$activity_desc = pi_activity_teaser($loaded_actvity_node, $loaded_activity, $link_node_function);
+				$activity_desc = pi_activity_teaser($loaded_actvity_node, $activity, $link_node_function);
 					
 				$list[] = array('data' => $activity_link . $activity_desc, 'class' => 'activity');
 			}

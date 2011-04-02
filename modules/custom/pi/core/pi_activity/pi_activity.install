@@ -36,37 +36,112 @@ function pi_activity_uninstall() {
 /**
  * Implementation of hook_schema().
  */
-function pi_activity_update_6001()
+function pi_activity_update_6001(&$sandbox)
 {
-  //Get the new schema definition and make sure cache is updated
-  
-  $schema['pi_activity'] = drupal_get_schema('pi_activity', true);
-  $schema['pi_activity_stage_state'] =  drupal_get_schema('pi_activity_stage_state', true);
-  
   $results = array();
-  db_create_table($results, 'pi_activity_stage_state', $schema['pi_activity_stage_state'] );
-  db_rename_table($results, 'pi_activity', 'pi_activity_old');
-  db_create_table($results, 'pi_activity', $schema['pi_activity'] );
-  _pi_activity_upgrade_execute();
-  db_drop_table($results, 'pi_activity_actor');
-  db_drop_table($results, 'pi_stage_phase_activity');
-  db_drop_field($results, 'pi_activity_node', 'inquiry_id');
-  db_drop_field($results, 'pi_activity_status', 'inquiry_id');  
-  //rebuild the schema cache after the changes
-  $new_schema = drupal_get_schema(NULL, true);
+  $batch_size = 20;
+  // stage this update using sandbox variable...
+  if (!isset($sandbox['progress']))
+  {
+    $sandbox['progress'] = 0;
+    $sandbox['current_node'] = 0;
+    $sandbox['new_node_ids'] = array();
+    $sandbox['max'] = 15;
+  }
+  
+  //pi_debug_message($sandbox['progress']);
+  //pi_debug_message(count($sandbox['new_node_ids']));
+  $table_data[0] = array('pi_activity_enter_focus', 'paef_id', 'activity_id');
+  $table_data[1] = array('pi_activity_leave_focus', 'palf_id', 'activity_id');
+  $table_data[2] = array('pi_activity_node', 'pan_id', 'activity_id');
+  $table_data[3] = array('pi_activity_preference', 'pap_id', 'show_activity');
+  $table_data[4] = array('pi_activity_status', 'pas_id', 'activity_id');
+  $table_data[5] = array('pi_inquiry_grouping', 'pig_id', 'activity_id');
+
+  switch($sandbox['progress'])
+  {
+    case 0:
+      //Get the new schema definition and make sure cache is updated
+      $schema['pi_activity'] = drupal_get_schema('pi_activity', true);
+      $schema['pi_activity_stage_state'] =  drupal_get_schema('pi_activity_stage_state', true);
+
+      db_create_table($results, 'pi_activity_stage_state', $schema['pi_activity_stage_state'] );
+      db_rename_table($results, 'pi_activity', 'pi_activity_old');
+      db_create_table($results, 'pi_activity', $schema['pi_activity'] );
+      db_drop_field($results, 'pi_activity_node', 'inquiry_id');
+      db_drop_field($results, 'pi_activity_status', 'inquiry_id');
+      $new_schema = drupal_get_schema(NULL, true);
+      $sandbox['progress']++;
+      break;
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+    case 5:
+    case 6:
+      pi_debug_message("Copying: " . $table_data[$sandbox['progress']-1][0]);
+      _pi_activity_upgrade_copy_associated_table($table_data[$sandbox['progress']-1][0]);      
+      $sandbox['progress']++;
+      break;
+    case 7:
+      $rows_updated = _pi_activity_upgrade_create_nodes($sandbox['new_node_ids'], $sandbox['current_node'], $batch_size);
+      if($rows_updated == 0)
+      {
+        $sandbox['progress']++;
+        $sandbox['current_node'] = 0;
+      }
+      else
+      {
+        $sandbox['current_node'] += $rows_updated;
+      }
+      break;
+    case 8:
+    case 9:
+    case 10:
+    case 11:
+    case 12:
+    case 13:
+      pi_debug_message("Transferring: " . $table_data[$sandbox['progress']-8][0]);
+      _pi_activity_upgrade_copy_and_update_table($table_data[$sandbox['progress']-8][0], $table_data[$sandbox['progress']-8][1], $table_data[$sandbox['progress']-8][2], $sandbox['new_node_ids']);
+      $sandbox['progress']++;
+      break;
+    case 14:
+      //Set up directly referenced nodes and activity parent activities after all the nids and activity_ids have been changed.
+      $rows_updated = _pi_activity_upgrade_set_activity_direct_references_and_parents($sandbox['current_node'], $batch_size);
+      if($rows_updated == 0)
+      {
+        $sandbox['progress']++;
+        $sandbox['current_node'] = 0;
+      }
+      else
+      {
+        $sandbox['current_node'] += $rows_updated;
+      }
+      break;
+    case 15:
+      db_drop_table($results, 'pi_activity_actor');
+      db_drop_table($results, 'pi_stage_phase_activity');
+      //rebuild the schema cache after the changes
+      $new_schema = drupal_get_schema(NULL, true);
+      break;
+  }
+
+  // Inform the batch update engine that we are not finished,
+  // and provide an estimation of the completion level we reached.
+  if ($sandbox['progress'] != $sandbox['max']) {
+    $results['#finished'] = $sandbox['progress'] / $sandbox['max'];
+  }
   return $results;
 }
 
-function _pi_activity_upgrade_execute()
+function _pi_activity_upgrade_create_nodes(&$new_node_ids, $start, $batch_size)
 {
-  $new_node_ids = array();
-  
-  $node_count = 0;
-  //@TODO - remove limit im place for testing purposes  
-  $result = db_query('SELECT * FROM {pi_activity_old}');
+  $rows_updated = 0;
+  $result = db_query_range('SELECT * FROM {pi_activity_old}', $start, $batch_size);
   while($row = db_fetch_array($result))
   {
-    $node_count++;
+    $rows_updated++;
+    
     $activity_id = $row['activity_id'];
 
     $new_node = _pi_activity_upgrade_covert_to_node($row);
@@ -74,26 +149,8 @@ function _pi_activity_upgrade_execute()
     $new_node_id = $new_node->nid;
     $new_node_ids[$activity_id] = $new_node_id;
   }
-  drupal_set_message(t("Total activities being changed: %node_count.", array('%node_count' => $node_count)) );
-  
-  // Change over activity_ids to nids in the following tables and columns: 
-  $tables_and_columns_to_change = array(
-    'pi_activity_enter_focus' => 'activity_id',  
-    'pi_activity_leave_focus' => 'activity_id',  
-    'pi_activity_node' => 'activity_id',  
-    'pi_activity_preference' => 'show_activity',  
-    'pi_activity_status' => 'activity_id',  
-    'pi_inquiry_grouping' => 'activity_id',  
-  );
-  foreach($tables_and_columns_to_change as $table => $column)
-  {
-     _pi_activity_upgrade_copy_update_and_replace_table($table, $column, $new_node_ids);
-     drupal_set_message(t("Updated %table[%column]", array('%table' => $table, '%column' => $column)), 'info');
-  }
-  //Set up directly referenced nodes and activity parent activities after all the nids and activity_ids have been changed.
-  _pi_activity_upgrade_set_activity_direct_references_and_parents();
+  return $rows_updated;
 }
-
 
 /**
  * 
@@ -179,7 +236,6 @@ function _pi_activity_upgrade_covert_to_node($activity)
         }
         
         $node->activity_phases_stages['weight'] = $activity_position;
-        pi_debug_message($node->title. " " . $activity_position);
       }
     }    
   }
@@ -198,12 +254,14 @@ function _pi_activity_upgrade_covert_to_node($activity)
  * activities and also sets the parent activity for all generated activities in the system
  * see comment at the end of _pi_activity_upgrade_covert_to_node() for details
  */
-function _pi_activity_upgrade_set_activity_direct_references_and_parents()
+function _pi_activity_upgrade_set_activity_direct_references_and_parents($current_node, $batch_size)
 {
+  $rows_changed = 0;
   $query = "SELECT nid from {pi_activity}";
-  $activity_result = db_query($query);
+  $activity_result = db_query_range($query, $current_node, $batch_size);
   while($row = db_fetch_array($activity_result))
   {
+    $rows_changed++;
     $activity_nid = $row['nid'];
   
      /* Get all linked nodes to update there - if the first node for the activity ID in pi_activity_node is 0
@@ -220,7 +278,7 @@ function _pi_activity_upgrade_set_activity_direct_references_and_parents()
       {
         // This is a directly referenced node
         // @todo - check this node exists?
-        $node = load_node($activity_nid);
+        $node = node_load($activity_nid);
         $node->referenced_node = $first_result;
         node_save($node);
         $delete_query = "DELETE FROM {pi_activity_node} WHERE pan_id = %d";
@@ -258,9 +316,9 @@ function _pi_activity_upgrade_set_activity_direct_references_and_parents()
         $child_nodes_query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
           "LEFT JOIN {node} on {pi_activity_node}.`nid` " .
           "WHERE {node}.`type` = '%s' AND {pi_activity_node}.`phase_nid` = %d";
-        pi_debug_message("SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+        /*pi_debug_message("SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
           "LEFT JOIN {node} on {pi_activity_node}.`nid` " .
-          "WHERE {node}.`type` = '$generated_node_type' AND {pi_activity_node}.`phase_nid` = " . $row['phase_nid']);
+          "WHERE {node}.`type` = '$generated_node_type' AND {pi_activity_node}.`phase_nid` = " . $row['phase_nid']);*/
         $result_for_child_nodes = db_query($child_nodes_query, $generated_node_type, $row['phase_nid']);
         
         // finally for each child activity content node, get their activity node and set the parent_activity nid
@@ -283,44 +341,81 @@ function _pi_activity_upgrade_set_activity_direct_references_and_parents()
       }
       else
       {
-        drupal_set_message(t("Node type %type doesn't have a generated node type", array('%type' => $row['activity_type'])), 'warning');
+        //drupal_set_message(t("Node type %type doesn't have a generated node type", array('%type' => $row['activity_type'])), 'warning');
       }
     }
     else
     {
-      drupal_set_message(t("Node type %type doesn't have a node info function", array('%type' => $row['activity_type'])), 'warning');
+      //drupal_set_message(t("Node type %type doesn't have a node info function", array('%type' => $row['activity_type'])), 'warning');
     }
   }
+  return $rows_changed;
 }
 
-function _pi_activity_upgrade_copy_update_and_replace_table($table_name, $column_name, $new_node_ids)
+function _pi_activity_upgrade_copy_associated_table($table_name)
 {
-  //Since activity_id and new nids may over lapyou have to move data from one table to another instead
+  //Since activity_id and new nids may overlap you have to move data from one table to another instead
   // of changing on mass
-  db_query("CREATE TABLE {%s} LIKE {%s}", $table_name . '_tmp', $table_name);
-  //get the coulmn names to copy data using
-  $rows = db_query("SELECT * FROM {%s}", $table_name);
+  db_rename_table($results, $table_name, $table_name . '_tmp');
+  db_query("CREATE TABLE {%s} LIKE {%s}", $table_name, $table_name . '_tmp');
+}
+
+function _pi_activity_upgrade_copy_and_update_table($table_name, $key_column_name, $column_name, $new_node_ids)
+{
+  //Since activity_id and new nids may overlap you have keep the two datasets seperate
+  // and clear out the data generated by pi_activity_insert when the nodes were updated
+  db_query('TRUNCATE {%s}', $table_name);
+  
+  // get the coulmn names to copy data with by performing an query and getting a
+  // string indexed array of the result with column names as the key
+  $rows = db_fetch_array(db_query("SELECT * FROM {%s} LIMIT 1", $table_name . "_tmp"));
+  //pi_debug_message(array_keys($rows));
+  $count = 0;
   if(is_array($rows))
   {
+    //pi_debug_message(count($new_node_ids) . " to update");
     foreach($new_node_ids as $activity_id => $node_id)
     {
-      _pi_activity_upgrade_copy_update_one_activity_id($table_name, array_keys($rows), $column_name, $activity_id, $node_id);
+      $count += _pi_activity_upgrade_copy_update_one_activity_id($table_name, array_keys($rows), $key_column_name, $column_name, $activity_id, $node_id);
     }
   }
-  // now replace all the changed rows...
-  db_query('REPLACE INTO {%s} SELECT * FROM {%s}', $table_name, $table_name . '_tmp');
+  pi_debug_message("$count rows updated for $table_name");
+
+  //pi_debug_message(sprintf($query, $table_name, $table_name . '_tmp'));
   // and drop the temp table
-  db_query('DROP TABLE {%s}', $table_name . '_tmp');
+  //db_query('DROP TABLE {%s}', $table_name . '_tmp');
 }
 
-function _pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_names, $id_column_name, $activity_id, $node_id)
+function _pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_names, $key_column_name, $id_column_name, $activity_id, $node_id)
 {
   $columns_and_new_values = array_combine($column_names, $column_names);
   $columns_and_new_values[$id_column_name] = $node_id;
   
-  $query = "INSERT INTO {%s} . (" . implode($column_names, ', ') . ") " .
-  	" SELECT (" . implode($columns_and_new_values, ', ') . ") FROM {%s} WHERE `%s` = %d";
-  db_query($query, $table_name . '_tmp', $table_name, $id_column_name, $activity_id);
+  $query = "SELECT * FROM {%s} WHERE `%s` = %d";
+  //pi_debug_message(sprintf($query, $table_name . '_tmp', $id_column_name, $activity_id));
+  $result = db_query($query, $table_name . '_tmp', $id_column_name, $activity_id);
+  if($result)
+  {
+    $count = 0;
+    while($row = db_fetch_object($result))
+    {
+      $row->$id_column_name = $node_id;
+      $write_result = drupal_write_record($table_name, $row);
+      if(($write_result != SAVED_NEW) && ($write_result != SAVED_UPDATED))
+      {
+        $result_string = _pi_write_record_result_string($write_result);
+        pi_debug_message("Unexpected result writing to $table_name - $result_string");
+      }
+      $count++;
+    }
+    return $count;
+  }
+  /*
+   $query = "INSERT INTO {%s} (" . implode($column_names, ', ') . ") " .
+  	" SELECT " . implode($columns_and_new_values, ', ') . " FROM {%s} WHERE {%s}.`%s` = %d";
+  */
+  //pi_debug_message(sprintf($query, $table_name, $table_name . '_tmp', $table_name . '_tmp', $id_column_name, $activity_id));
+  //db_query($query, $table_name, $table_name . '_tmp', $table_name . '_tmp', $id_column_name, $activity_id);
 }
 
 
@@ -587,12 +682,6 @@ function pi_activity_schema() {
 			'unsigned' => TRUE,
 			'not null' => TRUE,
 			'description' => 'Primary Key: Unique category ID' ),
-      	'inquiry_id' => array(
-        	'type' => 'int',
-			'length' => 10,
-        	'unsigned' => TRUE,
-        	'not null' => TRUE,
-        	'description' => 'PI Inquiry id.' ),
 		'activity_id' => array(
         	'type' => 'int',
 			'length' => 10,
@@ -653,12 +742,6 @@ function pi_activity_schema() {
         	'unsigned' => TRUE,
         	'not null' => TRUE,
         	'description' => 'Primary Key: Unique category ID.' ),
-        'inquiry_id' => array(
-        	'type' => 'int',
-        	'length' => 10,
-        	'unsigned' => TRUE,
-        	'not null' => TRUE,
-        	'description' => 'Inquiry id.' ),
         'activity_id' => array(
         	'type' => 'int',
         	'length' => 10,
