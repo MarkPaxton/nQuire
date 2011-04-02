@@ -71,10 +71,33 @@ function pi_inquiry_form($node) {
 	$form['body_field']['body']['#rows'] = 6;
 	$form['body_field']['teaser_include']['#access'] = FALSE;
 	
+	
+	$inquiry_groups = pi_get_defined_group_nids();
+	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
+	$form['#allowed_phase_actors'] = $all_defined_groups;	
+	$group_names['none'] = "Select a group...";
+	//$group_names[] = "Select a group...";
+	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
+	
+	$inquiry_actor_default_value = 'none';
+	
+	$form['inquiry_actor'] = array(
+		'#type' => 'select',
+		'#title' => t('Who is this inquiry for'),
+		'#required' => TRUE,
+		'#description' => t('Select the group that will be see this inquiry'),
+		'#weight' => 1,
+		'#default_value' =>  isset($node->inquiry_actor) ? $node->inquiry_actor : $inquiry_actor_default_value,
+		'#options' => $group_names,
+		'#allowed_phase_actors' => $all_defined_groups,
+//		'#element_validate' => array('pi_phase_form_inquiry_actor_validate')
+	);
+	
+	
 	$form['layout'] = array(
 		'#type' => 'select',
 		'#title' => t('Layout'),
-		'#weight' => 1,
+		'#weight' => 2,
 		'#default_value' => isset($node->layout) ? $node->layout : 'list',
 		'#options' => array(
 			'list'=> t("List"),
@@ -100,6 +123,10 @@ function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
 	if($form_id == 'pi_inquiry_node_form')
 	{
 		$form['menu']['#weight'] = 3;
+		
+		//Remove attachments and comment settings
+		unset( $form['attachments'] );
+		unset( $form['comment_settings'] );
 	}
 }
 
@@ -112,6 +139,9 @@ function pi_inquiry_insert($node) {
 	// If the query result is NULL then the the field will to default=0 since the weight
 	// column is defined with NOT NULL DEFAULT 0
 
+	$link = array();
+	$summary = array();
+	
 	foreach( $node->activities_show_hide as $module_name => $show_hide )
 	{
 		if( $show_hide['link'] !== 0 )
@@ -132,6 +162,8 @@ function pi_inquiry_insert($node) {
 	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_inquiry}"));
 	db_query("INSERT INTO {pi_inquiry} (nid, vid, layout, weight, hide_activity_link, hide_activity_in_summary ) VALUES (%d, %d, '%s', %d, '%s', '%s')",
 	$node->nid, $node->vid, $node->layout, $initial_weight, $links, $summaries);
+	
+	db_query("INSERT INTO {pi_inquiry_actor} ( inquiry_id, uid, gid ) VALUES( %d, %d, %d) ", $node->nid, $node->uid, $node->inquiry_actor );
 }
 
 /**
@@ -174,6 +206,9 @@ function pi_inquiry_update($node)
 		
 		db_query("UPDATE {pi_inquiry} SET layout = '%s', weight= %d, hide_activity_link = '%s', hide_activity_in_summary = '%s' WHERE vid = %d",
 		$node->layout, $node->weight, $links, $summaries, $node->vid);
+		
+		db_query("UPDATE {pi_inquiry_actor} SET gid = %d WHERE inquiry_id = %d", $node->inquiry_actor, $node->nid );
+		
 	}
 }
 
