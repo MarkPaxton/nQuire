@@ -67,6 +67,8 @@ function pi_phase_form($node) {
 	$inquiry_nids = pi_inquiry_load_nids();
 	$inquiry_data = pi_util_get_names_from_nids($inquiry_nids);
 
+	//$form['#validate'][] = 'pi_phase_form_validate';
+	
 	if(count($inquiry_data)==0)
 	{
 		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
@@ -95,6 +97,7 @@ function pi_phase_form($node) {
 	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($phase_groups));
 	$form['#allowed_phase_actors'] = $all_defined_groups;	
 	$group_names['none'] = "Select a group...";
+	//$group_names[] = "Select a group...";
 	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
 	
 	if(isset($node->inquiry_nid))
@@ -109,13 +112,17 @@ function pi_phase_form($node) {
 	$form['phase_actor'] = array(
 		'#type' => 'select',
 		'#title' => t('Who is this phase for'),
+		'#required' => TRUE,
 		'#description' => t('Select the group that will be see this phase'),
 		'#weight' => 2,
 		'#default_value' =>  isset($node->phase_actor) ? $node->phase_actor : $phase_actor_default_value,
 		'#options' => $group_names,
+		'#allowed_phase_actors' => $all_defined_groups,
+		'#element_validate' => array('pi_phase_form_phase_actor_validate')
 	);
 	
 	
+	//pi_debug_message($all_defined_groups);
 	
 	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
 	$form['body_field']['#weight'] = 3;	
@@ -132,6 +139,14 @@ function pi_phase_form_alter(&$form, &$form_state, $form_id) {
 	if($form_id == 'pi_phase_node_form')
 	{
 		$form['menu']['#weight'] = 5;
+		//unset( $form['menu'] );
+		
+		//Remove attachments and comment settings
+		unset( $form['attachments'] );
+		unset( $form['comment_settings'] );
+		
+		//Done via variable in module.install 
+		//$form['options']['promote']['#default_value'] = FALSE;
 	}
 }
 
@@ -142,10 +157,16 @@ function pi_phase_form_alter(&$form, &$form_state, $form_id) {
  */
 function pi_phase_form_phase_actor_validate($element, $form_state)
 {
-	if(!in_array($form_state['values']['phase_actor'], $element['#allowed_phase_actors']))
+	if( empty( $element['#value'] ) ) 
+	{
+		$element['#value'] = $element['#post']['phase_actor'];
+	}
+	
+	if(!in_array($element['#value'], $element['#allowed_phase_actors']))
 	{
 		form_error($element, t('The selected phase actor group is not valid, please choose a group from the list.'));				
 	}
+	
 }
 
 /**
