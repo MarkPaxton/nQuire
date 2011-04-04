@@ -71,10 +71,33 @@ function pi_inquiry_form($node) {
 	$form['body_field']['body']['#rows'] = 6;
 	$form['body_field']['teaser_include']['#access'] = FALSE;
 	
+	
+	$inquiry_groups = pi_get_defined_group_nids();
+	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
+	$form['#allowed_phase_actors'] = $all_defined_groups;	
+	$group_names['none'] = "Select a group...";
+	//$group_names[] = "Select a group...";
+	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
+	
+	$inquiry_actor_default_value = 'none';
+	
+	$form['inquiry_actor'] = array(
+		'#type' => 'select',
+		'#title' => t('Who is this inquiry for'),
+		'#required' => TRUE,
+		'#description' => t('Select the group that will be see this inquiry'),
+		'#weight' => 1,
+		'#default_value' =>  isset($node->inquiry_actor) ? $node->inquiry_actor : $inquiry_actor_default_value,
+		'#options' => $group_names,
+		'#allowed_phase_actors' => $all_defined_groups,
+//		'#element_validate' => array('pi_phase_form_inquiry_actor_validate')
+	);
+	
+	
 	$form['layout'] = array(
 		'#type' => 'select',
 		'#title' => t('Layout'),
-		'#weight' => 1,
+		'#weight' => 2,
 		'#default_value' => isset($node->layout) ? $node->layout : 'list',
 		'#options' => array(
 			'list'=> t("List"),
@@ -129,7 +152,11 @@ function pi_inquiry_form_actor_gid_validate($element, $form_state)
 function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
 	if($form_id == 'pi_inquiry_node_form')
 	{
-		$form['menu']['#weight'] = 4;
+		$form['menu']['#weight'] = 3;
+		
+		//Remove attachments and comment settings
+		unset( $form['attachments'] );
+		unset( $form['comment_settings'] );
 	}
 }
 
@@ -142,6 +169,10 @@ function pi_inquiry_insert($node)
 	// Query the database first to set the weight to place the item at the end of lists.
 	// If the query result is NULL then the the field will to default=0 since the weight
 	// column is defined with NOT NULL DEFAULT 0
+
+	$link = array();
+	$summary = array();
+	
 	foreach( $node->activities_show_hide as $module_name => $show_hide )
 	{
 		if( $show_hide['link'] !== 0 )
@@ -201,8 +232,15 @@ function pi_inquiry_update($node)
       }
     }
 
-    $links = implode(',', $link) ;
-    $summaries = implode(',', $summary) ;
+		if( is_array($link) )
+		{
+			$links = implode( ',', $link ) ;
+		}
+		
+		if( is_array($summary) )
+		{
+			$summaries = implode( ',', $summary ) ;
+		}
 
     //pi_debug_message("L: " . $links . " S: " . $summaries);
 
