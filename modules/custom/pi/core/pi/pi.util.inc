@@ -14,7 +14,7 @@ function pi_debug_message($var_to_dump)
 {
 	ob_start();
 	var_dump($var_to_dump);
-	drupal_set_message('<pre>' . check_plain(ob_get_clean()) . '</pre>');
+	drupal_set_message(t('<pre>@data</pre>', array('@data' => ob_get_clean()), 'status'));
 }
 
 

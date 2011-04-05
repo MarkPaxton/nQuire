@@ -21,10 +21,8 @@ function pi_inquiry_phase_view($phase)
 	$output = "";
 	$output .= t("<p>" . $phase->body . "</p>");
 
-
 	$hidden_created_activity_types = get_hidden_summary_activities($phase->inquiry_nid);
 
-	pi_debug_message(count($activities) . " activities found...");
 	if ($activities)
 	{
 		$list = array();
@@ -41,13 +39,12 @@ function pi_inquiry_phase_view($phase)
 				//Therefore activity status and build activity link has to be executed later.
 				$nid = pi_get_activity_content_node_for_activity_and_user($activity->nid, $user->uid); 
 				//get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
-				
 				$loaded_actvity_node = node_load($nid);			
 				$loaded_activity_status = pi_activity_load_status($activity->nid, $user->uid);
-
+				
 				// so that (by default) always open an existing node in view
 				// if node_function for link is edit or view then set node function to view
-				$link_node_function = $loaded_activity_status->node_function;
+				$link_node_function = $loaded_activity_status['node_function'];
 
 				if(($link_node_function == 'edit') || ($link_node_function == 'view'))
 				{

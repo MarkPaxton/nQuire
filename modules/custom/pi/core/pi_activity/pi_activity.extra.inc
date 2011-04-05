@@ -46,21 +46,22 @@ function pi_get_activity_content_node_for_activity_and_user($activity_id, $uid) 
   $nid_to_return = null;
    
   // first of all see if a user has directly created a node
-  $query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+  $query = "SELECT DISTINCT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
     "LEFT JOIN {node} ON {node}.`nid` = {pi_activity_node}.`nid` " .
     "WHERE {pi_activity_node}.`activity_id` = %d AND {node}.`uid` = %d " .
     "ORDER BY {pi_activity_node}.`nid` DESC";
 
+//    pi_debug_message(sprintf(str_replace(array("{", "}"), "", $query), $activity_id, $uid));
   $result = db_query($query, $activity_id, $uid);
   $nids_returned = array();
   while($nid_result = db_fetch_object($result))
   {
     $nids_returned[] = $nid_result->nid;
   }
-  if (count($nids_returned)>0)
+  if(count($nids_returned)>0)
   {
     $nid_to_return = $nids_returned[0];
-    if(count($nids_returned>1))
+    if(count($nids_returned)>1)
     {
       drupal_set_message(t("Multiple nids returned for content for activity %id and user %user - using highest nid", array("%id" => $activity_id, "%user" => $uid)), 'warning');
     }
@@ -69,14 +70,14 @@ function pi_get_activity_content_node_for_activity_and_user($activity_id, $uid) 
   // If there isn't a content nid directly owned by this user, then check the group ownerships
   if($nid_to_return==null)
   {
-    $query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+    $query = "SELECT DISTINCT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
       "LEFT JOIN {pi_activity} ON {pi_activity}.`nid` = {pi_activity_node}.`activity_id` " .
       "LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity}.`actor` " .
       "LEFT JOIN {node_access} ON {pi_activity_node}.`nid` = {node_access}.`nid` " .
       "WHERE {pi_activity_node}.`activity_id` = %d " .
       "AND ( ( {node_access}.`gid` = {og_uid}.`nid` AND {og_uid}.`uid` = %d ) " .
       "OR {node_access}.`realm` = 'all')";
-  
+
     $result = db_query($query, $activity_id, $uid);
     $nids_returned = array();
     while($nid_result = db_fetch_object($result))
@@ -86,12 +87,13 @@ function pi_get_activity_content_node_for_activity_and_user($activity_id, $uid) 
     if (count($nids_returned)>0)
     {
       $nid_to_return = $nids_returned[0];
-      if(count($nids_returned>1))
+      if(count($nids_returned)>1)
       {
-        drupal_set_message(t("Multiple nids returned for content for activity %id and user %user - using highest nid", array("%id" => $activity_id, "%user" => $uid)), 'warning');
+        drupal_set_message(t("Multiple nids returned for content for group activity !id and user !user - using highest nid !nid", 
+          array("!id" => $activity_id, "!user" => $uid, "!nid" => $nid_to_return)), 'warning');
       }
     }
-  } 
+  }
   return $nid_to_return;
 }
 
@@ -233,7 +235,7 @@ function add_pi_activity_node($inquiry_id, $activity_id, $nid) {
  */
 function pi_activity_get_visible_status_of_activity($activity_id, $uid) {
   $activity_status = pi_activity_load_status($activity_id, $uid);
-  $result = $activity_status->visible_status;
+  $result = $activity_status['visible_status'];
   return $result ;
 }
 
@@ -263,7 +265,7 @@ function pi_activity_check_visible_status_of_activity ($activity_id, $uid, $stat
 function set_visible_status_of_activity($inquiry_id, $activity_id, $uid, $status) {
   $activity_status = pi_activity_load_status($activity_id, $uid);
 
-  $activity_status->visible_status = $status;
+  $activity_status['visible_status'] = $status;
 
   save_activity_status($activity_status);
   /*
@@ -320,7 +322,7 @@ function set_visible_status_of_activity_type($inquiry_id, $activity_type, $uid, 
  */
 function pi_activity_get_node_function($activity_id, $uid) {
   $activity_status = pi_activity_load_status($activity_id, $uid);
-  $result = $activity_status->node_function;
+  $result = $activity_status['node_function'];
   return $result ;
   /*
    $query = "SELECT pi_activity_status.node_function ";
@@ -373,7 +375,7 @@ function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $funct
  */
 function set_node_function_of_activity($inquiry_id, $activity_id, $uid, $function) {
   $activity_status = pi_activity_load_status($activity_id, $uid);
-  $activity_status->node_function = $function;
+  $activity_status['node_function'] = $function;
   save_activity_status($activity_status);
   /*
    $query = "SELECT pi_activity_status.pas_id ";
@@ -616,7 +618,7 @@ function pi_activity_load_status($activity_id, $uid)
     }
     if($activity_node_found)
     {
-      $query = "SELECT {pi_activity_status}.`visible_status`, {pi_activity_status}.`node_function`, {og_uid}.`nid` FROM {pi_activity_status} " .
+      $query = "SELECT {pi_activity_status}.`visible_status`, {pi_activity_status}.`node_function`, {pi_activity_status}.`uid`, {og_uid}.`nid` FROM {pi_activity_status} " .
         "LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity_status}.`gid` " .
         "WHERE ( {pi_activity_status}.`activity_id` = %d ) " .
         "AND ( ({pi_activity_status}.`uid`) = %d OR ( {og_uid}.`uid` = %d ) ) ";
@@ -643,10 +645,10 @@ function pi_activity_load_status($activity_id, $uid)
         $return_status['node_function'] = $status_values_for_user[0]->node_function;
         if(count($status_values_for_user)>1)
         {
-          drupal_set_message(t("More than one status set for activity %activity for user %uid - using first: %status, %function.",
-          array('%activity' => $activity_id, '%uid' => $uid, 
-          	'%status' => $return_status['visible_status'],
-          	'%function' => $return_status['node_function'])), 'warning');
+          drupal_set_message(t("More than one status set for activity !activity for user !uid - using first: !status, !function.",
+          array('!activity' => $activity_id, '!uid' => $uid, 
+          	'!status' => $return_status['visible_status'],
+          	'!function' => $return_status['node_function'])), 'warning');
         }
       }
       else
@@ -657,22 +659,22 @@ function pi_activity_load_status($activity_id, $uid)
           $return_status['node_function'] = $status_values_for_group[0]->node_function;
           if(count($status_values_for_group)>1)
           {
-            drupal_set_message(t("More than one status set for activity %activity for group(s) %gid - using first: %status, %function.",
-            array('%activity' => $activity_id, '%gid' => implode(', ', $status_groups), 
-             '%status' => $status_values_for_group[0], '%function' => $return_status['node_function'])), 'warning');
+            drupal_set_message(t("More than one status set for activity !activity for group(s) !gid - using first: !status, !function.",
+            array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)), 
+             '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
           }
         }
         else
         {
-          drupal_set_message(t("No status set for activity %activity for user %uid.",
-          array('%activity' => $activity_id, '%uid' => $uid)), 'warning');
+          drupal_set_message(t("No status set for activity !activity for user !uid.",
+          array('!activity' => $activity_id, '!uid' => $uid)), 'warning');
         }
       }
     }
     else
     {
-      drupal_set_message(t("No activity %activity found when checking status for user %uid.",
-          array('%activity' => $activity_id, '%uid' => $uid)), 'warning');
+      drupal_set_message(t("No activity !activity found when checking status for user !uid.",
+          array('!activity' => $activity_id, '!uid' => $uid)), 'warning');
     }
   }
   return $return_status;
@@ -784,7 +786,7 @@ function pi_activity_build_link($activity_id, $uid, $class = 'menu')
   $visible_status = pi_activity_get_visible_status_of_activity($activity_id, $uid);
   if($visible_status == 'unavailable')
   {
-    $output = t($link['title'].'<br/>');
+    $output = t("@link<br/>", array('@link' => $link['title']));
   }
   else
   {
