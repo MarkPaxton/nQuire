@@ -886,15 +886,17 @@ function pi_activity_load($node)
       case 0:
         $activity->visible_function = NULL;
         $activity->node_function = NULL;
+        drupal_set_message(t("No activity status set for activity !id, group !gid",
+          array('!id' => $node->nid, '!gid' => $node->actor)), 'warning');
       break;
       case 1:
         // This is the ideal case, so just copy the data as needed
         $activity->visible_function = $result_rows[0]['visible_status'];
         $activity->node_function = $result_rows[0]['node_function'];
-      break;
+      break;      
       default:
         //take the first and generate a warning if more than one is found
-        // if the fist is null, then ?
+        
         $activity->visible_status = $result_rows[0]['visible_status'];
         $activity->node_function = $result_rows[0]['node_function'];
         drupal_set_message(
@@ -1068,7 +1070,7 @@ function pi_activity_insert($node)
 
   foreach($activity_statuses_to_add as $status)
   {
-    pi_debug_message("Writing status for " . $node->title);
+    //pi_debug_message("Writing status for " . $node->title);
     //pi_debug_message($status);
     $result = drupal_write_record('pi_activity_status', $status);
     if($result == FALSE)
@@ -1183,14 +1185,14 @@ function pi_activity_update($node)
   // Remove all the unneeded state rows
   foreach($stage_state_ids_to_remove as $pass_id)
   {
-    db_query('DELETE FROM {pi_activity_stage_state} WHERE pass_id = %d', $pass_id);
+    db_query('DELETE FROM {pi_activity_stage_state} WHERE `pass_id` = %d', $pass_id);
   }
   
   
   // now update activity_statuses - one for the main activity and one for the shared view modde part of
   // activities
   $existing_activity_statuses = array();
-  $result = db_query("SELECT * FROM {pi_activity_status} WHERE activity_id = %d", $node->nid);
+  $result = db_query("SELECT * FROM {pi_activity_status} WHERE `activity_id` = %d", $node->nid);
   if($result!=FALSE)
   {
     while($status_row = db_fetch_array($result))
@@ -1210,7 +1212,7 @@ function pi_activity_update($node)
     'visible_status' => $node->visible_status
   );
   
-  $activity_statuses_to_add[] = $default_status;
+  $activity_statuses_to_add[$node->actor] = $default_status;
   
   // If it is a shared activity, then make a 'view' status for the share group
   // otherwisese just make the standard activity status for the activity.  
@@ -1255,7 +1257,7 @@ function pi_activity_update($node)
         }
         foreach($audience_id as $audience_nid)
         {
-          $activity_statuses_to_add[] =  array(
+          $activity_statuses_to_add[$audience_nid] =  array(
             'activity_id'=>$node->nid,
             'uid' => NULL,
             'gid' => $audience_nid,
@@ -1271,21 +1273,33 @@ function pi_activity_update($node)
   }
 
   $activity_statuses_to_update = array();
+  foreach ($existing_activity_statuses as $existing_status_gid => $existing_status)
+  {
+    if(!in_array(array_keys($activity_statuses_to_add), $existing_status_gid))
+    {
+      drupal_set_message(t("Activity statis for !activity_id set for group !gid, but this is not a valid actor or audience gid so it's being removed.",
+        array('!activity_id' => $node->nid, '!gid' => $existing_status_gid)));
+      // If a status isn't to be updated, then remove it
+      db_query('DELETE FROM {pi_activity_status} WHERE `pas_id` = %d', $existing_status['pas_id']);
+    }
+    else
+    {      
+      // Move the status item to the update list so it's not added below
+      $activity_statuses_to_update[$existing_status_gid] = $existing_status;
+      unset( $activity_statuses_to_add[$existing_status_gid]);
+    }
+  }
+  
   foreach($activity_statuses_to_add as $status)
   {
-    // If one to add already exists then get the ID and add it to the lust for updating
-    if(array_key_exists($status['gid'], $existing_activity_statuses))
-    {
-      $status['pas_id'] = $existing_activity_statuses[$status['gid']]['pas_id'];
-      $activity_statuses_to_update[$status['pas_id']] = $status;      
-    }
-    
     $result = drupal_write_record('pi_activity_status', $status);
     if($result == FALSE)
     {
       drupal_set_message(
-        t('Error saving pi_activity_status, node function !function, visible status !status for group !gid',
-          array('!function' => $status['node_function'], '!status' => $sstatus['visible_status'], '!gid'=>$status['gid'])
+        t('Error saving pi_activity_status, node function !function, visible status !status for group !gid: !error',
+          array('!function' => $status['node_function'], 
+          '!status' => $status['visible_status'], '!gid'=>$status['gid'],
+          '!error' => _pi_write_record_result_string($result))
           ),
       'error'
       );
@@ -1295,7 +1309,7 @@ function pi_activity_update($node)
   // Update any existing activity statuses that need to be updated
   foreach($activity_statuses_to_update as $id => $status)
   {
-    //checi it needs to be updating before doing anything...
+    //check if it needs to be updating before doing anything...
     if(($status['visible_status']!=$existing_activity_statuses[$status['gid']]['visible_status']) ||
         ($status['node_function']!=$existing_activity_statuses[$status['gid']]['node_function']) )
     {
@@ -1312,15 +1326,7 @@ function pi_activity_update($node)
     }
   }
   
-  // If a status isn't to be updated, then remove it
-  foreach(array_keys($existing_activity_statuses) as $id)
-  {
-    if(!array_key_exists($id, $activity_statuses_to_update))
-    {
-      db_query('DELETE FROM {pi_activity_status} WHERE pas_id = %d', $id);
-    }    
-  }
-  
+ 
   // Finally the related node if necessary 
   
   // Check if there's an activity node with nid=0 - if so then update this

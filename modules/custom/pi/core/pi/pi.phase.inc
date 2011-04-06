@@ -37,7 +37,7 @@ function pi_inquiry_phase_view($phase)
 				//Changed the order of the code execution because this function can possibly generate
 				//the missing node instance (pi_fooddiary_data).
 				//Therefore activity status and build activity link has to be executed later.
-				$nid = pi_get_activity_content_node_for_activity_and_user($activity->nid, $user->uid); 
+				$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid); 
 				//get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
 				$loaded_actvity_node = node_load($nid);			
 				$loaded_activity_status = pi_activity_load_status($activity->nid, $user->uid);

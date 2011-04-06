@@ -26,14 +26,14 @@ function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
 
 
 /**
- * @see pi_get_activity_content_node_for_activity_and_user
+ * @see get_nid_for_inquiry_activity_and_user
  * @param $inquiry_id
  * @param $activity_id
  * @param $uid
  */
 function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) {
   //@todo depricate this function
-  return pi_get_activity_content_node_for_activity_and_user($activity_id, $uid);
+  return pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid);
 }
 
 
@@ -42,7 +42,7 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
  * @param $activity_id
  * @param $uid
  */
-function pi_get_activity_content_node_for_activity_and_user($activity_id, $uid) {
+function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
   $nid_to_return = null;
    
   // first of all see if a user has directly created a node
@@ -636,7 +636,7 @@ function pi_activity_load_status($activity_id, $uid)
         else
         {
           $status_values_for_group[] = $status_value_row;
-          $status_groups[$status_value_row->nid] = $status_value_row->visible_status;
+          $status_groups[$status_value_row->nid] = $status_value_row;
         }
       }
       if(count($status_values_for_user)>0)
@@ -655,13 +655,24 @@ function pi_activity_load_status($activity_id, $uid)
       {
         if(count($status_values_for_group)>0)
         {
-          $return_status['visible_status'] = $status_values_for_group[0]->visible_status;
-          $return_status['node_function'] = $status_values_for_group[0]->node_function;
-          if(count($status_values_for_group)>1)
+          // It's ok if there's more than one activity status set for a user; 
+          // when it's a shared activity AND the user is a member of the actor group/
+          // in that case use the actor group status - otherwise flad an error and use the first
+          if((count($status_values_for_group)>1) && array_key_exists($activity->actor, $status_groups) )
           {
-            drupal_set_message(t("More than one status set for activity !activity for group(s) !gid - using first: !status, !function.",
-            array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)), 
+            $return_status['visible_status'] = $status_groups[$activity->actor]->visible_status;
+            $return_status['node_function'] = $status_groups[$activity->actor]->node_function;          
+          }
+          else
+          {
+            $return_status['visible_status'] = $status_values_for_group[0]->visible_status;
+            $return_status['node_function'] = $status_values_for_group[0]->node_function;          
+            if(count($status_values_for_group)>1)
+            {
+              drupal_set_message(t("More than one status set for activity !activity for group(s) !gid - and no actor group status nis set, so using first entry group: !status, !function.",
+              array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
              '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
+            }
           }
         }
         else
