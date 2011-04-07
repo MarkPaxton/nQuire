@@ -184,93 +184,92 @@ function pi_stage_selector_view() {
 
 
 function get_inquiry_details_from_current_path() {
-	global $user;
-	$uid = $user->uid;
+  global $user;
+  $uid = $user->uid;
 
-	$result = new stdClass;
-	$result->phase_id = NULL;
-	$result->inquiry_id = NULL;
-	$result->activity_id = NULL;
-	$result->stage_id = NULL;
+  $result = new stdClass();
+  $result->phase_id = NULL;
+  $result->inquiry_id = NULL;
+  $result->activity_id = NULL;
+  $result->stage_id = NULL;
 
-	if(arg(0) == 'home') 
-	{
-		//inquiry, stage, phase an activity are not set
-	}
-	elseif (arg(0) == 'inquiry' || arg(0) == 'set_stage') 
-	{
-		//get inquiry from the arg
-		if (arg(1)) 
-		{
-			$result->inquiry_id = (int) arg(1);
-		}
-			
-		//get the current stage for the inquiry and user
-		$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-		$result->stage_id = $stage->stage_id;
+  switch(arg(0))
+  {
+    case'home':
+      //inquiry, stage, phase an activity are not set
+      break;
 
-		//phase and activity are not set
-	}
-	elseif (arg(0) == 'phase') 
-	{
-		//get inquiry from the database
-		//get direct from the phase id rather than session id
-		//$sid = get_current_session_id();
-		//$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
+    case 'inquiry':
+    case'set_stage':
+      //get inquiry from the arg
+      if (arg(1))
+      {
+        $result->inquiry_id = (int) arg(1);
+      }
+      //get the current stage for the inquiry and user
+      $stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
+      $result->stage_id = $stage->stage_id;
 
-		//get phase from the arg
-		if (arg(1)) {
-			$result->phase_id = (int) arg(1);
-			$result->inquiry_id = get_inquiry_id_for_phase_id($result->phase_id);
-		}
-    
-		//get the current stage for the inquiry and user
-    $stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-    $result->stage_id = $stage->stage_id;
-    
-		//activity is not set
-	}
-	elseif ((arg(0) == 'activity') || (arg(0) == 'export')) {
-		//get inquiry from the database
-		//get direct from the activity id rather than session id
-		//$sid = get_current_session_id();
-		//$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
+      //phase and activity are not set
+      break;
+    case'phase':
+      //get inquiry from the database
+      //get direct from the phase id rather than session id
+      //$sid = get_current_session_id();
+      //$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
 
-		//get activity from the arg
-		if (arg(1)) {
-			$result->activity_id = (int) arg(1);
-			$result->inquiry_id = get_inquiry_id_for_activity_id($result->activity_id);
-		}
-		//get phase of the activity
-		$phase = get_phase_of_inquiry_and_activity($result->inquiry_id, $result->activity_id, $uid);
-		$result->phase_id = $phase->nid;
-		
-		//get the current stage for the inquiry and user
-    $stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-    $result->stage_id = $stage->stage_id;
-    
-	}
-	/*
-	 if (arg(0) == 'node' && (arg(1) == 'add' || arg(2) == 'edit' || arg(2) == 'view')) {
-		$result->inquiry_id = arg(3);
-		$result->stage_id = arg(4);
-		$result->phase_id = arg(5);
-		$result->activity_id = arg(6);
-		}
-		elseif (arg(0) == 'node' && is_numeric(arg(1)) && is_numeric(arg(2))) {
-		$result->inquiry_id = arg(2);
-		$result->stage_id = arg(3);
-		$result->phase_id = arg(4);
-		$result->activity_id = arg(5);
-		}
-		else {
-		$result->inquiry_id = arg(3);
-		$result->stage_id = arg(4);
-		$result->phase_id = arg(5);
-		$result->activity_id = arg(6);
-		}*/
-	
-	return $result;
+      //get phase from the arg
+      if (arg(1)) {
+        $result->phase_id = (int) arg(1);
+        $query = "SELECT {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
+          "WHERE {pi_phase}.`nid` = %d";
+        $db_result = db_query($query, $result->phase_id);
+
+        $row = db_fetch_array($db_result);
+        if($row)
+        {
+          $result->inquiry_id = $row['inquiry_nid'];
+        }
+      }
+
+      //get the current stage for the inquiry and user
+      $stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
+      $result->stage_id = $stage->stage_id;
+
+      //activity is not set
+      break;
+    case 'activity':
+    case 'export':
+      //get inquiry from the database
+      //get direct from the activity id rather than session id
+      //$sid = get_current_session_id();
+      //$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
+
+      //get activity from the arg
+      if (arg(1))
+      {
+        $result->activity_id = (int) arg(1);
+        $query = "SELECT {pi_phase}.`nid`, {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
+          "LEFT JOIN {pi_activity} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " . 
+          "WHERE {pi_activity}.`nid` = %d";
+        $db_result = db_query($query, $result->activity_id);
+        
+        $row = db_fetch_array($db_result);
+        if($row)
+        {
+          $result->phase_id = $row['nid'];
+          $result->inquiry_id = $row['inquiry_nid'];
+        }
+      }
+
+      //get the current stage for the inquiry and user
+      $stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
+      $result->stage_id = $stage->stage_id;
+
+      break;
+    default;
+  }
+  return $result;
 }
 
 function get_inquiry_details_of_node_path($path) {
@@ -875,31 +874,29 @@ function pi_get_inquiries_of_user($uid = null) {
  */
 function get_current_stage_of_inquiry_and_user($inquiry_id, $uid) 
 {
-	// user's current stage
-	$query = "SELECT stage_id, pcs_id FROM {pi_current_stage} ";
-	$query .= "WHERE inquiry_id = %d AND uid = %d ";
-	$result = db_fetch_object(db_query($query, $inquiry_id, $uid));
+  // user's current stage
+  $query = "SELECT `stage_id`, `pcs_id` FROM {pi_current_stage} " .
+   "WHERE `inquiry_id` = %d AND `uid` = %d";
+  $result = db_fetch_object(db_query($query, $inquiry_id, $uid));
 
-	
-	//user's group's current stage
-	if(isset($result) && ($result == NULL))
-	{
-		$query = "SELECT {pi_current_stage}.stage_id, {pi_current_stage}.pcs_id FROM {pi_current_stage} "
-				. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_current_stage}.gid "
-				. "WHERE {pi_current_stage}.inquiry_id = %d "
-				. "AND {og_uid}.uid = %d ";
 
-		$result = db_fetch_object(db_query($query, $inquiry_id, $uid));
-		
-		if(isset($result) && ($result == NULL)) 
-		{
-			$result = new stdClass();
-			$result->stage_id = NULL;
-		}	
-		
-	}
-	
-	return $result;
+  //user's group's current stage
+  if(isset($result) && ($result == NULL))
+  {
+    $query = "SELECT {pi_current_stage}.stage_id, {pi_current_stage}.pcs_id FROM {pi_current_stage} "
+    . "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_current_stage}.gid "
+    . "WHERE {pi_current_stage}.inquiry_id = %d "
+    . "AND {og_uid}.uid = %d ";
+
+    $result = db_fetch_object(db_query($query, $inquiry_id, $uid));
+
+    if(isset($result) && ($result == NULL))
+    {
+      $result = new stdClass();
+      $result->stage_id = NULL;
+    }
+  }
+  return $result;
 }
 
 function get_psp_id_for_stage_and_phase($stage_id, $phase_id) {

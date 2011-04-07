@@ -41,10 +41,10 @@ function pi_key_answers_access($op, $node, $account) {
   $uid = $user->uid;
   $details = get_inquiry_details_from_current_path();
   if ($op == 'create') {
-    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
   }
   if ($op == 'update') {
-    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
   }
 	if ($op == 'delete') {
 		if (arg(0) == 'node' && arg(2) == 'delete') {
@@ -53,14 +53,14 @@ function pi_key_answers_access($op, $node, $account) {
 			$activity_id = get_activity_id_for_nid($nid);
 			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id) {
-				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+				return pi_activity_check_node_function($activity_id, $uid, 'edit');
 			}
 			else {
 				return FALSE;
 			}
 		}
 		else {
-			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 		}
 	}
 }
@@ -132,7 +132,7 @@ function pi_key_answers_form(&$node) {
 		$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis->nid);
 		if($hypothesis_activity_nid) 
 		{
-			$hypothesis_activity = load_activity($hypothesis_activity_nid);
+			$hypothesis_activity = node_load($hypothesis_activity_nid);
 			if($hypothesis_activity)
 			{
 				$form['#prefix'] = node_view($hypothesis_node, TRUE, TRUE);
@@ -230,10 +230,10 @@ function pi_key_answers_theme() {
 
 function theme_pi_key_answers_node_form($form) {
 	$details = get_inquiry_details_from_current_path();
-    $activity = load_activity($details->activity_id);
+    $activity = node_load($details->activity_id);
     
-    if ($activity->description) {
-    	$output  .= '<p>' . t($activity->description) . '</p>';
+    if ($activity->body) {
+    	$output  .= '<p>' . t($activity->body) . '</p>';
     }
     else {
     	$output  .= '<p>' . t('Add a key answer.') . '</p>';

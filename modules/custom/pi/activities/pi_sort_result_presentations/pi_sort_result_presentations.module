@@ -25,11 +25,11 @@ function pi_sort_result_presentations_access($op, $node, $account) {
     $details = get_inquiry_details_from_current_path();
 
     if ($op == 'create') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
     }
 
     if ($op == 'update') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
     }
 }
 
@@ -59,7 +59,7 @@ function pi_sort_result_presentations_form(&$node) {
 	$node_details = get_inquiry_details_from_current_path();
   	if (is_numeric($node_details->activity_id))
   	{
-  		$current_activity = load_activity($node_details->activity_id);
+  		$current_activity = node_load($node_details->activity_id);
   	}
   	
   	if ($current_activity->name)
@@ -179,7 +179,7 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 		$result_presentation_activity_id = get_activity_id_for_nid($sorted_result_presentations_nid);
 		if ($result_presentation_activity_id)
 		{
-			$loaded_activity = load_activity($result_presentation_activity_id);
+			$loaded_activity = node_load($result_presentation_activity_id);
 			$loaded_node = node_load($sorted_result_presentations_nid);
 			$activity_link = pi_activity_build_link($result_presentation_activity_id, $user->uid);
 			$activity_teaser = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
@@ -265,7 +265,7 @@ function theme_pi_sort_result_presentations_node_form($form) {
     }
 
     // Build the output
-    $activity = load_activity($details->activity_id);
+    $activity = node_load($details->activity_id);
 
    	$output .= '<p>' . t('View and organise the presentations of your results.') . '</p>';
     

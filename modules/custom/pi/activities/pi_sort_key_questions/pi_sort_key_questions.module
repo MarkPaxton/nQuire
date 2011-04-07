@@ -25,11 +25,11 @@ function pi_sort_key_questions_access($op, $node, $user) {
     $details = get_inquiry_details_from_current_path();
     if ($op == 'create')
     {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
     }
     if ($op == 'update')
     {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
     }
 }
 
@@ -59,7 +59,7 @@ function pi_sort_key_questions_form(&$node) {
 	$node_details = get_inquiry_details_from_current_path();
   	if (is_numeric($node_details->activity_id))
   	{
-  		$current_activity = load_activity($node_details->activity_id);
+  		$current_activity = node_load($node_details->activity_id);
   	}
   	
   	if ($current_activity->name)
@@ -197,7 +197,7 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 			$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis_node->nid);
 			if($hypothesis_activity_nid)
 			{
-				$hypothesis_activity = load_activity($hypothesis_activity_nid);
+				$hypothesis_activity = node_load($hypothesis_activity_nid);
 				if($hypothesis_activity)
 				{
 					$node->content['pi_key_questions_hypothesis'] = array(
@@ -300,9 +300,9 @@ function theme_pi_sort_key_questions_node_form($form) {
     }
 
     // Build the output
-    $activity = load_activity($details->activity_id);
-    if ($activity->description) {
-    	$output  = '<p>' . check_plain($activity->description) . '</p>';
+    $activity = node_load($details->activity_id);
+    if ($activity->body) {
+    	$output  = '<p>' . check_plain($activity->body) . '</p>';
     }
     else {
     	$output  = '<p>' . t('Order your key questions.') . '</p>';

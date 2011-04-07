@@ -39,9 +39,9 @@ function pi_fooddiary_analysis_access($op, $node, $account)
 
 	switch($op)
 	{
-		case 'create' :	$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+		case 'create' :	$access = pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
 		break;
-		case 'update':	$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		case 'update':	$access = pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 		break;
 		case 'delete':	if (arg(0) == 'node' && arg(2) == 'delete')
 		{
@@ -51,12 +51,12 @@ function pi_fooddiary_analysis_access($op, $node, $account)
 			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id)
 			{
-				$access = check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+				$access = pi_activity_check_node_function($activity_id, $uid, 'edit');
 			}
 		}
 		else
 		{
-			$access = check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+			$access = pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 		}
 	}
 
@@ -67,7 +67,7 @@ function pi_fooddiary_analysis_menu()
 {
 	$items = array();
 
-	$items['activity/%/food_analysis.png'] = array(
+	$items['activity/%node/food_analysis.png'] = array(
     		'page callback' => '_pi_fooddiary_analysis_chart_as_png',
 			'page arguments' => array(1, 2),
     		'access arguments' => array('access content'),
@@ -149,11 +149,11 @@ function theme_pi_fooddiary_analysis_node_form($form)
 {
 }
 
-function _pi_fooddiary_analysis_chart_as_png($activity_id)
+function _pi_fooddiary_analysis_chart_as_png($activity)
 {
 	global $user;
-
 	$uid = $user->uid;
+	$activity_id = $activity->nid;
 
 	$details = get_inquiry_details_from_current_path();
 

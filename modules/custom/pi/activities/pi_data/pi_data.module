@@ -36,34 +36,38 @@ function pi_data_perm() {
  * Implementation of pi_data_access().
  */
 function pi_data_access($op, $node, $account) {
-	global $user;
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
-	if ($op == 'create')
-	{
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
-	}
-	if ($op == 'update')
-	{
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-	}
-	if ($op == 'delete') {
-		if (arg(0) == 'node' && arg(2) == 'delete') {
-		//get inquiry for session id and activity
-			$nid = arg(1);
-			$activity_id = get_activity_id_for_nid($nid);
-			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
-			if($inquiry_id && $activity_id) {
-				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
-			}
-			else {
-				return FALSE;
-			}
-		}
-		else {
-			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
-		}
-	}
+  global $user;
+  $uid = $user->uid;
+  $details = get_inquiry_details_from_current_path();
+  if ($op == 'create')
+  {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
+  }
+  if ($op == 'update')
+  {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+  }
+  if ($op == 'delete')
+  {
+    if (arg(0) == 'node' && arg(2) == 'delete')
+    {
+      //get inquiry for session id and activity
+      $nid = arg(1);
+      $activity_id = get_activity_id_for_nid($nid);
+      $inquiry_id = get_inquiry_id_for_activity_id($activity_id);
+      if($inquiry_id && $activity_id) {
+        return pi_activity_check_node_function($activity_id, $uid, 'edit');
+      }
+      else
+      {
+        return FALSE;
+      }
+    }
+    else
+    {
+      return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+    }
+  }
 }
 
 
@@ -76,10 +80,10 @@ function pi_data_form(&$node) {
 	
   	if (is_numeric($node_details->activity_id))
   	{
-  		$current_activity = load_activity($node_details->activity_id);
+  		$current_activity = node_load($node_details->activity_id);
   	}
   	
-  	if ($current_activity->name)
+  	if ($current_activity->title)
   	{
   		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
   				$node_details->inquiry_id, $node_details->stage_id, 
@@ -633,10 +637,10 @@ function pi_data_theme() {
 
 function theme_pi_data_node_form($form) {
 	$details = get_inquiry_details_from_current_path();
-	$activity = load_activity($details->activity_id);
-	if ($activity->description)
+	$activity = node_load($details->activity_id);
+	if ($activity->body)
 	{
-		$output  .= '<p>' . check_plain($activity->description) . '</p>';
+		$output  .= '<p>' . check_plain($activity->body) . '</p>';
 	}
 	else
 	{

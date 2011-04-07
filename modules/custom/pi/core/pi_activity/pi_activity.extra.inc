@@ -4,27 +4,7 @@
  *  confirm to the drupal function naming convention "modulename"_name() etc
  */
  
- /**
- * Return and object with a nid property which is the phase activity resides is in in a
- * particular inquiry for a given user.
- * @param uint $inquiry_id The inquiry id of the activity
- * @param uint $activity_id The activity id
- * @param uint $uid The uid of the user that activity belongs to
- */
-function get_phase_of_inquiry_and_activity($inquiry_id, $activity_id, $uid) {
-  $query = "SELECT {pi_phase}.nid as nid FROM {pi_phase} "
-  . "LEFT JOIN {pi_phase_actor} ON {pi_phase_actor}.phase_id = {pi_phase}.nid "
-  . "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_phase_actor}.gid "
-  . "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.phase_id = {pi_phase}.nid "
-  . "LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
-  . "WHERE {pi_phase}.inquiry_nid = %d "
-  . "AND ( {pi_phase_actor}.uid = %d OR {og_uid}.uid = %d ) "
-  . "AND {pi_stage_phase_activity}.activity_id = %d";
-  $result = db_fetch_object(db_query($query, $inquiry_id, $uid, $uid, $activity_id));
-  return $result;
-}
-
-
+ 
 /**
  * @see get_nid_for_inquiry_activity_and_user
  * @param $inquiry_id
@@ -106,7 +86,7 @@ function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
 function get_phase_id_for_activity_id($activity_nid) {
   $activity = node_load($activity_nid);
   $return_value = NULL;
-  if($activity == false)
+  if($activity != false)
   {
     if($activity->type = 'pi_activity')
     {
@@ -114,14 +94,14 @@ function get_phase_id_for_activity_id($activity_nid) {
     }
     else
     {
-      drupal_set_message(t("Can't get phase nid for node @nid, as it is not a pi_activity node", 
-        array('nid'=>$activity_nid)), 'error');
+      drupal_set_message(t("Can't get phase nid for node !nid, as it is not a pi_activity node", 
+        array('!nid'=>$activity_nid)), 'error');
     }
   }
   else
   {
-          drupal_set_message(t("Can't get phase nid for node @nid, as it does not exist", 
-        array('nid'=>$activity_nid)), 'error');    
+    drupal_set_message(t("Can't get phase nid for node !nid as it does not exist.",
+        array('!nid'=>$activity_nid)), 'error');    
   }
   return $return_value;
 }
@@ -132,7 +112,8 @@ function get_phase_id_for_activity_id($activity_nid) {
  */
 function get_inquiry_id_for_activity_id($activity_id) {
   $phase_id = get_phase_id_for_activity_id($activity_id);
-  $inquiry_id = get_inquiry_id_for_phase_id ($phase_id);
+  $phase = node_load($phase_id);
+  $inquiry_id = $phase->inquiry_nid;
   return $inquiry_id;
 }
 
@@ -344,13 +325,12 @@ function pi_activity_get_node_function($activity_id, $uid) {
 /**
  * Returns FALSE if that node function for that activity and user is not the specified
  * function, otherwise it returns TRUE.
- * @param $inquiry_id
  * @param uint $activity_id ID of pi_acitvity to check node function with
  * @param uint $uid ID of user to check node function with
  * @param string $function can Either 'add', 'edit' or 'view'.
- * @return unknown_type
+ * @return bool allowed or not
  */
-function check_node_function_of_activity($inquiry_id, $activity_id, $uid, $function) {
+function pi_activity_check_node_function($activity_id, $uid, $function) {
   $node_function = pi_activity_get_node_function($activity_id, $uid);
   if ($node_function == $function)
   {

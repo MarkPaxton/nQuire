@@ -214,7 +214,7 @@ function pi_update_stage($node) {
   //update outside focus activity status
   while($status_item = db_fetch_object($outside_status_list)) 
   {
-  	$loaded_activity = load_activity($status_item->activity_id);
+  	$loaded_activity = node_load($status_item->activity_id);
   	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_leave_focus");
   	if ($new_status->node_function && $new_status->visible_status) 
   	{
@@ -236,7 +236,7 @@ function pi_update_stage($node) {
   $inside_status_list = db_query($inside_focus_query, $details->inquiry_id, $included_stages_output);
 //  $inside_status_list = db_query($inside_focus_query, $details->inquiry_id, $included_stages_output);
   while($status_item = db_fetch_object($inside_status_list)) {
-  	$loaded_activity = load_activity($status_item->activity_id);
+  	$loaded_activity = node_load($status_item->activity_id);
   	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_enter_focus");
   	if ($new_status->node_function && $new_status->visible_status) 
   	{
@@ -255,7 +255,7 @@ function pi_update_stage($node) {
   
   $status_list = db_query($query);
   while($status_item = db_fetch_object($status_list)) {
-  	$loaded_activity = load_activity($status_item->activity_id);
+  	$loaded_activity = node_load($status_item->activity_id);
   	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_leave_focus");
   	if ($new_status->node_function && $new_status->visible_status) {
   		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
@@ -279,7 +279,7 @@ function pi_update_stage($node) {
   db_query($prev_query);
 
   while($status_item = db_fetch_object($status_list)) {
-  	$loaded_activity = load_activity($status_item->activity_id);
+  	$loaded_activity = node_load($status_item->activity_id);
   	$new_status = find_new_status($loaded_activity->activity_type, $status_item->activity_id, $details->inquiry_id, $status_item->node_function, $status_item->visible_status, "pi_activity_enter_focus");
   	if ($new_status->node_function && $new_status->visible_status) {
   		$query = "UPDATE pi_activity_status SET node_function = \"" . $new_status->node_function . "\", visible_status = \"" . $new_status->visible_status . "\" WHERE pas_id = " . $status_item->pas_id . " ";
@@ -289,22 +289,28 @@ function pi_update_stage($node) {
   
 }
 */
+
+/**
+ * @todo fix this
+ * Enter description here ...
+ * @param unknown_type $activity_type
+ * @param unknown_type $activity_id
+ * @param unknown_type $inquiry_id
+ * @param unknown_type $node_function
+ * @param unknown_type $visible_status
+ * @param unknown_type $table
+ */
 function find_new_status ($activity_type, $activity_id, $inquiry_id, $node_function, $visible_status, $table = "pi_activity_enter_focus") {
-  
   $query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND (prior_nf = \"" . $node_function . "\" OR prior_nf IS NULL) AND (prior_vs = \"" . $visible_status . "\" OR prior_vs IS NULL) ";
-  
   $result = db_fetch_object(db_query($query));
-  
-  if (!$result->node_function) {
-  
+  if (!$result->node_function)
+  {
     $query = "SELECT node_function, visible_status FROM " . $table . " WHERE (activity_id = " . $activity_id . " OR activity_type = \"" . $activity_type . "\") AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
-  
     $result = db_fetch_object(db_query($query));
     
-    if (!$result->node_function) {
-  
+    if (!$result->node_function)
+    {
       $query = "SELECT node_function, visible_status FROM " . $table . " WHERE activity_id IS NULL AND activity_type IS NULL AND (inquiry_id = " . $inquiry_id . " OR inquiry_id IS NULL) AND prior_nf = \"" . $node_function . "\" AND prior_vs = \"" . $visible_status . "\" ";
-    
       $result = db_fetch_object(db_query($query));
     }
   }

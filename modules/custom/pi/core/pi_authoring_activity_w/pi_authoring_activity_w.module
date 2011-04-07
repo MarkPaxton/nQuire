@@ -39,12 +39,12 @@ function pi_authoring_activity_w_access($op, $node, $account) {
   $details = get_inquiry_details_from_current_path();
   
   if ($op == 'create') {
-   return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+   return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
     //return (user_access('create pi_authoring_activity'));
   }
 
   if ($op == 'update' || $op == 'delete') {
-    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 	//return (user_access('edit own pi_authoring_activity') && ($user->uid == $node->uid));
   }
 }
@@ -66,7 +66,7 @@ function pi_authoring_activity_w_form($node, $form_state) {
   
   //this is testing showing the audience type in the node 
   $node_details = get_inquiry_details_from_current_path();
-  $activity = load_activity($node_details->activity_id);
+  $activity = node_load($node_details->activity_id);
   switch ($activity->audience) {
 	case "individual":
 		$prefix .= t("<img src=\"" . $image_path. "individual_logo.png\" style=\"width: 3em; height: 3em; margin-right:0.2em;\"/>") . "<span style='vertical-align: 90%;'>" . "This is an individual activity" . "</span>";

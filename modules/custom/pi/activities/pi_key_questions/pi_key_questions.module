@@ -61,10 +61,10 @@ function pi_key_questions_access($op, $node, $account) {
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
 	if ($op == 'create') {
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
 	}
 	if ($op == 'update') {
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 	}
 	if ($op == 'delete') {
 		if (arg(0) == 'node' && arg(2) == 'delete') {
@@ -74,14 +74,14 @@ function pi_key_questions_access($op, $node, $account) {
 			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id)
 			{
-				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+				return pi_activity_check_node_function($activity_id, $uid, 'edit');
 			}
 			else {
 				return FALSE;
 			}
 		}
 		else {
-			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 		}
 	}
 }
@@ -95,7 +95,7 @@ function pi_key_questions_form(&$node) {
 	$node_details = get_inquiry_details_from_current_path();
 	
 	if (is_numeric($node_details->activity_id)) {
-		$current_activity = load_activity($node_details->activity_id);
+		$current_activity = node_load($node_details->activity_id);
 	}
   	
 	if ($current_activity->name) {
@@ -131,7 +131,7 @@ function pi_key_questions_form(&$node) {
 		$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis->nid);
 		if($hypothesis_activity_nid) 
 		{
-			$hypothesis_activity = load_activity($hypothesis_activity_nid);
+			$hypothesis_activity = node_load($hypothesis_activity_nid);
 			if($hypothesis_activity)
 			{
 				$form['#prefix'] = theme('pi_hypothesis', $hypothesis_node, $hypothesis_activity);
@@ -203,7 +203,7 @@ function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
 			$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis_node->nid);
 			if($hypothesis_activity_nid)
 			{
-				$hypothesis_activity = load_activity($hypothesis_activity_nid);
+				$hypothesis_activity = node_load($hypothesis_activity_nid);
 				if($hypothesis_activity)
 				{
 					$hypothesis_node = node_load($hypothesis_nid);

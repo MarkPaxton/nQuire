@@ -25,11 +25,11 @@ function pi_sort_data_access($op, $node, $account) {
 	$details = get_inquiry_details_from_current_path();
 
 	if ($op == 'create') {
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
 	}
 
 	if ($op == 'update') {
-		return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 	}
 }
 
@@ -60,7 +60,7 @@ function pi_sort_data_form(&$node) {
 	$current_activity = NULL;
 	if (is_numeric($node_details->activity_id))
 	{
-		$current_activity = load_activity($node_details->activity_id);
+		$current_activity = node_load($node_details->activity_id);
 	}
 
 	if ($current_activity->name)
@@ -135,12 +135,12 @@ function pi_sort_data_form(&$node) {
 			$data_activity_id = get_activity_id_for_nid($data_item_node->nid);
 			if($data_activity_id)
 			{
-				$data_activity = load_activity($data_activity_id);
+				$data_activity = node_load($data_activity_id);
 				if($data_activity)
 				{
-					if(strlen($data_activity->name)>0)
+					if(strlen($data_activity->title)>0)
 					{
-						$title = $data_activity->name;
+						$title = $data_activity->title;
 					}
 				}
 			}
@@ -285,10 +285,10 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 
 	if (is_numeric($node_details->activity_id))
 	{
-		$current_activity = load_activity($node_details->activity_id);
-		if ($current_activity->name)
+		$current_activity = node_load($node_details->activity_id);
+		if ($current_activity->title)
 		{
-			drupal_set_title(check_plain($current_activity->name));
+			drupal_set_title(check_plain($current_activity->title));
 		}
 	}
 
@@ -503,14 +503,14 @@ function pi_sort_data_get_choice($node) {
 		if($loaded_node!=false)
 		{
 			$activity_nid = get_activity_id_for_nid($loaded_node->nid);
-			$activity = load_activity($activity_nid);
+			$activity = node_load($activity_nid);
 			$title = $loaded_node->title;
 			// Activity title is better here, so if it's set, use that
 			if($activity)
 			{
-				if($activity->name)
+				if($activity->title)
 				{
-					$title = $activity->name;
+					$title = $activity->title;
 				}
 			}
 			$data[$row->data] = array(

@@ -5,6 +5,55 @@
 module_load_include('inc', 'pi_activity', 'pi_activity.workflow' );
 module_load_include('inc', 'pi_activity', 'pi_activity.extra' );
 
+/*
+function process_error_backtrace($errno, $errstr, $errfile, $errline, $errcontext) {
+    if(!(error_reporting() & $errno))
+        return;
+    switch($errno) {
+    case E_WARNING      :
+    case E_USER_WARNING :
+    case E_STRICT       :
+    case E_NOTICE       :
+    case E_USER_NOTICE  :
+        $type = 'warning';
+        $fatal = false;
+        break;
+    default             :
+        $type = 'fatal error';
+        $fatal = true;
+        break;
+    }
+    $trace = array_reverse(debug_backtrace());
+    array_pop($trace);
+    if(php_sapi_name() == 'cli') {
+      echo 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
+      foreach($trace as $item)
+      echo '  ' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()' . "\n";
+    } else {
+      echo '<p class="error_backtrace">' . "\n";
+      echo '  Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
+      echo '  <ol>' . "\n";
+      foreach($trace as $item)
+      echo '    <li>' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()</li>' . "\n";
+      echo '  </ol>' . "\n";
+      echo '</p>' . "\n";
+    }
+    if(ini_get('log_errors')) {
+      $items = array();
+      foreach($trace as $item)
+      $items[] = (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()';
+      $message = 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ': ' . join(' | ', $items);
+      error_log($message);
+    }
+    if($fatal)
+    {
+      exit(1);
+    }
+}
+
+set_error_handler('process_error_backtrace');
+*/
+
 /**
  *
  * This functions returns the information for the activity node
@@ -36,45 +85,34 @@ function pi_activity_perm()
 }
 
 /**
- *
- * Drupal API hook_accesss
- * @param unknown_type $op
- * @param unknown_type $node
- * @param unknown_type $account
- */
-function pi_activity_access($op, $node, $account)
-{
-  //@toto - what to do here - check related inquiry/stage/phase for the activity
-  // and make sure all the users/actors/audience stuff is valid
-  return true;
-}
-
-/**
  * Access callback for pi_activities under the url activity/%
  * @param uint $activity_id the id of the activity being accessed
  * @param uint $op the function to perform on the activity (view/add/edit)
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
-function pi_activity_item_access($activity, $op) {
+function pi_activity_access($activity, $op) {
+  /*pi_debug_message('pi_activity_item_access:' . $op);
+  pi_debug_message($activity);
+  exit;*/
   $return_value = false;
-  if(isset($activity->activity_id))
+  global $user;
+  if(isset($activity->nid))
   {
-    global $user;
-    $details = get_inquiry_details_from_current_path();
-    $return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, $op);
-    if(($return_value===false) && ($op=='view'))
+    $node_function_allowed = pi_activity_check_node_function($activity->nid, $user->uid, $op);
+    if(($node_function_allowed===false) && ($op=='view'))
     {
-      $return_value = check_node_function_of_activity($details->inquiry_id, $activity->activity_id, $user->uid, 'edit');
+      $return_value = pi_activity_check_node_function($activity->nid, $user->uid, 'edit');
     }
-    if(($return_value===false) && ($op=='add'))
+    if(($node_function_allowed===false) && ($op=='add'))
     {
-      $possible_add_nid = pi_activity_get_add_activity_for_sort_activity($details->inquiry_id, $activity->activity_id, $user->uid);
+      $possible_add_nid = pi_activity_get_add_activity_for_sort_activity($details->inquiry_id, $activity->nid, $user->uid);
       if( $possible_add_nid !== NULL)
       {
         $return_value = true;
       }
     }
   }
+  
   return $return_value;
 }
 
@@ -84,62 +122,58 @@ function pi_activity_item_access($activity, $op) {
  */
 function pi_activity_menu() {
   $items = array();
-  $items['activity/%pi_activity'] = array(
+  $items['activity/%node'] = array(
 		'title' => 'View',
 		'file' => 'pi_activity.activity.inc',
-		'page callback' => 'pi_activity_view',
+		'page callback' => 'pi_activity_content_view',
 		'page arguments' => array(1, 'view'),
-		'access callback' => 'pi_activity_item_access',
-		'access arguments' => array(1, 'view'),
+  		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK
   );
 
-  $items['activity/%pi_activity/view'] = array(
+  $items['activity/%node/view'] = array(
 		'title' => 'View',
 		'type' => MENU_DEFAULT_LOCAL_TASK,
 		'weight' => 0
   );
 
-  $items['activity/%pi_activity/edit'] = array(
+  $items['activity/%node/edit'] = array(
 		'title' => 'Edit',
 		'file' => 'pi_activity.activity.inc', 
-		'page callback' => 'pi_activity_view',
+		'page callback' => 'pi_activity_content_view',
 		'page arguments' => array(1, 'edit'),
-		'access callback' => 'pi_activity_item_access',
-		'access arguments' => array(1, 'edit'),
-		'type' => MENU_LOCAL_TASK,
+  		'access arguments' => array('access content'),
+  		'type' => MENU_LOCAL_TASK,
 		'weight' => 1
   );
 
-  $items['activity/%pi_activity/add'] = array(
+  $items['activity/%node/add'] = array(
 		'title' => 'Add',
 		'file' => 'pi_activity.activity.inc', 
-		'page callback' => 'pi_activity_view',
+		'page callback' => 'pi_activity_content_view',
 		'page arguments' => array(1, 'add'),
-		'access callback' => 'pi_activity_item_access',
 		'access arguments' => array(1, 'add'),
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 2
   );
 
-  $items['activity/%pi_activity/admin'] = array(
+  $items['activity/%node/admin'] = array(
 		'title' => 'Admin',
 		'file' => 'pi_activity.admin.inc', 
 		'page callback' => 'pi_activity_content',
 		'page arguments' => array(1),
-		'access_callback' => 'user_access',
 		'access arguments' => array('access pi_authoring content'),
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 3
   );
 
-  $items['activity/%pi_activity/admin/content'] = array(
+  $items['activity/%node/admin/content'] = array(
 		'title' => 'View Activity Content',
 		'type' => MENU_DEFAULT_LOCAL_TASK,
 		'weight' => 0
   );
 
-  $items['activity/%pi_activity/admin/edit'] = array(
+  $items['activity/%node/admin/edit'] = array(
 		'title' => 'Edit Activity',
 		'file' => 'pi_activity.admin.inc', 
 		'page callback' => 'pi_activity_edit',
@@ -150,7 +184,7 @@ function pi_activity_menu() {
 		'weight' => 1
   );
 
-  $items['activity/%pi_activity/admin/view/%node'] = array(
+  $items['activity/%node/admin/view/%node'] = array(
 		'title' => 'Edit Activity',
 		'file' => 'pi_activity.admin.inc', 
 		'page callback' => 'pi_activity_admin_view_node',
@@ -1410,7 +1444,7 @@ function _pi_activity_form_data_to_pi_activity_row($node)
   
   $data_to_save->phase_nid = $node->activity_phases_stages['phase_nid'];
   $data_to_save->audience = $node->selects['audience'];
-  $data_to_save->actor = $node->selects['gid'];
+  $data_to_save->actor = $node->groups['selects']['gid'];
   //drupal_set_message(t('Saving data...', 'info'));
   //pi_debug_message($data_to_save);
   return $data_to_save;
@@ -1464,63 +1498,6 @@ function _pi_activity_get_activity_stage_stages($nid)
   }
   return $stage_states;
 }
-
-
-/**
- * 
- * Helper function to get pi_shtage_phase ids for inserting into 
- * pi_stage_phase_activity['psp_id'] column on activities
- * @param $selected_stages
- * @return array($nid) array of psp_ids 
- *//*
-//@todo delete me
-function _pi_activity_form_get_pi_stage_phase_ids($selected_phase, $selected_stages)
-{
-  $return_data = array();
-  $phase = node_load($phase_id);
-  if ($phase!=FALSE)
-  {
-    if ($phase->type=='pi_phase')
-    {
-      foreach ($selected_stages as $stage_nid)
-      {
-        $stage = node_load($stage_nid);
-        if ($stage!=FALSE)
-        {
-          if ($stage->type=='pi_stage')
-          {
-            if (array_key_exists($stage_nid, $stage->stage_phase_ids))
-            {
-              $stage_psp_id = $stage->stage_phase_ids[$stage_nid];
-              $return_date[] = $stage_psp_id;
-              pi_debug_message('_pi_activity_form_get_pi_stage_phase_ids');
-            }
-            else
-            {
-              drupal_set_message(t("Error: Stage '%stage is not in current inquiry"), array('%stage' => $stage_nid), 'error');
-            }
-          }
-          else
-          {
-            drupal_set_message(t("Error: Selected 'stage' %stage is not a stage node."), array('%stage' => $stage_nid), 'error');
-          }
-        }
-        else
-        {
-          drupal_set_message(t("Error: Stage %stage not found."), array('%stage' => $stage_nid), 'error');
-        }
-      }
-    }
-    else
-    {
-      drupal_set_message(t("Error: Selected 'phase' %phase is not a phase node."), array('%phase' => $selected_phase), 'error');
-    }
-  }
-  else
-  {
-    drupal_set_message(t("Error: Phase %phase not found."), array('%phase' => $selected_phase), 'error');
-  }
-}*/
 
 /**
  * 
@@ -1627,152 +1604,141 @@ function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
 
 function pi_activity_nodeapi(&$node, $op)
 {
-	if ($node->type != 'image') {
-		global $user;
-		//only do this if the thing created is an activity
-		//check this from the args
-		$details = get_inquiry_details_from_current_path();
-	
-		if(is_object($details) && is_numeric($details->activity_id))
-		{
-			$activity = pi_activity_load( $details->activity_id );
-			$activity_type = $activity->activity_type;
-	
-			//set PI activity node
-			if($op == 'insert')
-			{
-				//new content saved
-				switch( $node->type )
-				{
-					case 'pi_available_measures':
-							
-						if( $activity_type != 'pi_fooddiary' && $activity_type != 'pi_fooddiary_measures' )
-						{
-							add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-						}
-						else if( $activity_type == 'pi_fooddiary_measures' )
-						{
-							$activity_node = new stdClass();
-							$activity_node->activity_type = 'pi_available_measures';
-							$activity_node->node_type = 'pi_available_measures';
-	
-							add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details, $activity_node);
-						}
-						break;
-					case 'pi_key_questions':
-						update_node_title($node, $node->key_question);
-						add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_question, $details);
-						break;
-					case 'pi_key_answers':
-						update_node_title($node, $node->key_answer);
-						add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_answer, $details);
-						break;
-					case 'pi_result_presentations':
-						add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-						break;
-					case 'pi_data':
-						//get_inquiry_details_from_current_path() does not work for datalogger
-						if( arg(1) == 'datalogger_data' )
-						{
-							$details = new stdClass;
-							$details->inquiry_id = arg(2);
-							$details->stage_id = arg(3);
-							$details->phase_id = arg(4);
-							$details->activity_id = arg(5);
-						}
-						//not generated by fooddiary
-						if( $activity_type != 'pi_fooddiary' )
-						{
-							add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-						}
-						break;
-					case 'pi_fooddiary':
-						add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-						break;
-					default:
-						//In case the data are generated by another activity
-						//(e.g. fooddiary_data => generates pi_sort_measure)
-						if(isset($node->activity_id))
-						{
-							$details->activity_id = $node->activity_id;
-						}
-						add_new_pi_activity_node($node, 'edit', 'edit', $details);
-				}
-	
-				//add og
-				$loaded_activity = load_activity($details->activity_id);
-				if ($loaded_activity->audience != "individual")
-				{
-					$users_group = get_group_of_type($user->uid, $loaded_activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
-					$context['groups'] = array($users_group);
-					og_add_group_action($node, $context);
-				}
-			}
-	
-			if($op == 'update')
-			{
-				switch ($node->type)
-				{
-					case 'pi_available_measures':
-						update_activity_when_activity_node_updated($node, $node->title);
-						break;
-					case 'pi_key_answers':
-						update_node_title($node, $node->key_answer);
-						update_activity_when_activity_node_updated($node, $node->key_answer);
-						break;
-					case 'pi_key_questions':
-						update_node_title($node, $node->key_question);
-						update_activity_when_activity_node_updated($node, $node->key_question);
-						break;
-					case 'pi_result_presentations':
-						update_activity_when_activity_node_updated($node, $node->title);
-						break;
-					case 'pi_data':
-						//none come from datalogger as it is not used to update existing data
-						update_activity_when_activity_node_updated($node, $node->title);
-						break;
-				}
-				//update og
-				$loaded_activity = load_activity($details->activity_id);
-				if ($loaded_activity->audience != "individual")
-				{
-					$users_group = get_group_of_type($user->uid, $loaded_activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
-					$context['groups'] = array($users_group);
-					og_add_group_action($node, $context);
-				}
-			}
-		}
-	
-		if($op == 'delete')
-		{
-			//update existing content
-			if($activity_id = get_activity_id_for_nid($node->nid))
-			{
-				delete_activity($activity_id);
-			}
-		}
-	
-	}
+  if ($node->type != 'image')
+  {
+
+    if(in_array($op, array('insert', 'update', 'delete')))
+    {
+      global $user;
+      //only do this if the thing created is an activity
+      //check this from the args
+      $details = get_inquiry_details_from_current_path();
+
+      if(is_object($details) && is_numeric($details->activity_id))
+      {
+        $activity = node_load( $details->activity_id );
+        $activity_type = $activity->activity_type;
+
+        //set PI activity node
+        if($op == 'insert')
+        {
+          //new content saved
+          switch( $node->type )
+          {
+            case 'pi_available_measures':
+              	
+              if( $activity_type != 'pi_fooddiary' && $activity_type != 'pi_fooddiary_measures' )
+              {
+                add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
+              }
+              else if( $activity_type == 'pi_fooddiary_measures' )
+              {
+                $activity_node = new stdClass();
+                $activity_node->activity_type = 'pi_available_measures';
+                $activity_node->node_type = 'pi_available_measures';
+
+                add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details, $activity_node);
+              }
+              break;
+            case 'pi_key_questions':
+              update_node_title($node, $node->key_question);
+              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_question, $details);
+              break;
+            case 'pi_key_answers':
+              update_node_title($node, $node->key_answer);
+              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_answer, $details);
+              break;
+            case 'pi_result_presentations':
+              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
+              break;
+            case 'pi_data':
+              //get_inquiry_details_from_current_path() does not work for datalogger
+              if( arg(1) == 'datalogger_data' )
+              {
+                $details = new stdClass;
+                $details->inquiry_id = arg(2);
+                $details->stage_id = arg(3);
+                $details->phase_id = arg(4);
+                $details->activity_id = arg(5);
+              }
+              //not generated by fooddiary
+              if( $activity_type != 'pi_fooddiary' )
+              {
+                add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
+              }
+              break;
+            case 'pi_fooddiary':
+              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
+              break;
+            default:
+              //In case the data are generated by another activity
+              //(e.g. fooddiary_data => generates pi_sort_measure)
+              if(isset($node->activity_id))
+              {
+                $details->activity_id = $node->activity_id;
+              }
+              add_new_pi_activity_node($node, 'edit', 'edit', $details);
+          }
+
+          //add og
+          $loaded_activity = node_load($details->activity_id);
+          if ($loaded_activity->audience != "individual")
+          {
+            $users_group = get_group_of_type($user->uid, $loaded_activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
+            $context['groups'] = array($users_group);
+            og_add_group_action($node, $context);
+          }
+        }
+
+        if($op == 'update')
+        {
+          switch ($node->type)
+          {
+            case 'pi_available_measures':
+              update_activity_when_activity_node_updated($node, $node->title);
+              break;
+            case 'pi_key_answers':
+              update_node_title($node, $node->key_answer);
+              update_activity_when_activity_node_updated($node, $node->key_answer);
+              break;
+            case 'pi_key_questions':
+              update_node_title($node, $node->key_question);
+              update_activity_when_activity_node_updated($node, $node->key_question);
+              break;
+            case 'pi_result_presentations':
+              update_activity_when_activity_node_updated($node, $node->title);
+              break;
+            case 'pi_data':
+              //none come from datalogger as it is not used to update existing data
+              update_activity_when_activity_node_updated($node, $node->title);
+              break;
+          }
+          //update og
+          $loaded_activity = node_load($details->activity_id);
+          if ($loaded_activity->audience != "individual")
+          {
+            $users_group = get_group_of_type($user->uid, $loaded_activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
+            $context['groups'] = array($users_group);
+            og_add_group_action($node, $context);
+          }
+        }
+      }
+
+      if($op == 'delete')
+      {
+        //update existing content
+        if($activity_id = get_activity_id_for_nid($node->nid))
+        {
+          delete_activity($activity_id);
+        }
+      }
+    }
+  }
 
 }
 
 
 // ---------------------------------------------------------------------------
-
-/**
- * Functions in this block are for adding, deleting and inspecting activities
- */
-
-/**
- * Returns the activity_object from pi_activity table.
- * @param uint $nid Activity ID
- * @return node object from node_load($nid)
- */
-function load_activity($nid)
-{
-  return node_load($nid);
-}
-
 
 /**
  * Create the url to a particular activity
@@ -1927,7 +1893,7 @@ function pi_activity_get_activities_of_phase_and_user($phase_nid, $uid)
 function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid)
 {
   $return_value = NULL;
-  $sort_activity = load_activity($activity_id);
+  $sort_activity = node_load($activity_id);
 
   if($sort_activity!=FALSE)
   {
@@ -1964,9 +1930,9 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
 /**
  * Returns an array of nids of a node type available
  * to a user for a given inquiry
- * @param $uid The user to which the nodes are availeable
- * @param $inquiry_id the inquiry id that the nodes belong to
- * @param $type the node type to search for e.g. 'pi_data'
+ * @param uint $uid The user to which the nodes are availeable
+ * @param uint $inquiry_id the inquiry id that the nodes belong to
+ * @param string $type the node type to search for e.g. 'pi_data'
  *
  */
 function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)

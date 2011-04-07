@@ -39,10 +39,10 @@ function pi_available_measures_access($op, $node, $account) {
   $uid = $user->uid;
   $details = get_inquiry_details_from_current_path();
   if ($op == 'create') {
-    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
   }
   if ($op == 'update') {
-    return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
   }
 	if ($op == 'delete') {
 		if (arg(0) == 'node' && arg(2) == 'delete') {
@@ -51,14 +51,14 @@ function pi_available_measures_access($op, $node, $account) {
 			$activity_id = get_activity_id_for_nid($nid);
 			$inquiry_id = get_inquiry_id_for_activity_id($activity_id);
 			if($inquiry_id && $activity_id) {
-				return check_node_function_of_activity ($inquiry_id, $activity_id, $uid, 'edit');
+				return pi_activity_check_node_function($activity_id, $uid, 'edit');
 			}
 			else {
 				return FALSE;
 			}
 		}
 		else {
-			return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 		}
 	}
 }
@@ -75,9 +75,9 @@ function pi_available_measures_form(&$node) {
 	
 	//if activity_id then set title to activity title otherise Add measure
 	if ($details->activity_id) {
-		$loaded_activity = load_activity($details->activity_id);
-		drupal_set_title(t($loaded_activity->name));
-		$prefix = "<p>" . $loaded_activity->description . "</p>";
+		$loaded_activity = node_load($details->activity_id);
+		drupal_set_title(t($loaded_activity->title));
+		$prefix = "<p>" . $loaded_activity->body . "</p>";
 	}
 	else {
 		drupal_set_title(t('Enter measurement'));
@@ -559,10 +559,10 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
     $node = node_prepare($node, $teaser);
 	if(is_numeric($node_details->activity_id))
     {
-    	$current_activity = load_activity($node_details->activity_id);
-    	if ($current_activity->name)
+    	$current_activity = node_load($node_details->activity_id);
+    	if ($current_activity->title)
     	{
-    		drupal_set_title(check_plain($current_activity->name));
+    		drupal_set_title(check_plain($current_activity->title));
     	}
     }
     $filter_nid = find_measure_filter_nid_for_uid_and_inquiry($node_details->inquiry_id);

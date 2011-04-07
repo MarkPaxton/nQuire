@@ -9,12 +9,13 @@
 
 function find_unique_node_type_for_uid_and_inquiry($node_type, $uid, $inquiry_id)
 {
-	$query = "SELECT {%s}.nid FROM {%s} LEFT JOIN {node_access} ON {node_access}.nid = {%s}.nid " .
-	  "LEFT JOIN {node} ON {node}.nid = {%s}.nid " . 
-	  "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.nid = {%s}.nid " .
+	$query = "SELECT {%s}.`nid` FROM {%s} " .
+	  "LEFT JOIN {node_access} ON {node_access}.`nid` = {%s}.`nid` " .
+	  "LEFT JOIN {node} ON {node}.`nid` = {%s}.`nid` " . 
+	  "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {%s}.`nid` " .
 	  "LEFT JOIN {pi_activity} ON {pi_activity_node}.`activity_id` = {pi_activity_node}.`nid` " .
 	  "LEFT JOIN {pi_phase} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
-  	  "LEFT JOIN {og_uid} ON {node_access}.gid = {og_uid}.nid " .
+  	  "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
 	  "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " . 
 	  "AND {pi_phase}.`inquiry_nid` = %d ORDER BY `nid` DESC";
 	$result = db_result(db_query($query, $node_type, $node_type, $node_type, $node_type, $node_type, $uid, $uid, $inquiry_id));
@@ -73,39 +74,29 @@ function update_node_title($node, $text=NULL)
   if ($text === NULL) {
     $text = $node->body;
   }
-//get activity title from node body
-$length = 250;
-if(strlen($text) > $length)
-{
-$short_body = substr(check_plain($text), 0, $length);
-$last_space = strrpos($short_body, " ");
-$short_body = substr($short_body, 0, $last_space);
-$text = $short_body."...";
-}
-
-db_query("UPDATE node SET title='%s' WHERE vid=%d ", $text, $node->vid);
-db_query("UPDATE node_revisions SET title='%s' WHERE vid= %d", $text, $node->vid);
+  //get activity title from node body
+  $length = 250;
+  if(strlen($text) > $length)
+  {
+    $short_body = substr(check_plain($text), 0, $length);
+    $last_space = strrpos($short_body, " ");
+    $short_body = substr($short_body, 0, $last_space);
+    $text = $short_body."...";
+  }
+  
+  db_query("UPDATE node SET title='%s' WHERE vid=%d ", $text, $node->vid);
+  db_query("UPDATE node_revisions SET title='%s' WHERE vid= %d", $text, $node->vid);
 }
 
 function update_activity_when_activity_node_updated($node, $activity_title)
 {
-	global $user;
+  global $user;
+  $uid = $user->uid;
+  $details = get_inquiry_details_from_current_path();
 
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
-	$loaded_activity = load_activity($details->activity_id);
-
-	$activity_array = array();
-	$activity_array["name"] = check_plain($activity_title);
-	$activity_array["activity_id"] = $loaded_activity->activity_id;
-	$activity_array["description"] = $loaded_activity->description;
-	$activity_array["activity_type"] = $loaded_activity->activity_type;
-	$activity_array["node_type"] = $loaded_activity->node_type;
-	$activity_array["parameters"] = $loaded_activity->parameters;
-	$activity_array["destination"] = $loaded_activity->destination;
-	$activity_array["audience"] = $loaded_activity->audience;
-
-	save_activity($activity_array);
+  $loaded_activity = node_load($details->activity_id);
+  $loaded_activity->title = $activity_title;
+  node_save($loaded_activity);
 }
 
 /**
@@ -121,30 +112,30 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 {
 	global $user;
 	$uid = $user->uid;
-
+	
 	//load the defined "activity"
 	if( $activity_node !== NULL && is_object($activity_node) )
 	{
 		//$loaded_activity = $activity_node;
-		$loaded_activity = load_activity($details->activity_id);
+		$loaded_activity = node_load($details->activity_id);
 		$loaded_activity->activity_type = $activity_node->activity_type;
 		$loaded_activity->node_type = $activity_node->node_type;
 	}
 	else
 	{
-		$loaded_activity = load_activity($details->activity_id);
+		$loaded_activity = node_load($details->activity_id);
 	}
 
 	
 	//copy over current except for the activity_id
-	$activity_array = array();
-	$activity_array["name"] = check_plain($activity_title);
-	$activity_array["description"] = $loaded_activity->description;
-	$activity_array["activity_type"] = $loaded_activity->activity_type;
-	$activity_array["node_type"] = $loaded_activity->node_type;
-	$activity_array["parameters"] = $loaded_activity->parameters;
-	$activity_array["destination"] = $loaded_activity->destination;
-	$activity_array["audience"] = $loaded_activity->audience;
+	$activity_array = new stdClass();
+	$activity_array->title = check_plain($activity_title);
+	$activity_array->body = $loaded_activity->description;
+	$activity_array->activity_type = $loaded_activity->activity_type;
+	$activity_array->node_type = $loaded_activity->node_type;
+	$activity_array->parameters = $loaded_activity->parameters;
+	$activity_array->destination = $loaded_activity->destination;
+	$activity_array->audience = $loaded_activity->audience;
 	
 	/*
 	 * @todo The following code changes will cause problems with the authoring interface!
@@ -158,10 +149,9 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	//$new_activity_id = $node->nid;
 
 	//create the new activity
-	save_activity($activity_array);
+	node_save($activity_array);
 	
-	$query2 = "SELECT MAX(activity_id) FROM {pi_activity}";
-	$new_activity_id = db_result(db_query($query2));
+	$new_activity_id = $$activity_array->nid;
 
 	//****new details object
 	$new_details = new stdClass;
@@ -245,7 +235,7 @@ function add_new_pi_activity_node($node, $node_function, $visible_status, $detai
 	$query = "INSERT INTO {pi_activity_node} SET inquiry_id = %d, activity_id = %d, nid = %d";
 	db_query($query, $details->inquiry_id, $details->activity_id, $node->nid);
 
-	$activity = load_activity($details->activity_id);
+	$activity = node_load($details->activity_id);
 
 	$activity_status = load_activity_status($details->activity_id, $user->uid);
 

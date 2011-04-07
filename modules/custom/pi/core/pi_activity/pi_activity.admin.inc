@@ -18,8 +18,8 @@ function pi_activity_content($activity) {
 	$details = get_inquiry_details_from_current_path();
 
 	$output = '';
-	drupal_set_title(t('Content for ' . $activity->name));
-	$content_nids = pi_activity_get_activity_content_nids($activity->activity_id, $details->inquiry_id);
+	drupal_set_title(t('Content for ' . $activity->title));
+	$content_nids = pi_activity_get_activity_content_nids($activity->nid, $details->inquiry_id);
 	$title_row = array(t('Title'), t('Author')/*, t('Groups')*/);
 	$rows=array();
 	/*	ob_start();
@@ -33,7 +33,7 @@ function pi_activity_content($activity) {
 		if(isset($node) && ($nid>0))
 		{
 			//	$node_groups = pi_activity_get_activity_content_group_access($node->nid);
-			$row[] = l($node->title, 'activity/' . $activity->activity_id . '/admin/view/' . $node->nid);
+			$row[] = l($node->title, 'activity/' . $activity->nid . '/admin/view/' . $node->nid);
 			$row[] = user_load($node->uid)->name;
 			/*	$group_row = array();
 			 foreach($node_groups as $group)
@@ -66,7 +66,7 @@ function pi_activity_admin_view_node($activity, $node)
 		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 	}
 	$output .= theme('pi_activity_admin_view_node', $activity, node_view($node, FALSE, TRUE, TRUE));
-	drupal_set_title('Content for activity "' . check_plain($activity->name) . '"');
+	drupal_set_title('Content for activity "' . check_plain($activity->title) . '"');
 	return $output;
 }
 
@@ -74,7 +74,7 @@ function theme_pi_activity_admin_view_node($activity, $node_view_page)
 {
 	$output = '';
 
-	$link = l("here", 'activity/' . $activity->activity_id . '/admin/content/');
+	$link = l("here", 'activity/' . $activity->nid . '/admin/content/');
 	$output = "<p>Click $link to return to the activity content list.</p>";
 	$output .= "<div style='background:#CCCCCC;padding:6px;'>";
 	$output .= $node_view_page;
@@ -85,9 +85,9 @@ function theme_pi_activity_admin_view_node($activity, $node_view_page)
 function pi_activity_get_activity_content_group_access($activity_content_nid)
 {
 	$query = "SELECT * FROM {node_access} "
-	. "LEFT JOIN {og} ON {node_access}.gid = {og}.nid "
-	. "LEFT JOIN {node} ON {node_access}.nid = {node}.nid "
-	. "WHERE {node_access}.nid = %d";
+	. "LEFT JOIN {og} ON {node_access}.`gid` = {og}.`nid` "
+	. "LEFT JOIN {node} ON {node_access}.`nid` = {node}.`nid` "
+	. "WHERE {node_access}.`nid` = %d";
 	$result = db_query($query, $activity_content_nid);
 	$data = array();
 	while($row=db_fetch_object($result))

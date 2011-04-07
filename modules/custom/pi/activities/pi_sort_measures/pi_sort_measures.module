@@ -35,10 +35,10 @@ function pi_sort_measures_access($op, $node) {
     $details = get_inquiry_details_from_current_path();
 
     if ($op == 'create') {
-        return check_node_function_of_activity($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
     }
     if ($op == 'update') {
-        return check_node_function_of_activity($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
     }
 }
 
@@ -74,9 +74,9 @@ function pi_sort_measures_form(&$node) {
 	$current_activity = NULL;
 	if(is_numeric($node_details->activity_id))
 	{
-		$current_activity = load_activity($node_details->activity_id);
+		$current_activity = node_load($node_details->activity_id);
 	}
-	if ($current_activity->name)
+	if ($current_activity->title)
 	{
 		$users_group = get_group_of_type($user->uid, $current_activity->audience,
 						$node_details->inquiry_id, $node_details->stage_id, 
@@ -88,7 +88,7 @@ function pi_sort_measures_form(&$node) {
 		}
 		else
 		{
-			$sort_for = $user->name;
+			$sort_for = $user->title;
 		}
 		$node_title = check_plain(t('Selected measures for ') . $sort_for);
 		
@@ -395,7 +395,7 @@ function theme_pi_sort_measures_node_form($form) {
 	}
 	
 	// Build the output
-	$activity = load_activity($details->activity_id);
+	$activity = node_load($details->activity_id);
 	if ($activity->description)
 	{
 		$output  .= '<p>' . $activity->description . '</p>';
@@ -580,7 +580,7 @@ function theme_pi_sort_measures_region($title, $description, $empty, $measures)
 			// $rows[] = array('data' => pi_available_measures_view (), 'class' => 'activity');
 			// $rows[] = array('data' => pi_activity_build_link($measure['nid'], $user->uid, 'heading'), 'class' => 'activity');
 			
-			$measure_activity = load_activity($measure['nid']);
+			$measure_activity = node_load($measure['nid']);
 			$measure_node = node_load($measure_activity->nid);
 			print_r($measure_activity);//->nid . 'XX<br />';
 			$rows[] = array('data' => node_view($measure_activity, TRUE, TRUE), 'class' => 'activity');

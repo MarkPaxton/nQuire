@@ -60,11 +60,11 @@ function pi_hypothesis_access($op, $node, $account) {
     $details = get_inquiry_details_from_current_path();
 
     if ($op == 'create') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
     }
 
     if ($op == 'update') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
     }
 }
 
@@ -78,7 +78,7 @@ function pi_hypothesis_form(&$node) {
   	$node_details = get_inquiry_details_from_current_path();
 
   	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
+  		$current_activity = node_load($node_details->activity_id);
   	}
   	
     $form['title'] = array(
@@ -163,12 +163,12 @@ function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
 	}
 	else
 	{
-		$activity = load_activity($activity_id);
+		$activity = node_load($activity_id);
 		if(isset($activity))
 		{
-			if(isset($activity->name) && !$teaser)
+			if(isset($activity->title) && !$teaser)
 			{
-				drupal_set_title(check_plain($activity->name));
+				drupal_set_title(check_plain($activity->title));
 			}
 		}
 	}

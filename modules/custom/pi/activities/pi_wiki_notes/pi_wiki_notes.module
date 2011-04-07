@@ -41,11 +41,10 @@ function pi_wiki_notes_access($op, $node, $account) {
     $details = get_inquiry_details_from_current_path();
 
     if ($op == 'create') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'add');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
     }
-
     if ($op == 'update' || $op == 'delete') {
-        return check_node_function_of_activity ($details->inquiry_id, $details->activity_id, $user->uid, 'edit');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
     }
 }
 
@@ -62,7 +61,7 @@ function pi_wiki_notes_form(&$node) {
   
   	$node_details = get_inquiry_details_from_current_path();
   	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
+  		$current_activity = node_load($node_details->activity_id);
   	}
   	
   	if ($current_activity->name) {
@@ -181,11 +180,11 @@ function pi_wiki_notes_theme() {
 function theme_pi_wiki_notes($node, $teaser) {
   	$node_details = get_inquiry_details_from_current_path();
   	if (is_numeric($node_details->activity_id)) {
-  		$current_activity = load_activity($node_details->activity_id);
+  		$current_activity = node_load($node_details->activity_id);
   	}
   	
-  	if ($current_activity->name) {
-  		drupal_set_title(t($current_activity->name));
+  	if ($current_activity->title) {
+  		drupal_set_title(t($current_activity->title));
   	}
   	
 	if($teaser) {
