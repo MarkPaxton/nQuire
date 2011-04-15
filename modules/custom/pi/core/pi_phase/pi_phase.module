@@ -6,8 +6,8 @@
  * @todo Rename table to pi_phase rather than pi_phase_node when it's tested and working
  */
 
- 
- /**
+
+/**
  * Define the pi_inquiry node type
  */
 function pi_phase_node_info() {
@@ -21,7 +21,7 @@ function pi_phase_node_info() {
 			'has_body' => TRUE,
 			'body_label' => t('Phase Description'),
 			'min_word_count' => 1,
-		)
+	)
 	);
 }
 
@@ -36,23 +36,23 @@ function pi_phase_perm() {
  * Work out if a user has permission to do something with an Inquiry
  */
 function pi_phase_access($op, $node, $account) {
-  $is_author = $account->uid == $node->uid;
-  switch ($op) {
-    case 'create':
-      // Allow if user's role has 'create inquiry' permission.
-      return user_access('create inquiry', $account);
+	$is_author = $account->uid == $node->uid;
+	switch ($op) {
+		case 'create':
+			// Allow if user's role has 'create inquiry' permission.
+			return user_access('create inquiry', $account);
 
-    case 'update':
-      // Allow if user's role has 'edit own inquiry' permission and user is
-      // the author; or if the user's role has 'edit any inquiry' permission.
-      return user_access('edit own inquiry', $account) && is_author ||
-        user_access('edit any inquiry', $account);
-    case 'delete':
-      // Allow if user's role has 'delete own inquiry' permission and user is
-      // the author; or if the user's role has 'delete any inquiry' permission.
-      return user_access('delete own inquiry', $account) && $is_author ||
-        user_access('delete any inquiry', $account);
-  }
+		case 'update':
+			// Allow if user's role has 'edit own inquiry' permission and user is
+			// the author; or if the user's role has 'edit any inquiry' permission.
+			return user_access('edit own inquiry', $account) && is_author ||
+			user_access('edit any inquiry', $account);
+		case 'delete':
+			// Allow if user's role has 'delete own inquiry' permission and user is
+			// the author; or if the user's role has 'delete any inquiry' permission.
+			return user_access('delete own inquiry', $account) && $is_author ||
+			user_access('delete any inquiry', $account);
+	}
 }
 
 
@@ -68,12 +68,13 @@ function pi_phase_form($node) {
 	$inquiry_data = pi_util_get_names_from_nids($inquiry_nids);
 
 	//$form['#validate'][] = 'pi_phase_form_validate';
-	
+
+
 	if(count($inquiry_data)==0)
 	{
-		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');		
+		drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');
 	}
-	
+
 	$form['title'] = array(
 		'#type' => 'textfield',
 		'#title' => check_plain($type->title_label),
@@ -81,34 +82,43 @@ function pi_phase_form($node) {
 		'#weight' => -5,
 		'#default_value' => $node->title,
 	);
-	
+
+	//Show a simple textarea, no input selector required....
+	$form['body_filter']['body'] = array(
+        '#type' => 'textarea',
+        '#title' => check_plain($type->body_label),
+         '#default_value' => $node->body,
+        '#required' => TRUE,
+		'#weight' => -4
+	);
+
 	$form['inquiry_nid'] = array(
 		'#type' => 'select',
 		'#title' => t('Inquiry for phase'),
 		'#required' => TRUE,
-		'#weight' => -4,
+		'#weight' => -10,
 		'#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
 		'#options' => $inquiry_data,
 		'#allowed_inquiry_nids' => $inquiry_nids,
 		'#element_validate' => array('pi_util_inquiry_nid_validate')
-	);	
+	);
 
 	$phase_groups = pi_get_defined_group_nids();
 	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($phase_groups));
-	$form['#allowed_phase_actors'] = $all_defined_groups;	
 	$group_names['none'] = "Select a group...";
-	//$group_names[] = "Select a group...";
 	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
-	
+
 	if(isset($node->inquiry_nid))
 	{
 		$inquiry = node_load($node->inquiry_nid);
-		$phase_actor_default_value = $inquiry->inquiry_actor;
+		$phase_actor_default_value = $inquiry->phase_actor;
 	}
 	else
-	{ 
+	{
 		$phase_actor_default_value = 'none';
 	}
+
+
 	$form['phase_actor'] = array(
 		'#type' => 'select',
 		'#title' => t('Who is this phase for'),
@@ -120,16 +130,26 @@ function pi_phase_form($node) {
 		'#allowed_phase_actors' => $all_defined_groups,
 		'#element_validate' => array('pi_phase_form_phase_actor_validate')
 	);
-	
-	
+
 	//pi_debug_message($all_defined_groups);
-	
-	$form['body_field'] = node_body_field($node, $type->body_label, $type->min_word_count);
-	$form['body_field']['#weight'] = 3;	
-	$form['body_field']['body']['#rows'] = 6;	
-	$form['body_field']['teaser_include']['#access'] = FALSE;			
 
 	return $form;
+}
+
+/**
+ * This is the validation function to make sure that pi_phase_actor.gid is a valid group
+ * @param array $element
+ * @param array $form_state
+ */
+function pi_phase_form_phase_actor_validate($element, $form_state)
+{
+
+	if(!in_array($form_state['values']['phase_actor'], $element['#allowed_phase_actors']))
+	//if(!in_array($element['#value'], $element['#allowed_phase_actors']))
+	{
+		form_error($element, t('The selected phase actor group is not valid, please choose a group from the list.'));
+	}
+
 }
 
 /**
@@ -140,85 +160,66 @@ function pi_phase_form_alter(&$form, &$form_state, $form_id) {
 	{
 		$form['menu']['#weight'] = 5;
 		//unset( $form['menu'] );
-		
+
 		//Remove attachments and comment settings
 		unset( $form['attachments'] );
 		unset( $form['comment_settings'] );
-		
-		//Done via variable in module.install 
+
+		//Done via variable in module.install
 		//$form['options']['promote']['#default_value'] = FALSE;
 	}
-}
-
-/**
- * This is the validation function to make sure that pi_phase_actor.gid is a valid group
- * @param array $element 
- * @param array $form_state
- */
-function pi_phase_form_phase_actor_validate($element, $form_state)
-{
-	if( empty( $element['#value'] ) ) 
-	{
-		$element['#value'] = $element['#post']['phase_actor'];
-	}
-	
-	if(!in_array($element['#value'], $element['#allowed_phase_actors']))
-	{
-		form_error($element, t('The selected phase actor group is not valid, please choose a group from the list.'));				
-	}
-	
 }
 
 /**
  * hook_insert() - INSERT command for a new inquiry phase
  */
 function pi_phase_insert($node) {
-  // Query the database first to set the weight to place the item at the end of lists.
-  // If the query result is NULL then the the field will to default=0 since the weight
-  // column is defined with NOT NULL DEFAULT 0
-  $initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_phase} WHERE inquiry_nid=%d", $node->inquiry_nid));
-  $data_to_write = new stdClass();
-  $data_to_write->nid = $node->nid;
-  $data_to_write->vid = $node->vid;
-  $data_to_write->inquiry_nid = $node->inquiry_nid;
-  $data_to_write->weight = $initial_weight;
-  $data_to_write->phase_actor = $node->phase_actor;
-  $result = drupal_write_record('pi_phase', $data_to_write);
-  if($result != SAVED_NEW)
-  {
-    $result_string = _pi_write_record_result_string($result);
-    drupal_set_message(t('Problem saving Phase data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
-  }
+	// Query the database first to set the weight to place the item at the end of lists.
+	// If the query result is NULL then the the field will to default=0 since the weight
+	// column is defined with NOT NULL DEFAULT 0
+	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_phase} WHERE inquiry_nid=%d", $node->inquiry_nid));
+	$data_to_write = new stdClass();
+	$data_to_write->nid = $node->nid;
+	$data_to_write->vid = $node->vid;
+	$data_to_write->inquiry_nid = $node->inquiry_nid;
+	$data_to_write->weight = $initial_weight;
+	$data_to_write->phase_actor = $node->phase_actor;
+	$result = drupal_write_record('pi_phase', $data_to_write);
+	if($result != SAVED_NEW)
+	{
+		$result_string = _pi_write_record_result_string($result);
+		drupal_set_message(t('Problem saving Phase data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+	}
 }
 
 /**
  * hook_update() - UPDATE command for an existing inquiry phase
  */
 function pi_phase_update($node) {
-  if ($node->revision)
-  {
-    // New revision; treat it as a new record.
-    pi_phase_insert($node);
-  }
-  else
-  {
-    $data_to_write = new stdClass();
-    $data_to_write->nid = $node->nid;
-    $data_to_write->vid = $node->vid;
-    $data_to_write->inquiry_nid = $node->inquiry_nid;
-    $data_to_write->weight = $initial_weight;
-    $data_to_write->phase_actor = $node->phase_actor;
-    $result = drupal_write_record('pi_phase', $data_to_write, array('nid', 'vid'));
-    if($result != SAVED_UPDATED)
-    {
-      $result_string = _pi_write_record_result_string($result);
-      drupal_set_message(t('Problem saving Phase data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
-    }
-  }
+	if ($node->revision)
+	{
+		// New revision; treat it as a new record.
+		pi_phase_insert($node);
+	}
+	else
+	{
+		$data_to_write = new stdClass();
+		$data_to_write->nid = $node->nid;
+		$data_to_write->vid = $node->vid;
+		$data_to_write->inquiry_nid = $node->inquiry_nid;
+		$data_to_write->weight = $node->weight ? $node->weight : $initial_weight;
+		$data_to_write->phase_actor = $node->phase_actor;
+		$result = drupal_write_record('pi_phase', $data_to_write, array('nid', 'vid'));
+		if($result != SAVED_UPDATED)
+		{
+			$result_string = _pi_write_record_result_string($result);
+			drupal_set_message(t('Problem saving Phase data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+		}
+	}
 }
 
 /**
- * 
+ *
  * Insert or update phase actor
  * @param uint $phase_id nid
  * @param uint $actor_id nid of an og/nquire group
@@ -228,20 +229,20 @@ function pi_phase_set_actor($phase_id, $actor_id)
 	$phase = $node_load($phase_id);
 	if($phase)
 	{
-	  if($phase->type=='pi_phase')
-	  {
-	    $phase->phase_actor = $actor_id;
-	    node_save($phase);
-	  }
-	  else
-	  {
-	    drupal_set_message(t("Trying to update phase actor for node that isn't a phase %nid - it is of type %type.", 
-	     array('%nid' => $phase_id, '%type' => $phase->type)), 'error');
-	  }
+		if($phase->type=='pi_phase')
+		{
+			$phase->phase_actor = $actor_id;
+			node_save($phase);
+		}
+		else
+		{
+			drupal_set_message(t("Trying to update phase actor for node that isn't a phase %nid - it is of type %type.",
+			array('%nid' => $phase_id, '%type' => $phase->type)), 'error');
+		}
 	}
 	else
 	{
-	  drupal_set_message(t("Trying to update phase actor for none existant node %nid", array('%nid' => $phase_id)), 'error');
+		drupal_set_message(t("Trying to update phase actor for none existant node %nid", array('%nid' => $phase_id)), 'error');
 	}
 }
 
@@ -253,12 +254,12 @@ function pi_phase_set_actor($phase_id, $actor_id)
  * hook_nodeapi().
  */
 function pi_phase_nodeapi(&$node, $op, $teaser, $page) {
-  switch ($op) {
-    case 'delete revision':
-      // Notice that we're matching a single revision based on the node's vid.
-      db_query('DELETE FROM {pi_phase} WHERE vid = %d', $node->vid);
-      break;
-  }
+	switch ($op) {
+		case 'delete revision':
+			// Notice that we're matching a single revision based on the node's vid.
+			db_query('DELETE FROM {pi_phase} WHERE vid = %d', $node->vid);
+			break;
+	}
 }
 
 /**
@@ -274,6 +275,9 @@ function pi_phase_delete(&$node) {
  * Custom loader for phase type (called when %phase is specified in a menu parameter)
  */
 function pi_phase_load($node) {
+	
+	//@TODO FIXME What to use, nid or vid ?
+	
 	$return = db_fetch_object(db_query('SELECT `inquiry_nid`, `weight`, `phase_actor` FROM {pi_phase} WHERE vid = %d', $node->vid));
 	return $return;
 }
@@ -307,10 +311,11 @@ function pi_phase_load_nids($inquiry_nid)
  */
 function pi_phase_load_nids_for_user($inquiry_nid, $uid)
 {
+	//@TODO FIXME Added ORDER BY weight to get phases in right order....
 	$query = "SELECT DISTINCT {pi_phase}.`nid` AS nid FROM {pi_phase} AS pi_phase " .
 		"LEFT JOIN {og_uid} AS og_uid ON og_uid.`nid` = pi_phase.`phase_actor` " .
 		"WHERE pi_phase.`inquiry_nid` = %d " .
-		"AND og_uid.`uid` = %d";	
+		"AND og_uid.`uid` = %d ORDER BY weight";	
 	//pi_debug_message(sprintf($query, $inquiry_nid, $uid));
 	$result = db_query($query, $inquiry_nid, $uid);
 	$phase_nodes = array();
@@ -342,7 +347,7 @@ function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
 	{
 		//Use Drupal's default node view.
 		$node = node_prepare($node, $teaser);
-		
+
 		// render the phase activities using a theme function
 		$node->content['activities'] = array(
 			'#value' => theme('phase_activities', $node),
@@ -353,7 +358,7 @@ function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
 
 	// If $teaser is true, node is being displayed as a teaser,
 	// in this case, just show the description and none of the rest of the inquiry stuff
-	if ($teaser) 
+	if ($teaser)
 	{
 		//Use Drupal's default node view.
 		$node = node_prepare($node, $teaser);
@@ -365,11 +370,11 @@ function pi_phase_view($node, $teaser = FALSE, $page = FALSE) {
  * Declare theme functions for pi_inquiry
  */
 function pi_phase_theme() {
-  return array(
+	return array(
     'phase_activities' => array(
       'arguments' => array('node'),
-    ),
-  );
+	),
+	);
 }
 
 

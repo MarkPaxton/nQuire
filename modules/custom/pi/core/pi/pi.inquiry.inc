@@ -18,7 +18,6 @@ function pi_inquiry_inquiry_view($node) {
 	 * to find the inquiry when on the phase or activity level
 	*/
 	
-	
 	//set current inquiry
 	//$sid = get_current_session_id();
 	//set_current_inquiry_for_session_and_user_id($details->inquiry_id, $sid, $uid);
@@ -68,7 +67,9 @@ function pi_inquiry_inquiry_view($node) {
 		$row[] = $phase->body;
 		$rows[] = array('data' => $row);
 		$activity_count[] = count(get_activities_of_stage_phase_and_user($phase->inquiry_id, NULL, $phase->nid, $user->uid));
-		$new_activity_count[] = new_activity_list_count($phase->inquiry_id, $phase->nid, $user->uid);
+		
+		//@TODO FIXME Function new_activity_list_count is missing !
+		//$new_activity_count[] = new_activity_list_count($phase->inquiry_id, $phase->nid, $user->uid);
 	}
 	//get_phase_view_preference
 	$output .= display_phases( $rows, $activity_count, $new_activity_count, $node->layout);

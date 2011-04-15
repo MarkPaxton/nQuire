@@ -137,25 +137,20 @@ function pi_authoring_order_phases_form_submit($form, &$form_state)
 	
 	//put all the phases in an array
 	foreach($form_state['values']['order_phases_phases'] as $inquiry_phase_nid => $new_order)
-	{
-		$phase_order[$inquiry_phase_nid] = $new_order; 
+	{ 
+		$phase_order[ $new_order['weight'] ] = $inquiry_phase_nid;
 	}
+	
 	//sort the elements by the new order
-	asort($phase_order);
-	
-	// Now reorder from 0..n based on this order
-	$count = 0;
-	foreach($phase_order as $phase_nid => $order)
-	{
-		$phase_order[$phase_nid] = $count++;		
-	}
-	
-	foreach($phase_order as $phase_nid => $weight)
+	ksort($phase_order);
+	$weight = 1;
+	foreach($phase_order as $key => $phase_nid) // => $weight)
 	{
 		if($phase = node_load($phase_nid))
 		{
 			$phase->weight = $weight;
 			node_save($phase);
+			$weight++;
 		}
 		else
 		{

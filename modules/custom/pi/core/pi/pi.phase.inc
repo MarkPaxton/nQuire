@@ -22,25 +22,37 @@ function pi_inquiry_phase_view($phase)
 	$output .= t("<p>" . $phase->body . "</p>");
 
 	$hidden_created_activity_types = get_hidden_summary_activities($phase->inquiry_nid);
-
+	
 	if ($activities)
-	{
+	{	
 		$list = array();
 		$active_activity_flag = 0;
+		
 		foreach($activities as $activity_nid)
 		{
 			$activity = node_load($activity_nid);
-
+			//print_r( $activity );
+			
 			// only display activities that are not in the hidden list
-			if(!(in_array($activity->node_type, $hidden_created_activity_types)))
+			if(!(in_array($activity->type, $hidden_created_activity_types)))
 			{
 				//Changed the order of the code execution because this function can possibly generate
 				//the missing node instance (pi_fooddiary_data).
 				//Therefore activity status and build activity link has to be executed later.
 				$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid); 
 				//get_nid_for_inquiry_activity_and_user($phase->inquiry_nid, $activity->activity_id, $user->uid);
-				$loaded_actvity_node = node_load($nid);			
+				$loaded_actvity_node = node_load($nid);
+
+				if( !is_object( $loaded_actvity_node ) )
+				{
+					$loaded_actvity_node = $activity;
+				}
+				
 				$loaded_activity_status = pi_activity_load_status($activity->nid, $user->uid);
+				
+				//echo "==>" . $nid;
+				//print_r( $activity );
+				//print_r( $loaded_activity_status );
 				
 				// so that (by default) always open an existing node in view
 				// if node_function for link is edit or view then set node function to view
@@ -58,8 +70,12 @@ function pi_inquiry_phase_view($phase)
 				}
 
 				$activity_desc = pi_activity_teaser($loaded_actvity_node, $activity, $link_node_function);
-					
+				
 				$list[] = array('data' => $activity_link . $activity_desc, 'class' => 'activity');
+			}
+			else 
+			{
+				drupal_set_message( t( 'Activity %type is set to be hidden', array( '%type' => $activity->type ) ) );
 			}
 		}
 
