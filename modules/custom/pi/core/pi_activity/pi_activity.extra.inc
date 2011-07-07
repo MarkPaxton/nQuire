@@ -155,11 +155,22 @@ function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
 
 }
 
+//@todo depricate
 function get_activity_id_for_nid($nid) {
+	return pi_activity_get_activity_nid_for_content_nid($nid);
+}
+
+/**
+ * Get's the activity nid for a particular content or null if there's no activity associated
+ * @param uint $nid
+ * @return pi_activity node id or null
+ */
+function pi_activity_get_activity_nid_for_content_nid($nid) {
 	$query = "SELECT activity_id FROM {pi_activity_node} WHERE nid = %d";
 	$result = db_fetch_object(db_query($query, $nid));
 	return $result->activity_id;
 }
+
 
 /**
  * Uses arguments from the path and the pi_activity_table to return the activity type.
@@ -580,7 +591,10 @@ function update_activity_actor($actor) {
 function pi_activity_load_status($activity_id, $uid)
 {
 	$return_status = array('visible_status' => '', 'node_function' => '');
-
+  if($activity_id==null)
+  {
+    return $return_status;
+  }
 	if($activity_id==NULL)
 	{
 		drupal_set_message('pi_activity_load_status: null value for activity_id passed', 'warning');

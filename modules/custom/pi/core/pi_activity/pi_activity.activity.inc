@@ -13,12 +13,10 @@
  * @param uint $activity_id The id of the pi_activity to work with  
  * @param $arg_node_function The function to perform on the activity
  */
-function pi_activity_content_view($activity, $arg_node_function) {
-
+function pi_activity_content_view($activity, $arg_node_function)
+{
 	global $user;
-	$uid = $user->uid;
 	$activity_inquiry_id = get_inquiry_id_for_activity_id($activity->nid);
-	
 	$output = '';
 				
 	// Check that the node function given in the URL is allowed by comparing it with the 
@@ -29,7 +27,7 @@ function pi_activity_content_view($activity, $arg_node_function) {
 	{
 		case 'view':
 			//get nid
-			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $uid);
+			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
 			if(isset($nid))
 			{
 				$loaded_node = node_load($nid);
@@ -55,7 +53,7 @@ function pi_activity_content_view($activity, $arg_node_function) {
 			// 2) If "pi_activity_get_node_function" is not add, then this indicates an add shortcut COULD be used
 			// 3) If an "Add x" activity of the correct node type exists, then the add function is available to be
 			//		called, so forward to that page using drupal_goto().
-			$node_function = pi_activity_get_node_function($activity->nid, $uid);
+			$node_function = pi_activity_get_node_function($activity->nid, $user->uid);
 			if($node_function == 'add')
 			{
 				// Normal add activity
@@ -83,7 +81,7 @@ function pi_activity_content_view($activity, $arg_node_function) {
 			break;
 		case 'edit':			
 			//get nid
-			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $uid);
+			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
 			//build form
 			$loaded_node = node_load($nid);
 			if( !function_exists("node_page_edit")) {

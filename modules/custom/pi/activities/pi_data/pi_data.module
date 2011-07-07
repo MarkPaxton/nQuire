@@ -37,8 +37,19 @@ function pi_data_perm() {
  */
 function pi_data_access($op, $node, $account) {
   global $user;
-  $uid = $user->uid;
-  $details = get_inquiry_details_from_current_path();
+  
+  // if it's a new node, let the drupal system decide
+  if($node=="pi_data")
+  {
+    return null;
+  }
+  
+  $activity_id = pi_activity_get_activity_nid_for_content_nid($node_nid);
+  if($activity_id == null)
+  {
+    pi_debug_message($node);
+    return null;
+  }
   if ($op == 'create')
   {
     return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');

@@ -6,54 +6,54 @@ module_load_include('inc', 'pi_activity', 'pi_activity.workflow' );
 module_load_include('inc', 'pi_activity', 'pi_activity.extra' );
 
 /*
- function process_error_backtrace($errno, $errstr, $errfile, $errline, $errcontext) {
- if(!(error_reporting() & $errno))
- return;
- switch($errno) {
- case E_WARNING      :
- case E_USER_WARNING :
- case E_STRICT       :
- case E_NOTICE       :
- case E_USER_NOTICE  :
- $type = 'warning';
- $fatal = false;
- break;
- default             :
- $type = 'fatal error';
- $fatal = true;
- break;
- }
- $trace = array_reverse(debug_backtrace());
- array_pop($trace);
- if(php_sapi_name() == 'cli') {
- echo 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
- foreach($trace as $item)
- echo '  ' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()' . "\n";
- } else {
- echo '<p class="error_backtrace">' . "\n";
- echo '  Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
- echo '  <ol>' . "\n";
- foreach($trace as $item)
- echo '    <li>' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()</li>' . "\n";
- echo '  </ol>' . "\n";
- echo '</p>' . "\n";
- }
- if(ini_get('log_errors')) {
- $items = array();
- foreach($trace as $item)
- $items[] = (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()';
- $message = 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ': ' . join(' | ', $items);
- error_log($message);
- }
- if($fatal)
- {
- exit(1);
- }
- }
+function process_error_backtrace($errno, $errstr, $errfile, $errline, $errcontext) {
+  if(!(error_reporting() & $errno))
+  return;
+  switch($errno) {
+    case E_WARNING      :
+    case E_USER_WARNING :
+    case E_STRICT       :
+    case E_NOTICE       :
+    case E_USER_NOTICE  :
+      $type = 'warning';
+      $fatal = false;
+      break;
+    default             :
+      $type = 'fatal error';
+      $fatal = true;
+      break;
+  }
+  $trace = array_reverse(debug_backtrace());
+  array_pop($trace);
+  if(php_sapi_name() == 'cli') {
+    echo 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
+    foreach($trace as $item)
+    echo '  ' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()' . "\n";
+  } else {
+    echo '<p class="error_backtrace">' . "\n";
+    echo '  Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
+    echo '  <ol>' . "\n";
+    foreach($trace as $item)
+    echo '    <li>' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()</li>' . "\n";
+    echo '  </ol>' . "\n";
+    echo '</p>' . "\n";
+  }
+  if(ini_get('log_errors')) {
+    $items = array();
+    foreach($trace as $item)
+    $items[] = (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()';
+    $message = 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ': ' . join(' | ', $items);
+    //error_log($message);
+    drupal_set_message($message);
+  }
+  if($fatal)
+  {
+    exit(1);
+  }
+}
 
  set_error_handler('process_error_backtrace');
  */
-
 /**
  *
  * This functions returns the information for the activity node
@@ -1114,8 +1114,6 @@ function pi_activity_insert($node)
 		//Start with the default status for all activity types
 		$default_status = array(
       		'activity_id'=>$node->nid,
-//@TODO FIXME Not sure if inquiry_id is still required ?		
-			'inquiry_id'=> $node->inquiry_nid,
       		'uid' => NULL,
 			//'gid' => $node->actor,
       		'gid' => $node->selects['gid'],
@@ -1124,7 +1122,7 @@ function pi_activity_insert($node)
 
 		$activity_statuses_to_add[] = $default_status;
 		
-		drupal_set_message( var_export( $activity_statuses_to_add, TRUE ) );
+		//drupal_set_message( var_export( $activity_statuses_to_add, TRUE ) );
 
 		// If it is a shared activity, then make a 'view' status for the share group
 		// otherwisese just make the standard activity status for the activity.
@@ -1169,8 +1167,6 @@ function pi_activity_insert($node)
 					{
 						$activity_statuses_to_add[] =  array(
               				'activity_id'=>$node->nid,
-//@TODO FIXME Not sure if inquiry_id is still required ?						
-							'inquiry_id'=> $node->inquiry_nid,
               				'uid' => NULL,
               				'gid' => $audience_nid,
               				'node_function' => 'view',
@@ -1195,7 +1191,7 @@ function pi_activity_insert($node)
 
 	foreach($activity_statuses_to_add as $status)
 	{
-		drupal_set_message( var_export( $status, TRUE ) );
+		//drupal_set_message( var_export( $status, TRUE ) );
 		//pi_debug_message("Writing status for " . $node->title);
 		//pi_debug_message($status);
 		$result = drupal_write_record('pi_activity_status', $status);
@@ -1395,7 +1391,7 @@ function pi_activity_update($node)
 	$activity_statuses_to_update = array();
 	foreach ($existing_activity_statuses as $existing_status_gid => $existing_status)
 	{
-		if(!in_array(array_keys($activity_statuses_to_add), $existing_status_gid))
+		if(!in_array($existing_status_gid, array_keys($activity_statuses_to_add)))
 		{
 			drupal_set_message(t("Activity statis for !activity_id set for group !gid, but this is not a valid actor or audience gid so it's being removed.",
 			array('!activity_id' => $node->nid, '!gid' => $existing_status_gid)));
