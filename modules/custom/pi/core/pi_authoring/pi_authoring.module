@@ -41,6 +41,14 @@ function pi_authoring_theme() {
 			'arguments' => array('form' => NULL),
 			'file' => 'pi_authoring.inquiry_edit.inc',
 		),
+		'pi_authoring_phase_activities' => array(
+			'arguments' => array('form' => NULL),
+			'file' => 'pi_authoring.inquiry_edit.inc',
+		),
+		'pi_authoring_order_activities_form' => array(
+			'arguments' => array('form' => NULL),
+			'file' => 'pi_authoring.inquiry_edit.inc',
+		),
 		'pi_authoring_admin_groups_form' => array(
 			'arguments' => array('form' => NULL),
 			'file' => 'pi_authoring.admin_groups.inc',
@@ -224,6 +232,7 @@ function pi_authoring_menu() {
 		'weight' => 2,
 	);
 
+
   $items['inquiry/%node/edit/measures'] = array(
     'title' => 'Edit Measures',
     'page callback' => 'pi_measure_filter_call_form',
@@ -259,6 +268,19 @@ function pi_authoring_menu() {
 		'weight' => 1,
 	);
 	
+	// NOTE: If you change the url below also change pi_authoring_form_pi_activity_node_form_alter()
+	$items['phase/%node/activity/add'] = array(
+		'title' => 'Add an activity',
+		'file' => 'pi_authoring.inquiry_activity_add.inc',
+		'page callback' => 'pi_authoring_inquiry_activity_add',
+		'page arguments' => array(1),
+		'type' => MENU_CALLBACK,
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'weight' => 1,
+	);
+	
+	
 	
 	// NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
 	$items['phase/%node/inquiry'] = array(
@@ -279,6 +301,17 @@ function pi_authoring_menu() {
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
 	);
+
+	// NOTE: If you change the url below also change pi_authoring_form_pi_activity_node_form_alter()
+	$items['activity/%node/inquiry'] = array(
+		'title' => 'View stage inquiry',
+		'file' => 'pi_authoring.activity.inc',
+		'page callback' => 'pi_authoring_activity_inquiry',
+	    'page arguments' => array(1),
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+	);
+	
 	
 	
 	$items['phase/%node/view'] = array(
@@ -304,18 +337,16 @@ function pi_authoring_menu() {
 		'weight' => 1
 	);
 	
-	// NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
 	$items['phase/%node/edit/activities'] = array(
 		'title' => 'Edit Activities',
-		'file' => 'pi_authoring.phase.inc',
-		'page callback' => 'pi_authoring_phase_edit',
-	    'page arguments' => array(1),
-		'access arguments' => array('access pi_authoring content'),
+		'file' => 'pi_authoring.inquiry_edit.inc',
+		'page callback' => 'pi_authoring_phase_activities',
+		'page arguments' => array(1),
 		'type' => MENU_LOCAL_TASK,
-		'weight' => 2
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'weight' => 2,
 	);
-	
-	
 	
 	// NOTE: If you change the url below also change pi_authoring_form_pi_stage_node_form_alter()
 	$items['stage/%node/edit'] = array(
@@ -771,6 +802,116 @@ function pi_authoring_form_pi_stage_node_form_alter(&$form, &$form_state)
 	}
 	//otherwise if it's not related to inquiry editing then don't touch the form
 }
+
+/**
+ * This function uses hook_form_FORM-ID_alter() to set the redirect and the inquiry field as hidden
+ * when adding/editing an activity via the nQuire authoring system (detected via checking the url)
+ * This deas with 2 curcumstances:
+ * 	(1) Adding a new activity to an inquiry via the /phase/%phase/activity/add url
+ *    -> alter form to hide inquiry selection dropdown
+ *    -> redirect to /inquiry/%inquiry/stages on completion
+ *  (2) Editing a phase via /stage/%phase/edit
+ *    -> redirect to /inquiry/%inquiry/stages on completion 
+ *    		n.b. this isn't directly possible given that inquiry_id isn't known at this stage
+ *    			in the form lifecycle so the page is routed via "stage/inquiry" which will redirect to
+ *    			the inquiry page automatically
+ *    
+ */
+function pi_authoring_form_pi_activity_node_form_alter(&$form, &$form_state)
+{
+	//Strip the request url of the preceeding drupal stuff base_url and ?q=/
+	// so that it's possible to work out whether the page request was from /phase/%phase/activity/add
+	// or from /node/%node/edit
+	$drupal_path = str_replace(base_path(), '', request_uri());
+	$drupal_path = str_replace('?q=', '', $drupal_path);
+	
+	// Split the string into parts to get the inquiry id if it exists...
+	$path_parts = explode('/', $drupal_path);
+	
+	// Look for /inquiry/{number}/stage/add
+	// First see if the array is big enough to avoid looking at null refs.
+	if(count($path_parts)>= 4)
+	{
+		// Now check all the parts for vaildity... inquiry NUMBER stage add
+		if( (strcasecmp($path_parts[0], 'phase')==0) && 
+			is_numeric($path_parts[1]) &&
+			(strcasecmp($path_parts[2], 'activity')==0) )
+			{
+				// the last part of the url is a special case since it could be either
+				// /phase/%phase/activity/add OR 
+				// /phase/%phase/activity/add?some=query&string=too OR
+				// /phase/%phase/activity/add&some=query&string=too
+				$valid_strings = array('add', 'add?', 'add&'); 
+				if(in_array(strtolower($path_parts[3]), $valid_strings))
+				{
+					// finally check that it's a valid phase id
+					$potential_phase_id = $path_parts[1];
+					$potential_phase_node = node_load($potential_phase_id);
+						
+					//check it's loaded something, then check it's type...
+					if(($potential_phase_node !== FALSE))
+					{
+						if($potential_phase_node->type == 'pi_phase')
+						{
+							// Hurrah, it pased the test: it's an inquiry node
+							// Make the inquiry selection on the form in advance and hide it
+							$form['inquiry_nid']['#type'] = 'hidden';
+							$form['inquiry_nid']['#value'] = $potential_phase_node->inquiry_nid;
+							$form['inquiry_nid']['#prefix'] = "<div>";
+							// generate the checkboxes again as it's not picked up by ahah helper here!
+							$form['phase_nid']['#type'] = 'hidden';
+							$form['phase_nid']['#value'] = $potential_phase_node->nid;
+							$form['phase_nid']['#prefix'] = "<div>$potential_phase_node->nid";
+							// Set redirection to go to the inquiry stage page
+							$form['#redirect'] = "phase/$potential_phase_id/edit/activities";
+							
+						}
+						else
+						{
+							// It wasn't a valid inquiry node, so fall back to standard stage editing page
+							drupal_set_message(t('A phase id ('. check_plain($potential_phase_id) . ') was specified for this activity, but the id didn\'t refer to a valid phase node; select a phase from the form instead.'), 'warning');
+						}
+					}
+					else
+					{
+						// It wasn't a node, so fall back to standard stage editing page
+						drupal_set_message(t('A phase id ('. check_plain($potential_phase_id) . ') was specified for this stage, but there as no item with that id; select an phase from the form instead.'), 'warning');
+					}
+				}
+			}
+		// ELSE... don't change the form or bother wirh an error message as the url was so wrong it's
+		//   probably not intended to make this work!			
+	}
+	else
+	{
+		
+		// Is it a /activity/%activity/edit url 
+		if(count($path_parts)>= 3)
+		{
+			// Now check all the parts for vaildity... inquiry NUMBER stage add
+			// Now check all the parts for vaildity... inquiry NUMBER edit
+			if( (strcasecmp($path_parts[0], 'activity')==0) && is_numeric($path_parts[1]) )
+			{
+				// the last part could end in ? and & as well:
+				$valid_strings = array('edit', 'edit?', 'edit&');
+				if(in_array(strtolower($path_parts[2]), $valid_strings))
+				{
+					// Get the node id of the form being edited...
+					$nid = $form['nid']['#value'];
+					// check if nid is set
+					if(isset($nid))
+					{
+						// if it was from the authoring edit page, then get the node id and redirect back
+						// to the authoring page for it... via the special redirect page (see function comment)
+						$form['#redirect'] = "activity/$nid/inquiry";
+					}
+				}
+			}
+		}
+	}
+	//otherwise if it's not related to inquiry editing then don't touch the form
+}
+
 
 //-------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------Table View of Inquiry------------------------------------------------

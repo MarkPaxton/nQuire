@@ -949,9 +949,12 @@ function pi_activity_load($node)
 		// map destination_after to destination - using destination in forms overrides
 		// the form destination variable, and breaks  it, so this has to have a different name
 		// in the form
-		if ($activity->destination!=NULL)
+		if (!isset($activity->destination))
 		{
-			$activity->destination = &$activity->destination_after;
+		  if ($activity->destination != NULL)
+		  {
+			$acitivity->destination = &$activity->destination_after;
+		  }
 		}
 
 		//The constraints of the construction of the form mean that variable names are
@@ -1393,7 +1396,7 @@ function pi_activity_update($node)
 	{
 		if(!in_array($existing_status_gid, array_keys($activity_statuses_to_add)))
 		{
-			drupal_set_message(t("Activity statis for !activity_id set for group !gid, but this is not a valid actor or audience gid so it's being removed.",
+			drupal_set_message(t("Activity status for !activity_id set for group !gid, but this is not a valid actor or audience gid so it's being removed.",
 			array('!activity_id' => $node->nid, '!gid' => $existing_status_gid)));
 			// If a status isn't to be updated, then remove it
 			db_query('DELETE FROM {pi_activity_status} WHERE `pas_id` = %d', $existing_status['pas_id']);
@@ -1514,7 +1517,8 @@ function _pi_activity_form_data_to_pi_activity_row($node)
 	$property_to_column = array(
 			'nid' => 'nid',
     		'vid' => 'vid',
-    		'activity_type' => 'activity_type',
+    		'weight' => 'weight',
+			'activity_type' => 'activity_type',
     		'node_type' => 'node_type',
     		'parameters' => 'parameters',
     		'destination_after' => 'destination_after',
@@ -1694,7 +1698,6 @@ function pi_activity_nodeapi(&$node, $op)
 {
 	if ($node->type != 'image')
 	{
-
 		if(in_array($op, array('insert', 'update', 'delete')))
 		{
 			global $user;
@@ -1917,60 +1920,64 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
 
 
 /**
- *
- * Return an array of activity nodes from the database for a particular user
+ * Return an array of activity nodes from the database for a particular phase
  * @param uint $phase_nid
  * @param uint $stage_nid
  */
+function pi_activity_get_activities_of_phase($phase_nid)
+{
+  return pi_activity_get_activities_of_phase_and_user($phase_nid, null);
+}
+
+/**
+ *
+ * Return an array of activity nodes from the database for a particular user and phase
+ * @param uint $phase_nid If phase is null get all phases actibities (for all inquiries!)
+ * @param uint $uid If use id is null the get all defined activities  
+ */
 function pi_activity_get_activities_of_phase_and_user($phase_nid, $uid)
 {
-	//get the phases and stages for this inquiry and user
-	if (is_null($phase_nid))
-	{
-		drupal_set_message('Null given for phase_nid in pi_activity_get_activities_of_phase_and_user, returning all activities (this is annoying.. use pi_activity_get_activities_of_inquiry_and_user() instead)', 'warning');
-		$query = "SELECT DISTINCT nid FROM {pi_activity} " .
-      "LEFT JOIN {pi_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity}.activity_id " .
-      "LEFT JOIN {pi_activity_actor} ON {pi_activity}.activity_id = {pi_activity_actor}.activity_id " . 
-      "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid ";
-	}
-	else
-	{
-		$return_data = array();
-		$phase = node_load($phase_nid);
-		if(is_null($phase))
-		{
-			drupal_set_message('The given phase for pi_activity_get_activities_of_phase_and_user() does not exist as a node', 'error');
-			return array();
-		}
-		else
-		{
-			if($phase->type=='pi_phase')
-			{
-				drupal_set_message('The given node is not a phase for pi_activity_get_activities_of_phase_and_user', 'error');
-				return array();
-			}
-			else
-			{
-				$query .= "WHERE phase_nid = %d ";
-			}
-		}
+  $return_data = array();
+  
+  // If no phase is chosen then it'll get all for a user which is bad as you don't know what inquiry they are from!
+  $query = "SELECT DISTINCT {pi_activity}.nid FROM {pi_activity} " .
+			"LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity}.nid ";
+  if (is_null($phase_nid))
+  {
+	drupal_set_message('Null given for phase_nid in pi_activity_get_activities_of_phase_and_user, returning all activities (this is annoying.. use pi_activity_get_activities_of_inquiry_and_user() instead)', 'warning');
+  }
+  else
+  {
+    $phase = node_load($phase_nid);
+    if(is_null($phase))
+    {
+      drupal_set_message(t('The given phase for pi_activity_get_activities_of_phase_and_user() does not exist as a node'), 'error');
+    }
+    else
+    {
+      if($phase->type!='pi_phase')
+      {
+        drupal_set_message(t('The given node is not a phase for pi_activity_get_activities_of_phase_and_user'), 'error');
+      }
+      else
+      {
+        $query .= "WHERE {pi_activity}.phase_nid = %d ";
+      }
+    }  
+    // If user isn't specified get all for the phase, otherwise get th eones belonging to the user or associated groups
+    if(!is_null($uid))
+    {
+      $query .= "AND ( {og_uid}.uid = %d OR {pi_activity}.actor = %d ) ";
+    }
 
-		if(!is_null($uid))
-		{
-			$query .= "AND ( {og_uid}.uid = %d OR {pi_activity_actor}.uid = %d ) ";
-		}
-		else
-		{
-			drupal_set_message("No user id set for pi_activity_get_activities_of_phase_and_user, returning all activities - use pi_activity_get_activities_for_inquiry() instead.", 'warning');
-		}
-	}
-	$query .= "ORDER BY {pi_activity}.weight";
-	$result = db_query($query, $phase->nid, $uid);
-	while($activity = db_fetch_object($result))
-	{
-		$return_data[$activity->nid] = $activity;
-	}
-	return $return_data;
+    $query .= "ORDER BY {pi_activity}.weight";
+    $result = db_query($query, $phase->nid, $uid);
+    while($activity = db_fetch_object($result))
+    {
+      $return_data[$activity->nid] = $activity;
+    }
+  }
+  return $return_data;
 }
 
 /**

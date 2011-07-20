@@ -33,7 +33,7 @@ function pi_authoring_inquiry_phases($inquiry) {
 	$output = '';
 	
 	//set the page title to be the inquiry name
-	drupal_set_title("Editing " .  check_plain($inquiry->title));
+	drupal_set_title("Editing @title", array( '@title' => $inquiry->title));
 	$output .= theme('pi_authoring_inquiry_phases', $inquiry->nid);	
 	
 	// Query for inquiry phases 
@@ -161,14 +161,14 @@ function pi_authoring_order_phases_form_submit($form, &$form_state)
 
 /**
  * This generates the page to edit the order of stages in an inquiry
- * @param uint $inquiry_id is a valid inquiry id.
+ * @param uint $inquiry is a valid inquiry.
  */
 function pi_authoring_inquiry_stages($inquiry) {
 	// Use this to apply module specific css
 	$output = '';
 	
 	//set the page title to be the inquiry name
-	drupal_set_title("Editing " .  check_plain($inquiry->title));
+	drupal_set_title(t("Editing @title", array('@title' => $inquiry->title )));
 	$output .= theme('pi_authoring_inquiry_stages', $inquiry->nid);
 	
 	// Query for inquiry phases and list them if there are any
@@ -185,6 +185,35 @@ function pi_authoring_inquiry_stages($inquiry) {
 		drupal_set_message("No stages added so far in this inquiry; you need at least one stage in every inquiry.", 'warning', FALSE);
 	}
 	return $output;
+}
+
+/**
+ * This generates the page to edit the order of activities in a phase
+ * @param uint $phase is a valid phase.
+ */
+function pi_authoring_phase_activities($phase) {
+	// Use this to apply module specific css
+	$output = '';
+	
+	//set the page title to be the inquiry name
+	drupal_set_title(t("Editing activities in @phase", array( '@phase' => check_plain($phase->title)) ));
+	$output .= theme('pi_authoring_phase_activities', $phase->nid);
+	
+	// Query for inquiry phases and list them if there are any
+	$activity_nids = array_keys(pi_activity_get_activities_of_phase($phase->nid));
+	if(!empty($activity_nids))
+	{
+		// Get the phases names to show what phases each stage has.
+		$output .= drupal_get_form('pi_authoring_order_activities_form', $activity_nids, $phase->nid);
+	}
+	else
+	{
+		// Display a warning message to the user as there are no phases yet defined 
+		drupal_set_message("No activities added so far in this inquiry; you need at least one activity in every inquiry.", 'warning', FALSE);
+	}
+	
+	return $output;
+	
 }
 
 /**
@@ -310,6 +339,116 @@ function pi_authoring_order_stages_form_submit($form, &$form_state)
 }
 
 
+/**
+ * This function creates the form for draggable activity ordering on the edit inquiry page
+ * @param $activities array of each of the activities in the inquiry created from db_fetch_object
+ * @param uint $inquiry_nid the inquiry nid te activities belong to.
+ * @return array describing a form in drupal api format
+ */
+function pi_authoring_order_activities_form(&$form_state, $activities, $phase_nid) {
+	
+	$form = array();
+	$form['#theme'] = 'pi_authoring_order_activities_form';
+	$form['#title'] = 'Inquiry activities';
+	
+	$form['order_activities_activities'] = array(
+		'#tree' => TRUE
+	);
+	
+	$activity_nids = pi_activity_get_activities_of_phase($phase_nid);
+
+	$position = 0;
+	foreach($activities as $activity_nid)
+	{
+	  $activity = node_load($activity_nid);
+	  // check th eactivity id valid and it's an activity...
+	  if($activity!=null)
+	  {
+	    if($activity->type=='pi_activity')
+	    {
+          // Get only the parent activities and ignore child ones
+	      if($activity->parent_activity==null)
+	      {
+	        $form['order_activities_activities'][$activity->nid]['title'] =
+	        array(
+		 		'#value' => check_plain($activity->title)
+	        );
+	        $form['order_activities_activities'][$activity->nid]['body'] =
+	        array(
+				'#value' => $activity->body
+	        );
+	        $form['order_activities_activities'][$activity->nid]['phases'] = array('#tree'=>TRUE);
+	        $form['order_activities_activities'][$activity->nid]['#actor'] = $activity->actor;
+	        $form['order_activities_activities'][$activity->nid]['#audience'] = $activity->audience;
+	        $form['order_activities_activities'][$activity->nid]['weight'] =
+	        array(
+	            '#type'          => 'weight',
+	            '#delta'         => count($activities),
+	            '#default_value' => $position
+	        );
+
+	        $position++;
+	      }
+	    }
+	    else
+	    {
+	      drupal_set_message(t('Activity @nid is a @type not an activity.', array('@nid' => $activity_nid, '@type' => $activity->type)), 'error');
+	    }
+	  }
+	  else
+	  {
+	    drupal_set_message(t('Activity @nid not found.', array('@nid' => $activity_nid)), 'error');
+	  }
+	}
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Save'),
+  	);
+  	return $form;	
+}
+
+/**
+ * This handles the data from the inquiry activity ordering form, it does not take the actual order
+ * numbers provided by the form, but reorders them from 0..(n-1) so that the position data in the 
+ * table is always consistant and not surceptable to errors introduced by bad post data.
+ * @param array $form drupal api form data
+ * @param array $form_state drupal api submitted form data
+ */
+function pi_authoring_order_activities_form_submit($form, &$form_state)
+{
+	$activity_order = array();
+	
+	//put all the activities in an array
+	foreach($form_state['values']['order_activities_activities'] as $inquiry_activity_nid => $new_order)
+	{
+		$activity_order[$inquiry_activity_nid] = $new_order; 
+	}
+	//sort the elements by the new order
+	asort($activity_order);
+	
+	// Now reorder from 0..n based on this order
+	$count = 0;
+	foreach($activity_order as $activity_nid => $order)
+	{
+		$activity_order[$activity_nid] = $count++;		
+	}
+
+	foreach($activity_order as $activity_nid => $weight)
+	{
+		if($activity = node_load($activity_nid))
+		{
+			$activity->weight = $weight;
+			node_save($activity);
+		}
+		else
+		{
+			drupal_set_message(t("Can't find activity $activity_nid"), 'error');
+		}
+	}
+}
+
+
+
 
 /**
  * This creates the layout for the order inquiries form, with draggable elelemts 
@@ -418,6 +557,55 @@ function theme_pi_authoring_order_stages_form($form) {
 	return $output;
 }
 
+/**
+ * Theme function for the inquiry stages page - provides the link to create a new phase in the inquiry
+ * @param uint $inquiry_id
+ */
+function theme_pi_authoring_phase_activities($phase_id)
+{
+	$output='';
+	$link = l('here', "phase/$phase_id/activity/add");    	
+	// Display some boilerplate text about defining inquiries...
+	$output .="<div class='help'>\n";
+	$output .= "<p>A phase contains activities that describe work to do.  Work can be assigned to individuals or groups, and shared or kept private.  ";
+	$output .= "To add an activity click $link.</p>";
+	$output .= "</div>\n"; // #help
+	return $output;
+}
+
+
+/**
+ * This creates the layout for the order activities form, with draggable elements 
+ * @param array $form description of a form based on drupal api
+ * @return string html output for the form
+ */
+function theme_pi_authoring_order_activities_form($form) {
+	$output = '';
+	$output .= '<div>Drag the arrows up and down to to change the order of the activities and click save to finish.</div>';
+
+	drupal_add_tabledrag('pi-authoring-order-activities-sort', 'order', 'sibling', 'pi-authoring-order-activities-element');
+	$header = array(array('data' => '', 'width' => '29'), 'Activity', 'Description', 'Position');
+
+	$rows = array();
+	foreach (element_children($form['order_activities_activities']) as $key)
+	{
+		// Add class to group weight fields for drag and drop.
+		$form['order_activities_activities'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-activities-element';
+
+		$row = array('');
+		$row[] = l(drupal_render($form['order_activities_activities'][$key]['title']), "activity/$key/edit");
+		$phase_description_row = '';
+		$phase_description_row .= '<div>' . drupal_render($form['order_activities_activities'][$key]['body']) . '</div>';
+		$phase_description_row .= '<div>' . _pi_activity_explain_actor_and_audience($form['order_activities_activities'][$key]['#actor'], $form['order_activities_activities'][$key]['#audience']) . '</div>';
+		$row[] = $phase_description_row;
+		$row[] = drupal_render($form['order_activities_activities'][$key]['weight']);
+
+		$rows[] = array('data' => $row, 'class' => 'draggable');
+	}
+	$output = theme('table', $header, $rows, array('id' => 'pi-authoring-order-activities-sort'));
+	$output .= drupal_render($form);
+	return $output;
+}
 
 
 ?>
