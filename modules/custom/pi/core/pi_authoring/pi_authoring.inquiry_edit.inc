@@ -33,7 +33,7 @@ function pi_authoring_inquiry_phases($inquiry) {
 	$output = '';
 	
 	//set the page title to be the inquiry name
-	drupal_set_title("Editing @title", array( '@title' => $inquiry->title));
+	drupal_set_title(t("Editing @title", array( '@title' => $inquiry->title)));
 	$output .= theme('pi_authoring_inquiry_phases', $inquiry->nid);	
 	
 	// Query for inquiry phases 
@@ -350,6 +350,7 @@ function pi_authoring_order_activities_form(&$form_state, $activities, $phase_ni
 	$form = array();
 	$form['#theme'] = 'pi_authoring_order_activities_form';
 	$form['#title'] = 'Inquiry activities';
+	$form['#phase_nid'] = $phase_nid;
 	
 	$form['order_activities_activities'] = array(
 		'#tree' => TRUE
@@ -593,7 +594,7 @@ function theme_pi_authoring_order_activities_form($form) {
 		$form['order_activities_activities'][$key]['weight']['#attributes']['class'] = 'pi-authoring-order-activities-element';
 
 		$row = array('');
-		$row[] = l(drupal_render($form['order_activities_activities'][$key]['title']), "activity/$key/edit");
+		$row[] = l(drupal_render($form['order_activities_activities'][$key]['title']), "phase/" . $form['#phase_nid'] . "/activity/$key/edit");
 		$phase_description_row = '';
 		$phase_description_row .= '<div>' . drupal_render($form['order_activities_activities'][$key]['body']) . '</div>';
 		$phase_description_row .= '<div>' . _pi_activity_explain_actor_and_audience($form['order_activities_activities'][$key]['#actor'], $form['order_activities_activities'][$key]['#audience']) . '</div>';

@@ -276,7 +276,6 @@ function pi_activity_form( &$node, $form_state ) {
 					$node->inquiry_nid = $phase->inquiry_nid;
 				}
 			}
-
 		}
 	}
 
@@ -301,7 +300,7 @@ function pi_activity_form( &$node, $form_state ) {
 
 	$form['inquiry_nid'] = array(
     '#type' => 'select',
-    '#title' => t('Inquiry for stage'),
+    '#title' => t('Inquiry for activity'),
     '#required' => TRUE,
     '#weight' => -20,
     '#options' => $inquiry_options,
@@ -339,13 +338,17 @@ function pi_activity_form( &$node, $form_state ) {
     $form['activity_phases_stages']['phase_nid'] = _pi_activity_form_generate_phase_select($inquiry_nid_default_value, $node->phase_nid);
 
     $stages_default_value = array();
-    if(is_array($form_state['storage']['activity_phases_stages']['stages']))
+    if(is_array($form_state['storage']['activity_phases_stages']['stages']['stage_select']))
     {
-    	$stages_default_value = $form['storage']['activity_phases_stages']['stages'];
+    	$stages_default_value = $form['storage']['activity_phases_stages']['stages']['stage_select'];
     }
     else
     {
-    	$stages_default_value = $node->activity_phases_stages['stages'];
+    	$stages_default_value = $node->activity_phases_stages['stages']['stage_select'];
+    }
+    if(!is_array($stages_default_value))
+    {
+      $stages_default_value = array();
     }
     $form['activity_phases_stages']['stages'] = _pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 
@@ -584,55 +587,6 @@ function pi_activity_form( &$node, $form_state ) {
     return $form;
 }
 
-function pi_activity_form_validate( $form, &$form_state )
-{
-	//echo "pi_activity_form_validate";
-	//print_r( $form );
-	//print_r( $form_state );
-	//die();
-}
-
-function pi_activity_form_submit( $form, &$form_state )
-{
-	global $user;
-
-	echo "pi_activity_form_submit";
-	//print_r( $form );
-	print_r( $form_state );
-	die();
-	/*
-	 $new_node = new stdClass();
-
-	 $new_node->title = $form_state['storage']['title'];
-	 $new_node->type = 'pi_activity';
-	 $new_node->uid = $user->uid;
-
-	 node_save( $new_node );
-
-	 $activity = new stdClass();
-
-	 $activity->nid = $new_node->nid;
-	 $activity->vid = $new_node->vid;
-	 $activity->phase_nid = $form_state['storage']['activity_phases_stages']['phase_nid'];
-	 //$activity->parent_activity = ;
-	 //$activity->show_children_in_phase = ;
-	 //$activity->referenced_node = ;
-	 $activity->activity_type = $form_state['storage']['activity_type'];
-	 //$activity->show_activity = ;
-	 $activity->node_type = $form_state['storage']['node_type'];
-	 $activity->parameters = $form_state['storage']['parameters'];
-	 $activity->destination_after = $form_state['storage']['destination_after'];
-	 $activity->audience = $form_state['storage']['selects']['audience'];
-	 $activity->actor = $form_state['storage']['selects']['gid'];
-	 $activity->weight = 1;
-
-	 $activity->node_function = $form_state['storage']['node_function'];
-	 $activity->visible_status = $form_state['storage']['visible_status'];
-
-	 drupal_write_record( 'pi_activity', $activity );
-	 */
-}
-
 /**
  *
  * Drupal API hook_form_FORM-ID_alter(), changes the form to alter the default node layout
@@ -731,7 +685,6 @@ function _pi_activity_form_generate_stage_select($inquiry_nid, $default_values=a
 		}
 		else
 		{
-			//pi_debug_message($default_values);
 			foreach ($stage_names as $stage_nid => $name)
 			{
 				$stage_options[$stage_nid] = $name;
@@ -1062,10 +1015,10 @@ function pi_activity_insert($node)
 	$selected_stages = array();
 	foreach($node->activity_phases_stages['stages']['stage_select'] as $stage_nid => $selected)
 	{
-		if($selected!=0)
-		{
-			$selected_stages[$stage_nid] = 'visible';
-		}
+	  if($selected==$stage_nid)
+	  {
+	    $selected_stages[$stage_nid] = 'visible';
+	  }
 	}
 
 	// Now set stage_states

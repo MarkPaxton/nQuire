@@ -8,7 +8,7 @@
 /**
  * This page is the starting point for creating content for an inquiry
  */
-function pi_authoring_inquiry_activity_add()
+function pi_authoring_phase_activity_add($phase)
 {
 	$output = '';
 	if( !function_exists("node_add"))

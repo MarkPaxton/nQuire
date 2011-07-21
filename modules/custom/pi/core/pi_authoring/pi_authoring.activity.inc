@@ -7,11 +7,11 @@
 /**
  * this function provides a redirect back to the associated phase when an actibvity is 
  * redirected here from a form edit see pi_authoring_from_pi_activity_form_alter() 
- * @param object(node->pi_stage) $stage
+ * @param object(node->pi_phase) $phase
  */
-function pi_authoring_activity_inquiry($phase)
+function pi_authoring_activity_phase($activity)
 {
-	drupal_goto('phase/' . $phase->inquiry_nid . '/edit/activities');
+	drupal_goto('phase/' . $activity->phase_nid . '/edit/activities');
 }
 
 /**
