@@ -16,7 +16,7 @@ function pi_home_view() {
   //list all inquiries for the user
   global $user;
   $inquiries_for_user = pi_get_inquiries_of_user($user->uid);
-
+  
   foreach($inquiries_for_user as $inquiry_nid)
   {
     $inquiry = node_load($inquiry_nid);

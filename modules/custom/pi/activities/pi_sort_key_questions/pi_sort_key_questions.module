@@ -4,13 +4,13 @@
 function pi_sort_key_questions_node_info() {
 	return array(
 	    'pi_sort_key_questions' => array(
-		    'name' => t('Key questions sort'), // Required.
+		    'name' => t('Inquiry show and sort key questions'), // Required.
 		    'module' => 'pi_sort_key_questions',  // Required.
 		    'description' => t('Questions sort'), // Required.
 		    'has_title' => FALSE,
-		    'title_label' => t('Sorted key questions'),
+		    'title_label' => t('Show and sorted key questions'),
 		    'has_body' => FALSE,
-		    'body_label' => t('Sort of key questions'),
+		    'body_label' => t('Show and sort of key questions'),
 		    'locked' => TRUE,
 			'add_node_type' => 'pi_key_questions'
 		)
@@ -25,7 +25,7 @@ function pi_sort_key_questions_access($op, $node, $user) {
     $details = get_inquiry_details_from_current_path();
     if ($op == 'create')
     {
-        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
     }
     if ($op == 'update')
     {
@@ -207,11 +207,15 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 				}
 			}
 		}
+		else 
+		{
+			drupal_set_message( "No hypothesis found", "error" );
+		}
 	}
 
 	// Assemble an array of key questions in the output format (build_activity_link makes this a link with icon)
 	$already_sorted_key_questions = $node->categories;
-	$unsorted_key_questions = pi_sort_key_questions_get_options();
+	//$unsorted_key_questions = pi_sort_key_questions_get_options();
     
 	$sorted_key_questions = pi_merge_content_item_lists($already_sorted_key_questions, $unsorted_key_questions);
 	$key_questions_to_show = array(); 

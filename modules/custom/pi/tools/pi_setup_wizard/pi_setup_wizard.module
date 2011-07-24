@@ -1,0 +1,383 @@
+<?php
+
+module_load_include( 'inc', 'pi_setup_wizard', 'pi_modules' );
+
+/**
+ * MISSING
+ *
+ * @param unknown_type $section
+ * @return string
+ */
+function pi_setup_wizard_help($path, $arg)
+{
+	$output = '';
+
+	switch($path)
+	{
+		case "admin/help#ppi_setup_wizard":
+			$output = '';
+			break;
+	}
+
+	return $output;
+}
+
+/**
+ * MISSING
+ *
+ * @return multitype:string
+ */
+function pi_setup_wizard_perm()
+{
+	return array('access setup wizard');
+}
+
+/*
+
+function pi_autoinstall() {
+
+$output = "autoinstall......";
+
+module_enable( array( "pi_user_export" ) );
+
+return $output;
+}
+
+$items['admin/autoinstall'] = array(
+'title' => 'nQuire Admin',
+'page callback' => 'pi_autoinstall',
+'access arguments' => array('access content'),
+'type' => MENU_CALLBACK,
+);
+
+*/
+
+/**
+ * MISSING
+ *
+ * @return multitype:string multitype:string  NULL
+ */
+function pi_setup_wizard_menu()
+{
+	$items = array();
+
+	$items['admin/pi_setup_wizard'] = array(
+		'title' => 'nQuire Setup Wizard',
+  	  	'page callback' => 'pi_setup_wizard',
+		'access arguments' => array('access setup wizard'),
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+
+	$items['admin/pi_setup_wizard/missing'] = array(
+		'title' => 'Step 1: Insall modules',
+  	  	'page callback' => 'pi_setup_wizard_missing',
+		'access arguments' => array('access setup wizard'),
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+
+	$items['admin/pi_setup_wizard/og'] = array(
+		'title' => 'Step 2: Setup OG',
+  	  	'page callback' => 'pi_setup_wizard_og_setup',
+		'access arguments' => array('access setup wizard'),
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+	
+	$items['admin/pi_setup_wizard/create_users'] = array(
+		'title' => 'Step 3: Create User',
+  	  	'page callback' => 'pi_setup_wizard_create_users',
+		'access arguments' => array('access setup wizard'),
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+	
+	$items['admin/pi_setup_wizard/create_class'] = array(
+		'title' => 'Step 4: Create Class',
+  	  	'page callback' => 'pi_setup_wizard_create_class',
+		'access arguments' => array('access setup wizard'),
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+	
+	$items['admin/pi_setup_wizard/create_inquiry'] = array(
+		'title' => 'Step 4: Create Inquiry',
+  	  	'page callback' => 'pi_setup_wizard_create_inquiry',
+		'access arguments' => array('access setup wizard'),
+  	  	'type' => MENU_NORMAL_ITEM
+	);
+	
+
+	return $items;
+}
+
+/**
+ * MISSING
+ *
+ * @return string
+ */
+function pi_setup_wizard_view()
+{
+	return "pi_setup_wizard";
+}
+
+function pi_setup_wizard() {
+
+	$output = 'Start install....';
+
+	return $output;
+}
+
+function pi_setup_wizard_missing() {
+
+	$output = '';
+
+	$modules =  get_missing_modules_list();
+
+	$required_disabled = $modules[ 'required_disabled' ];
+	$required_missing = $modules[ 'required_missing' ];
+
+	if( count( $required_missing ) > 0 ) {
+
+		drupal_set_message( t( 'Missing modules. Please download and add the missing modules' ), 'error' );
+
+		$output .= '<h2>' . t( 'Missing rquired modules' ) . '</h2>';
+		$output .= '<ul>';
+
+		foreach( $required_missing as $required ) {
+
+			$output .= '<li>' . $required . '</li>';
+
+		}
+
+		$output .= '</ul>';
+
+	}
+	else if( is_array( $required_disabled ) ) {
+		$output .= drupal_get_form( 'pi_setup_wizard_install_missing_form' );
+	}
+	else {
+		$output .= t( "All requied modles are installed, you can proceed with the next step" ) . "<br />";
+		$output .= l( 'Step 2', 'admin/pi_setup_wizard/og' );
+		//$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
+	}
+
+	return $output;
+}
+
+
+function pi_setup_wizard_install_missing_form($form_state) {
+
+	$modules =  get_missing_modules_list();
+
+	$required_disabled = $modules[ 'required_disabled' ];
+
+	$form = array();
+
+	if( is_array( $required_disabled ) ) {
+
+		//$form['#attributes']['enctype'] = 'multipart/form-data';
+		$form['#submit'][] = 'pi_setup_wizard_install_missing_form_submit';
+
+		$form['setup_wizard_install'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('Step 1: Install missing'),
+		'#collapsible' => FALSE,
+		'#tree' => TRUE,
+	    '#weight' => 0,
+		);
+
+
+
+		$form['setup_wizard_install']['install'] = array(
+		'#type' => 'checkboxes',
+		'#title'  => t('Install missing modules'),
+		'#default_value' => array_keys( $required_disabled ),
+		'#options' => $required_disabled,
+	    '#weight' => 0,
+		);
+
+		$form['setup_wizard_install']['submit'] = array(
+		'#type' => 'submit', 
+		'#value' => t('Install modules')
+		);
+	}
+	else {
+
+	}
+
+	return $form;
+}
+
+function pi_setup_wizard_install_missing_form_submit($form, &$form_state) {
+
+	//print_r( $form_state );
+
+	$modules_to_install = $form_state['values']['setup_wizard_install']['install'];
+
+	if( is_array( $modules_to_install ) ) {
+
+		$modules = array_keys( $modules_to_install );
+
+		module_enable( $modules );
+	}
+
+	drupal_goto( 'admin/pi_setup_wizard/missing' );
+
+}
+
+function pi_setup_wizard_og_setup() {
+
+	$og_group_types = array();
+	$types = node_get_types();
+
+	if( is_array( $types ) ) {
+		foreach( $types as $type ) {
+			if( og_is_group_type( $type->type ) ) {
+				$og_group_types[ $type->type ] = $type->name;
+			}
+		}
+	}
+
+	if( count( $og_group_types ) > 0  ) {
+		$output .= t( "Organic Group Node is set up. You can proceed with the next step." ) . "<br />";
+		$output .= l( 'Step 3', 'admin/pi_setup_wizard/create_users' );	
+	}
+	else {
+		$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
+	}
+
+	return $output;
+}
+
+function pi_setup_wizard_setup_og_form($form_state) {
+
+	$form = array();
+
+	$collapse_new_og = FALSE;
+
+	//$form['#attributes']['enctype'] = 'multipart/form-data';
+	$form['#submit'][] = 'pi_setup_wizard_setup_og_form_submit';
+
+	$form['setup_wizard_install'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('Step 2: Setup Organic Groups'),
+		'#collapsible' => FALSE,
+		'#tree' => TRUE,
+	    '#weight' => 0,
+	);
+
+	$og_group_types = array();
+	$types = node_get_types();
+
+	if( is_array( $types ) ) {
+		foreach( $types as $type ) {
+			if( og_is_group_type( $type->type ) ) {
+				$og_group_types[ $type->type ] = $type->name;
+			}
+		}
+	}
+
+	if( count( $og_group_types ) > 0  ) {
+
+		$collapse_new_og = TRUE;
+
+		$form['setup_wizard_install']['og_group_types'] = array(
+			'#type' => 'checkboxes',
+			'#title'  => t('Organic groups'),
+			'#description' => t('You can use one of the following existing node types or create a new one.'),
+			'#default_values' => array_keys( $og_group_types ),
+			'#options' => $og_group_types
+		);
+
+	}
+
+	$form['setup_wizard_install']['new_og'] = array(
+		'#type' => 'fieldset',
+		'#title'  => t('New Organic Groups'),
+		'#collapsible' => TRUE,
+		'#collapsed' => $collapse_new_og,
+		'#tree' => TRUE,
+	    '#weight' => 0,
+	);
+
+	$form['setup_wizard_install']['new_og']['type'] = array(
+		'#type' => 'textfield',
+		'#title'  => t('New Organic group type'),
+		'#description' => t('Please use only characters and underscore.'),
+	);
+
+	$form['setup_wizard_install']['new_og']['name'] = array(
+		'#type' => 'textfield',
+		'#title'  => t('New Organic group name'),
+		'#description' => t('A name for the new organic group.'),
+	);
+
+	$form['setup_wizard_install']['submit'] = array(
+		'#type' => 'submit', 
+		'#value' => t('Setup OG')
+	);
+
+	return $form;
+}
+
+function pi_setup_wizard_setup_og_form_submit($form, &$form_state) {
+
+	//print_r( $form_state );
+
+	$og_group_types = $form_state['values']['setup_wizard_install']['og_group_types'];
+
+	if( is_array( $og_group_types ) ) {
+
+		$count_types = array_count_values( $og_group_types ) ;
+
+		if( $count_types[0] == count( $og_group_types ) ) {
+
+			$content_type = new stdClass();
+
+			$content_type->type = $form_state['values']['setup_wizard_install']['new_og']['type'];
+			$content_type->name = $form_state['values']['setup_wizard_install']['new_og']['name'];
+			$content_type->min_word_count = 0;
+			$content_type->title_label = 'Title';
+			$content_type->body_label = 'Body';
+			$content_type->has_title = 1;
+			$content_type->has_body = 1;
+			$content_type->module = 'node';
+			$content_type->custom = 1;
+			$content_type->modified = 1;
+			
+			node_type_save( $content_type );
+			
+			variable_set( 'og_content_type_usage_' . $content_type->type, 'group' );
+			variable_set( 'og_max_groups_' . $content_type->type, '' );
+			
+		}
+
+	}
+	
+	drupal_goto( 'admin/pi_setup_wizard/create_users' );
+
+}
+
+function pi_setup_wizard_create_users() {
+
+	$output = "Under construction.....";
+	
+	//$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
+
+	return $output;
+}
+
+function pi_setup_wizard_create_class() {
+
+	$output = "Under construction.....";
+	
+	//$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
+
+	return $output;
+}
+
+function pi_setup_wizard_create_inquiry() {
+
+	$output = "Under construction.....";
+	
+	//$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
+
+	return $output;
+}

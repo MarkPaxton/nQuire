@@ -13,11 +13,11 @@
 function pi_key_questions_node_info() {
     return array(
 	    'pi_key_questions' => array(
-		    'name' => t('Key question'), // Required.
+		    'name' => t('Inquiry add key question'), // Required.
 		    'module' => 'pi_key_questions',  // Required.
 		    'description' => t('Key questions for an inquiry'), // Required.
 		    'has_title' => TRUE,
-		    'title_label' => t('Key question'),
+		    'title_label' => t('Add key question'),
 		    'has_body' => FALSE,
 		    'locked' => TRUE
     	)
@@ -61,7 +61,7 @@ function pi_key_questions_access($op, $node, $account) {
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
 	if ($op == 'create') {
-		return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 	}
 	if ($op == 'update') {
 		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
@@ -94,14 +94,18 @@ function pi_key_questions_form(&$node) {
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
 	
+	//print_r( $node );
+	
 	if (is_numeric($node_details->activity_id)) {
 		$current_activity = node_load($node_details->activity_id);
 	}
   	
 	if ($current_activity->name) {
 		drupal_set_title(t($current_activity->name));
-	
 	}
+	
+	//print_r( $current_activity );
+	
 	// Get metadata for this node type
 	// (we use it for labeling title and body fields).
 	// We defined this in pi_key_questions_node_info().

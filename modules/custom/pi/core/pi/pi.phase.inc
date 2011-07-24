@@ -13,10 +13,11 @@ function pi_inquiry_phase_view($phase)
 {
 	global $user;
 
+	$details = get_inquiry_details_from_current_path();
 	drupal_set_title($phase->title);
 
 	$activities = pi_get_activities_for_phase_and_user($phase->nid, $user->uid);
-
+	
 	$output = "";
 	$output .= t("<p>" . $phase->body . "</p>");
 
@@ -30,9 +31,12 @@ function pi_inquiry_phase_view($phase)
 		foreach($activities as $activity_nid)
 		{
 			$activity = node_load($activity_nid);
+			//print_r( $activity );
+			//echo "<br/>" . $activity->node_type;
 			
 			// only display activities that are not in the hidden list
-			if(!(in_array($activity->type, $hidden_created_activity_types)))
+			//if(!(in_array($activity->type, $hidden_created_activity_types)))
+			if( !( in_array( $activity->node_type, $hidden_created_activity_types ) ) )
 			{
 				//Changed the order of the code execution because this function can possibly generate
 				//the missing node instance (pi_fooddiary_data).
@@ -61,7 +65,7 @@ function pi_inquiry_phase_view($phase)
 					$link_node_function = 'view';
 				}
 
-				$activity_link = pi_activity_build_link($activity->nid, $user->uid);
+				$activity_link = pi_activity_build_link($activity_nid, $user->uid);
 				if (($active_activity_flag == 0) && $activity)
 				{
 					$active_activity_flag = 1;

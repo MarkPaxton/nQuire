@@ -4,7 +4,7 @@
 function pi_sort_data_node_info() {
   return array(
 	'pi_sort_data' => array(
-		'name' => t('Data sort data'), // Required.
+		'name' => t('Inquiry show and sort data'), // Required.
 		'module' => 'pi_sort_data',  // Required.
 		    'description' => t('Data sort'), // Required.
 		    'has_title' => FALSE,
@@ -281,6 +281,8 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
 
+	//print_r( $node );
+	
 	$node = node_prepare($node, $teaser);
 
 	if (is_numeric($node_details->activity_id))
@@ -333,9 +335,29 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 		if ($data_item_activity_id)
 		{
 			$data_item_node = node_load($sorted_data_items_nid);
-			$data_item_activity = pi_activity_load($data_item_activity_id);
-			$activity_link = pi_activity_build_link($data_item_activity_id, $user->uid, 'heading');
-			$activity_teaser = pi_activity_teaser($data_item_node, $data_item_activity, 'view');
+			
+			//@TODO FIXME 
+			
+			$data_node = node_load( $data_item_activity_id );
+			
+			//print_r( $data_node );
+			//$data_item_activity = pi_activity_load( $node );
+			
+			foreach( $data_node->measures as $measure )
+			{
+				if( $measure['#status'] == 'key' )
+				{
+					$value = $measure['#value'];
+					$title = $measure['#title'];
+					break;
+				}
+			}
+			
+			$activity_link = pi_activity_build_link($data_item_activity_id, $user->uid, 'heading', $value);
+			
+			//$activity_teaser = pi_activity_teaser($data_item_node, $data_item_activity, 'view');
+			$activity_teaser = pi_activity_teaser($data_item_node, $data_node, 'view');
+			
 			$data_items_to_show[] = array(	'title' => $activity_link,
 											'description' => $activity_teaser );
 		}
@@ -345,10 +367,12 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	{
 		//Link to add a new key question
 		//cannot get activity id from $node_details when viewing a list of activity teasers
-		$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+		
+		//$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+		$activity_id_for_this_node = $node->nid;
 		$link_output = make_add_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $activity_id_for_this_node, $user->uid);
 		$node->content['pi_sort_data_add_link'] =  array(
-            '#value' =>$link_output,
+            '#value' => $link_output,
             '#weight' => -3
 		);
 	}
@@ -366,10 +390,11 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show)
 	global $user;
 
 	$output = '';
-
+	
 	$header = array( t("Data") );
 
 	$rows = array();
+	
 	if (is_array($data_items_to_show))
 	{
 		foreach($data_items_to_show as $data_item)
@@ -386,13 +411,6 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show)
 		$key_measures_count = count($node->key_measures);
 		if($key_measures_count > 0)
 		{
-			// $measures_text = t(' for your key %measures ', array( '%measures' =>  format_plural( count($node->key_measures), t('measure'), t('measures') ) ) );
-			if ($key_measures_count > 1) {
-				$measures_text = t(' for your key measures ');
-			}
-			else {
-				$measures_text = t(' for your key measure ');
-			}
 			foreach($node->key_measures as $key => $measure_name)
 			{
 				unset($node->key_measures[$key]);
@@ -409,8 +427,12 @@ function theme_pi_sort_data($node, $teaser, $data_items_to_show)
 				}
 			}
 		}
+		
+		$translate = array( '@measures' => format_plural( $key_measures_count, 'measure', 'measures' ) , 
+							'%key' => $measures_text );
+		
 		$output .= '<p>';
-		$output .= t('You have collected the following data ' . $measures_text . '.');
+		$output .= t('You have collected the following data for your @measures %key.', $translate );
 		$output .= t(' Click the activity to sort them or add new data.');
 		$output .= '</p>';
 		$output .= theme('item_list', $rows, NULL, 'ul', array('class' => 'activity'));

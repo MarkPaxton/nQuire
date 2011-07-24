@@ -29,25 +29,29 @@ function pi_activity_content($activity) {
 	foreach($content_nids as $nid)
 	{
 		$row=array();
-		$node = node_load($nid);
-		if(isset($node) && ($nid>0))
+
+		if( is_numeric( $nid ) && $nid > 0 )
 		{
-			//	$node_groups = pi_activity_get_activity_content_group_access($node->nid);
-			$row[] = l($node->title, 'activity/' . $activity->nid . '/admin/view/' . $node->nid);
-			$row[] = user_load($node->uid)->name;
-			/*	$group_row = array();
-			 foreach($node_groups as $group)
-			 {
-				$group_row[] = check_plain($group->title);
-				}
-				$row[] = implode(', ', $group_row);*/
+			$node = node_load($nid);
+			if(isset($node))
+			{
+				//	$node_groups = pi_activity_get_activity_content_group_access($node->nid);
+				$row[] = l($node->title, 'activity/' . $activity->nid . '/admin/view/' . $node->nid);
+				$row[] = user_load($node->uid)->name;
+				/*	$group_row = array();
+				 foreach($node_groups as $group)
+				 {
+				 $group_row[] = check_plain($group->title);
+				 }
+				 $row[] = implode(', ', $group_row);*/
+			}
+			else
+			{
+				$row[] = $nid;
+				$row[] = t('No data found');
+			}
+			$rows[] = array('data' => $row);
 		}
-		else
-		{
-			$row[] = $nid;
-			$row[] = t('No data found');
-		}
-		$rows[] = array('data' => $row);
 	}
 	$output .= theme('table', $title_row, $rows);
 	return $output;
@@ -55,7 +59,18 @@ function pi_activity_content($activity) {
 
 function pi_activity_edit($activity)
 {
-	return "This page has been intentionally left blank.";
+	$output = "";
+
+	if( !function_exists("node_page_edit")) {
+		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+	}
+
+	if( is_object( $activity ) ) {
+		$output .= node_page_edit($activity);
+	}
+
+	//return "This page has been intentionally left blank.";
+	return $output;
 }
 
 function pi_activity_admin_view_node($activity, $node)

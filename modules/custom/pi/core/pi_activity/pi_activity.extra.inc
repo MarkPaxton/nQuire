@@ -55,8 +55,8 @@ function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
       "LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity}.`actor` " .
       "LEFT JOIN {node_access} ON {pi_activity_node}.`nid` = {node_access}.`nid` " .
       "WHERE {pi_activity_node}.`activity_id` = %d " .
-      "AND ( ( {node_access}.`gid` = {og_uid}.`nid` AND {og_uid}.`uid` = %d ) " .
-      "OR {node_access}.`realm` = 'all')";
+      "AND ( ( {node_access}.`gid` = {og_uid}.`nid` AND {og_uid}.`uid` = %d ) " ;
+      //"OR {node_access}.`realm` = 'all')";
 
 		$result = db_query($query, $activity_id, $uid);
 		$nids_returned = array();
@@ -155,22 +155,11 @@ function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
 
 }
 
-//@todo depricate
 function get_activity_id_for_nid($nid) {
-	return pi_activity_get_activity_nid_for_content_nid($nid);
-}
-
-/**
- * Get's the activity nid for a particular content or null if there's no activity associated
- * @param uint $nid
- * @return pi_activity node id or null
- */
-function pi_activity_get_activity_nid_for_content_nid($nid) {
 	$query = "SELECT activity_id FROM {pi_activity_node} WHERE nid = %d";
 	$result = db_fetch_object(db_query($query, $nid));
 	return $result->activity_id;
 }
-
 
 /**
  * Uses arguments from the path and the pi_activity_table to return the activity type.
@@ -343,6 +332,7 @@ function pi_activity_get_node_function($activity_id, $uid) {
  */
 function pi_activity_check_node_function($activity_id, $uid, $function) {
 	$node_function = pi_activity_get_node_function($activity_id, $uid);
+	
 	if ($node_function == $function)
 	{
 		$result = TRUE;
@@ -591,10 +581,7 @@ function update_activity_actor($actor) {
 function pi_activity_load_status($activity_id, $uid)
 {
 	$return_status = array('visible_status' => '', 'node_function' => '');
-  if($activity_id==null)
-  {
-    return $return_status;
-  }
+
 	if($activity_id==NULL)
 	{
 		drupal_set_message('pi_activity_load_status: null value for activity_id passed', 'warning');
@@ -617,8 +604,8 @@ function pi_activity_load_status($activity_id, $uid)
 			$query = "SELECT {pi_activity_status}.`visible_status`, {pi_activity_status}.`node_function`, {pi_activity_status}.`uid`, {og_uid}.`nid` FROM {pi_activity_status} " .
         				"LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity_status}.`gid` " .
         				"WHERE ( {pi_activity_status}.`activity_id` = %d ) " .
-        				"AND ( ({pi_activity_status}.`uid`) = %d OR ( {og_uid}.`uid` = %d ) ) ";
-			
+        				"AND ( ({pi_activity_status}.`uid`) = %d OR ( {og_uid}.`uid` = %d ) )";
+				
 			$query_ = "SELECT {pi_activity}.`visible_status`, {pi_activity}.`node_function`, {node}.`uid`, {og_uid}.`nid` FROM {pi_activity} " .
         				"LEFT JOIN {node} ON {node}.`nid` = {pi_activity}.`nid` " .
 						"LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity}.`actor` " .
@@ -704,41 +691,46 @@ function pi_activity_load_status($activity_id, $uid)
  */
 function save_activity_status($activity_status) {
 
-	$set = "inquiry_id = %d , activity_id = %d ";
-	$parameters[] = $activity_status->inquiry_id;
-	$parameters[] = $activity_status->activity_id;
+	//@TODO FIXME Don't save a activity status for an activity with nid = 0 !
+	if( !empty( $activity_status->activity_id ) )
+	{
+		$set = "inquiry_id = %d , activity_id = %d ";
+		$parameters[] = $activity_status->inquiry_id;
+		$parameters[] = $activity_status->activity_id;
 
-	if ($activity_status->uid)
-	{
-		$set .= ", uid = %d ";
-		$parameters[] = $activity_status->uid;
-	}
-	if ($activity_status->gid)
-	{
-		$set .= ", gid = %d ";
-		$parameters[] = $activity_status->gid;
-	}
+		if ($activity_status->uid)
+		{
+			$set .= ", uid = %d ";
+			$parameters[] = $activity_status->uid;
+		}
+		if ($activity_status->gid)
+		{
+			$set .= ", gid = %d ";
+			$parameters[] = $activity_status->gid;
+		}
 
-	$set .= ", node_function = '%s' , visible_status = '%s' ";
-	$parameters[] = $activity_status->node_function;
-	$parameters[] = $activity_status->visible_status;
+		$set .= ", node_function = '%s' , visible_status = '%s' ";
+		$parameters[] = $activity_status->node_function;
+		$parameters[] = $activity_status->visible_status;
 
-	$query = "";
-	if ($activity_status->pas_id != NULL)
-	{
-		//update
-		$query = "UPDATE {pi_activity_status} SET ";
-		$query .= $set;
-		$query .= "WHERE {pi_activity_status}.pas_id = %d";
-		$parameters[] = $activity_status->pas_id;
+		$query = "";
+		if ($activity_status->pas_id != NULL)
+		{
+			//update
+			$query = "UPDATE {pi_activity_status} SET ";
+			$query .= $set;
+			$query .= "WHERE {pi_activity_status}.pas_id = %d";
+			$parameters[] = $activity_status->pas_id;
+		}
+		else
+		{
+			//insert
+			$query .= "INSERT INTO {pi_activity_status} SET ";
+			$query .= $set;
+		}
+
+		db_query($query, $parameters);
 	}
-	else
-	{
-		//insert
-		$query .= "INSERT INTO {pi_activity_status} SET ";
-		$query .= $set;
-	}
-	db_query($query, $parameters);
 }
 
 /**
@@ -788,10 +780,15 @@ function delete_activity_type_for_user($activity_type, $user) {
  * @param uint $activity_id
  * @param uint $uid
  */
-function pi_activity_build_link($activity_id, $uid, $class = 'menu')
+function pi_activity_build_link($activity_id, $uid, $class = 'menu', $title = NULL)
 {
 	$link = pi_activity_get_link($activity_id, $uid);
-
+	
+	if( $title )
+	{
+		$link['title'] = $title;
+	}
+	
 	$options['html'] = TRUE;
 	$options['query'] = $link['destination'];
 	$options['attributes'] = array( 'class' => $class);

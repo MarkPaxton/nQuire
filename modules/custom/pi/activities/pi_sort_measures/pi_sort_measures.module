@@ -8,7 +8,7 @@
 function pi_sort_measures_node_info() {
 	return array(
 		'pi_sort_measures' => array(
-		'name' => t('Inquiry measures selection'), // Required.
+		'name' => t('Inquiry select and sort measures'), // Required.
 		'module' => 'pi_sort_measures',  // Required.
 		'description' => t('Inquiry measures selection: selection of which measures to record and which of these are key measures.'), // Required.
 		'has_title' => TRUE,
@@ -272,8 +272,10 @@ function theme_pi_sort_measures($node, $teaser) {
 	
 	//Link to add a new key question
 	//cannot get activity id from $details when viewing a list of activity teasers
-	$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
-	$output .= make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);
+	//$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+	$activity_id_for_this_node = $node->nid;
+	//@TODO FIXME Not sure why a "add link" was here....?
+	//$output .= make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);
 
     if (is_array($node->measures_list))
     {
@@ -582,7 +584,9 @@ function theme_pi_sort_measures_region($title, $description, $empty, $measures)
 			
 			$measure_activity = node_load($measure['nid']);
 			$measure_node = node_load($measure_activity->nid);
-			print_r($measure_activity);//->nid . 'XX<br />';
+			
+			//print_r($measure_activity);//->nid . 'XX<br />';
+			
 			$rows[] = array('data' => node_view($measure_activity, TRUE, TRUE), 'class' => 'activity');
 		}
 		$output .= theme('item_list', $rows, NULL, 'ul', array('class' => 'activity'));

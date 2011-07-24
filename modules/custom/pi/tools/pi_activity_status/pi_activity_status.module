@@ -147,9 +147,9 @@ function get_activity_participants($node_details) {
 }
 
 
-function pi_activity_status_block($op = 'list', $delta = 0, $edit = array()) 
+function pi_activity_status_block($op = 'list', $delta = 0, $edit = array())
 {
-	switch ($op) 
+	switch ($op)
 	{
 		case 'list':
 			$blocks[0]['info'] = t('Activity Status');
@@ -183,18 +183,22 @@ function pi_activity_status_block($op = 'list', $delta = 0, $edit = array())
 			{
 				$teacher_tools[] = t("Change stage");
 			}
+				
 			//get current status for use as destination
-			$node_function = pi_activity_get_node_function($node_details->activity_id, $user->uid);
-			if(arg(0) == 'activity') {
-			   $teacher_tools[] = l(t("Change current activity status"), 'set_status/' . $node_details->activity_id, array('query'=> t('destination=activity/'.  $node_details->activity_id . '/'. $node_function)));
-			}
-			else {
-			  $teacher_tools[] = t("Change current activity status");
-			}
-			$content = t(theme('item_list', $teacher_tools, NULL, 'ul', array('class' => 'menu')));
-
 			if (is_numeric($node_details->activity_id))
 			{
+				$node_function = pi_activity_get_node_function($node_details->activity_id, $user->uid);
+					
+					
+				if(arg(0) == 'activity') {
+					$teacher_tools[] = l(t("Change current activity status"), 'set_status/' . $node_details->activity_id, array('query'=> t('destination=activity/'.  $node_details->activity_id . '/'. $node_function)));
+				}
+				else {
+			  $teacher_tools[] = t("Change current activity status");
+				}
+				$content = t(theme('item_list', $teacher_tools, NULL, 'ul', array('class' => 'menu')));
+
+					
 				$ap_result = get_activity_participants($node_details);
 				$audience = $ap_result["audience"];
 				$activity_participants = $ap_result["activity_participants"];

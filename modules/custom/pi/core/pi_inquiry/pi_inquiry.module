@@ -66,7 +66,7 @@ function pi_inquiry_form($node) {
 		'#required' => TRUE,
 		'#default_value' => $node->title,
 	);
-	
+
 	//Show a simple textarea, no input selector required....
 	$form['body_filter']['body'] = array(
         '#type' => 'textarea',
@@ -74,15 +74,15 @@ function pi_inquiry_form($node) {
          '#default_value' => $node->body,
         '#required' => TRUE
 	);
-	
+
 	$inquiry_groups = pi_get_defined_group_nids();
 	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
-	//$form['#allowed_phase_actors'] = $all_defined_groups;	
+	//$form['#allowed_phase_actors'] = $all_defined_groups;
 	$group_names['none'] = "Select a group...";
 	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
-	
+
 	$inquiry_actor_default_value = 'none';
-	
+
 	$form['actor_gid'] = array(
 		'#type' => 'select',
 		'#title' => t('Who is this inquiry for'),
@@ -112,26 +112,26 @@ function pi_inquiry_form($node) {
 
 	$inquiry_groups = pi_get_defined_group_nids();
 	$all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
-	$form['#allowed_inquiry_actors'] = $all_defined_groups;	
+	$form['#allowed_inquiry_actors'] = $all_defined_groups;
 	$group_names['none'] = "Select a group...";
 	$group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
-	
+
 	$form['activities'] = pi_activity_show_hide_from( $node->nid );
 	$form['activities']['#weight'] = 3;
-  
+
 	return $form;
 }
 
 /**
  * This is the validation function to make sure that pi_inquiry.actor_gid is a valid group
- * @param array $element 
+ * @param array $element
  * @param array $form_state
  */
 function pi_inquiry_form_actor_gid_validate($element, $form_state)
 {
 	if(!in_array($form_state['values']['actor_gid'], $element['#allowed_inquiry_actors']))
 	{
-		form_error($element, t('The selected inquiry actor group is not valid, please choose a group from the list.'));				
+		form_error($element, t('The selected inquiry actor group is not valid, please choose a group from the list.'));
 	}
 }
 
@@ -143,7 +143,7 @@ function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
 	if($form_id == 'pi_inquiry_node_form')
 	{
 		$form['menu']['#weight'] = 3;
-		
+
 		//Remove attachments and comment settings
 		unset( $form['attachments'] );
 		unset( $form['comment_settings'] );
@@ -162,7 +162,7 @@ function pi_inquiry_insert($node)
 
 	$link = array();
 	$summary = array();
-	
+
 	foreach( $node->activities_show_hide as $module_name => $show_hide )
 	{
 		if( $show_hide['link'] !== 0 )
@@ -187,13 +187,13 @@ function pi_inquiry_insert($node)
 	$data_to_write->hide_activity_link = $links;
 	$data_to_write->hide_activity_in_summary = $summaries;
 	$data_to_write->actor_gid = $node->actor_gid;
-	
+
 	$result = drupal_write_record('pi_inquiry', $data_to_write);
-	
+
 	if($result != SAVED_NEW)
 	{
-      $result_string = _pi_write_record_result_string($result);
-      drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+		$result_string = _pi_write_record_result_string($result);
+		drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
 	}
 }
 
@@ -202,56 +202,56 @@ function pi_inquiry_insert($node)
  */
 function pi_inquiry_update($node)
 {
-  if ($node->revision)
-  {
-    // New revision; treat it as a new record.
-    pi_inquiry_insert($node);
-  }
-  else
-  {
-    $link = array();
-    $summary = array();
-    foreach($node->activities_show_hide as $module_name => $show_hide )
-    {
-      if( $show_hide['link'] !== 0 )
-      {
-        $link[] = $module_name;
-      }
+	if ($node->revision)
+	{
+		// New revision; treat it as a new record.
+		pi_inquiry_insert($node);
+	}
+	else
+	{ 
+		$link = array();
+		$summary = array();
+		foreach($node->activities_show_hide as $module_name => $show_hide )
+		{
+			if( $show_hide['link'] !== 0 )
+			{
+				$link[] = $module_name;
+			}
 
-      if( $show_hide['summary'] !== 0 )
-      {
-        $summary[] = $module_name;
-      }
-    }
+			if( $show_hide['summary'] !== 0 )
+			{
+				$summary[] = $module_name;
+			}
+		}
 
 		if( is_array($link) )
 		{
 			$links = implode( ',', $link ) ;
 		}
-		
+
 		if( is_array($summary) )
 		{
 			$summaries = implode( ',', $summary ) ;
 		}
 
-    //pi_debug_message("L: " . $links . " S: " . $summaries);
+		//pi_debug_message("L: " . $links . " S: " . $summaries);
 
-    $data_to_write = new stdClass();
-    $data_to_write->nid = $node->nid;
-    $data_to_write->vid = $node->vid;
-    $data_to_write->layout = $node->layout;
-    $data_to_write->weight = $initial_weight;
-    $data_to_write->hide_activity_link = $links;
-    $data_to_write->hide_activity_in_summary = $summaries;
-    $data_to_write->actor_gid = $node->actor_gid;
-    //pi_debug_message($data_to_write);
-    $result = drupal_write_record('pi_inquiry', $data_to_write, array('vid', 'nid'));
-    if($result != SAVED_UPDATED)
-    {
-      $result_string = _pi_write_record_result_string($result);
-      drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
-    }
-  }
+		$data_to_write = new stdClass();
+		$data_to_write->nid = $node->nid;
+		$data_to_write->vid = $node->vid;
+		$data_to_write->layout = $node->layout;
+		$data_to_write->weight = $initial_weight;
+		$data_to_write->hide_activity_link = $links;
+		$data_to_write->hide_activity_in_summary = $summaries;
+		$data_to_write->actor_gid = $node->actor_gid;
+		//pi_debug_message($data_to_write);
+		$result = drupal_write_record('pi_inquiry', $data_to_write, array('vid', 'nid'));
+		if($result != SAVED_UPDATED)
+		{
+			$result_string = _pi_write_record_result_string($result);
+			drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+		}
+	}
 }
 
 /**
@@ -283,29 +283,29 @@ function pi_inquiry_delete(&$node) {
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-  $inquiry_row = db_fetch_array(db_query('SELECT `layout`, `hide_activity_link`, `hide_activity_in_summary`, `weight`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
-  $inquiry = new stdClass();
-  $inquiry->layout = $inquiry_row['layout'];
-  $inquiry->hide_activity_link = $inquiry_row['hide_activity_link'];
-  $inquiry->hide_activity_in_summary = $inquiry_row['hide_activity_in_summary'];
-  $inquiry->weight = $inquiry_row['weight'];
-  $inquiry->actor_gid = $inquiry_row['actor_gid'];
-  
-  $link = explode(',', $inquiry_row['hide_activity_link']);
-  $summary = explode(',', $inquiry_row['hide_activity_in_summary']);
-  foreach($link as $activity)
-  {
-    $inquiry->activities_show_hide[$activity] = array('link'=> true, 'summary' => in_array($activity, $summary));
-  }
-  foreach($summary as $activity)
-  {
-    if(!in_array($activity, $summary))
-    {
-      $inquiry->activities_show_hide[$activity] = array('link'=> false, 'summary' => true);
-    }
-  }
-  
-  return $inquiry;
+	$inquiry_row = db_fetch_array(db_query('SELECT `layout`, `hide_activity_link`, `hide_activity_in_summary`, `weight`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+	$inquiry = new stdClass();
+	$inquiry->layout = $inquiry_row['layout'];
+	$inquiry->hide_activity_link = $inquiry_row['hide_activity_link'];
+	$inquiry->hide_activity_in_summary = $inquiry_row['hide_activity_in_summary'];
+	$inquiry->weight = $inquiry_row['weight'];
+	$inquiry->actor_gid = $inquiry_row['actor_gid'];
+
+	$link = explode(',', $inquiry_row['hide_activity_link']);
+	$summary = explode(',', $inquiry_row['hide_activity_in_summary']);
+	foreach($link as $activity)
+	{
+		$inquiry->activities_show_hide[$activity] = array('link'=> true, 'summary' => in_array($activity, $summary));
+	}
+	foreach($summary as $activity)
+	{
+		if(!in_array($activity, $summary))
+		{
+			$inquiry->activities_show_hide[$activity] = array('link'=> false, 'summary' => true);
+		}
+	}
+
+	return $inquiry;
 }
 
 /**
@@ -384,12 +384,12 @@ function pi_activity_show_hide_from( $nid )
 		$default = array();
 		$hidden_activities_link = array();
 		$hidden_activities_summary = array();
-		
+
 		if( is_array( $hidden_activities['link'] ) )
 		{
 			$hidden_activities_link = $hidden_activities['link'];
 		}
-		
+
 		if( is_array( $hidden_activities['summary'] ) )
 		{
 			$hidden_activities_summary = $hidden_activities['summary'];

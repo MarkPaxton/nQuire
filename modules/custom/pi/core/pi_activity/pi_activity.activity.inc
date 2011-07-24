@@ -13,12 +13,14 @@
  * @param uint $activity_id The id of the pi_activity to work with  
  * @param $arg_node_function The function to perform on the activity
  */
-function pi_activity_content_view($activity, $arg_node_function)
-{
+function pi_activity_content_view($activity, $arg_node_function) {
+
 	global $user;
+	$uid = $user->uid;
 	$activity_inquiry_id = get_inquiry_id_for_activity_id($activity->nid);
+	
 	$output = '';
-				
+			
 	// Check that the node function given in the URL is allowed by comparing it with the 
 	//   node function in the database for this inquiry and user
 	//$node_function = pi_activity_get_node_function($activity->nid, $uid);
@@ -27,7 +29,7 @@ function pi_activity_content_view($activity, $arg_node_function)
 	{
 		case 'view':
 			//get nid
-			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
+			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $uid);
 			if(isset($nid))
 			{
 				$loaded_node = node_load($nid);
@@ -40,7 +42,15 @@ function pi_activity_content_view($activity, $arg_node_function)
 			}
 			else
 			{
-				drupal_set_message(t("Can't find the content this activity."), 'error');
+				//$output .= t( 'Please use the "Edit" button to add content.' );
+				//drupal_set_message(t("Can't find the content this activity."), 'error');
+				
+				drupal_set_message( t( 'Please use the "Edit" button to add content.' ), 'info' );
+				
+				$activity_link = 'activity/' . $activity->nid . '/edit';
+				$destination = drupal_get_destination();
+				unset($_REQUEST['destination']);
+				drupal_goto($activity_link, 'destination=activity/' . $activity->nid . '/edit');
 			}
 			break;
 		case 'add': 
@@ -53,7 +63,7 @@ function pi_activity_content_view($activity, $arg_node_function)
 			// 2) If "pi_activity_get_node_function" is not add, then this indicates an add shortcut COULD be used
 			// 3) If an "Add x" activity of the correct node type exists, then the add function is available to be
 			//		called, so forward to that page using drupal_goto().
-			$node_function = pi_activity_get_node_function($activity->nid, $user->uid);
+			$node_function = pi_activity_get_node_function($activity->nid, $uid);
 			if($node_function == 'add')
 			{
 				// Normal add activity
@@ -81,14 +91,22 @@ function pi_activity_content_view($activity, $arg_node_function)
 			break;
 		case 'edit':			
 			//get nid
-			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
+			$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $uid);
 			//build form
+			
 			$loaded_node = node_load($nid);
 			if( !function_exists("node_page_edit")) {
 				include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 			}
 			$output .= pi_activity_actor_audience_info($activity_inquiry_id, $activity->nid);
-			$output .= node_page_edit($loaded_node);
+			
+			if( $nid ) {
+				$output .= node_page_edit($loaded_node);
+			}
+			else {
+				$output .= node_add( $activity->node_type );
+			}
+			
 			break;
 	}
 	drupal_set_title(check_plain($activity->title));

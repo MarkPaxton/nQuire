@@ -30,22 +30,25 @@ function pi_authoring_theme() {
 		'pi_authoring_inquiry_phases' => array(
 			'file' => 'pi_authoring.inquiry_edit.inc',
 		),
+		
 		'pi_authoring_order_phases_form' => array(
 			'arguments' => array('form' => NULL),
 			'file' => 'pi_authoring.inquiry_edit.inc',
 		),
+		
+		'pi_authoring_order_activities_form' => array(
+			'arguments' => array('form' => NULL),
+			'file' => 'pi_authoring.activities.inc',
+		),
+		'pi_authoring_inquiry_activities' => array(
+			'arguments' => array('form' => NULL),
+			'file' => 'pi_authoring.activities.inc',
+		),
+		
 		'pi_authoring_inquiry_stages' => array(
 			'file' => 'pi_authoring.inquiry_edit.inc',
 		),
 		'pi_authoring_order_stages_form' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.inquiry_edit.inc',
-		),
-		'pi_authoring_phase_activities' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.inquiry_edit.inc',
-		),
-		'pi_authoring_order_activities_form' => array(
 			'arguments' => array('form' => NULL),
 			'file' => 'pi_authoring.inquiry_edit.inc',
 		),
@@ -79,7 +82,7 @@ function pi_authoring_help($path, $arg) {
 
 	$output = '';
 
-	switch ($path) {
+	switch ($section) {
 		case "admin/help#pi_authoring":
 			$output = '<p>'.  t("Test Authoring for Basic Inquiry Authoring"). '</p>';
 			break;
@@ -131,7 +134,7 @@ function pi_authoring_menu() {
 		'weight' => 2,
 	);
 
-	$items['admin/nquire/group_hierarchy/view'] = array(
+		$items['admin/nquire/group_hierarchy/view'] = array(
 		'title' => 'View',
 		'file' => 'pi_authoring.admin_group_hierarchy.inc',
 		'page callback' => 'pi_authoring_admin_group_hierarchy_view',
@@ -159,7 +162,11 @@ function pi_authoring_menu() {
     	'access arguments' => array('administer site configuration'),
 		'weight' => 3,
 	);
-
+		
+	
+	
+	
+	
 	$items['admin/nquire/inquires'] = array(
 		'title' => 'Inquiries',
 		'description' => 'Manage Inquiries.',
@@ -228,7 +235,6 @@ function pi_authoring_menu() {
 		'weight' => 2,
 	);
 
-
   $items['inquiry/%node/edit/measures'] = array(
     'title' => 'Edit Measures',
     'page callback' => 'pi_measure_filter_call_form',
@@ -251,8 +257,19 @@ function pi_authoring_menu() {
 		'weight' => 1,
 	);
 	
+	  // NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
+	$items['inquiry/%node/activity/add'] = array(
+		'title' => 'Add a activity',
+		'file' => 'pi_authoring.activities.inc',
+		'page callback' => 'pi_authoring_inquiry_activity_add',
+		'page arguments' => array(1),
+		'type' => MENU_CALLBACK,
+		'access_callback' => TRUE,
+		'access arguments' => array('access pi_authoring content'),
+		'weight' => 1,
+	);
 	
-	// NOTE: If you change the url below also change pi_authoring_form_pi_stage_node_form_alter()
+	// NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
 	$items['inquiry/%node/stage/add'] = array(
 		'title' => 'Add a stage',
 		'file' => 'pi_authoring.inquiry_stage_add.inc',
@@ -263,19 +280,6 @@ function pi_authoring_menu() {
 		'access arguments' => array('access pi_authoring content'),
 		'weight' => 1,
 	);
-	
-	// NOTE: If you change the url below also change pi_authoring_form_pi_activity_node_form_alter()
-	$items['phase/%node/activity/add'] = array(
-		'title' => 'Add an activity',
-		'file' => 'pi_authoring.phase_activity_add.inc',
-		'page callback' => 'pi_authoring_phase_activity_add',
-		'page arguments' => array(1),
-		'type' => MENU_CALLBACK,
-		'access_callback' => TRUE,
-		'access arguments' => array('access pi_authoring content'),
-		'weight' => 1,
-	);
-	
 	
 	
 	// NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
@@ -293,16 +297,6 @@ function pi_authoring_menu() {
 		'title' => 'View stage inquiry',
 		'file' => 'pi_authoring.stage.inc',
 		'page callback' => 'pi_authoring_stage_inquiry',
-	    'page arguments' => array(1),
-		'access arguments' => array('access content'),
-		'type' => MENU_CALLBACK,
-	);
-
-	// NOTE: If you change the url below also change pi_authoring_form_pi_activity_node_form_alter()
-	$items['activity/%node/phase'] = array(
-		'title' => 'View activity phase',
-		'file' => 'pi_authoring.activity.inc',
-		'page callback' => 'pi_authoring_activity_phase',
 	    'page arguments' => array(1),
 		'access arguments' => array('access content'),
 		'type' => MENU_CALLBACK,
@@ -332,28 +326,17 @@ function pi_authoring_menu() {
 		'weight' => 1
 	);
 	
+	// NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
 	$items['phase/%node/edit/activities'] = array(
 		'title' => 'Edit Activities',
-		'file' => 'pi_authoring.inquiry_edit.inc',
-		'page callback' => 'pi_authoring_phase_activities',
-		'page arguments' => array(1),
-		'type' => MENU_LOCAL_TASK,
-		'access_callback' => TRUE,
+		'file' => 'pi_authoring.activities.inc',
+		'page callback' => 'pi_authoring_activities_edit',
+	    'page arguments' => array(1),
 		'access arguments' => array('access pi_authoring content'),
-		'weight' => 2,
-	);
-
-	// NOTE: If you change the url below also change pi_authoring_form_pi_activity_node_form_alter()
-	$items['phase/%node/activity/%node/edit'] = array(
-		'title' => 'Edit Activity',
-		'file' => 'pi_authoring.activity.inc',
-		'page callback' => 'pi_authoring_activity_edit',
-		'page arguments' => array(3),
 		'type' => MENU_LOCAL_TASK,
-		'access_callback' => TRUE,
-		'access arguments' => array('access pi_authoring content'),
-		'weight' => 2,
+		'weight' => 2
 	);
+	
 	
 	
 	// NOTE: If you change the url below also change pi_authoring_form_pi_stage_node_form_alter()
@@ -811,146 +794,6 @@ function pi_authoring_form_pi_stage_node_form_alter(&$form, &$form_state)
 	//otherwise if it's not related to inquiry editing then don't touch the form
 }
 
-/**
- * This function uses hook_form_FORM-ID_alter() to set the redirect and the inquiry field as hidden
- * when adding/editing an activity via the nQuire authoring system (detected via checking the url)
- * This deas with 2 curcumstances:
- * 	(1) Adding a new activity to an inquiry via the /phase/%phase/activity/add url
- *    -> alter form to hide inquiry selection dropdown
- *    -> redirect to /inquiry/%inquiry/stages on completion
- *  (2) Editing a phase via /stage/%phase/edit
- *    -> redirect to /inquiry/%inquiry/stages on completion 
- *    		n.b. this isn't directly possible given that inquiry_id isn't known at this stage
- *    			in the form lifecycle so the page is routed via "stage/inquiry" which will redirect to
- *    			the inquiry page automatically
- *    
- */
-function pi_authoring_form_pi_activity_node_form_alter(&$form, &$form_state)
-{
-	//Strip the request url of the preceeding drupal stuff base_url and ?q=/
-	// so that it's possible to work out whether the page request was from /phase/%phase/activity/add
-	// or from /node/%node/edit
-	$drupal_path = str_replace(base_path(), '', request_uri());
-	$drupal_path = str_replace('?q=', '', $drupal_path);
-	
-	// Split the string into parts to get the inquiry id if it exists...
-	$path_parts = explode('/', $drupal_path);
-	
-	// Look for /phase/{number}/activity/add
-	// First see if the array is big enough to avoid looking at null refs.
-	if(count($path_parts)==4)
-	{
-		// Now check all the parts for vaildity... inquiry NUMBER stage add
-		if( (strcasecmp($path_parts[0], 'phase')==0) && 
-			is_numeric($path_parts[1]) &&
-			(strcasecmp($path_parts[2], 'activity')==0) )
-		{
-				// the last part of the url is a special case since it could be either
-				// /phase/%phase/activity/add OR 
-				// /phase/%phase/activity/add?some=query&string=too OR
-				// /phase/%phase/activity/add&some=query&string=too
-				$valid_strings = array('add', 'add?', 'add&'); 
-				if(in_array(strtolower($path_parts[3]), $valid_strings))
-				{
-					// finally check that it's a valid phase id
-					$potential_phase_id = $path_parts[1];
-					$potential_phase_node = node_load($potential_phase_id);
-						
-					//check it's loaded something, then check it's type...
-					if(($potential_phase_node !== FALSE))
-					{
-						if($potential_phase_node->type == 'pi_phase')
-						{
-						  // Hurrah, it pased the test: it's an phase node
-							// Make the inquiry and phase selection on the form in advance and hide it
-							$form['inquiry_nid']['#type'] = 'hidden';
-							$form['inquiry_nid']['#value'] = $potential_phase_node->inquiry_nid;
-							$form['inquiry_nid']['#prefix'] = "<div>";
-							// generate the checkboxes again as it's not picked up by ahah helper here!
-							$form['activity_phases_stages']['phase_nid']['#type'] = 'hidden';
-							$form['activity_phases_stages']['phase_nid']['#default_value'] = $potential_phase_node->nid;
-							$form['activity_phases_stages']['phase_nid']['#allowed_phase_nids'] = array ( $potential_phase_node->nid => $potential_phase_node->title);
-							$form['activity_phases_stages']['phase_nid']['#prefix'] = "<div>";
-							
-                            $form['activity_phases_stages']['stages'] = _pi_activity_form_generate_stage_select($potential_phase_node->inquiry_nid, $form['activity_phases_stages']['stages']['#default_value']);
-
-                            //Set redirection to go to the inquiry phase page
-							$form['#redirect'] = "phase/$potential_phase_id/edit/activities";
-							$form['#after_build'] = array("pi_authoring_form_after_build_activity_phase_nid");
-														
-						}
-						else
-						{
-							// It wasn't a valid inquiry node, so fall back to standard stage editing page
-							drupal_set_message(t('A phase id ('. check_plain($potential_phase_id) . ') was specified for this activity, but the id didn\'t refer to a valid phase node; select a phase from the form instead.'), 'warning');
-						}
-					}
-					else
-					{
-						// It wasn't a node, so fall back to standard stage editing page
-						drupal_set_message(t('A phase id ('. check_plain($potential_phase_id) . ') was specified for this stage, but there as no item with that id; select an phase from the form instead.'), 'warning');
-					}
-				}
-			}
-		// ELSE... don't change the form or bother wirh an error message as the url was so wrong it's
-		//   probably not intended to make this work!			
-	}
-	else
-	{
-		
-		// Is it a /phase/%phase/activity/%activity/edit url 
-		if(count($path_parts)>= 5)
-		{
-			// Now check all the parts for vaildity... phase NUMBER activity NUMBER edit
-			if((strcasecmp($path_parts[0], 'phase')==0) && is_numeric($path_parts[1]) &&
-			  (strcasecmp($path_parts[2], 'activity')==0) && is_numeric($path_parts[3]) )
-			{
-				// the last part could end in ? and & as well:
-				$valid_strings = array('edit', 'edit?', 'edit&');
-				if(in_array(strtolower($path_parts[4]), $valid_strings))
-				{
-					// Get the node id of the form being edited...
-					$nid = $form['nid']['#value'];
-					// check if nid is set
-					if(isset($nid))
-					{
-						// if it was from the authoring edit page, then get the node id and redirect back
-						// to the authoring page for it... via the special redirect page (see function comment)
-						$form['#redirect'] = "activity/$nid/phase";
-						$form['#after_build'] = array('pi_authoring_form_after_build_activity_nid');
-					}
-				}
-			}
-		}
-	}
-	//otherwise if it's not related to inquiry editing then don't touch the form
-}
-
-function pi_authoring_form_after_build_activity_phase_nid($form, $form_state)
-{
-  $nid = $form['phase_nid']['#value'];
-  if(isset($nid))
-  {
-    // if it was from the authoring edit page, then get the node id and redirect back
-    // to the authoring page for it... via the special redirect page (see function comment)
-    $form['#redirect'] = "phase/$nid/edit/activities";
-  }
-  return $form;
-}
-
-
-function pi_authoring_form_after_build_activity_nid($form, $form_state)
-{
-  $nid = $form_state['nid']['#value'];
-  if(isset($nid))
-  {
-    // if it was from the authoring edit page, then get the node id and redirect back
-    // to the authoring page for it... via the special redirect page (see function comment)
-    $form['#redirect'] = "activity/$nid/phase";
-  }
-  return $form;
-}
-
 //-------------------------------------------------------------------------------------------------------------------
 //----------------------------------------------Table View of Inquiry------------------------------------------------
 //-------------------------------------------------------------------------------------------------------------------
@@ -1084,6 +927,246 @@ function pi_authoring_order_inquiries_form_submit($form, &$form_state)
 
 
 /**
+ * Draws the grid view for an inquiry showing phases, stages and activities.
+ * 
+ * @param db_fetch_object $inquiry The inquiry for which to draw the table given as an object returned by db_fetch_object 
+ * @param unknown_type $view_type
+ * @return string html content of the inquiry table view
+ */
+function draw_table($inquiry, $view_type){
+	/*
+	 * to build up the table we need to know the phases and activities and to which stage they belong to.
+	 * for each phase in the inquiry
+	 *  - 1. print the name and find out if it is part of a stage and colour them green
+	 *  - 2. find out the activities for that phase and for each stage does it belong
+	 * 	- 2.1 if it does belong then colour it green
+	 *  - 2.2 if not then include a link to add the activity to that phase and stage
+	 */
+	 
+	$stage_phase_activities = array();
+
+	// Get the nids of all the inquiry phases and stages
+	$phase_nids = pi_phase_load_nids($inquiry->nid);
+	$stage_nids = pi_stage_load_nids($inquiry->nid);
+	
+	// pre-load the stages for the inquiry as they're going to be used on each phase row
+	$stages = array(); 
+	foreach($stage_nids as $stage_nid)
+	{
+		$stages[$stage_nid] = node_load($stage_nid);
+	}
+	
+	// phase->nid is used in this function, so no need to load the node here, but it will be passed on to
+	// get_view, so they are loaded anyway
+	$phases = array();
+	foreach($phase_nids as $phase_nid)
+	{
+		$phases[] = node_load($phase_nid);
+		foreach($stages as $stage)
+		{
+			//1. is this phase in this stage?
+	 		if(in_array($phase_nid, $stage->phases))
+	 		{
+	 			//2. does this phase in this stage have activites?
+	 			$activities = array();
+	 			$query = "SELECT * FROM {pi_stage_phase_activity} WHERE psp_id = %d ORDER BY position";
+	 			$result = db_query($query, $stage->stage_phase_ids[$phase_nid]);
+	 			while($object = db_fetch_object($result))
+	 			{
+	 				$activities[] = $object->activity_id;
+	 			}
+	 			//phase is included in this stage
+	 			$stage_phase_activities[$stage->nid][$phase_nid] = $activities;
+	 		}
+	 		else
+	 		{
+	 			//echo $phase->title . ", " . $stage->title . ", " . "null; ";
+	 			//phase not in this stage
+	 			$stage_phase_activities[$stage->nid][$phase_nid] = NULL;
+	 		}
+	 	}
+	 }
+	 //firep($stage_phase_activities, "stage_phase_activities");
+	return get_view($inquiry, $stage_phase_activities, $stages, $phases, $view_type);
+}
+
+/**
+ * Draw the table for inquiry authoring
+ * 
+ * @param object(inquiry) $inquiry
+ * @param array(uint)(uint) $stage_phase_activities array of [stage_nid][phase_nid] with an array if activity_ids if inlcuded phase is in stage, NULL if not
+ * @param array(uint) $stages array of stages for this inquiry
+ * @param array(uint) $phases array of phases for this inquiry
+ * @param string $view_type
+ * @return string HTML for an inquiry authoring table
+ */
+function get_view($inquiry, $stage_phase_activities, $stages, $phases, $view_type){
+	//content 
+	$content = "<div><strong>" . t($inquiry->title) . "</strong></div>\n";
+	//draw the table of phses, activities and stages
+	$content .= "<table border='1'>\n";
+	
+	//stage name headers
+	$content .= "<tr bgcolor='#eeeeee'>\n";
+	$content .= "<td></td>\n";
+	foreach($stages as $stage)
+	{
+		$content .= "<td>\n";
+		$stage_down_link = "piauthoring/activities/8/" . $stage->nid . "/" . $inquiry->nid . "/" .  $_GET['q'];
+		$stage_up_link = "piauthoring/activities/7/" . $stage->nid . "/" . $inquiry->nid . "/" .  $_GET['q'];
+		$content .= t($stage->title) . "  " . l("(+", $stage_up_link) . "  " . l("-)",$stage_down_link);
+		$content .= "</td>\n";
+	}
+	$content .= "</tr>\n";
+	
+	//phases and activities
+	foreach($phases as $phase)
+	{
+		//Renders
+		// Phase name : stages[]
+		// Phase activities : stages[]
+		
+		// Phase name
+		$content .= "<tr>\n";
+		$phase_down_link = "piauthoring/activities/10/" . $phase->nid . "/" . $inquiry->nid . "/" . $_GET['q'];
+		$phase_up_link = "piauthoring/activities/9/" . $phase->nid . "/" . $inquiry->nid . "/" .  $_GET['q'];
+		$content .= "<td bgcolor='#eeeeee'>\n" . t($phase->title) . "    " . l("(+",$phase_down_link) . "  " . l("-)",$phase_up_link) . "</td>\n";
+		//if the phase is included in a stage then colour the cell green
+		foreach($stages as $stage)
+		{
+			//If this phase is included in this phase, then "array" will be set
+			// otherwise it will be null, so display a red cell 
+			if(is_array($stage_phase_activities[$stage->nid][$phase->nid]))
+			{
+				$content .= "<td bgcolor='#00ff00'>"; //green cell
+				$sp_link = get_stage_phase_link($view_type, $inquiry->nid, $stage->nid, $phase->nid);
+				//firep($sp_link, "Found activities in this stage for $phase->nid");
+				if($sp_link != '')
+				{
+					$content .= l("Add Activity", $sp_link);
+				}
+				$content .= "</td>\n"; 
+			}
+			else
+			{
+				$content .= "<td bgcolor='#ff0000'>";//red cell
+				$content .= "</td>\n"; 
+			}
+		}
+		$content .= "</tr>\n";
+		
+		// Phase activities : stages[]
+		//what activities does this phase include for each stage?
+		$already_included = array();
+		foreach($stages as $s)
+		{
+			$activity_array = &$stage_phase_activities[$s->nid][$phase->nid];
+			if(is_array($activity_array))
+			{
+				if(count($activity_array)>0)
+				{
+					foreach($activity_array as $activity)
+					{
+						// If it's already shown in the table so don't add a new row
+						if(!in_array($activity, $already_included))
+						{
+							$content .= "<tr>\n";
+							$activity_up_link = "piauthoring/activities/11/" . $activity . "/";
+							$activity_up_link .= $s->nid . "/" . $phase->nid . "/";
+							$activity_up_link .= $inquiry->nid . "/" . $_GET['q'];
+							$activity_down_link = "piauthoring/activities/12/" . $activity . "/";
+							$activity_down_link .= $s->nid . "/" . $phase->nid . "/";
+							$activity_down_link .= $inquiry->nid . "/" . $_GET['q'];
+							$content .= '<td> -> ' . get_name_of_activity($activity) . '    ' . l("(+",$activity_up_link) . '  ' . l("-)",$activity_down_link) . "</td>\n";
+							foreach($stages as $st)
+							{
+								if($st->nid == $s->nid){
+									$content .= "<td bgcolor='#00ff00'>"; //green cell
+									$link = get_activity_link($view_type, $activity, $inquiry->nid);
+									if($link != ''){
+										$content .= l('edit', $link);
+									}
+									else if($view_type == 'add'){
+										//HERE
+										$delete_link = "piauthoring/activities/13/" . $activity;
+										$content .= l("delete", $delete_link);
+									}
+									$content .= "</td>\n";
+								}
+								else{
+									$temp_array = $array[$st->nid][$phase->nid];
+									if($temp_array == 'NULL'){
+										// stage is not included in this phase so no activities
+										$content .= '<td bgcolor="#ff0000"></td>'; //red cell
+									}
+									else if((count($temp_array)==0)){
+										// stage is included in phase but has no activties
+										$link = get_to_include_link($view_type,
+										$phase->nid,
+										$st->nid,
+										$activity);
+										$content .= '<td bgcolor="#ff9900">'; //amber cell
+										if($link != ''){
+											$content .= l('include?',$link);
+										}
+										$content .= '</td>';
+									}
+									else{
+										//stage is included in phase and has activities
+										if(in_array($activity, $temp_array)){
+											//activity is in this stage as well
+											$content .= '<td bgcolor="#00ff00">';
+											if($view_type == 'add'){
+												//HERE
+												$uninclude_link = "piauthoring/activities/14/" . $st->nid;
+												$uninclude_link .= "/" . $phase->nid . "/" . $activity;
+												$uninclude_link .= "/" . $inquiry->nid;
+												$content .= l("un-include", $uninclude_link);
+											}
+											$content .= '</td>'; //green cell
+										}
+										else{
+											//activity not in this stage
+											$link = get_to_include_link($view_type,
+											$phase->nid,
+											$st->nid,
+											$activity);
+											$content .= '<td bgcolor="#ff9900">';//amber cell
+											if($link != ''){
+												$content .= l('include?',$link);
+											}
+											$content .= '</td>';
+										}
+									}
+								}
+							}
+							$content .= '</tr>';
+							$already_included[] = $activity;
+						}
+					}
+				}
+				//end foreach				
+			}
+		}
+	}
+	
+	$content .= "</table>";
+	return $content;
+}
+
+/**
+ * MISSING
+ * 
+ * @param unknown_type $activity_id
+ * @return string
+ */
+function get_name_of_activity($activity_id){
+	$query = "SELECT name FROM {pi_activity} WHERE activity_id = %d";
+	$result = db_fetch_object(db_query($query, $activity_id));
+	return $result->name;
+}
+
+/**
  * MISSING
  * 
  * @param unknown_type $view_type
@@ -1143,7 +1226,261 @@ function get_activity_link($view_type, $activity_id, $inquiry_id){
 	return $link;
 }
 
+/**
+ * MISSING
+ * 
+ * @return unknown_type
+ */
+function move_stage_up_one_position(){
+	//piauthoring/activities/7
+	//the last element in the path is the stage_id
+	$stage_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the stage and find its position
+	$query = "SELECT * FROM {pi_inquiry_stage} WHERE";
+	$query .= " stage_id = %d";
+	$query .= " AND inquiry_id = %d";
+	$object = db_fetch_object(db_query($query, $stage_id, $inquiry_id));
+	$start_pos = $object->position;
+	//get the next stage based on its position
+	$query2 = "SELECT * FROM {pi_inquiry_stage} WHERE";
+	$query2 .= " inquiry_id = %d";
+	$query2 .= " AND position > %d";
+	$query2 .= " ORDER BY position ASC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2, $inquiry_id, $start_pos));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE {pi_inquiry_stage} SET position = %d";
+		$query3 .= "WHERE pis_id = %d";
+		db_query($query3, $end_pos, $object->pis_id);
+		$query4 = "UPDATE {pi_inquiry_stage} SET position = %d";
+		$query4 .= "WHERE pis_id = %d";
+		db_query($query4, $start_pos, $object2->pis_id);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);	
+}
 
+/**
+ * MISSING
+ * 
+ * @return unknown_type
+ */
+function move_stage_down_one_position(){
+	//piauthoring/activities/8
+	//the last element in the path is the stage_id
+	$stage_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the stage and find its position
+	$query = "SELECT * FROM {pi_inquiry_stage} WHERE";
+	$query .= " stage_id = %d";
+	$query .= " AND inquiry_id = %d";
+	$object = db_fetch_object(db_query($query, $stage_id, $inquiry_id));
+	$start_pos = $object->position;
+	//get the previous stage based on its position
+	$query2 = "SELECT * FROM {pi_inquiry_stage} WHERE";
+	$query2 .= " inquiry_id = %d";
+	$query2 .= " AND position < %d";
+	$query2 .= " ORDER BY position DESC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2, $inquiry_id, $start_pos));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE {pi_inquiry_stage} SET position = %d ";
+		$query3 .= "WHERE pis_id = %d";
+		db_query($query3, $end_pos, $object->pis_id);
+		$query4 = "UPDATE {pi_inquiry_stage} SET position = %d ";
+		$query4 .= "WHERE pis_id = %d";
+		db_query($query4, $start_pos, $object2->pis_id);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);
+}
+
+/**
+ * MISSING
+ * 
+ * @return unknown_type
+ */
+function move_phase_up_one_position(){
+	//piauthoring/activities/9
+	//the last element in the path is the phase_id
+	$phase_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the phase and find its position
+	$query = "SELECT * FROM {pi_inquiry_phase} WHERE";
+	$query .= " phase_id = %d";
+	$query .= " AND inquiry_id = %d";
+	$object = db_fetch_object(db_query($query, $phase_id, $inquiry_id));
+	$start_pos = $object->position;
+	//get the next phase based on its position
+	$query2 = "SELECT * FROM {pi_inquiry_phase} WHERE";
+	$query2 .= " inquiry_id = %d";
+	$query2 .= " AND position > %d";
+	$query2 .= " ORDER BY position ASC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2, $inquiry_id, $start_pos));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE {pi_inquiry_phase} SET position = %d ";
+		$query3 .= "WHERE pip_id = %d";
+		db_query($query3, $end_pos,  $object->pip_id );
+		$query4 = "UPDATE {pi_inquiry_phase} SET position = %d ";
+		$query4 .= "WHERE pip_id = %d";
+		db_query($query4, $start_pos , $object2->pip_id);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);	
+}
+
+/**
+ * MISSING
+ * 
+ * @return unknown_type
+ */
+function move_phase_down_one_position(){
+	//piauthoring/activities/10
+	//the last element in the path is the phase_id
+	$phase_id = arg(3);
+	$inquiry_id = arg(4);
+	//get the phase and find its position
+	$query = "SELECT * FROM {pi_inquiry_phase} WHERE";
+	$query .= " phase_id = %d";
+	$query .= " AND inquiry_id = %d";
+	$object = db_fetch_object(db_query($query, $phase_id, $inquiry_id));
+	$start_pos = $object->position;
+	//get the next phase based on its position
+	$query2 = "SELECT * FROM {pi_inquiry_phase} WHERE";
+	$query2 .= " inquiry_id = %d";
+	$query2 .= " AND position < %d";
+	$query2 .= " ORDER BY position DESC";
+	//should be the first in the items returned if not then it is the last stage so can't be moved up one
+	$object2 = db_fetch_object(db_query($query2, $inquiry_id, $start_pos));
+	$end_pos = $object2->position;
+	//swap these position values
+	if($object2){
+		//update the tables with the new position values
+		$query3 = "UPDATE {pi_inquiry_phase} SET position = %d ";
+		$query3 .= "WHERE pip_id = %d";
+		db_query($query3, $end_pos, $object->pip_id );
+		$query4 = "UPDATE {pi_inquiry_phase} SET position = %d ";
+		$query4 .= "WHERE pip_id = %d";
+		db_query($query4, $start_pos,  $object2->pip_id);
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(5) . "/" . arg(6) . "/" . arg(7) . "/" .  arg(8);
+	drupal_goto($return_path);
+}
+
+/**
+ * MISSING
+ * 
+ * @return unknown_type
+ */
+function move_activity_up_one_position(){
+	//piauthoring/activities/11
+	//the last element in the path is the stage_id
+	$activity_id = arg(3);
+	$stage_id = arg(4);
+	$phase_id = arg(5);
+	$inquiry_id = arg(6);
+	//get the pi_stage_phase
+	$query = "SELECT * FROM {pi_stage_phase} WHERE";
+	$query .= " stage_id = %d";
+	$query .= " AND phase_id = %d";
+	$object = db_fetch_object(db_query($query, $stage_id, $phase_id));
+	if($object){
+		//echo $object->psp_id . "; ";
+		//get the activity and find its position
+		$query2 = "SELECT * FROM {pi_stage_phase_activity} WHERE";
+		$query2 .= " psp_id = %d";
+		$query2 .= " AND activity_id = %d";
+		$object2 = db_fetch_object(db_query($query2, $object->psp_id, $activity_id));
+		$start_pos = $object2->position;
+		//get the next stage based on its position
+		$query3 = "SELECT * FROM {pi_stage_phase_activity} WHERE";
+		$query3 .= " psp_id = %d";
+		$query3 .= " AND position < %d";
+		$query3 .= " ORDER BY position DESC";
+		//should be the first in the items returned if not then it is the last stage so can't be moved up one
+		$object3 = db_fetch_object(db_query($query3, $object->psp_id, $start_pos));
+		$end_pos = $object3->position;
+		//swap these position values
+		if($object3){
+			//echo "... " . $object2->pspa_id . ", " . $end_pos . "; " . $object3->pspa_id . ", " . $start_pos;
+			//update the tables with the new position values
+			$query4 = "UPDATE {pi_stage_phase_activity} SET position = %d";
+			$query4 .= " WHERE pspa_id = %d";
+			db_query($query4, $end_pos, $object2->pspa_id);
+			$query5 = "UPDATE {pi_stage_phase_activity} SET position = %d";
+			$query5 .= " WHERE pspa_id = %d";
+			db_query($query5, $start_pos, $object3->pspa_id);
+		}
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(7) . "/" . arg(8) . "/" . arg(9) . "/" .  arg(10);
+	drupal_goto($return_path);
+}
+
+/**
+ * MISSING
+ * 
+ * @return unknown_type
+ */
+function move_activity_down_one_position(){
+	//piauthoring/activities/12
+	//the last element in the path is the stage_id
+	$activity_id = arg(3);
+	$stage_id = arg(4);
+	$phase_id = arg(5);
+	$inquiry_id = arg(6);
+	//get the pi_stage_phase
+	$query = "SELECT * FROM {pi_stage_phase} WHERE ";
+	$query .= " stage_id = %d ";
+	$query .= " AND phase_id = %d";
+	$object = db_fetch_object(db_query($query, $stage_id, $phase_id));
+	if($object){
+		//echo $object->psp_id . "; ";
+		//get the activity and find its position
+		$query2 = "SELECT * FROM {pi_stage_phase_activity} WHERE";
+		$query2 .= " psp_id = %d";
+		$query2 .= " AND activity_id = %d";
+		$object2 = db_fetch_object(db_query($query2, $object->psp_id, $activity_id));
+		$start_pos = $object2->position;
+		//get the next stage based on its position
+		$query3 = "SELECT * FROM {pi_stage_phase_activity} WHERE";
+		$query3 .= " psp_id = %d";
+		$query3 .= " AND position > %d";
+		$query3 .= " ORDER BY position ASC";
+		//should be the first in the items returned if not then it is the last stage so can't be moved up one
+		$object3 = db_fetch_object(db_query($query3, $object->psp_id, $start_pos));
+		$end_pos = $object3->position;
+		//swap these position values
+		if($object3){
+			//echo "... " . $object2->pspa_id . ", " . $end_pos . "; " . $object3->pspa_id . ", " . $start_pos;
+			//update the tables with the new position values
+			$query4 = "UPDATE {pi_stage_phase_activity} SET position = %d";
+			$query4 .= " WHERE pspa_id = %d";
+			db_query($query4, $end_pos, $object2->pspa_id);
+			$query5 = "UPDATE {pi_stage_phase_activity} SET position = %d";
+			$query5 .= " WHERE pspa_id = %d";
+			db_query($query5, $start_pos, $object3->pspa_id);
+		}
+	}
+	//return to the relevant page -> last element in the path
+	$return_path = arg(7) . "/" . arg(8) . "/" . arg(9) . "/" .  arg(10);
+	drupal_goto($return_path);
+}
 
 /**
  * MISSING

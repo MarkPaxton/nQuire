@@ -6,54 +6,54 @@ module_load_include('inc', 'pi_activity', 'pi_activity.workflow' );
 module_load_include('inc', 'pi_activity', 'pi_activity.extra' );
 
 /*
-function process_error_backtrace($errno, $errstr, $errfile, $errline, $errcontext) {
-  if(!(error_reporting() & $errno))
-  return;
-  switch($errno) {
-    case E_WARNING      :
-    case E_USER_WARNING :
-    case E_STRICT       :
-    case E_NOTICE       :
-    case E_USER_NOTICE  :
-      $type = 'warning';
-      $fatal = false;
-      break;
-    default             :
-      $type = 'fatal error';
-      $fatal = true;
-      break;
-  }
-  $trace = array_reverse(debug_backtrace());
-  array_pop($trace);
-  if(php_sapi_name() == 'cli') {
-    echo 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
-    foreach($trace as $item)
-    echo '  ' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()' . "\n";
-  } else {
-    echo '<p class="error_backtrace">' . "\n";
-    echo '  Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
-    echo '  <ol>' . "\n";
-    foreach($trace as $item)
-    echo '    <li>' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()</li>' . "\n";
-    echo '  </ol>' . "\n";
-    echo '</p>' . "\n";
-  }
-  if(ini_get('log_errors')) {
-    $items = array();
-    foreach($trace as $item)
-    $items[] = (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()';
-    $message = 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ': ' . join(' | ', $items);
-    //error_log($message);
-    drupal_set_message($message);
-  }
-  if($fatal)
-  {
-    exit(1);
-  }
-}
+ function process_error_backtrace($errno, $errstr, $errfile, $errline, $errcontext) {
+ if(!(error_reporting() & $errno))
+ return;
+ switch($errno) {
+ case E_WARNING      :
+ case E_USER_WARNING :
+ case E_STRICT       :
+ case E_NOTICE       :
+ case E_USER_NOTICE  :
+ $type = 'warning';
+ $fatal = false;
+ break;
+ default             :
+ $type = 'fatal error';
+ $fatal = true;
+ break;
+ }
+ $trace = array_reverse(debug_backtrace());
+ array_pop($trace);
+ if(php_sapi_name() == 'cli') {
+ echo 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
+ foreach($trace as $item)
+ echo '  ' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()' . "\n";
+ } else {
+ echo '<p class="error_backtrace">' . "\n";
+ echo '  Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ':' . "\n";
+ echo '  <ol>' . "\n";
+ foreach($trace as $item)
+ echo '    <li>' . (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()</li>' . "\n";
+ echo '  </ol>' . "\n";
+ echo '</p>' . "\n";
+ }
+ if(ini_get('log_errors')) {
+ $items = array();
+ foreach($trace as $item)
+ $items[] = (isset($item['file']) ? $item['file'] : '<unknown file>') . ' ' . (isset($item['line']) ? $item['line'] : '<unknown line>') . ' calling ' . $item['function'] . '()';
+ $message = 'Backtrace from ' . $type . ' \'' . $errstr . '\' at ' . $errfile . ' ' . $errline . ': ' . join(' | ', $items);
+ error_log($message);
+ }
+ if($fatal)
+ {
+ exit(1);
+ }
+ }
 
  set_error_handler('process_error_backtrace');
  */
+
 /**
  *
  * This functions returns the information for the activity node
@@ -147,16 +147,17 @@ function pi_activity_menu() {
 		'weight' => 1
 	);
 
-	$items['activity/%node/add'] = array(
+	/*
+	 $items['activity/%node/add'] = array(
 		'title' => 'Add',
-		'file' => 'pi_activity.activity.inc', 
+		'file' => 'pi_activity.activity.inc',
 		'page callback' => 'pi_activity_content_view',
 		'page arguments' => array(1, 'add'),
 		'access arguments' => array(1, 'add'),
 		'type' => MENU_LOCAL_TASK,
 		'weight' => 2
-	);
-
+		);
+		*/
 	$items['activity/%node/admin'] = array(
 		'title' => 'Admin',
 		'file' => 'pi_activity.admin.inc', 
@@ -276,6 +277,7 @@ function pi_activity_form( &$node, $form_state ) {
 					$node->inquiry_nid = $phase->inquiry_nid;
 				}
 			}
+
 		}
 	}
 
@@ -299,17 +301,17 @@ function pi_activity_form( &$node, $form_state ) {
 	}
 
 	$form['inquiry_nid'] = array(
-    '#type' => 'select',
-    '#title' => t('Inquiry for activity'),
-    '#required' => TRUE,
-    '#weight' => -20,
-    '#options' => $inquiry_options,
-    '#allowed_inquiry_nids' => $inquiry_nids,
-    '#default_value' => $inquiry_nid_default_value,
-    '#element_validate' => array('pi_util_inquiry_nid_validate'),
-    '#ahah' => array(
-      'path'    => ahah_helper_path(array('activity_phases_stages')),
-      'wrapper' => 'activity-phases-stages-wrapper',
+    	'#type' => 'select',
+    	'#title' => t('Inquiry for stage'),
+		'#required' => TRUE,
+  		'#weight' => -20,
+		'#options' => $inquiry_options,
+		'#allowed_inquiry_nids' => $inquiry_nids,
+		'#default_value' => $inquiry_nid_default_value,
+		'#element_validate' => array('pi_util_inquiry_nid_validate'),
+		'#ahah' => array(
+			'path'    => ahah_helper_path(array('activity_phases_stages')),
+			'wrapper' => 'activity-phases-stages-wrapper',
 	),
 	//this fixes some layout issues with the ahah throbber
 	//'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
@@ -338,17 +340,13 @@ function pi_activity_form( &$node, $form_state ) {
     $form['activity_phases_stages']['phase_nid'] = _pi_activity_form_generate_phase_select($inquiry_nid_default_value, $node->phase_nid);
 
     $stages_default_value = array();
-    if(is_array($form_state['storage']['activity_phases_stages']['stages']['stage_select']))
+    if(is_array($form_state['storage']['activity_phases_stages']['stages']))
     {
-    	$stages_default_value = $form['storage']['activity_phases_stages']['stages']['stage_select'];
+    	$stages_default_value = $form['storage']['activity_phases_stages']['stages'];
     }
     else
     {
-    	$stages_default_value = $node->activity_phases_stages['stages']['stage_select'];
-    }
-    if(!is_array($stages_default_value))
-    {
-      $stages_default_value = array();
+    	$stages_default_value = $node->activity_phases_stages['stages'];
     }
     $form['activity_phases_stages']['stages'] = _pi_activity_form_generate_stage_select($inquiry_nid_default_value, $stages_default_value);
 
@@ -370,8 +368,12 @@ function pi_activity_form( &$node, $form_state ) {
     	$node_type_options = array('none'=>t('Select activity type...'));
     	foreach($node_types as $node_type => $name)
     	{
-      $node_type_options[$node_type] = $name;
-      $allowed_activity_types = array_keys($node_types);
+    		//@TODO FIXME For now we only use "tested" own activities!
+    		if( strpos($name, "Inquiry " ) === 0 && $name != "Inquiry Activity" && $name != "Inquiry Phase" && $name != "Inquiry Stage" )
+    		{
+    			$node_type_options[$node_type] = $name;
+    			$allowed_activity_types = array_keys($node_types);
+    		}
     	}
     }
     else
@@ -587,6 +589,77 @@ function pi_activity_form( &$node, $form_state ) {
     return $form;
 }
 
+function pi_activity_form_validate( $form, &$form_state )
+{
+	//echo "pi_activity_form_validate";
+	//print_r( $form );
+	//print_r( $form_state );
+	//die();
+}
+
+function pi_activity_form_submit( $form, &$form_state )
+{
+	global $user;
+
+	//echo "pi_activity_form_submit";
+	//print_r( $form );
+	//print_r( $form_state );
+	//die();
+	/*
+	$new_node = new stdClass();
+
+	$new_node->title = $form_state['storage']['title'];
+	$new_node->type = 'pi_activity';
+	$new_node->uid = $user->uid;
+
+	node_save( $new_node );
+
+	$activity = new stdClass();
+
+	$activity->nid = $new_node->nid;
+	$activity->vid = $new_node->vid;
+	$activity->phase_nid = $form_state['storage']['activity_phases_stages']['phase_nid'];
+	//$activity->parent_activity = ;
+	//$activity->show_children_in_phase = ;
+	//$activity->referenced_node = ;
+	$activity->activity_type = $form_state['storage']['activity_type'];
+	//$activity->show_activity = ;
+	$activity->node_type = $form_state['storage']['node_type'];
+	$activity->parameters = $form_state['storage']['parameters'];
+	$activity->destination_after = $form_state['storage']['destination_after'];
+	$activity->audience = $form_state['storage']['selects']['audience'];
+	$activity->actor = $form_state['storage']['selects']['gid'];
+	$activity->weight = 1;
+
+	$activity->node_function = $form_state['storage']['node_function'];
+	$activity->visible_status = $form_state['storage']['visible_status'];
+
+	drupal_write_record( 'pi_activity', $activity );
+	*/
+}
+
+function pi_activity_form_alter(&$form, &$form_state)
+{
+
+	if( arg( 0 ) == 'inquiry_____' )
+	{
+		$inquiry_nid = arg( 1 );
+
+		$node = node_load( $inquiry_nid );
+
+		//print_r( $node );
+
+		$form['inquiry_nid'] = array(
+    		'#type' => 'hidden',
+    		'#value' => $inquiry_nid,
+		);
+
+		//print_r( $form );
+		//print_r( $form_state );
+		//die();
+	}
+}
+
 /**
  *
  * Drupal API hook_form_FORM-ID_alter(), changes the form to alter the default node layout
@@ -685,6 +758,7 @@ function _pi_activity_form_generate_stage_select($inquiry_nid, $default_values=a
 		}
 		else
 		{
+			//pi_debug_message($default_values);
 			foreach ($stage_names as $stage_nid => $name)
 			{
 				$stage_options[$stage_nid] = $name;
@@ -894,7 +968,8 @@ function pi_activity_load($node)
 	$query = "SELECT * FROM {pi_activity} WHERE `nid` = %d";
 	$result = db_query($query, $node->nid);
 	$activity = db_fetch_object($result);
-	if ($activity!=NULL)
+
+	if($activity!=NULL)
 	{
 		//map activity_id to nid for backward compatability
 		$activity->activity_id = &$activity->nid;
@@ -902,12 +977,9 @@ function pi_activity_load($node)
 		// map destination_after to destination - using destination in forms overrides
 		// the form destination variable, and breaks  it, so this has to have a different name
 		// in the form
-		if (!isset($activity->destination))
+		if ($activity->destination!=NULL)
 		{
-		  if ($activity->destination != NULL)
-		  {
-			$acitivity->destination = &$activity->destination_after;
-		  }
+			$activity->destination = &$activity->destination_after;
 		}
 
 		//The constraints of the construction of the form mean that variable names are
@@ -985,7 +1057,12 @@ function pi_activity_load($node)
 	}
 	else
 	{
-		drupal_set_message(t('Error: Activity data not found in pi_activity table'), 'error');
+		//@TODO FIXME
+		if( $node->type != "pi_data" )
+		{
+			print_r( $node );
+			drupal_set_message(t('Error: Activity data not found in pi_activity table'), 'error');
+		}
 	}
 	return $activity;
 }
@@ -1015,10 +1092,10 @@ function pi_activity_insert($node)
 	$selected_stages = array();
 	foreach($node->activity_phases_stages['stages']['stage_select'] as $stage_nid => $selected)
 	{
-	  if($selected==$stage_nid)
-	  {
-	    $selected_stages[$stage_nid] = 'visible';
-	  }
+		if($selected!=0)
+		{
+			$selected_stages[$stage_nid] = 'visible';
+		}
 	}
 
 	// Now set stage_states
@@ -1070,15 +1147,17 @@ function pi_activity_insert($node)
 		//Start with the default status for all activity types
 		$default_status = array(
       		'activity_id'=>$node->nid,
+		//@TODO FIXME Not sure if inquiry_id is still required ?
+			'inquiry_id'=> $node->inquiry_nid,
       		'uid' => NULL,
-			//'gid' => $node->actor,
+		//'gid' => $node->actor,
       		'gid' => $node->selects['gid'],
       		'visible_status' => "start",
       		'node_function' => "edit"	);
 
 		$activity_statuses_to_add[] = $default_status;
-		
-		//drupal_set_message( var_export( $activity_statuses_to_add, TRUE ) );
+
+		drupal_set_message( var_export( $activity_statuses_to_add, TRUE ) );
 
 		// If it is a shared activity, then make a 'view' status for the share group
 		// otherwisese just make the standard activity status for the activity.
@@ -1123,6 +1202,8 @@ function pi_activity_insert($node)
 					{
 						$activity_statuses_to_add[] =  array(
               				'activity_id'=>$node->nid,
+						//@TODO FIXME Not sure if inquiry_id is still required ?
+							'inquiry_id'=> $node->inquiry_nid,
               				'uid' => NULL,
               				'gid' => $audience_nid,
               				'node_function' => 'view',
@@ -1147,7 +1228,7 @@ function pi_activity_insert($node)
 
 	foreach($activity_statuses_to_add as $status)
 	{
-		//drupal_set_message( var_export( $status, TRUE ) );
+		drupal_set_message( var_export( $status, TRUE ) );
 		//pi_debug_message("Writing status for " . $node->title);
 		//pi_debug_message($status);
 		$result = drupal_write_record('pi_activity_status', $status);
@@ -1164,13 +1245,23 @@ function pi_activity_insert($node)
 	// Finally the related node if necessary
 	if($node->existing_nid!='none')
 	{
-		$activity_node = array();
+		$activity_node = new stdClass();
+		$activity_node->activity_id = $node->nid;
+		$activity_node->nid = $node->existing_nid;
+
 		$result = drupal_write_record('pi_activity_node', $activity_node);
 		if($result == FALSE)
 		{
 			$translate['!nid'] = $node->existing_nid;
 			drupal_set_message( t('Error saving pi_activity_node (!nid)', $translate ), 'error' );
 		}
+	}
+	else {
+		$activity_node = new stdClass();
+		$activity_node->activity_id = $node->nid;
+		$activity_node->nid = 0;
+
+		$result = drupal_write_record('pi_activity_node', $activity_node);
 	}
 
 }
@@ -1347,9 +1438,10 @@ function pi_activity_update($node)
 	$activity_statuses_to_update = array();
 	foreach ($existing_activity_statuses as $existing_status_gid => $existing_status)
 	{
-		if(!in_array($existing_status_gid, array_keys($activity_statuses_to_add)))
+		//if(!in_array(array_keys($activity_statuses_to_add), $existing_status_gid))
+		if( !in_array($existing_status_gid, array_keys($activity_statuses_to_add) ) )
 		{
-			drupal_set_message(t("Activity status for !activity_id set for group !gid, but this is not a valid actor or audience gid so it's being removed.",
+			drupal_set_message(t("Activity statis for !activity_id set for group !gid, but this is not a valid actor or audience gid so it's being removed.",
 			array('!activity_id' => $node->nid, '!gid' => $existing_status_gid)));
 			// If a status isn't to be updated, then remove it
 			db_query('DELETE FROM {pi_activity_status} WHERE `pas_id` = %d', $existing_status['pas_id']);
@@ -1470,10 +1562,10 @@ function _pi_activity_form_data_to_pi_activity_row($node)
 	$property_to_column = array(
 			'nid' => 'nid',
     		'vid' => 'vid',
-    		'weight' => 'weight',
-			'activity_type' => 'activity_type',
+    		'activity_type' => 'activity_type',
     		'node_type' => 'node_type',
     		'parameters' => 'parameters',
+			'weight' => 'weight',
     		'destination_after' => 'destination_after',
 			'node_function' => 'node_function',
 			'visible_status' => 'visible_status'		);
@@ -1649,11 +1741,12 @@ function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
 
 function pi_activity_nodeapi(&$node, $op)
 {
+	global $user;
+
 	if ($node->type != 'image')
 	{
 		if(in_array($op, array('insert', 'update', 'delete')))
 		{
-			global $user;
 			//only do this if the thing created is an activity
 			//check this from the args
 			$details = get_inquiry_details_from_current_path();
@@ -1666,6 +1759,10 @@ function pi_activity_nodeapi(&$node, $op)
 				//set PI activity node
 				if($op == 'insert')
 				{
+					//error_log( $op . "===>" . $node->type );
+					//error_log( var_export( $node, TRUE) );
+					//error_log( var_export( $details, TRUE) );
+
 					//new content saved
 					switch( $node->type )
 					{
@@ -1717,11 +1814,17 @@ function pi_activity_nodeapi(&$node, $op)
 						default:
 							//In case the data are generated by another activity
 							//(e.g. fooddiary_data => generates pi_sort_measure)
-							if(isset($node->activity_id))
+							//@TODO FIXME Nodeapi is called twice...once
+							if( $node->type != '' )
 							{
-								$details->activity_id = $node->activity_id;
+								error_log( "nodeapi, default " . $node->type );
+								if(isset($node->activity_id))
+								{
+									$details->activity_id = $node->activity_id;
+								}
+
+								add_new_pi_activity_node($node, 'edit', 'edit', $details);
 							}
-							add_new_pi_activity_node($node, 'edit', 'edit', $details);
 					}
 
 					//add og
@@ -1873,64 +1976,60 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
 
 
 /**
- * Return an array of activity nodes from the database for a particular phase
+ *
+ * Return an array of activity nodes from the database for a particular user
  * @param uint $phase_nid
  * @param uint $stage_nid
  */
-function pi_activity_get_activities_of_phase($phase_nid)
-{
-  return pi_activity_get_activities_of_phase_and_user($phase_nid, null);
-}
-
-/**
- *
- * Return an array of activity nodes from the database for a particular user and phase
- * @param uint $phase_nid If phase is null get all phases actibities (for all inquiries!)
- * @param uint $uid If use id is null the get all defined activities  
- */
 function pi_activity_get_activities_of_phase_and_user($phase_nid, $uid)
 {
-  $return_data = array();
-  
-  // If no phase is chosen then it'll get all for a user which is bad as you don't know what inquiry they are from!
-  $query = "SELECT DISTINCT {pi_activity}.nid FROM {pi_activity} " .
-			"LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity}.nid ";
-  if (is_null($phase_nid))
-  {
-	drupal_set_message('Null given for phase_nid in pi_activity_get_activities_of_phase_and_user, returning all activities (this is annoying.. use pi_activity_get_activities_of_inquiry_and_user() instead)', 'warning');
-  }
-  else
-  {
-    $phase = node_load($phase_nid);
-    if(is_null($phase))
-    {
-      drupal_set_message(t('The given phase for pi_activity_get_activities_of_phase_and_user() does not exist as a node'), 'error');
-    }
-    else
-    {
-      if($phase->type!='pi_phase')
-      {
-        drupal_set_message(t('The given node is not a phase for pi_activity_get_activities_of_phase_and_user'), 'error');
-      }
-      else
-      {
-        $query .= "WHERE {pi_activity}.phase_nid = %d ";
-      }
-    }  
-    // If user isn't specified get all for the phase, otherwise get th eones belonging to the user or associated groups
-    if(!is_null($uid))
-    {
-      $query .= "AND ( {og_uid}.uid = %d OR {pi_activity}.actor = %d ) ";
-    }
+	//get the phases and stages for this inquiry and user
+	if (is_null($phase_nid))
+	{
+		drupal_set_message('Null given for phase_nid in pi_activity_get_activities_of_phase_and_user, returning all activities (this is annoying.. use pi_activity_get_activities_of_inquiry_and_user() instead)', 'warning');
+		$query = "SELECT DISTINCT nid FROM {pi_activity} " .
+      "LEFT JOIN {pi_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity}.activity_id " .
+      "LEFT JOIN {pi_activity_actor} ON {pi_activity}.activity_id = {pi_activity_actor}.activity_id " . 
+      "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid ";
+	}
+	else
+	{
+		$return_data = array();
+		$phase = node_load($phase_nid);
+		if(is_null($phase))
+		{
+			drupal_set_message('The given phase for pi_activity_get_activities_of_phase_and_user() does not exist as a node', 'error');
+			return array();
+		}
+		else
+		{
+			if($phase->type=='pi_phase')
+			{
+				drupal_set_message('The given node is not a phase for pi_activity_get_activities_of_phase_and_user', 'error');
+				return array();
+			}
+			else
+			{
+				$query .= "WHERE phase_nid = %d ";
+			}
+		}
 
-    $query .= "ORDER BY {pi_activity}.weight";
-    $result = db_query($query, $phase->nid, $uid);
-    while($activity = db_fetch_object($result))
-    {
-      $return_data[$activity->nid] = $activity;
-    }
-  }
-  return $return_data;
+		if(!is_null($uid))
+		{
+			$query .= "AND ( {og_uid}.uid = %d OR {pi_activity_actor}.uid = %d ) ";
+		}
+		else
+		{
+			drupal_set_message("No user id set for pi_activity_get_activities_of_phase_and_user, returning all activities - use pi_activity_get_activities_for_inquiry() instead.", 'warning');
+		}
+	}
+	$query .= "ORDER BY {pi_activity}.weight";
+	$result = db_query($query, $phase->nid, $uid);
+	while($activity = db_fetch_object($result))
+	{
+		$return_data[$activity->nid] = $activity;
+	}
+	return $return_data;
 }
 
 /**
@@ -1946,24 +2045,37 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
 
 	if($sort_activity!=FALSE)
 	{
+		//print_r( $sort_activity );
+
 		$type = node_get_types('type', $sort_activity->node_type);
 
-		if(isset($type->add_node_type))
+		//if(isset($type->add_node_type))
 		{
-			$node_type_to_find = $type->add_node_type;
+				
+			if( $sort_activity->type == "pi_sort_data" ) 
+			{
+				$node_type_to_find = "pi_data";
+			}
+			else {
+				$node_type_to_find = $type->add_node_type;
+			}
 
 			$phases = pi_phase_load_nids_for_user($inquiry_id, $uid);
 			foreach ($phases as $phase)
 			{
 				$activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);
 				foreach ($activities as $activity)
-				{
+				{	
+					$activity = node_load( $activity );
+					
 					if($activity->node_type == $node_type_to_find)
 					{
-						$activity_status = load_activity_status($activity->activity_id, $uid);
-						if ($activity_status->visible_status == 'start')
+						//@TODO FIXME Add missing function again !
+						//$activity_status = load_activity_status($activity->activity_id, $uid);
+						//if ($activity_status->visible_status == 'start')
 						{
-							$return_value = $activity->activity_id;
+							//$return_value = $activity->activity_id;
+							$return_value = $activity->nid;
 							break;
 						}
 					}

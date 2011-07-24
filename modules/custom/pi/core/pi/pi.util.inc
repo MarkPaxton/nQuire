@@ -1,6 +1,6 @@
 <?php
 /**
- * @file nQuire general utility functions 
+ * @file nQuire general utility functions
  */
 
 
@@ -19,56 +19,56 @@ function pi_debug_message($var_to_dump)
 
 
 /**
- * Convert a result constant from drupal_write_record to a string for debug purposes 
+ * Convert a result constant from drupal_write_record to a string for debug purposes
  * @param int $result Result variable as a defined consant from drupal_write_record, as defined in common.int
  * @return string A string representing the result status, or the number if it's an undefined value
  */
 function _pi_write_record_result_string($result)
 {
-  $result_string = "";
-  switch($result)
-  {
-    case(SAVED_NEW):
-      $result_string = "SAVED_NEW";
-      break;
-    case SAVED_UPDATED:
-      $result_string = "SAVED_UPDATED";
-      break;
-    case SAVED_UPDAED:
-      $result_string = "SAVED_DELETED";
-      break;
-    default:
-      $result_string = "$result";
-  }
-  return $result_string;
+	$result_string = "";
+	switch($result)
+	{
+		case(SAVED_NEW):
+			$result_string = "SAVED_NEW";
+			break;
+		case SAVED_UPDATED:
+			$result_string = "SAVED_UPDATED";
+			break;
+		case SAVED_UPDAED:
+			$result_string = "SAVED_DELETED";
+			break;
+		default:
+			$result_string = "$result";
+	}
+	return $result_string;
 }
 
 
 
 /**
  * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry
- * @param unknown_type $element 
+ * @param unknown_type $element
  * @param unknown_type $form_state
  */
 function pi_util_inquiry_nid_validate($element, $form_state)
 {
 	if(!in_array($element['#value'], $element['#allowed_inquiry_nids']))
 	{
-		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));				
+		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));
 	}
 }
 
 
 /**
  * This is the validation function to make sure that pi_phase.inquiry_nid is a valid inquiry
- * @param unknown_type $element 
+ * @param unknown_type $element
  * @param unknown_type $form_state
  */
 function pi_util_phase_nid_validate($element, $form_state)
 {
 	if(!in_array($element['#value'], $element['#allowed_phase_nids']))
 	{
-		form_error($element, t('The selected phase is not valid, please choose an existing phase from an inquiry.'));				
+		form_error($element, t('The selected phase is not valid, please choose an existing phase from an inquiry.'));
 	}
 }
 
@@ -145,8 +145,8 @@ function compare_status($a, $b) {
 
 
 /**
- * 
- * Sort an array of arrays by one of their elements - e.g. a list of set result rows to be 
+ *
+ * Sort an array of arrays by one of their elements - e.g. a list of set result rows to be
  * sorted by a column.  Key and value associations are maintained.
  * @param $array Array of arrays to be sorted
  * @param $element the name of the array key to sort by
@@ -182,7 +182,7 @@ function pi_merge_content_item_lists($sorted_items, $unsorted_items)
 {
 	$return_data = array();
 	$weight_data = array();
-	if ($sorted_items) 
+	if ($sorted_items)
 	{
 		foreach($sorted_items as $key => $sorted_item)
 		{
@@ -195,12 +195,15 @@ function pi_merge_content_item_lists($sorted_items, $unsorted_items)
 		$sorted_items[$ordered_item_key]['#weight'] = count($return_data);
 		$return_data[$ordered_item_key] = $sorted_items[$ordered_item_key];
 	}
-	foreach($unsorted_items as $unsorted_item_key => $unsorted_item)
+	if( is_array( $unsorted_items ) )
 	{
-		if(!array_key_exists($unsorted_item_key, $return_data))
+		foreach($unsorted_items as $unsorted_item_key => $unsorted_item)
 		{
-			$unsorted_item['#weight'] = count($return_data);
-			$return_data[$unsorted_item_key] = $unsorted_item;
+			if(!array_key_exists($unsorted_item_key, $return_data))
+			{
+				$unsorted_item['#weight'] = count($return_data);
+				$return_data[$unsorted_item_key] = $unsorted_item;
+			}
 		}
 	}
 	return $return_data;
@@ -233,23 +236,23 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	foreach($grouped_items as $group_name => $group)
 	{
 		if( is_array($item_ids) )
-		{ 
-			if( !array_key_exists($group_name, $item_ids) || 
-				( array_key_exists($group_name, $item_ids) && !is_array($item_ids[$group_name]) ) )
+		{
+			if( !array_key_exists($group_name, $item_ids) ||
+			( array_key_exists($group_name, $item_ids) && !is_array($item_ids[$group_name]) ) )
 			{
 				$item_ids[$group_name] = array();
 			}
 		}
 
 		if( is_array($item_weights) )
-		{ 
-			if( !array_key_exists($group_name, $item_weights) || 
-				( array_key_exists($group_name, $item_weights) && !is_array($item_weights[$group_name]) ) )
+		{
+			if( !array_key_exists($group_name, $item_weights) ||
+			( array_key_exists($group_name, $item_weights) && !is_array($item_weights[$group_name]) ) )
 			{
 				$item_weights[$group_name] = array();
 			}
 		}
-		
+
 		foreach($group as $item_id => $item)
 		{
 			$item_ids[$group_name][] = $item_id;
@@ -285,12 +288,12 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 }
 
 /**
- * This function takes a flattened array of items and groups them into arrays accouting to 
+ * This function takes a flattened array of items and groups them into arrays accouting to
  * the values of group_field
  * @param array or array $items items to sort
  * @param string $group_field the field of the array by which to group items
  * @return a nested array, first index is the value of $items['group_field'] and the second index the current
- * key of $item. 
+ * key of $item.
  * array('group_field1' => array ('id'=>array(value=>'value, group_field=>'group_field1', .), .. )...)
  */
 function pi_create_grouped_item_list($items, $group_field)
@@ -301,15 +304,15 @@ function pi_create_grouped_item_list($items, $group_field)
 		$group_key = $item[$group_field];
 		if(!array_key_exists($group_key, $return_array))
 		{
-			$return_array[$group_key]=array();		
+			$return_array[$group_key]=array();
 		}
-		$return_array[$group_key][$key] = $item; 
+		$return_array[$group_key][$key] = $item;
 	}
 	return $return_array;
 }
 
 /**
- * 
+ *
  * This does the opposite of pi_create_grouped_item_list and takes all the elements of $item_list
  * and combines them into one array
  * n.b. if items in the sub-arrays have dupliucate keys, the rturn element will be overwritten by the value of the
@@ -333,7 +336,7 @@ function pi_flatten_grouped_item_list($item_list)
 
 
 /**
- * 
+ *
  * This ensures that there is only one unique row in $table with $id_field equal to $id
  *  if there are no rows, it returns zero, otherwise it returns one.
  *  If more than one row exists then the lowest $id is kept and the rest are deleted.
@@ -365,7 +368,7 @@ function pi_db_ensure_unique($table, $id_field, $id)
 }
 
 /**
- * 
+ *
  * Return an array indexed by nid with value the title of the node, or NULL
  * if the node is not found
  * @param array uint $nids Array of node ids
@@ -390,7 +393,7 @@ function pi_util_get_names_from_nids($nids)
 		}
 	}
 	return $return_data;
-} 
+}
 
 
 

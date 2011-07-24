@@ -17,7 +17,7 @@ function find_unique_node_type_for_uid_and_inquiry($node_type, $uid, $inquiry_id
 	  "LEFT JOIN {pi_phase} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
   	  "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
 	  "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " . 
-	  "AND {pi_phase}.`inquiry_nid` = %d ORDER BY `nid` DESC";
+	  "AND {pi_phase}.`inquiry_nid` = %d ORDER BY `nid` DESC ";
 	$result = db_result(db_query($query, $node_type, $node_type, $node_type, $node_type, $node_type, $uid, $uid, $inquiry_id));
 
 	return $result;
@@ -52,7 +52,19 @@ function find_measure_filter_nid_for_uid_and_inquiry($inquiry_id)
 
 function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id)
 {
-	return find_unique_node_type_for_uid_and_inquiry('pi_sort_measures', $uid, $inquiry_id);
+	
+	$query = "SELECT {pi_sort_measures}.`nid` FROM {pi_sort_measures} " .
+	  "LEFT JOIN {node_access} ON {node_access}.`nid` = {pi_sort_measures}.`nid` " .
+	  "LEFT JOIN {node} ON {node}.`nid` = {pi_sort_measures}.`nid` " . 
+	  "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {pi_sort_measures}.`nid` " .
+  	  "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
+	  "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " . 
+	  "ORDER BY {pi_sort_measures}.`nid` DESC ";
+	$result = db_result(db_query($query, $uid, $uid) );
+
+	return $result;
+	
+	//return find_unique_node_type_for_uid_and_inquiry('pi_sort_measures', $uid, $inquiry_id);
 }
 
 function find_selected_measures_nid_for_uid($uid)
@@ -149,9 +161,10 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	//$new_activity_id = $node->nid;
 
 	//create the new activity
-	node_save($activity_array);
+	//node_save($activity_array);
 	
-	$new_activity_id = $$activity_array->nid;
+	//$new_activity_id = $activity_array->nid;
+	$new_activity_id = $node->nid;
 
 	//****new details object
 	$new_details = new stdClass;
@@ -161,15 +174,16 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	$new_details->activity_id = $new_activity_id;
 
 	//set status for the new activity
-	$activity_status = load_activity_status($details->activity_id, $user->uid);
-
+	//$activity_status = load_activity_status($details->activity_id, $user->uid);
+	$activity_status = pi_activity_load_status($details->activity_id, $user->uid);
+	
 	$new_activity_status = new stdClass;
-	$new_activity_status->inquiry_id = $activity_status->inquiry_id;
+	$new_activity_status->inquiry_id = $details->inquiry_id;
 	$new_activity_status->activity_id = $new_activity_id;
-	$new_activity_status->uid = $activity_status->uid;
-	$new_activity_status->gid = $activity_status->gid;
-	$new_activity_status->node_function = $activity_status->node_function;
-	$new_activity_status->visible_status = $activity_status->visible_status;
+	$new_activity_status->uid = $activity_status['uid'];
+	$new_activity_status->gid = $activity_status['gid'];
+	$new_activity_status->node_function = $activity_status['node_function'];
+	$new_activity_status->visible_status = $activity_status['visible_status'];
 
 	save_activity_status($new_activity_status);
 
@@ -232,12 +246,17 @@ function add_new_pi_activity_node($node, $node_function, $visible_status, $detai
 
 	$uid = $user->uid;
 	//set the PI activity node
-	$query = "INSERT INTO {pi_activity_node} SET inquiry_id = %d, activity_id = %d, nid = %d";
-	db_query($query, $details->inquiry_id, $details->activity_id, $node->nid);
+	
+	//$query = "INSERT INTO {pi_activity_node} SET inquiry_id = %d, activity_id = %d, nid = %d _";
+	//db_query($query, $details->inquiry_id, $details->activity_id, $node->nid);
 
+	$query = "INSERT INTO {pi_activity_node} SET activity_id = %d, nid = %d";
+	db_query($query, $details->activity_id, $node->nid);
+	
 	$activity = node_load($details->activity_id);
 
-	$activity_status = load_activity_status($details->activity_id, $user->uid);
+	//@TODO FIXME function missing!
+	//$activity_status = load_activity_status($details->activity_id, $user->uid);
 
 	//if the status was not set specifically for this user and it is an individual activity
 	if ($activity->audience == "individual")
