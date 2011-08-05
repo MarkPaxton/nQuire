@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz.help.inc,v 1.3.2.3 2010/05/11 07:43:27 falcon Exp $
 /**
  * Help text.
  *

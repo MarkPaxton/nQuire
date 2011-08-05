@@ -1,6 +1,5 @@
 <?php
 
-// $Id: matching.theme.inc,v 1.1.2.4 2010/11/05 16:14:47 falcon Exp $
 
 /**
  * @file

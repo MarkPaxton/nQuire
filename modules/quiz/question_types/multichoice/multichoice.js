@@ -1,4 +1,3 @@
-// $Id: multichoice.js,v 1.1.2.4 2010/11/05 16:14:47 falcon Exp $
 /**
  * @file
  * Javascript functions for the multichoice question type.

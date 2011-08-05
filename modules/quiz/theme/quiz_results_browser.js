@@ -1,4 +1,3 @@
-// $Id: quiz_results_browser.js,v 1.1.2.25 2010/11/05 16:14:48 falcon Exp $
 
 /**
  * Sponsored by: Norwegian Centre for Telemedicine

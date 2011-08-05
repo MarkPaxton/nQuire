@@ -1,6 +1,5 @@
 <?php
 
-// $Id: quiz.module,v 1.138.2.324 2010/12/19 19:39:12 falcon Exp $
 
 /**
  * @file
@@ -187,6 +186,22 @@ function quiz_access_my_results($quiz) {
 }
 
 /**
+ * Helper function to determine if a user has access to view a specific quiz result.
+ *
+ * @param int $rid
+ *  Result id
+ * @return boolean
+ *  True if access, false otherwise
+ */
+function quiz_access_my_result($rid) {
+  global $user;
+  if (!user_access('view own quiz results'))
+    return FALSE;
+  $time_end = db_result(db_query('SELECT time_end FROM {quiz_node_results} WHERE result_id = %d AND uid = %d', $rid, $user->uid));
+  return $time_end > 0;
+}
+
+/**
  * Helper function to determine if a user has access to score a quiz.
  *
  * @param $quiz_creator
@@ -368,7 +383,8 @@ function quiz_menu() {
     'title' => 'User results',
     'page callback' => 'quiz_user_results',
     'page arguments' => array(3),
-    'access arguments' => array('view own quiz results'),
+    'access arguments' => array(3),
+    'access callback' => 'quiz_access_my_result',
     'type' => MENU_LOCAL_TASK,
     'file' => 'quiz.pages.inc',
   );
@@ -410,7 +426,8 @@ function quiz_menu() {
     'title' => 'User results',
     'page callback' => 'quiz_user_results',
     'page arguments' => array(2),
-    'access arguments' => array('view own quiz results'),
+    'access arguments' => array(2),
+    'access callback' => 'quiz_access_my_result',
     'type' => MENU_CALLBACK,
     'file' => 'quiz.pages.inc',
   );
@@ -756,7 +773,7 @@ function quiz_delete($node) {
   db_query('DELETE FROM {quiz_node_properties} WHERE nid = %d', $node->nid);
   db_query('DELETE FROM {quiz_node_relationship} WHERE parent_nid = %d', $node->nid);
   db_query('DELETE FROM {quiz_node_results} WHERE nid = %d', $node->nid);
-  db_query('DELETE FROM {quiz_node_result_options} WHERE nid = %d', $node->vid, $node->nid);
+  db_query('DELETE FROM {quiz_node_result_options} WHERE nid = %d', $node->nid);
 }
 
 /**
@@ -1479,7 +1496,7 @@ function quiz_type_confirm($node, $op = NULL) {
  *   Array with nids as keys and titles as values.
  */
 function quiz_get_all_titles() {
-  $sql = "SELECT nid, title
+  $sql = "SELECT n.nid, n.title
           FROM {node} n
           WHERE n.type = 'quiz'";
   $res = db_query(db_rewrite_sql($sql));
@@ -2115,7 +2132,12 @@ function quiz_end_scoring($quiz, $rid) {
             $score['is_evaluated'],
             time(),
             $score['percentage_score'], $rid);
-  $score['passing'] = quiz_is_passed($user->uid, $quiz->nid, $quiz->vid);
+  if ($user->uid) {
+    $score['passing'] = quiz_is_passed($user->uid, $quiz->nid, $quiz->vid);
+  }
+  else {
+    $score['passing'] = $score['percentage_score'] >= $quiz->pass_rate;
+  }
   return $score;
 }
 
@@ -2357,6 +2379,14 @@ function quiz_update_max_score_properties($quizzes_to_update) {
           )
           WHERE vid IN( " . db_placeholders($quizzes_to_update) . ")";
   db_query($sql, $quizzes_to_update);
+  $sql = "UPDATE {quiz_node_properties} qnp
+          SET qnp.max_score = (
+            SELECT SUM(qt.max_score * qt.number)
+            FROM {quiz_terms} qt
+            WHERE qt.nid = qnp.nid AND qt.vid = qnp.vid
+          )
+          WHERE qnp.randomization = 3 AND qnp.vid IN( " . db_placeholders($quizzes_to_update) . ")";
+  db_query($sql, $quizzes_to_update);
   // No need to use db_placeholders for time()...
   $sql = "UPDATE {node_revisions}
           SET timestamp = " . time() . "
@@ -2553,20 +2583,26 @@ function quiz_create_rid($quiz) {
  */
 function quiz_calculate_score($quiz, $rid) {
   // 1. Fetch all questions and their max scores
-  $sql = 'SELECT a.question_nid, a.question_vid, n.type, r.max_score
+  $sql = 'SELECT a.question_nid, a.question_vid, n.type, r.max_score, qt.max_score as term_max_score
   FROM {quiz_node_results_answers} a
   LEFT JOIN {node} n ON (question_nid = nid)
-  LEFT OUTER JOIN {quiz_node_relationship} r ON (r.child_vid = a.question_vid) AND r.parent_vid = %d
-  WHERE result_id = %d';
-  $results = db_query($sql, $quiz->vid, $rid);
+  LEFT OUTER JOIN {quiz_node_relationship} r ON (r.child_vid = a.question_vid AND r.parent_vid = %d)
+  LEFT OUTER JOIN {quiz_terms} qt ON (a.tid = qt.tid AND qt.vid = %d)
+  WHERE a.result_id = %d';
+  $results = db_query($sql, $quiz->vid, $quiz->vid, $rid);
   // 2. Callback into the modules and let them do the scoring. @todo after 4.0: Why isn't the scores already saved? They should be
   // Fetched from the db, not calculated....
   $scores = array();
   $count = 0;
   while ($question = db_fetch_object($results)) {
     // Questions picked from term id's won't be found in the quiz_node_relationship table
-    if ($question->max_score === NULL && isset($quiz->tid) && $quiz->tid > 0) {
-      $question->max_score = $quiz->max_score_for_random;
+    if ($question->max_score === NULL) {
+      if ($quiz->randomization == 3 && $question->term_max_score !== NULL) {
+        $question->max_score = $question->term_max_score;
+      }
+      elseif (isset($quiz->tid) && $quiz->tid > 0) {
+        $question->max_score = $quiz->max_score_for_random;
+      }
     }
 
     // Invoke hook_quiz_question_score().
@@ -2578,7 +2614,11 @@ function quiz_calculate_score($quiz, $rid) {
 
     if (function_exists($function)) {
       $score = $function($quiz, $question->question_nid, $question->question_vid, $rid);
-      // Allow for max score to be considered.
+      if ($score->possible != $question->max_score) {
+        $score_weight = $score->possible > 0 ? $question->max_score / $score->possible : 0;
+        $score->possible = $question->max_score;
+        $score->attained *= $score_weight;
+      }
       $scores[] = $score;
     }
     else {

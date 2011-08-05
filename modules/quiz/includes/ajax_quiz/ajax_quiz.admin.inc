@@ -1,6 +1,5 @@
 <?php
 
-// $Id: ajax_quiz.admin.inc,v 1.1.2.5 2009/08/08 18:46:25 sivaji Exp $
 
 /* @file
  * ajax quiz admin page

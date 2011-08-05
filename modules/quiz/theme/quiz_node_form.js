@@ -1,4 +1,3 @@
-// $Id: quiz_node_form.js,v 1.1.2.2 2010/02/26 07:56:19 falcon Exp $
 /**
  * @file
  * JS enabling one filter fieldset to controll filter formats for all textareas in alternatives.

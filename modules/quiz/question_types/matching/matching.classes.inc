@@ -1,5 +1,4 @@
 <?php
-// $Id: matching.classes.inc,v 1.2.2.84 2010/11/05 16:14:47 falcon Exp $
 /**
  * matching.classes
  *

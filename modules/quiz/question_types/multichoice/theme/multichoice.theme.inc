@@ -1,5 +1,4 @@
 <?php
-// $Id: multichoice.theme.inc,v 1.1.2.9 2010/11/05 16:14:47 falcon Exp $
 
 /**
  * The theme file for multichoice.

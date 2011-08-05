@@ -1,5 +1,4 @@
 <?php
-// $Id: long_answer.module,v 1.2.2.28 2010/11/05 16:14:47 falcon Exp $
 
 /**
  * This module defines a long answer question type for quizzes.
@@ -116,23 +115,20 @@ function long_answer_theme() {
  * The function updates all of the necessary data sources so that the individual answer results should be
  * reflected in the total scoring table.
  *
- * @param $quiz
- *  Quiz node.
- * @param $nid
- *  Node ID of question.
- * @param $vid
- *  Version ID of question.
- * @param $rid
- *  Result ID for the quiz results.
- * @param $score
- *  The numeric score to assign the result.
+ * @param array $values
+ *  quiz => Quiz node,
+ *  nid => Node ID of question.
+ *  vid => Version ID of question.
+ *  rid => Result ID for the quiz results.
+ *  score => The numeric score to assign the result.
+ *  max_score => The max score for this question
  * @param $update_total
  *  Shall the total score be updated?
  *
  * @return int
  *  Number of scores adjusted. If a change was made, this should be 1.
  */
-function long_answer_score_an_answer($quiz, $nid, $vid, $rid, $score, $update_total = TRUE) {
+function long_answer_score_an_answer($values, $update_total = TRUE) {
   // Quiz scoring information is spread out across three tables:
   // 1. The module should retain its own scoring information in any case where scoring is non-trivial.
   // 2. The Quiz moduleretains a limited amount of scoring information.
@@ -140,7 +136,6 @@ function long_answer_score_an_answer($quiz, $nid, $vid, $rid, $score, $update_to
   //    questions on the quiz.
   //
   // We update all three.
-
   // First, we update the long answer table
   db_query("UPDATE {quiz_long_answer_user_answers}
             SET score = %d * (
@@ -148,16 +143,11 @@ function long_answer_score_an_answer($quiz, $nid, $vid, $rid, $score, $update_to
               FROM {quiz_question_properties}
               WHERE nid = %d
               AND vid = %d
-            ) / (
-              SELECT max_score
-              FROM {quiz_node_relationship}
-              WHERE parent_vid = %d
-              AND child_vid = %d
-            ), is_evaluated = 1
+            ) / %d, is_evaluated = 1
             WHERE question_nid = %d
             AND question_vid = %d
             AND result_id = %d",
-           $score, $nid, $vid, $quiz->vid, $vid, $nid, $vid, $rid);
+           $values['score'], $values['nid'], $values['vid'], $values['max_score'], $values['nid'], $values['vid'], $values['rid']);
   $changed = db_affected_rows();
 
   if ($changed > 0) {
@@ -165,24 +155,24 @@ function long_answer_score_an_answer($quiz, $nid, $vid, $rid, $score, $update_to
 
     // What do we do about the quiz_node_results_answers table? It assumes strict
     // bivalence (is_correct). I guess we consider any essay with over 50% to be correct?
-    $max = db_result(db_query('SELECT max_score FROM {quiz_question_properties} WHERE vid = %d', $vid));
+    $max = db_result(db_query('SELECT max_score FROM {quiz_question_properties} WHERE vid = %d', $values['vid']));
     if ($max <= 0) {
       $is_correct = 0;
       $points_awarded = 0;
     }
     else {
-      $is_correct = $score == $max ? 1 : 0;
-      $points_awarded = $score;
+      $is_correct = $values['score'] == $max ? 1 : 0;
+      $points_awarded = $values['score'];
     }
 
     $sql = 'UPDATE {quiz_node_results_answers}
       SET points_awarded = %d, is_correct = %d
       WHERE question_vid = %d AND result_id = %d';
-    db_query($sql, $points_awarded, $is_correct, $vid, $rid);
+    db_query($sql, $points_awarded, $is_correct, $values['vid'], $values['rid']);
 
     // Third, we update the main quiz results table
     if ($update_total)
-      quiz_update_total_score($quiz, $rid);
+      quiz_update_total_score($values['quiz'], $values['rid']);
   }
 
   return $changed;
@@ -212,18 +202,25 @@ function long_answer_score_an_answer($quiz, $nid, $vid, $rid, $score, $update_to
  *  </code>
  */
 function long_answer_get_answer($question_nid, $question_vid, $result_id) {
-  $sql = "SELECT answer_id, answer, la.is_evaluated, la.score, question_vid, question_nid, la.result_id, rel.max_score AS rel_max_score
+  $sql = "SELECT answer_id, answer, la.is_evaluated, la.score, la.question_vid, la.question_nid, la.result_id, rel.max_score AS rel_max_score, qt.max_score AS term_max_score, qnra.tid
     FROM {quiz_long_answer_user_answers} la
     JOIN {quiz_node_results} qnr ON (la.result_id = qnr.result_id)
-    JOIN {quiz_node_relationship} rel ON (qnr.vid = rel.parent_vid AND rel.child_vid = la.question_vid)
-    WHERE question_nid = %d AND question_vid = %d AND la.result_id = %d";
+    JOIN {quiz_node_results_answers} qnra ON (qnr.result_id = qnra.result_id AND la.question_nid = qnra.question_nid AND la.question_vid = qnra.question_vid)
+    LEFT OUTER JOIN {quiz_node_relationship} rel ON (qnr.vid = rel.parent_vid AND rel.child_vid = la.question_vid)
+    LEFT OUTER JOIN {quiz_terms} qt ON qnr.nid = qt.nid AND qnr.vid = qt.vid AND qnra.tid = qt.tid
+    WHERE la.question_nid = %d AND la.question_vid = %d AND la.result_id = %d";
   $results = db_query($sql, $question_nid, $question_vid, $result_id);
-
   if (!$results) {
     return FALSE;
   }
 
-  return db_fetch_array($results);
+  $answer = db_fetch_object($results);
+
+  if ($answer->rel_max_score === NULL) {
+    $answer->rel_max_score = $answer->term_max_score;
+  }
+  
+  return $answer;
 }
 
 /**
@@ -311,7 +308,7 @@ function long_answer_questions_list() {
  *   The FAPI $form_state['values']
  */
 function long_answer_report_submit($values) {
-  long_answer_score_an_answer($values['quiz'], $values['nid'], $values['vid'], $values['rid'], (int)$values['score'], FALSE);
+  long_answer_score_an_answer($values, FALSE);
 }
 
 /**

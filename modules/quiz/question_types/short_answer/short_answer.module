@@ -1,5 +1,4 @@
 <?php
-// $Id: short_answer.module,v 1.2.2.26 2010/11/05 16:14:48 falcon Exp $
 
 /**
  * The main file for short_answer.
@@ -123,61 +122,53 @@ function short_answer_theme() {
  * The function updates all of the necessary data sources so that the individual answer results should be
  * reflected in the total scoring table.
  *
- * @param $quiz
- *  Quiz node.
- * @param $nid
- *  Node ID of question.
- * @param $vid
- *  Version ID of question.
- * @param $rid
- *  Result ID for the quiz results.
- * @param $score
- *  The numeric score to assign the result.
+ * @param array $values
+ *  quiz => Quiz node,
+ *  nid => Node ID of question.
+ *  vid => Version ID of question.
+ *  rid => Result ID for the quiz results.
+ *  score => The numeric score to assign the result.
+ *  max_score => The max score for this question
  * @param $update_total
- *  Shall the total score for a quiz be updated?
+ *  Shall the total score be updated?
  *
  * @return int
  *  Number of scores adjusted. If a change was made, this should be 1.
  */
-function short_answer_score_an_answer($quiz, $nid, $vid, $rid, $score, $update_total = TRUE) {
+function short_answer_score_an_answer($values, $update_total = TRUE) {
   // When we set the score we make sure that the max score in the quiz the question belongs to is considered
   db_query("UPDATE {quiz_short_answer_user_answers}
             SET score = %d * (
               SELECT max_score
               FROM {quiz_question_properties}
               WHERE vid = %d
-            ) / (
-              SELECT max_score
-              FROM {quiz_node_relationship}
-              WHERE parent_vid = %d
-              AND child_vid = %d
-            ), is_evaluated = 1
+            ) / %d, is_evaluated = 1
             WHERE question_nid = %d
             AND question_vid = %d
             AND result_id = %d",
-           $score, $vid, $quiz->vid, $vid, $nid, $vid, $rid);
+           $values['score'], $values['vid'], $values['max_score'], $values['nid'], $values['vid'], $values['rid']);
   $changed = db_affected_rows();
 
   // Now the short answer user data has been updated. We also need to update the data in the quiz tables
   if ($changed > 0) {
-    $max = db_result(db_query('SELECT max_score FROM {quiz_question_properties} WHERE vid = %d', $vid));
+    $max = db_result(db_query('SELECT max_score FROM {quiz_question_properties} WHERE vid = %d', $values['vid']));
     if ($max <= 0) {
       $is_correct = 0;
       $points_awarded = 0;
     }
     else {
-      $is_correct = ($score / $max > 0.5) ? 1 : 0;
-      $points_awarded = $score;
+      $is_correct = ($values['score'] / $max > 0.5) ? 1 : 0;
+      $points_awarded = $values['score'];
     }
 
     $sql = 'UPDATE {quiz_node_results_answers}
       SET points_awarded = %d, is_correct = %d
       WHERE question_vid = %d AND result_id = %d';
-    db_query($sql, $points_awarded, $is_correct, $vid, $rid);
+    db_query($sql, $points_awarded, $is_correct, $values['vid'], $values['rid']);
 
     // Third, we update the main quiz results table
     if ($update_total)
-      quiz_update_total_score($quiz, $rid);
+      quiz_update_total_score($values['quiz'], $values['rid']);
   }
   return $changed;
 }
@@ -196,7 +187,7 @@ function short_answer_report_validate($values, $form_key) {
  * Submit the result report for short answer
  */
 function short_answer_report_submit($values) {
-  short_answer_score_an_answer($values['quiz'], $values['nid'], $values['vid'], $values['rid'], (int)$values['score'], FALSE);
+  short_answer_score_an_answer($values, FALSE);
 }
 
 /**
@@ -223,10 +214,12 @@ function short_answer_report_submit($values) {
  *  </code>
  */
 function short_answer_get_answer($question_nid, $question_vid, $result_id) {
-  $sql = "SELECT sa.answer_id, sa.answer, sa.is_evaluated, sa.score, sa.question_vid, sa.question_nid, sa.result_id, rel.max_score AS rel_max_score
+  $sql = "SELECT sa.answer_id, sa.answer, sa.is_evaluated, sa.score, sa.question_vid, sa.question_nid, sa.result_id, rel.max_score AS rel_max_score, qt.max_score AS term_max_score, qnra.tid
     FROM {quiz_short_answer_user_answers} sa
     JOIN {quiz_node_results} qnr ON (sa.result_id = qnr.result_id)
-    JOIN {quiz_node_relationship} rel ON (qnr.vid = rel.parent_vid AND rel.child_vid = sa.question_vid)
+    JOIN {quiz_node_results_answers} qnra ON (qnr.result_id = qnra.result_id AND sa.question_nid = qnra.question_nid AND sa.question_vid = qnra.question_vid)
+    LEFT OUTER JOIN {quiz_node_relationship} rel ON (qnr.vid = rel.parent_vid AND rel.child_vid = sa.question_vid)
+    LEFT OUTER JOIN {quiz_terms} qt ON qnr.nid = qt.nid AND qnr.vid = qt.vid AND qnra.tid = qt.tid
     WHERE sa.question_nid = %d AND sa.question_vid = %d AND sa.result_id = %d";
   $results = db_query($sql, $question_nid, $question_vid, $result_id);
 
@@ -234,5 +227,11 @@ function short_answer_get_answer($question_nid, $question_vid, $result_id) {
     return FALSE;
   }
 
-  return db_fetch_array($results);
+  $answer = db_fetch_object($results);
+
+  if ($answer->rel_max_score === NULL) {
+    $answer->rel_max_score = $answer->term_max_score;
+  }
+
+  return $answer;
 }

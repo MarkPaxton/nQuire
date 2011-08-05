@@ -1,4 +1,3 @@
-// $Id: multichoice-alternative-creation.js,v 1.1.2.5 2010/11/05 16:14:47 falcon Exp $
 /**
  * @file
  * JS enabling one filter fieldset to controll filter formats for all textareas in alternatives.

@@ -1,5 +1,4 @@
 <?php
-// $Id: ahah_helper.module,v 1.4 2009/09/18 15:09:07 wimleers Exp $
 
 
 define('AHAH_HELPER_CALLBACK_PATH', 'ahah_helper/');
@@ -76,6 +75,15 @@ function ahah_helper_register(&$form, &$form_state) {
   // This is an AHAH-driven form, so enable caching.
   $form['#cache'] = TRUE;
 
+  // When not set.. try to remember the old action
+  if (!isset($form_state['storage']['old_action'])) {
+    $form_state['storage']['old_action'] = isset($form['#action']) ? $form['#action'] : $_SERVER['REQUEST_URI'];
+  }
+  // If the form action change, restore the old one.
+  if (isset($form_state['storage']['old_action']) && 
+      ($form['#action']!=$form_state['storage']['old_action'])) {
+    $form['#action'] = $form_state['storage']['old_action'];
+  }
   // Register the file.
   if (!isset($form_state['storage']['#ahah_helper']['file'])) {
     $menu_item = menu_get_item();
@@ -98,27 +106,18 @@ function ahah_helper_register(&$form, &$form_state) {
 
   // Add our JS file, which has some Drupal core JS overrides.
   if (!isset($js_file_added)) {
-    drupal_add_js(drupal_get_path('module', 'ahah_helper') . '/ahah_helper.js', 'footer');
+    drupal_add_js(drupal_get_path('module', 'ahah_helper') . '/ahah_helper.js', 'module', 'footer');
     $js_file_added = TRUE;
   }
-  
+
   // Add our submit function, which will clean up form storage, so that redirects will work.
   $form['#submit'][] = 'ahah_helper_real_submit';
   if ($form['#id'] == 'node-form') {
     foreach ($form['buttons'] as $name => &$button) {
       $button['#submit'][] = 'ahah_helper_real_submit';
     }
-  } 
+  }
 }
-
-/**
- * Submit callback; gets rid of storage at the end, so that we can redirect.
- */
-function ahah_helper_real_submit($form, &$form_state) {
-  unset($form_state['storage']);
-}
-
-
 
 /**
  * Submit callback; for any button that's used when JS is disabled (i.e. to
@@ -126,6 +125,13 @@ function ahah_helper_real_submit($form, &$form_state) {
  */
 function ahah_helper_generic_submit($form, &$form_state) {
   $form_state['rebuild'] = TRUE;
+}
+
+/**
+ * Submit callback; gets rid of storage at the end, so that we can redirect.
+ */
+function ahah_helper_real_submit($form, &$form_state) {
+  unset($form_state['storage']);
 }
 
 /**
@@ -147,14 +153,14 @@ function ahah_helper_render($form_item_to_render = FALSE) {
   $form = form_get_cache($form_build_id, $form_state);
   $args = $form['#parameters'];
   $form_id = array_shift($args);
-  
+
   // Are we on the node form?
   $node_form = FALSE;
   if (preg_match('/_node_form$/', $form_id)) {
     $node_form = TRUE;
     module_load_include('inc', 'node', 'node.pages');
   }
-  
+
   // We will run some of the submit handlers so we need to disable redirecting.
   $form['#redirect'] = FALSE;
   // We need to process the form, prepare for that by setting a few internals
@@ -298,18 +304,20 @@ function _ahah_helper_disable_validation(&$form) {
  *
  * From: http://www.php.net/manual/en/function.array-merge-recursive.php#82976.
  */
-function array_smart_merge($array, $override) {
-  if (is_array($array) && is_array($override)) {
-    foreach ($override as $k => $v) {
-      if (isset($array[$k]) && is_array($v) && is_array($array[$k])) {
-        $array[$k] = array_smart_merge($array[$k], $v);
-      }
-      else {
-        $array[$k] = $v;
+if (!function_exists('array_smart_merge')) {
+  function array_smart_merge($array, $override) {
+    if (is_array($array) && is_array($override)) {
+      foreach ($override as $k => $v) {
+        if (isset($array[$k]) && is_array($v) && is_array($array[$k])) {
+          $array[$k] = array_smart_merge($array[$k], $v);
+        }
+        else {
+          $array[$k] = $v;
+        }
       }
     }
+    return $array;
   }
-  return $array;
 }
 
 

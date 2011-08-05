@@ -1,6 +1,5 @@
 <?php
 
-// $Id: truefalse.classes.inc,v 1.1.2.51 2010/11/05 16:14:48 falcon Exp $
 
 /**
  * Defines the classes necessary for a True/False quiz.

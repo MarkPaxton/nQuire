@@ -1,6 +1,5 @@
 <?php
 
-// $Id: short_answer.classes.inc,v 1.2.2.81 2010/11/05 16:14:48 falcon Exp $
 
 /**
  * The main classes for the short answer question type.

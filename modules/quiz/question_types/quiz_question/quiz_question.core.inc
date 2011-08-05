@@ -1,6 +1,5 @@
 <?php
 
-// $Id: quiz_question.core.inc,v 1.2.2.109 2010/12/19 19:55:28 falcon Exp $
 
 /**
  * Classes used in the Quiz Question module.
@@ -194,7 +193,9 @@ abstract class QuizQuestion {
               FROM {quiz_question_latest_quizzes} lq
               JOIN {node} n
               ON n.nid = lq.quiz_nid
-              WHERE lq.uid = %d $own_filter";
+              JOIN {quiz_node_properties} qnp
+              ON qnp.vid = n.vid
+              WHERE lq.uid = %d AND qnp.randomization < 3 $own_filter";
       if (drupal_strlen($found) > 0) $sql .= " AND quiz_nid NOT IN ($found)";
       $sql .= " ORDER BY lq.id DESC";
       $res = db_query(db_rewrite_sql($sql), $user->uid);
@@ -211,7 +212,9 @@ abstract class QuizQuestion {
         $found = implode(', ', array_merge($already_nids, $latest_nids));
         $sql = "SELECT n.nid, n.vid, title, changed
                 FROM {node} n
-                WHERE type = 'quiz' $own_filter";
+                JOIN {quiz_node_properties} qnp
+                ON qnp.vid = n.vid
+                WHERE type = 'quiz' AND qnp.randomization < 3 $own_filter";
         if (drupal_strlen($found) > 0) {
           $sql .= " AND n.nid NOT IN ($found)";
         }

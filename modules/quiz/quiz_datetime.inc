@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz_datetime.inc,v 1.3.2.4 2010/11/05 16:14:47 falcon Exp $
 
 /////////////////////////////////
 // Date and time routines for use with quiz module.

@@ -1,4 +1,3 @@
-// $Id: scale.js,v 1.1.2.4 2010/11/05 16:14:48 falcon Exp $
 /**
  * @file
  * Javascript functions for the scale question type.

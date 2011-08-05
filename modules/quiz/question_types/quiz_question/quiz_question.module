@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz_question.module,v 1.2.2.146 2010/12/16 17:56:09 falcon Exp $
 
 /**
  * Quiz Question module.
@@ -846,6 +845,16 @@ function quiz_question_report_form($question, $showpoints, $showfeedback, $allow
               WHERE result_id = %d
             )';
     $qnr_max_score = db_result(db_query($sql, $question->vid, $answer['result_id']));
+    if ($qnr_max_score === FALSE) {
+      $qnr_max_score = db_result(db_query(
+        'SELECT qt.max_score
+         FROM {quiz_node_results} qnr
+         JOIN {quiz_node_results_answers} qnra ON (qnr.result_id = qnra.result_id)
+         JOIN {quiz_terms} qt ON (qt.vid = qnr.vid AND qt.tid = qnra.tid)
+         WHERE qnr.result_id = %d AND qnra.question_nid = %d AND qnra.question_vid = %d',
+        $answer['result_id'], $question->nid, $question->vid
+      ));
+    }
     if ($qnr_max_score == 0) $weight = 0;
     else $weight = $qnr_max_score / $response_instance->question->max_score;
     $response_instance->question->score_weight = $weight;

@@ -1,6 +1,5 @@
 <?php
 
-// $Id: multichoice.classes.inc,v 1.1.2.168 2010/12/16 15:38:17 falcon Exp $
 
 /**
  * The main classes for the multichoice question type.
@@ -265,12 +264,12 @@ class MultichoiceQuestion extends QuizQuestion {
   public function delete($only_this_version = FALSE) {
     $delete_properties = 'DELETE FROM {quiz_multichoice_properties} WHERE nid = %d';
     $delete_answers = 'DELETE FROM {quiz_multichoice_answers} WHERE question_nid = %d';
-    $delete_multi_results = 'DELETE FROM {quiz_multichoice_user_answer_multi}
-                             WHERE user_answer_id IN(
-                               SELECT id
-                               FROM {quiz_multichoice_user_answers}
-                               WHERE question_nid = %d' . ($only_this_version ? ' AND question_vid = %d' : '') .'
-                             )';
+    $delete_multi_results = '
+      DELETE FROM {quiz_multichoice_user_answer_multi}
+      USING {quiz_multichoice_user_answer_multi}
+      INNER JOIN {quiz_multichoice_user_answers}
+      ON {quiz_multichoice_user_answer_multi}.user_answer_id = {quiz_multichoice_user_answers}.id
+      WHERE {quiz_multichoice_user_answers}.question_nid = %d'. ($only_this_version ? ' AND question_vid = %d' : '');
     $delete_results = 'DELETE FROM {quiz_multichoice_user_answers} WHERE question_nid = %d';
     if ($only_this_version) {
       $delete_properties .= ' AND vid = %d';
@@ -772,10 +771,12 @@ class MultichoiceResponse extends QuizQuestionResponse {
    */
   public function delete() {
     $sql = 'DELETE FROM {quiz_multichoice_user_answer_multi}
-            WHERE user_answer_id IN(
-              SELECT id FROM {quiz_multichoice_user_answers}
-              WHERE question_nid = %d AND question_vid = %d AND result_id = %d
-            )';
+            USING {quiz_multichoice_user_answer_multi}
+            INNER JOIN {quiz_multichoice_user_answers}
+            ON {quiz_multichoice_user_answer_multi}.user_answer_id = {quiz_multichoice_user_answers}.id
+            WHERE {quiz_multichoice_user_answers}.question_nid = %d
+            AND {quiz_multichoice_user_answers}.question_vid = %d
+            AND {quiz_multichoice_user_answers}.result_id = %d';
     db_query($sql, $this->question->nid, $this->question->vid, $this->rid);
     $sql = 'DELETE FROM {quiz_multichoice_user_answers}
             WHERE result_id = %d AND question_nid = %d AND question_vid = %d';

@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz_question.theme.inc,v 1.2.2.11 2010/11/05 16:14:48 falcon Exp $
 
 /*
  * @file

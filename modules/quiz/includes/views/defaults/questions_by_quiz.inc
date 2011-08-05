@@ -1,5 +1,4 @@
 <?php
-//$Id: questions_by_quiz.inc,v 1.1.2.1 2011/01/11 22:12:23 falcon Exp $
 $view = new view;
 $view->name = 'questions_by_quiz';
 $view->description = 'View of all the questions associated with a quiz';

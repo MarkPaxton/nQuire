@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz.views_default.inc,v 1.2.2.2 2011/01/11 22:12:23 falcon Exp $
 
 /*
  * @file

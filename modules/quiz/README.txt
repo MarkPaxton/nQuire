@@ -1,4 +1,3 @@
-; $Id: README.txt,v 1.9.2.2 2010/02/23 11:50:24 falcon Exp $
 
 Overview
 --------

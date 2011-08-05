@@ -1,5 +1,4 @@
 <?php
-// $Id: multichoice-alternative.tpl.php,v 1.1.2.7 2010/11/05 16:14:47 falcon Exp $
 /**
  * @file
  * Handles the layout of the multichoice answering form

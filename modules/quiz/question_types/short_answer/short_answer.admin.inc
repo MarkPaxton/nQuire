@@ -1,5 +1,4 @@
 <?php
-// $Id: short_answer.admin.inc,v 1.2.2.8 2010/11/05 16:14:48 falcon Exp $
 /**
  * short_answer.admin
  *
@@ -41,7 +40,8 @@ function short_answer_edit_score($vid, $rid) {
     return;
   }
 
-  $answer = (object)short_answer_get_answer($node->nid, $node->vid, $rid);
+  $answer = short_answer_get_answer($node->nid, $node->vid, $rid);
+
   if (!$answer) {
     drupal_not_found();
     return;
@@ -152,14 +152,15 @@ function short_answer_score_form_submit($form, &$form_state) {
 
   $sql = 'SELECT nid, vid FROM {quiz_node_results} WHERE result_id = %d';
   $result = db_fetch_object(db_query($sql, $form_state['values']['result_id']));
-  $quiz = node_load($result->nid, $result->vid);
 
-  $nid = $form_state['values']['question_nid'];
-  $vid = $form_state['values']['question_vid'];
-  $rid = $form_state['values']['result_id'];
-  $score = $form_state['values']['score'];
-
-  $result = short_answer_score_an_answer($quiz, $nid, $vid, $rid, $score);
+  $result = short_answer_score_an_answer(array(
+    'quiz' => node_load($result->nid, $result->vid),
+    'nid' => $form_state['values']['question_nid'],
+    'vid' => $form_state['values']['question_vid'],
+    'rid' => $form_state['values']['result_id'],
+    'score' => $form_state['values']['score'],
+    'max_score' => $form_state['values']['rel_max_score'],
+  ));
 
   if ($result == 1) {
     drupal_set_message("The score has been saved.");

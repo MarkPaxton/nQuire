@@ -1,4 +1,3 @@
-//$Id: ajax_quiz.js,v 1.1.2.6 2009/08/14 11:29:33 falcon Exp $
 
 Drupal.AjaxLoadExample = Drupal.AjaxLoadExample || {};
 

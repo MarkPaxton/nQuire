@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz_views_handler_filter_user_quiz_state.inc,v 1.2.2.1 2009/12/30 11:58:17 falcon Exp $
 
 /*
  * @file

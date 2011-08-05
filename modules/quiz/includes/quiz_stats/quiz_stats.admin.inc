@@ -1,6 +1,5 @@
 <?php
 
-// $Id: quiz_stats.admin.inc,v 1.1.2.13 2010/11/05 16:14:47 falcon Exp $
 
 /*
  * @file

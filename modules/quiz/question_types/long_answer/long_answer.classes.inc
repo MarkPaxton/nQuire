@@ -1,5 +1,4 @@
 <?php
-// $Id: long_answer.classes.inc,v 1.2.2.62 2010/11/05 16:14:47 falcon Exp $
 
 /**
  * Long answer classes.

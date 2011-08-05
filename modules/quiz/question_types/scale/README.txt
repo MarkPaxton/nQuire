@@ -1,4 +1,3 @@
-// $Id: README.txt,v 1.1.2.3 2010/02/28 19:38:43 falcon Exp $
 
 /**
  * @file

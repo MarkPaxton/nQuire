@@ -1,5 +1,4 @@
 <?php
-// $Id: short_answer.theme.inc,v 1.1.2.10 2010/11/05 16:14:48 falcon Exp $
 
 /**
  * @file

@@ -1,5 +1,4 @@
 <?php
-// $Id: multichoice_update_6400.inc,v 1.1.2.11 2010/11/05 16:14:47 falcon Exp $
 /*
  * @file
  * Update for choice Questions type module.

@@ -1,5 +1,4 @@
 <?php
-// $Id: scale.theme.inc,v 1.1.2.3 2010/11/05 16:14:48 falcon Exp $
 
 /**
  * The theme file for scale.

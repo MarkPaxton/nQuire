@@ -1,5 +1,4 @@
 <?php
-// $Id: multichoice-alternative-creation.tpl.php,v 1.1.2.2 2010/02/26 07:56:19 falcon Exp $
 /**
  * @file
  * Handles the layout of the choice creation form.

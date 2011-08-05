@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz_views_handler_filter_user_nullable.inc,v 1.2 2009/05/28 16:52:07 mbutcher Exp $
 
 /*
  * @file

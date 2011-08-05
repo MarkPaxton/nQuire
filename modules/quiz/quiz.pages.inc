@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz.pages.inc,v 1.3.2.60 2010/12/17 14:44:57 falcon Exp $
 
 /**
  * User pages.
@@ -234,11 +233,12 @@ function quiz_get_user_results($user_id) {
   $results = array();
   $sql = "SELECT n.nid, n.title, qnp.pass_rate, qnrs.result_id, qnrs.time_start, qnrs.time_end, qnrs.score, qnrs.is_evaluated
     FROM {node} n
-    INNER JOIN {quiz_node_properties} qnp ON n.nid = qnp.nid
-    INNER JOIN {quiz_node_results} qnrs ON qnrs.nid = qnp.nid
+    INNER JOIN {quiz_node_properties} qnp ON n.vid = qnp.vid
+    INNER JOIN {quiz_node_results} qnrs ON qnrs.vid = qnp.vid
     INNER JOIN {users} u ON u.uid = qnrs.uid
     WHERE n.type = 'quiz'
       AND u.uid = %d
+      AND qnrs.time_end > 0
     ORDER BY qnrs.result_id ASC";
 
   $dbresult = db_query($sql, $user_id);

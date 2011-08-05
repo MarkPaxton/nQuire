@@ -1,5 +1,4 @@
 <?php
-// $Id: quiz.admin.inc,v 1.3.2.237 2010/12/17 14:44:57 falcon Exp $
 
 /**
  * Administrator interface for Quiz module.
