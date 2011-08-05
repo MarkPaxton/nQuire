@@ -55,7 +55,8 @@ function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
       "LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_activity}.`actor` " .
       "LEFT JOIN {node_access} ON {pi_activity_node}.`nid` = {node_access}.`nid` " .
       "WHERE {pi_activity_node}.`activity_id` = %d " .
-      "AND ( ( {node_access}.`gid` = {og_uid}.`nid` AND {og_uid}.`uid` = %d ) " ;
+      "AND ( {node_access}.`gid` = {og_uid}.`nid` AND {og_uid}.`uid` = %d ) " .
+	  " ORDER BY {pi_activity}.`weight`";
       //"OR {node_access}.`realm` = 'all')";
 
 		$result = db_query($query, $activity_id, $uid);
