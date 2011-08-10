@@ -13,7 +13,14 @@
 function pi_debug_message($var_to_dump)
 {
 	ob_start();
-	var_dump($var_to_dump);
+	if(is_string($var_to_dump))
+	{
+	  echo($var_to_dump);
+	}
+	else 
+	{
+      var_dump($var_to_dump);
+	}
 	drupal_set_message(t('<pre>@data</pre>', array('@data' => ob_get_clean()), 'status'));
 }
 

@@ -185,53 +185,54 @@ function pi_sort_key_questions_load($node) {
 function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-
 	$node = node_prepare($node, $teaser);
 	
 	if(!$teaser)
 	{
-		$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-		if ($hypothesis_nid)
-		{
-			$hypothesis_node = node_load($hypothesis_nid);
-			$hypothesis_activity_nid = get_activity_id_for_nid($hypothesis_node->nid);
-			if($hypothesis_activity_nid)
-			{
-				$hypothesis_activity = node_load($hypothesis_activity_nid);
-				if($hypothesis_activity)
-				{
-					$node->content['pi_key_questions_hypothesis'] = array(
+	  $hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+	  if($hypothesis_nid!=null)
+	  {
+	    $hypothesis_node = node_load($hypothesis_nid);
+	    $hypothesis_activity_nid = pi_activity_get_activity_nid_for_content_nid($hypothesis_node->nid);
+	    if($hypothesis_activity_nid)
+	    {
+	      $hypothesis_activity = node_load($hypothesis_activity_nid);
+	      if($hypothesis_activity)
+	      {
+	        $node->content['pi_key_questions_hypothesis'] = array(
 						'#value' => node_view($hypothesis_node, TRUE, TRUE),
 						'#weight' => -2
-					);
-				}
-			}
-		}
-		else 
-		{
-			drupal_set_message( "No hypothesis found", "error" );
-		}
+	        );
+	      }
+	    }
+	  }
+	  else
+	  {
+	    drupal_set_message( "No hypothesis found", "error" );
+	  }
 	}
 
 	// Assemble an array of key questions in the output format (build_activity_link makes this a link with icon)
 	$already_sorted_key_questions = $node->categories;
 	//$unsorted_key_questions = pi_sort_key_questions_get_options();
-    
 	$sorted_key_questions = pi_merge_content_item_lists($already_sorted_key_questions, $unsorted_key_questions);
+    
 	$key_questions_to_show = array(); 
-	foreach(array_keys($sorted_key_questions) as $sorted_key_questions_nid)
+	foreach($sorted_key_questions as $sorted_key_question_nid => $key_question)
 	{
-		$key_question_activity_id = get_activity_id_for_nid($sorted_key_questions_nid);
+		$key_question_activity_id =  pi_activity_get_activity_nid_for_content_nid($sorted_key_question_nid);
+		  pi_debug_message($key_question_activity_id);
 		if ($key_question_activity_id)
 		{
-			$key_questions_to_show[] = array('data' => pi_activity_build_link($key_question_activity_id, $user->uid, 'heading'), 'class' => 'activity');
+			$key_questions_to_show[] = array('data' => pi_activity_build_link($key_question_activity_id, $user->uid, 'heading', $key_question['#title']), 'class' => 'activity');
 		}
 	}
+	pi_debug_message($key_questions_to_show);
 	if($teaser)
 	{
 		//Link to add a new key question
 		//cannot get activity id from $details when viewing a list of activity teasers
-		$activity_id_for_this_node = get_activity_id_for_nid($node->nid);
+		$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
 		$link_output = make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);
 		$node->content['pi_sort_key_questions_add_key_question_link'] =  array(
             '#value' =>$link_output,

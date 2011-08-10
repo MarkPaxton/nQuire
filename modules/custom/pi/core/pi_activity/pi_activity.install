@@ -10,27 +10,27 @@
  */
 function pi_activity_install()
 {
-	// Create tables.
-	drupal_install_schema('pi_activity');
-	
-	variable_set("og_content_type_usage_pi_activity", 'group_post');
-	//Options are status, promote, sticky, revision
-	variable_set("node_options_pi_activity", array('status','revision'));
-	variable_set("comment_pi_activity", COMMENT_NODE_DISABLED);
-	variable_set('upload_pi_activity', 0);
+  // Create tables.
+  drupal_install_schema('pi_activity');
+
+  variable_set("og_content_type_usage_pi_activity", 'group_post');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_pi_activity", array('status','revision'));
+  variable_set("comment_pi_activity", COMMENT_NODE_DISABLED);
+  variable_set('upload_pi_activity', 0);
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function pi_activity_uninstall() {
-	// Remove tables.
-	drupal_uninstall_schema('pi_activity');
-	
-	variable_del("og_content_type_usage_pi_activity");
-	variable_del("node_options_pi_activity");
-	variable_del("comment_pi_activity");
-	variable_del("upload_pi_activity");
+  // Remove tables.
+  drupal_uninstall_schema('pi_activity');
+
+  variable_del("og_content_type_usage_pi_activity");
+  variable_del("node_options_pi_activity");
+  variable_del("comment_pi_activity");
+  variable_del("upload_pi_activity");
 }
 
 /**
@@ -46,9 +46,9 @@ function pi_activity_update_6001(&$sandbox)
     $sandbox['progress'] = 0;
     $sandbox['current_node'] = 0;
     $sandbox['new_node_ids'] = array();
-    $sandbox['max'] = 15;
+    $sandbox['max'] = 16;
   }
-  
+
   //pi_debug_message($sandbox['progress']);
   //pi_debug_message(count($sandbox['new_node_ids']));
   $table_data[0] = array('pi_activity_enter_focus', 'paef_id', 'activity_id');
@@ -80,7 +80,7 @@ function pi_activity_update_6001(&$sandbox)
     case 5:
     case 6:
       //pi_debug_message("Copying: " . $table_data[$sandbox['progress']-1][0]);
-      _pi_activity_upgrade_copy_associated_table($table_data[$sandbox['progress']-1][0]);      
+      _pi_activity_upgrade_copy_associated_table($table_data[$sandbox['progress']-1][0]);
       $rows_updated = 0;
       $sandbox['progress']++;
       break;
@@ -106,8 +106,8 @@ function pi_activity_update_6001(&$sandbox)
       $sandbox['progress']++;
       break;
     case 14:
-      //Set up directly referenced nodes and activity parent activities after all the nids and activity_ids have been changed.      
-      $rows_updated = _pi_activity_upgrade_set_activity_direct_references_and_parents($sandbox['current_node'], $batch_size);
+      //Set up directly referenced nodes and activity parent activities after all the nids and activity_ids have been changed.
+      $rows_updated = _pi_activity_upgrade_set_activity_direct_references($sandbox['current_node'], $batch_size);
       if($rows_updated == 0)
       {
         $sandbox['progress']++;
@@ -118,7 +118,20 @@ function pi_activity_update_6001(&$sandbox)
         $sandbox['current_node'] += $rows_updated;
       }
       break;
-    case 15:
+      case 15:
+      //Set up directly referenced nodes and activity parent activities after all the nids and activity_ids have been changed.
+      $rows_updated = _pi_activity_upgrade_set_child_activity_nodes($sandbox['current_node'], $batch_size);
+      if($rows_updated == 0)
+      {
+        $sandbox['progress']++;
+        $sandbox['current_node'] = 0;
+      }
+      else
+      {
+        $sandbox['current_node'] += $rows_updated;
+      }
+      break;
+    case 16:
       db_drop_table($results, 'pi_activity_actor');
       db_drop_table($results, 'pi_stage_phase_activity');
       //rebuild the schema cache after the changes
@@ -141,7 +154,7 @@ function _pi_activity_upgrade_create_nodes(&$new_node_ids, $start, $batch_size)
   while($row = db_fetch_array($result))
   {
     $rows_updated++;
-    
+
     $activity_id = $row['activity_id'];
 
     $new_node = _pi_activity_upgrade_covert_to_node($row);
@@ -153,12 +166,12 @@ function _pi_activity_upgrade_create_nodes(&$new_node_ids, $start, $batch_size)
 }
 
 /**
- * 
+ *
  * this function converts the activity data in pi_activity, pi_activity_actor, and pi_stage_phase_activity to
  * a node, with the necessary fields for it to be saved in the new format
  * The new format consolidates pi_activity_actor into the pi_activity table, and replaces pi_stage_phase_activity with
  * pi_activity_stage_state.  This table contains a desired state for an activity in the stage, to be set when switching stages
- * but individual groups will have their own activity states set using the teacher orchestration tools 
+ * but individual groups will have their own activity states set using the teacher orchestration tools
  * @param array $activity pi_activity database row, in 'original' format
  */
 function _pi_activity_upgrade_covert_to_node($activity)
@@ -173,7 +186,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
 	'node_type' => 'node_type',  
     'parameters' => 'parameters',
     'destination' => 'destination',
-  );  
+  );
 
   // Convert fields that are a one-to-one copy
   foreach($rows_to_properties as $row => $property)
@@ -183,19 +196,19 @@ function _pi_activity_upgrade_covert_to_node($activity)
 
   //Then do ones that are more complicated
   $node->selects['audience'] = $activity['audience'];
-  
-  // Find the actor for the activity and add it to the new table schema 
+
+  // Find the actor for the activity and add it to the new table schema
   // only get the first actor in the database, since multiple actors doesn't make sense in the system now
   $actor_result = db_query("SELECT * FROM {pi_activity_actor} WHERE `activity_id` = %d LIMIT 1", $activity['activity_id']);
-  
+
   $node->selects['gid'] = NULL;
   if( !is_null($actor_result) && ($actor_result!=FALSE) )
   {
-    $actor_row = db_fetch_object($actor_result);    
+    $actor_row = db_fetch_object($actor_result);
     if($actor_row!=FALSE)
     {
       $node->selects['gid'] = $actor_row->gid;
-    }    
+    }
   }
   $node->actor = &$node->selects['gid'];
   if($node->actor == NULL)
@@ -205,7 +218,7 @@ function _pi_activity_upgrade_covert_to_node($activity)
   $node->visible_status = 'start';
   $node->node_function = 'add';
 
-  // Find the stage associated with the activity and 
+  // Find the phase associated with the activity and
   // add it directly to the pi_activity table for the new schema
   //again only use the first phase found as activities can only belong to one phase
   $skip=false;
@@ -262,8 +275,8 @@ function _pi_activity_upgrade_covert_to_node($activity)
     drupal_set_message(t('Skipping orphaned activity !number, %title', array('!number' => $activity['activity_id'], '%title' => $activity['name'])), 'info');
     $node->activity_phases_stages['phase_nid'] = NULL;
     $node->activity_phases_stages['stages']['stage_select'] = array();
-    return NULL;   
-  } 
+    return NULL;
+  }
   return $node;
 }
 
@@ -272,93 +285,117 @@ function _pi_activity_upgrade_covert_to_node($activity)
  * activities and also sets the parent activity for all generated activities in the system
  * see comment at the end of _pi_activity_upgrade_covert_to_node() for details
  */
-function _pi_activity_upgrade_set_activity_direct_references_and_parents($current_node, $batch_size)
+function _pi_activity_upgrade_set_activity_direct_references($current_node, $batch_size)
 {
   $rows_changed = 0;
-  $query = "SELECT `nid` from {pi_activity}";
+  $query = "SELECT `nid`, `activity_type` from {pi_activity}";
   $activity_result = db_query_range($query, $current_node, $batch_size);
   while($row = db_fetch_array($activity_result))
   {
     $rows_changed++;
     $activity_nid = $row['nid'];
-  
-     /* Get all linked nodes to update there - if the first node for the activity ID in pi_activity_node is 0
-     * then it's an activity that has multiple contents.  If it's not 0 then there should only be one value as it's 
+
+    /* Get all linked nodes to update there - if the first node for the activity ID in pi_activity_node is 0
+     * then it's an activity that has multiple contents.  If it's not 0 then there should only be one value as it's
      * direcly referenced node, so that should be put into the table now.
-     * If the first isn't 0 and there's more than one entry, there's a problen somewhere!  
+     * If the first isn't 0 and there's more than one entry, there's a problen somewhere!
      */
     $query = "SELECT * FROM {pi_activity_node} WHERE `activity_id` = %d ORDER BY `nid` ASC";
     $result = db_query($query, $activity_nid);
     $first_result = db_fetch_array($result);
     if((!is_null($result)) && ($first_result!=FALSE))
     {
+      pi_debug_message("first result for activity  " . $activity_nid . " is " . $first_result['nid']);
       if($first_result['nid'] != 0)
       {
         // This is a directly referenced node
         // @todo - check this node exists?
-        $node = node_load($activity_nid);
-        if($node)
+        pi_debug_message("Loading activity  " . $activity_nid);
+        $activity_node = node_load($activity_nid);
+        if($activity_node)
         {
-          if($node->type=='pi_activity')
+          pi_debug_message("Activity " . $activity_nid . " is " . $activity_node->type);
+          if($activity_node->type=='pi_activity')
           {
-            $node->referenced_node = $first_result;
+            $activity_node->referenced_node = $first_result['nid'];
+            pi_debug_message("Loading activity content " .  $first_result['nid']);
+            $content_node = node_load($first_result['nid']);
+            pi_debug_message("nid " . $first_result['nid'] . " is a " . $content_node->type);
+            pi_debug_message("Assigning node " . $first_result['nid'] . " (" . $content_node->title . ") directly to activity " . $activity_nid . " (" . $activity_node->title . ")");
             node_save($node);
             $delete_query = "DELETE FROM {pi_activity_node} WHERE pan_id = %d";
             db_query($delete_query, $first_result['pan_id']);
           }
-          else 
+          else
           {
-            drupal_set_message(t("Not converting activity !a node !n as activity is actrually a !t", 
-              array('!a' => $activity_nid, '!n' => $first_result['nid'], !t => $node->type)));
+            drupal_set_message(t("Not converting activity !a node !n as activity is actually a !t",
+            array('!a' => $activity_nid, '!n' => $first_result['nid'], !t => $node->type)));
           }
         }
-                  else 
-          {
-            drupal_set_message(t("Not converting activity !a node !n as activity doesn't exist", 
-              array('!a' => $activity_nid, '!n' => $first_result['nid'])));
-          }
+        else
+        {
+          drupal_set_message(t("Not converting activity !a node !n as activity doesn't exist",
+          array('!a' => $activity_nid, '!n' => $first_result['nid'])));
+        }
+      }
+      else
+      {
+        //First result is not 0 so this is an activity that references a number of nodes.
+        // delete the 0 reference now
+        $delete_query = "DELETE FROM {pi_activity_node} WHERE pan_id = %d";
+        db_query($delete_query, $first_result['pan_id']);
+        
+        // Leave these as is, unless they also have an activity attached to them, 
+        // in which case deal with them seperately below 
       }
     }
-  }
-  
-  /* Check if each activity has a parent; this is done by checking for activities in the same phase
-   * that are of the type this activity generates e.g. for pi_sort_data it generates pi_data 
-   * This can't be done until all the activities are upgraded hovever, since activity ids will be changing when
-   * they are are being processed one by one.
-   * This works because activities currently can only have one "sort" instance per inquiry, and an activity
-   * can only be on one phase (so if child activities appear in another phase, they'll not be linked any more.
-   * This will be different in the new version activities, which will directly set parent data on creation, and
-   * conceivably they could appear in a different phase, but this would be rather strange. */
-  
-  // First of all find the name of the module that provides the activity content
-  $query = "SELECT `nid`, `phase_nid`, `activity_type` from {pi_activity} ";
-  $activity_result = db_query($query);
+  }  
+  return $rows_changed;
+}
+
+/* Check if each activity has a parent; this is done by checking for activities in the same phase
+ * that are of the type this activity generates e.g. for pi_sort_data it generates pi_data
+ * This can't be done until all the activities are upgraded hovever, since activity ids will be changing when
+ * they are are being processed one by one.
+ * This works because activities currently can only have one "sort" instance per inquiry, and an activity
+ * can only be on one phase (so if child activities appear in another phase, they'll not be linked any more.
+ * This will be different in the new version activities, which will directly set parent data on creation, and
+ * conceivably they could appear in a different phase, but this would be rather strange. */
+function _pi_activity_upgrade_set_child_activity_nodes($current_node, $batch_size)
+{
+  $rows_changed = 0;
+  $query = "SELECT `nid`, `activity_type`, `phase_nid` from {pi_activity}";
+  $activity_result = db_query_range($query, $current_node, $batch_size);
   while($row = db_fetch_array($activity_result))
   {
+    $rows_changed++;
+    $activity_nid = $row['nid'];
+    // First of all find the name of the module that provides the activity content
     $activity_type = $row['activity_type'];
-    
+
     // Then get the type of data that activity content module provides
-    $info_function_name = $activity_type . '_node_info'; 
+    $info_function_name = $activity_type . '_node_info';
     if(function_exists($info_function_name))
     {
       $node_info = $info_function_name();
-      $generated_node_type = $node_info['add_node_type'];
+      $generated_node_type = $node_info[$activity_type]['add_node_type'];
       //When it does generate nodes, check what type those nodes are and get the nids of the content
       // of that type in the activity's phase.
       if(!is_null($generated_node_type))
       {
+        pi_debug_message("Finding nodes of type " . $generated_node_type . " for activity " . $row['nid'] );
         $child_nodes_query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
-          "LEFT JOIN {node} on {pi_activity_node}.`nid` " .
-          "WHERE {node}.`type` = '%s' AND {pi_activity_node}.`phase_nid` = %d";
-        /*pi_debug_message("SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
-          "LEFT JOIN {node} on {pi_activity_node}.`nid` " .
-          "WHERE {node}.`type` = '$generated_node_type' AND {pi_activity_node}.`phase_nid` = " . $row['phase_nid']);*/
+        "LEFT JOIN {pi_activity} on {pi_activity_node}.`activity_id` = {pi_activity}.`nid` " .
+          "LEFT JOIN {node} on {pi_activity_node}.`nid` = {node}.`nid` " .
+          "WHERE {node}.`type` = '%s' AND {pi_activity}.`phase_nid` = %d";
+        pi_debug_message(sprintf($child_nodes_query, $generated_node_type, $row['phase_nid']));
         $result_for_child_nodes = db_query($child_nodes_query, $generated_node_type, $row['phase_nid']);
-        
+
         // finally for each child activity content node, get their activity node and set the parent_activity nid
         // from the directly referenced nodes
         while($child_nid_row = db_fetch_array($result_for_child_nodes))
         {
+          pi_debug_message("Setting activity parent for " . $child_nid_row['nid'] . " to ". $row['nid']);
           // First version for directly referenced nodes
           $child_activity_node_query = "SELECT `nid` FROM {pi_activity} WHERE `referenced_node` = %d";
           $result_for_child_activity_node = db_query($child_activity_node_query, $child_nid_row['nid']);
@@ -367,11 +404,12 @@ function _pi_activity_upgrade_set_activity_direct_references_and_parents($curren
             $child_activity_node = node_load($child_activity_node_row['nid']);
             if($child_activity_node!=FALSE)
             {
+              pi_debug_message("Assigning activity parent " . $row['nid'] . " activity child " . $child_activity_node_row['nid']);
               $child_activity_node->parent_activity = $row['nid'];
               node_save($child_activity_node);
             }
-          }                              
-        }                 
+          }
+        }
       }
       else
       {
@@ -399,16 +437,16 @@ function _pi_activity_upgrade_copy_and_update_table($table_name, $key_column_nam
   //Since activity_id and new nids may overlap you have keep the two datasets seperate
   // and clear out the data generated by pi_activity_insert when the nodes were updated
   db_query('TRUNCATE TABLE {%s}', $table_name);
-  
+
   // get the coulmn names to copy data with by performing an query and getting a
   // string indexed array of the result with column names as the key
   $result = db_query("SELECT * FROM {%s}", $table_name . "_tmp");
-  //pi_debug_message(array_keys($rows));
+  //pi_debug_message(arr$generated_node_typeay_keys($rows));
   $count = 0;
-   while($row = db_fetch_array($result))
+  while($row = db_fetch_array($result))
   {
     if(array_key_exists($row[$column_name], $new_node_ids))
-    {   
+    {
       $new_row = $row;
       $new_row[$column_name] =  $new_node_ids[$row[$column_name]];
       $write_result = drupal_write_record($table_name, $new_row);
@@ -416,7 +454,7 @@ function _pi_activity_upgrade_copy_and_update_table($table_name, $key_column_nam
     }
     else
     {
-      drupal_set_message(t("Not updating !name for activity !id as activity doesn't exist", array('!name' => $table_name, '!id' => $row[$column_name])), 'status'); 
+      drupal_set_message(t("Not updating !name for activity '!id' as activity doesn't exist", array('!name' => $table_name, '!id' => (($row[$column_name]!=NULL)? $row[$column_name]: "NULL"))), 'status');
     }
   }
 
@@ -428,15 +466,15 @@ function _pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_n
 {
   $columns_and_new_values = array_combine($column_names, $column_names);
   $columns_and_new_values[$id_column_name] = $node_id;
-  
+
   $query = "SELECT `" . implode('`, `', $column_names) . "` FROM {%s} WHERE `%s` = %d";
   $result = db_query($query, $table_name . '_tmp', $id_column_name, $activity_id);
   if($result)
   {
     $count = 0;
     while($row = db_fetch_object($result))
-    {      
-      $new_row = $row; 
+    {
+      $new_row = $row;
       $new_row->$id_column_name = $node_id;
       $write_result = drupal_write_record($table_name, $row);
       if(($write_result != SAVED_NEW) && ($write_result != SAVED_UPDATED))
@@ -451,7 +489,7 @@ function _pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_n
   /*
    $query = "INSERT INTO {%s} (" . implode($column_names, ', ') . ") " .
   	" SELECT " . implode($columns_and_new_values, ', ') . " FROM {%s} WHERE {%s}.`%s` = %d";
-  */
+  	*/
   //pi_debug_message(sprintf($query, $table_name, $table_name . '_tmp', $table_name . '_tmp', $id_column_name, $activity_id));
   //db_query($query, $table_name, $table_name . '_tmp', $table_name . '_tmp', $id_column_name, $activity_id);
 }
@@ -459,7 +497,7 @@ function _pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_n
 
 function pi_activity_schema() {
   $schema = array();
-   $schema['pi_activity'] = array(
+  $schema['pi_activity'] = array(
     'description' => 'PI Activity.',
     'fields' => array(
 	  'nid' => array(
@@ -467,81 +505,81 @@ function pi_activity_schema() {
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-      ),
+  ),
 	  'vid' => array(
         'description' => 'Activity node id, used to be activity_id',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-      ),
+  ),
       'phase_nid' => array(
         'description' => 'The phase this activity is associated with.',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-      ),
+  ),
       'parent_activity' => array(
         'description' => 'If this activity is created by another activity, then it is referenced here.',
         'type' => 'int',
         'unsigned' => TRUE,
         'default' => NULL
-      ),
+  ),
       'show_children_in_phase' => array(
         'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it will be set here.',
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
-      ),
+  ),
       'referenced_node' => array(
         'type' => 'varchar',
         'length' => 255,
         'default' => NULL,
         'description' => 'If the activity directly references a single node, it is set here.'
-      ),
+        ),
       'activity_type' => array(	
       	'type' => 'varchar',
        	'length' => 64,
        	'not null' => FALSE,
 		'description' => 'What kind of node type is this activity working with.'
-      ),
+		),
       'show_activity' => array(
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'description' => 'Show the activity in the phase list or not: true/false.'
-      ),
+        ),
       'node_type' => array(
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'default' => '',
         'description' => 'Node type - content type of a node created/used in an activity.'
-      ),
+        ),
       'parameters' => array(
         'type' => 'text',
         'not null' => TRUE,
         'size' => 'big',
         'description' => 'Parameters needed to create/use a node in an activity (optional).'
-      ),
+        ),
       'destination_after' => array(
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'default' => '',
         'description' => 'destination - form destination page after submission e.g. phase, self.'
-      ),
+        ),
       'audience' => array(
         'type' => 'varchar',
         'length' => 255,
         'not null' => TRUE,
         'description' => 'audience - intended audience category for a created node e.g. individual, group, class, multiclass.'
-      ),
+        ),
       'actor' => array(
         'description' => 'og group nid of the actor group',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
-      ),
+        ),
       'weight' => array(
         'description' => 'The default layout order in the phase list.',
     	'type' => 'int',
@@ -549,8 +587,8 @@ function pi_activity_schema() {
         'unsigned' => TRUE,
 		'not null' => TRUE,
         'default' => 0	
-      )
-    ),
+        )
+        ),
     'primary key' => array('nid', 'vid'),
     'indexes' => array(
       'nid' => array('nid'), 
@@ -558,9 +596,9 @@ function pi_activity_schema() {
       'phase_nid' => array('phase_nid'), 
       'activity_type' => array('activity_type'),
       'actor' => array('actor')
-    )
-  );
-  $schema['pi_activity_stage_state'] = array(
+        )
+        );
+        $schema['pi_activity_stage_state'] = array(
     'description' => 'State of an activity in a particular stage',
     'fields' => array(
       'pass_id' => array(
@@ -568,36 +606,36 @@ function pi_activity_schema() {
         'type' => 'serial',
         'unsigned' => TRUE,
         'not null' => TRUE,
-      ),
+        ),
       'activity_nid' => array(
         'description' => 'Activity node id for this stage-state definition',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0
-      ),
+        ),
 	  'stage_nid' => array(
         'description' => 'Stage node id for this stage-state definition',
         'type' => 'int',
         'unsigned' => TRUE,
         'not null' => TRUE,
         'default' => 0
-      ),      
+        ),
       'stage_state' => array(
         'type' => 'varchar',
         'length' => 64,
         'not null' => TRUE,
         'default' => 'shown',
         'description' => 'Activity state: the visible state of the activity in this stage'
-      )
-    ),
+        )
+        ),
     'primary key' => array('pass_id'),
     'indexes' => array(
       'activity_id' => array('activity_nid'), 
       'stage_nid' => array('stage_nid'), 
-    )
-  );
-  $schema['pi_activity_enter_focus'] = array(
+        )
+        );
+        $schema['pi_activity_enter_focus'] = array(
 	'description' => 'PI activity enter focus',
 	'fields' =>	array(	
 		'paef_id' => array(
@@ -652,9 +690,9 @@ function pi_activity_schema() {
       						'activity_id' => array('activity_id'),
 							'prior_nf' => array('prior_nf'),
 							'prior_vs' => array('prior_vs') 	)
-	);
-	
-	$schema['pi_activity_leave_focus'] = array(
+        );
+
+        $schema['pi_activity_leave_focus'] = array(
 	'description' => 'PI activity leave focus',
 	'fields' =>	array(
 		'palf_id' => array(
@@ -709,9 +747,9 @@ function pi_activity_schema() {
       						'activity_id' => array('activity_id'),
 							'prior_nf' => array('prior_nf'),
 							'prior_vs' => array('prior_vs') 	)
-	);
+        );
 
-	$schema['pi_activity_node'] = array(
+        $schema['pi_activity_node'] = array(
     'description' => 'PI Activity node.',
     'fields' => array(
 		'pan_id' => array(
@@ -736,9 +774,9 @@ function pi_activity_schema() {
 	'indexes' => array( 'inquiry_id' => array('inquiry_id'),
 						'activity_id' => array('activity_id'),
 						'nid' => array('nid') ),
-	);
+        );
 
-  $schema['pi_activity_preference'] = array(
+        $schema['pi_activity_preference'] = array(
     'description' => 'PI Activity Preference',
     'fields' =>	array(
     	'pap_id' =>	array(
@@ -765,13 +803,13 @@ function pi_activity_schema() {
     		'default' => NULL,
     		'size' => 'normal',
     		'description' => 'Group id' )
-  	  ),
+        ),
   	  'primary key' => array('pap_id'),
       'indexes' => array('uid' => array('uid', 'gid')
-  	)
-  );
+        )
+        );
 
-	$schema['pi_activity_status'] = array(
+        $schema['pi_activity_status'] = array(
     'description' => 'PI Activity status.',
     'fields' => array(
 		'pas_id' => array(
@@ -786,7 +824,7 @@ function pi_activity_schema() {
         	'unsigned' => TRUE,
         	'not null' => FALSE,
         	'description' => 'Activity id.' ),
-//@TODO FIXME Not sure if inquiry_id is still required ?
+        //@TODO FIXME Not sure if inquiry_id is still required ?
 		'inquiry_id' => array(
         	'type' => 'int',
         	'size' => 'normal',
@@ -825,58 +863,58 @@ function pi_activity_schema() {
 						'uid' => array('uid'),
 						'gid' => array('gid'),
 						'visible_status' => array('visible_status') )
-	);
+        );
 
-/*
-	$schema['pi_previous_activity_status'] = array(
-	'description' => 'PI previous activity status',
-	'fields' =>	array(	
-		'pas_id' =>	array(
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-			'description' => '' ),
-		'inquiry_id' =>	array(
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-			'description' => '' ),
-		'activity_id' =>	array(
-			'type' => 'int',
-			'unsigned' => TRUE,
-			'not null' => TRUE,
-			'default' => NULL,
-			'description' => '' ),	
-        'uid' => array(
+        /*
+         $schema['pi_previous_activity_status'] = array(
+         'description' => 'PI previous activity status',
+         'fields' =>	array(
+         'pas_id' =>	array(
+         'type' => 'int',
+         'unsigned' => TRUE,
+         'not null' => TRUE,
+         'default' => NULL,
+         'description' => '' ),
+         'inquiry_id' =>	array(
+         'type' => 'int',
+         'unsigned' => TRUE,
+         'not null' => TRUE,
+         'default' => NULL,
+         'description' => '' ),
+         'activity_id' =>	array(
+         'type' => 'int',
+         'unsigned' => TRUE,
+         'not null' => TRUE,
+         'default' => NULL,
+         'description' => '' ),
+         'uid' => array(
         	'type' => 'int',
         	'unsigned' => TRUE,
         	'not null' => TRUE,
         	'default' => NULL,
         	'description' => 'User id' ),
-        'gid' => array(
+        	'gid' => array(
         	'type' => 'int',
         	'unsigned' => TRUE,
         	'not null' => TRUE,
         	'default' => NULL,
-        	'description' => 'Group id' ),	
-      'node_function' => array(
+        	'description' => 'Group id' ),
+        	'node_function' => array(
         	'type' => 'varchar',
         	'length' => 255,
         	'not null' => TRUE,
         	'default' => '',
         	'description' => 'node_function - type of drupal node function i.e. add, edit, view.' ),
-      'visible_status' => array(
+        	'visible_status' => array(
         	'type' => 'varchar',
         	'length' => 255,
         	'not null' => TRUE,
         	'default' => '',
-        	'description' => 'visible_status - type of icon used for an activity link i.e. start, in_progress, view, unavailable.' ) ),	
-    'indexes' => 		array(	'pas_id' => array('pas_id'),
-      							'node_function' => array('node_function') 	),
-	);
-*/
-	
-	return $schema;
+        	'description' => 'visible_status - type of icon used for an activity link i.e. start, in_progress, view, unavailable.' ) ),
+        	'indexes' => 		array(	'pas_id' => array('pas_id'),
+        	'node_function' => array('node_function') 	),
+        	);
+        	*/
+
+        return $schema;
 }

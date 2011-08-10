@@ -1,6 +1,6 @@
 <?php
 /**
- * Functions associated wit editing avtivities in nquire
+ * Functions associated with editing avtivities in nquire
  */
 
 
