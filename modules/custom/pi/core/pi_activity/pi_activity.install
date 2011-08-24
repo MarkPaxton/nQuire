@@ -360,7 +360,7 @@ function _pi_activity_upgrade_set_activity_direct_references($current_node, $bat
  * This works because activities currently can only have one "sort" instance per inquiry, and an activity
  * can only be on one phase (so if child activities appear in another phase, they'll not be linked any more.
  * This will be different in the new version activities, which will directly set parent data on creation, and
- * conceivably they could appear in a different phase, but this would be rather strange. */
+* conceivably they could appear in a different phase, but this would be rather strange. */
 function _pi_activity_upgrade_set_child_activity_nodes($current_node, $batch_size)
 {
   $rows_changed = 0;
@@ -373,52 +373,42 @@ function _pi_activity_upgrade_set_child_activity_nodes($current_node, $batch_siz
     // First of all find the name of the module that provides the activity content
     $activity_type = $row['activity_type'];
 
-    // Then get the type of data that activity content module provides
-    $info_function_name = $activity_type . '_node_info';
-    if(function_exists($info_function_name))
+    $generated_node_type = pi_activity_get_sorted_node_type($activity_type);
+    //When it does generate nodes, check what type those nodes are and get the nids of the content
+    // of that type in the activity's phase.
+    if(!is_null($generated_node_type))
     {
-      $node_info = $info_function_name();
-      $generated_node_type = $node_info[$activity_type]['add_node_type'];
-      //When it does generate nodes, check what type those nodes are and get the nids of the content
-      // of that type in the activity's phase.
-      if(!is_null($generated_node_type))
-      {
-        pi_debug_message("Finding nodes of type " . $generated_node_type . " for activity " . $row['nid'] );
-        $child_nodes_query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
+      pi_debug_message("Finding nodes of type " . $generated_node_type . " for activity " . $row['nid'] );
+      $child_nodes_query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
         "LEFT JOIN {pi_activity} on {pi_activity_node}.`activity_id` = {pi_activity}.`nid` " .
           "LEFT JOIN {node} on {pi_activity_node}.`nid` = {node}.`nid` " .
           "WHERE {node}.`type` = '%s' AND {pi_activity}.`phase_nid` = %d";
-        pi_debug_message(sprintf($child_nodes_query, $generated_node_type, $row['phase_nid']));
-        $result_for_child_nodes = db_query($child_nodes_query, $generated_node_type, $row['phase_nid']);
+      pi_debug_message(sprintf($child_nodes_query, $generated_node_type, $row['phase_nid']));
+      $result_for_child_nodes = db_query($child_nodes_query, $generated_node_type, $row['phase_nid']);
 
-        // finally for each child activity content node, get their activity node and set the parent_activity nid
-        // from the directly referenced nodes
-        while($child_nid_row = db_fetch_array($result_for_child_nodes))
+      // finally for each child activity content node, get their activity node and set the parent_activity nid
+      // from the directly referenced nodes
+      while($child_nid_row = db_fetch_array($result_for_child_nodes))
+      {
+        pi_debug_message("Setting activity parent for " . $child_nid_row['nid'] . " to ". $row['nid']);
+        // First version for directly referenced nodes
+        $child_activity_node_query = "SELECT `nid` FROM {pi_activity} WHERE `referenced_node` = %d";
+        $result_for_child_activity_node = db_query($child_activity_node_query, $child_nid_row['nid']);
+        while($child_activity_node_row = db_fetch_array($result_for_child_activity_node))
         {
-          pi_debug_message("Setting activity parent for " . $child_nid_row['nid'] . " to ". $row['nid']);
-          // First version for directly referenced nodes
-          $child_activity_node_query = "SELECT `nid` FROM {pi_activity} WHERE `referenced_node` = %d";
-          $result_for_child_activity_node = db_query($child_activity_node_query, $child_nid_row['nid']);
-          while($child_activity_node_row = db_fetch_array($result_for_child_activity_node))
+          $child_activity_node = node_load($child_activity_node_row['nid']);
+          if($child_activity_node!=FALSE)
           {
-            $child_activity_node = node_load($child_activity_node_row['nid']);
-            if($child_activity_node!=FALSE)
-            {
-              pi_debug_message("Assigning activity parent " . $row['nid'] . " activity child " . $child_activity_node_row['nid']);
-              $child_activity_node->parent_activity = $row['nid'];
-              node_save($child_activity_node);
-            }
+            pi_debug_message("Assigning activity parent " . $row['nid'] . " activity child " . $child_activity_node_row['nid']);
+            $child_activity_node->parent_activity = $row['nid'];
+            node_save($child_activity_node);
           }
         }
-      }
-      else
-      {
-        //drupal_set_message(t("Node type %type doesn't have a generated node type", array('%type' => $row['activity_type'])), 'warning');
       }
     }
     else
     {
-      //drupal_set_message(t("Node type %type doesn't have a node info function", array('%type' => $row['activity_type'])), 'warning');
+      //drupal_set_message(t("Node type %type doesn't have a generated node type", array('%type' => $row['activity_type'])), 'warning');
     }
   }
   return $rows_changed;

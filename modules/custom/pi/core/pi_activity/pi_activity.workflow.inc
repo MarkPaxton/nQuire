@@ -111,9 +111,37 @@ function update_activity_when_activity_node_updated($node, $activity_title)
   node_save($loaded_activity);
 }
 
+
+/**
+ * 
+ * Add an activity node when an activity content item is created
+ * @param unknown_type $parent_activity
+ * @param unknown_type $content_node
+ */
+function pi_activity_add_activity_node_for_activity_content_node($parent_activity, $content_node)
+{
+  
+  //This is the new activity node to be created
+  $new_activity_node = new stdClass();
+  //copy over current except for the activity_id
+  
+  
+  $new_activity_node->title = $content_node->title;
+  $new_activity_node->body = $parent_activity->description;
+  $new_activity_node->activity_type = $parent_activity->activity_type;
+  $new_activity_node->node_type = $content_node->node_type;
+  $new_activity_node->parameters = $parent_activity->parameters;
+  $new_activity_node->destination_after = $parent_activity->destination_after;
+  $new_activity_node->audience = $parent_activity->audience;
+  $new_activity_node->actor = $parent_activity->actor;
+  $new_activity_node->weight = $parent_activity->weight;
+  
+  node_save($new_activity_node);
+}
+
 /**
  *
- * Enter description here ...
+ * Add an activity node when an activity content item is created
  * @param unknown_type $node
  * @param unknown_type $node_function
  * @param unknown_type $visible_status
@@ -122,24 +150,27 @@ function update_activity_when_activity_node_updated($node, $activity_title)
  */
 function add_activity_when_activity_node_created($node, $node_function, $visible_status, $activity_title, $details, $activity_node = NULL)
 {
-	global $user;
-	$uid = $user->uid;
-	
-	//load the defined "activity"
-	if( $activity_node !== NULL && is_object($activity_node) )
-	{
-		//$loaded_activity = $activity_node;
-		$loaded_activity = node_load($details->activity_id);
-		$loaded_activity->activity_type = $activity_node->activity_type;
-		$loaded_activity->node_type = $activity_node->node_type;
-	}
-	else
-	{
-		$loaded_activity = node_load($details->activity_id);
-	}
-
-	
-	//copy over current except for the activity_id
+  pi_debug_message("add_activity_when_activity_node_created called for " . $content_node->nid . "(" . $content_node->title . ")");
+  /*global $user;
+   $uid = $user->uid;
+  */
+  //load the defined "activity"
+  if( $activity_node !== NULL && is_object($activity_node) )
+  {
+    //$loaded_activity = $activity_node;
+    $loaded_activity = node_load($details->activity_id);
+    $loaded_activity->activity_type = $activity_node->activity_type;
+    $loaded_activity->node_type = $activity_node->node_type;
+  }
+  else
+  {
+    pi_debug_message("add_activity_when_activity_node_created called with no activity - getting activity from details: " . $details->activity_id);
+    $loaded_activity = node_load($details->activity_id);
+  }
+  $activity_node = $loaded_activity;
+  pi_activity_add_activity_node_for_activity_content_node($activity_node, $node);
+  /*
+   //copy over current except for the activity_id
 	$activity_array = new stdClass();
 	$activity_array->title = check_plain($activity_title);
 	$activity_array->body = $loaded_activity->description;
@@ -148,7 +179,9 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	$activity_array->parameters = $loaded_activity->parameters;
 	$activity_array->destination = $loaded_activity->destination;
 	$activity_array->audience = $loaded_activity->audience;
-	
+	$activity_array->actor = $loaded_activity->actor;
+	$activity_array->weight = $loaded_activity->weight;
+	*/
 	/*
 	 * @todo The following code changes will cause problems with the authoring interface!
 	 * This part of the code uses the node id as activity id.
@@ -164,7 +197,7 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	//node_save($activity_array);
 	
 	//$new_activity_id = $activity_array->nid;
-	$new_activity_id = $node->nid;
+/*	$new_activity_id = $node->nid;
 
 	//****new details object
 	$new_details = new stdClass;
@@ -185,8 +218,8 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	$new_activity_status->node_function = $activity_status['node_function'];
 	$new_activity_status->visible_status = $activity_status['visible_status'];
 
-	save_activity_status($new_activity_status);
-
+	save_activity_status($new_activity_status);*/
+/*
 	//set actor for the new activity
 	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
 	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
@@ -213,9 +246,9 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	}
 
 	insert_activity_actor($new_activity_actor);
-
+*/
 	//set the stage phase activity
-	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+/*	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
 
 	if(!$psp_id)
 	{
@@ -227,9 +260,9 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 	$new_pos = $current_pos + 1;
 
 	insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
-
+*/
 	//set pi activity node
-	add_new_pi_activity_node($node, $node_function, $visible_status, $new_details);
+/*	add_new_pi_activity_node($node, $node_function, $visible_status, $new_details);
 
 	//set og if necessary for new node
 	if($loaded_activity->audience != "individual")
@@ -237,7 +270,7 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
 		$users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
 		$context['groups'] = array($users_group);
 		og_add_group_action($node, $context);
-	}
+	}*/
 }
 
 function add_new_pi_activity_node($node, $node_function, $visible_status, $details)

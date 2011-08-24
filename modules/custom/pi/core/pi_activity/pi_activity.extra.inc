@@ -16,6 +16,27 @@ function get_nid_for_inquiry_activity_and_user($inquiry_id, $activity_id, $uid) 
 	return pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid);
 }
 
+/**
+ * Returns the note type that the activity sorts or null if it doesn't sort 
+ * another node type 
+ * @param unknown_type $node_type
+ */
+function pi_activity_get_sorted_node_type($node_type)
+{
+  $generated_node_type = null;
+  // Then get the type of data that activity content module provides
+  $info_function_name = $node_type . '_node_info';
+  if(function_exists($info_function_name))
+  {
+  	$node_info = $info_function_name();
+  	if(isset($node_info[$node_type]['add_node_type']))
+  	{
+  	  $generated_node_type = $node_info[$node_type]['add_node_type'];
+  	}
+  }
+  return $generated_node_type;
+}
+
 
 /**
  * Get the activity content node id for an activity and user
@@ -365,7 +386,7 @@ function pi_activity_get_node_function($activity_id, $uid) {
  */
 function pi_activity_check_node_function($activity_id, $uid, $function) {
 	$node_function = pi_activity_get_node_function($activity_id, $uid);
-	
+	pi_debug_message("pi_activity_check_node_function: function=" . $function . " node function=" . $node_function);
 	if ($node_function == $function)
 	{
 		$result = TRUE;
@@ -373,6 +394,8 @@ function pi_activity_check_node_function($activity_id, $uid, $function) {
 	else
 	{
 		$result = FALSE;
+		//if($activity_id==78)
+		//  $result=TRUE;
 	}
 	return $result;
 }
@@ -525,26 +548,9 @@ function delete_activity($activity_id)
  * @return array of activity_actor table with keys: "paa_id", "inquiry_id", "activity_id", "uid", "gid"
  */
 function load_activity_actor($inquiry_id, $activity_id = NULL, $uid = NULL, $gid = NULL) {
-	$query = "SELECT * FROM {pi_activity_actor} WHERE inquiry_id = %d ";
-	$parameters[] = $inquiry_id;
-
-	if ($activity_id)
-	{
-		$query .= " AND activity_id = %d";
-		$parameters[] = $activity_id;
-	}
-	if ($uid)
-	{
-		$query .= " AND uid = %d";
-		$parameters[] = $uid;
-	}
-	if ($gid)
-	{
-		$query .= " AND gid = %d";
-		$parameters[] = $gid;
-	}
-
-	$items = db_query($query, $parameters);
+	$query = "SELECT actor FROM {pi_activity} WHERE nid=%d";
+	
+	$items = db_query($query, $activity_id);
 
 	$activities = array();
 
@@ -569,8 +575,10 @@ function load_activity_actor($inquiry_id, $activity_id = NULL, $uid = NULL, $gid
  * $activity_actor_array ->uid
  * $activity_actor_array ->gid
  */
-function insert_activity_actor($activity_actor_array) {
+function insert_activity_actor($activity_actor_array)
+{
 
+  
 	$query = "INSERT INTO {pi_activity_actor} SET inquiry_id = %d, activity_id = %d ";
 
 	$parameters[] = $activity_actor_array["inquiry_id"];
