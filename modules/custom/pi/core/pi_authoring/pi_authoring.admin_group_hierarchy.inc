@@ -13,7 +13,7 @@ function pi_authoring_admin_group_hierarchy_view() {
 	$tree_roots = array();	
 	$all_groups_by_id = array();
 	pi_get_group_data_and_root_groups($all_groups_by_id, $tree_roots);
-	
+
 	// Groups may not all be correctly filed as multiclass, so check each type specifically
 	// so that they can be grouped by type on screen and a warning can be generated for illogical
 	// groups such as multiclass belonging to class, or (an in class) group with no class parent.
@@ -104,19 +104,18 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 		'children' => $tree_roots['class']
 	);
 	
-	$all_groups_by_id['class-null'] = array(
+	  $all_groups_by_id['class-null'] = array(
 		'title'=>'No class',
 		'group_type'=>'class',
 		'parent' => 'multiclass-null',
 		'children' => $tree_roots['group']
-	);
-
+	  );
 	 
 	//This drops 'none' grouped items into the above placeholder multiclass/class items
 	// and adds those placeholder items to the form data structure
 	$form_data_structure = array();
 	foreach($tree_roots['multiclass'] as $multiclass_group_id)
-	{		
+	{	
 		$form_data_structure[] = $multiclass_group_id;
 	}
 	foreach($tree_roots['class'] as $class_group_id)
@@ -126,7 +125,10 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 	}
 	$form_data_structure[] = 'multiclass-null';
 
-	$all_groups_by_id['multiclass-null']['children'][] = 'class-null';
+	if($class_or_group!='class')
+	{
+	  $all_groups_by_id['multiclass-null']['children'][] = 'class-null';
+	}
 	foreach($tree_roots['group'] as $group_group_id)
 	{
 		$all_groups_by_id['class-null']['children'][] = $group_group_id;
@@ -359,7 +361,7 @@ function theme_pi_authoring_admin_group_hierarchy_form_full($form, $class_or_gro
 		
 		$class_regions = pi_authoring_admin_group_hierarchy_form_generate_region_list($class_rows, $form['class_hierarchy']);
 		$group_regions = pi_authoring_admin_group_hierarchy_form_generate_region_list($group_rows, $form['group_hierarchy']);
-		
+		//pi_debug_message($class_regions);
 		//$output .= theme('table', $header, $rows, array('id' => 'sort_list'));
 		switch($class_or_group)
 		{
