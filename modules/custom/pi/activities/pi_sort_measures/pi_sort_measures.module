@@ -546,6 +546,34 @@ function pi_sort_measures_get_options() {
 	return $items;
 }
 
+
+function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id)
+{
+
+	$query = "SELECT {pi_sort_measures}.`nid` FROM {pi_sort_measures} " .
+	  "LEFT JOIN {node_access} ON {node_access}.`nid` = {pi_sort_measures}.`nid` " .
+	  "LEFT JOIN {node} ON {node}.`nid` = {pi_sort_measures}.`nid` " . 
+	  "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {pi_sort_measures}.`nid` " .
+  	  "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
+	  "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " . 
+	  "ORDER BY {pi_sort_measures}.`nid` DESC ";
+	$result = db_result(db_query($query, $uid, $uid) );
+
+	return $result;
+}
+
+
+function find_selected_measures_nid_for_uid($uid)
+{
+	$query = "SELECT {pi_sort_measures}.nid FROM {pi_sort_measures}, {node_access}, {og_uid} "
+	. "WHERE {pi_sort_measures}.nid = {node_access}.nid "
+	. "AND {node_access}.gid = {og_uid}.nid AND {og_uid}.uid = %d ORDER BY nid DESC";
+	$result = db_result(db_query($query, $uid));
+
+	return $result;
+}
+
+
 function theme_pi_sort_measures_region($title, $description, $empty, $measures)
 {
 	global $user;

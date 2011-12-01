@@ -33,49 +33,6 @@ function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id)
 	return find_unique_node_type_for_uid_and_inquiry('pi_hypothesis', $uid, $inquiry_id);
 }
 
-function find_default_measure_filter_nid()
-{
-	$result = db_result(db_query('SELECT {pi_default_measure_filter}.nid FROM {pi_default_measure_filter} ORDER BY nid DESC LIMIT 1;'));
-	return $result;
-}
-
-/*
- This needs to be done differently for measure filter
- Measure filter is no longer an activity but inquiry id is stored with the node
- Therefore use inquiry id in the node for selecting rather than via pi_activity_node
- */
-function find_measure_filter_nid_for_uid_and_inquiry($inquiry_id)
-{
-	$result = db_result(db_query('SELECT {pi_measure_filter}.nid FROM {pi_measure_filter} WHERE {pi_measure_filter}.inquiry_id = %d ORDER BY nid DESC;', $inquiry_id));
-	return $result;
-}
-
-function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id)
-{
-	
-	$query = "SELECT {pi_sort_measures}.`nid` FROM {pi_sort_measures} " .
-	  "LEFT JOIN {node_access} ON {node_access}.`nid` = {pi_sort_measures}.`nid` " .
-	  "LEFT JOIN {node} ON {node}.`nid` = {pi_sort_measures}.`nid` " . 
-	  "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {pi_sort_measures}.`nid` " .
-  	  "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
-	  "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " . 
-	  "ORDER BY {pi_sort_measures}.`nid` DESC ";
-	$result = db_result(db_query($query, $uid, $uid) );
-
-	return $result;
-	
-	//return find_unique_node_type_for_uid_and_inquiry('pi_sort_measures', $uid, $inquiry_id);
-}
-
-function find_selected_measures_nid_for_uid($uid)
-{
-	$query = "SELECT {pi_sort_measures}.nid FROM {pi_sort_measures}, {node_access}, {og_uid} "
-	. "WHERE {pi_sort_measures}.nid = {node_access}.nid "
-	. "AND {node_access}.gid = {og_uid}.nid AND {og_uid}.uid = %d ORDER BY nid DESC";
-	$result = db_result(db_query($query, $uid));
-
-	return $result;
-}
 
 /**
  * This function updates the title of the node in the node and node_revision table

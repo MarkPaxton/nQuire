@@ -144,23 +144,17 @@ function pi_measure_filter_node_type_form_submit($form, &$form_state) {
 /**
  * Implementation of hook_node_form().
  */
-function pi_measure_filter_form(&$node) {
+function pi_measure_filter_form(&$node)
+{
   $node_details = get_inquiry_details_from_current_path();
 
-  // Get metadata for this node type
-  // (we use it for labelling title and body fields).
-  // We defined this in pi_key_questions_node_info().
-  $type = node_get_types('type', $node);
-
-  if($node->nid) {
+  if($node->nid)
+  {
     $default_node = $node;
   }
-  else {
-    $default_filter_measure_nid = find_default_measure_filter_nid();
-    if($default_filter_measure_nid) {
-      $loaded_node = node_load($default_filter_measure_nid);
-      $default_node = $loaded_node;
-    }
+  else
+  {
+    $default_node = pi_measure_filter_get_default();
   }
 
   if($node_details->inquiry_id) {
@@ -540,50 +534,17 @@ function pi_measure_filter_load($node) {
   return $filter;
 }
 
-function pi_measure_filter_create_default_filter_node( $inquiry_id ) {
+function pi_measure_filter_create_default_filter_node( $inquiry_id )
+{
   global $user;
 
-  $filter = new stdClass();
-
+  $filter = pi_measure_filter_get_default();
   $filter->title = t( 'Default measure filter for ' ) . $user->name;
-  $filter->type = 'pi_measure_filter';
-
   // @TODO: FIX ME: The filter is created on a per user bases!
   $filter->uid = $user->uid;
-
   $filter->status = 1;
   $filter->inquiry_id = $inquiry_id;
-
-  $filter->symbol_test = variable_get( 'symbol_test', NULL );
-  $filter->symbol_value = variable_get( 'symbol_value', NULL );
-  $filter->units_test = variable_get( 'units_test', NULL );
-  $filter->units_value = variable_get( 'units_value', NULL );
-  $filter->units_short_test = variable_get( 'units_short_test', NULL );
-  $filter->units_short_value = variable_get( 'units_short_value', NULL );
-  $filter->field_type_test = variable_get( 'field_type_test', NULL );
-  $filter->field_type_value = variable_get( 'field_type_value', NULL );
-  $filter->data_type_test = variable_get( 'data_type_test', NULL );
-  $filter->data_type_value = variable_get( 'data_type_value', NULL );
-  $filter->list_options_test = variable_get( 'list_options_test', NULL );
-  $filter->list_options_value = variable_get( 'list_options_value', NULL );
-  $filter->content_options_test = variable_get( 'content_options_test', NULL );
-  $filter->content_options_value = variable_get( 'content_options_value', NULL );
-  $filter->textfield_size_test = variable_get( 'textfield_size_test', NULL );
-  $filter->textfield_size_value = variable_get( 'textfield_size_value', NULL );
-  $filter->textarea_cols_test = variable_get( 'textarea_cols_test', NULL );
-  $filter->textarea_cols_value = variable_get( 'textarea_cols_value', NULL );
-  $filter->textarea_rows_test = variable_get( 'textarea_rows_value', NULL );
-  $filter->textarea_rows_value = variable_get( 'measurement_device_name_test', NULL );
-  $filter->measurement_device_name_test = variable_get( 'textarea_rows_test', NULL );
-  $filter->measurement_device_name_value = variable_get( 'measurement_device_name_value', NULL );
-  $filter->measurement_device_description_test = variable_get( 'measurement_device_description_test', NULL );
-  $filter->measurement_device_description_value = variable_get( 'measurement_device_description_value', NULL );
-  $filter->image_filename_test = variable_get( 'image_filename_test', NULL );
-  $filter->image_filename_value = variable_get( 'image_filename_value', NULL );
-
-
   node_save( $filter );
-
   return $filter;
 }
 
@@ -1180,13 +1141,99 @@ function pi_measure_filter_output_binary($x) {
 function pi_measure_filter_available_form_elements()
 {
   return array(
-	    	'textfield' => 'Single text line',
-	    	'textarea' => 'Multi-line text area',
-	    	'select' => 'Single select pull-down menu',
-	    	'radios' => 'Single select radio buttons',
-	    	'checkboxes' => 'Multi-select checkboxes', 
-	    	'upload-file' => 'Upload a file',
-	    	'upload-image' => 'Upload an image',
+  	'textfield' => 'Single text line',
+  	'textarea' => 'Multi-line text area',
+  	'select' => 'Single select pull-down menu',
+  	'radios' => 'Single select radio buttons',
+  	'checkboxes' => 'Multi-select checkboxes', 
+  	'upload-file' => 'Upload a file',
+  	'upload-image' => 'Upload an image',
   );
 }
 
+
+
+/**
+ * 
+ * Get the default measure filter data from the nQuire config vars and return it as measure filter node
+ * @return node of typr pi_measure_filter
+ */
+function pi_measure_filter_get_default()
+{
+  $measure_filter_node  = new stdClass();
+  $measure_filter_node->type = 'pi_measure_filter';
+  
+  $measure_filter_node->symbol_test = variable_get( 'symbol_test', NULL );
+  $measure_filter_node->symbol_value = variable_get( 'symbol_value', NULL );
+  $measure_filter_node->units_test = variable_get( 'units_test', NULL );
+  $measure_filter_node->units_value = variable_get( 'units_value', NULL );
+  $measure_filter_node->units_short_test = variable_get( 'units_short_test', NULL );
+  $measure_filter_node->units_short_value = variable_get( 'units_short_value', NULL );
+  $measure_filter_node->field_type_test = variable_get( 'field_type_test', NULL );
+  $measure_filter_node->field_type_value = variable_get( 'field_type_value', NULL );
+  $measure_filter_node->data_type_test = variable_get( 'data_type_test', NULL );
+  $measure_filter_node->data_type_value = variable_get( 'data_type_value', NULL );
+  $measure_filter_node->list_options_test = variable_get( 'list_options_test', NULL );
+  $measure_filter_node->list_options_value = variable_get( 'list_options_value', NULL );
+  $measure_filter_node->content_options_test = variable_get( 'content_options_test', NULL );
+  $measure_filter_node->content_options_value = variable_get( 'content_options_value', NULL );
+  $measure_filter_node->textfield_size_test = variable_get( 'textfield_size_test', NULL );
+  $measure_filter_node->textfield_size_value = variable_get( 'textfield_size_value', NULL );
+  $measure_filter_node->textarea_cols_test = variable_get( 'textarea_cols_test', NULL );
+  $measure_filter_node->textarea_cols_value = variable_get( 'textarea_cols_value', NULL );
+  $measure_filter_node->textarea_rows_test = variable_get( 'textarea_rows_value', NULL );
+  $measure_filter_node->textarea_rows_value = variable_get( 'measurement_device_name_test', NULL );
+  $measure_filter_node->measurement_device_name_test = variable_get( 'textarea_rows_test', NULL );
+  $measure_filter_node->measurement_device_name_value = variable_get( 'measurement_device_name_value', NULL );
+  $measure_filter_node->measurement_device_description_test = variable_get( 'measurement_device_description_test', NULL );
+  $measure_filter_node->measurement_device_description_value = variable_get( 'measurement_device_description_value', NULL );
+  $measure_filter_node->image_filename_test = variable_get( 'image_filename_test', NULL );
+  $measure_filter_node->image_filename_value = variable_get( 'image_filename_value', NULL );
+  
+  return $measure_filter_node;
+}
+
+/**
+ * 
+ * Get the measure filter for an inquiry or return the default measure filter from the nQuire config variable is not
+ * @param uint $inquiry_id
+ * @returns node of type pi_measure filther, thoguh this might not be a saved node if the nQuire defaults are used 
+ */
+function pi_measure_filter_get_measure_filter_for_inquiry($inquiry_id)
+{
+  /*
+   This needs to be done differently for measure filter
+  Measure filter is no longer an activity but inquiry id is stored with the node
+  Therefore use inquiry id in the node for selecting rather than via pi_activity_node
+  */
+  $result = db_result(db_query('SELECT {pi_measure_filter}.nid FROM {pi_measure_filter} WHERE {pi_measure_filter}.inquiry_id = %d ORDER BY nid DESC;', $inquiry_id));
+  return $result;
+}
+
+
+function pi_measure_filter_call_form($node)
+{
+	//the nid of the inquiry node is the inquiry id
+	$filter_measure_nid = pi_measure_filter_get_measure_filter_for_inquiry($node->nid);
+	if($filter_measure_nid)
+	{
+		$loaded_node = node_load($filter_measure_nid);
+		if( !function_exists("node_page_edit"))
+		{
+			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+		}
+
+		$output = node_page_edit($loaded_node);
+		drupal_set_title("Editing " .  check_plain($node->title));
+	}
+	else
+	{
+		if( ! function_exists("node_add"))
+		{
+			include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+		}
+		$output = node_add('pi_measure_filter');
+		drupal_set_title("Editing " .  check_plain($node->title));
+	}
+	return $output;
+}
