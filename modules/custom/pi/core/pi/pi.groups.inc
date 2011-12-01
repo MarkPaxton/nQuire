@@ -461,16 +461,19 @@ function pi_get_group_nids_of_type($type)
 	while($id_row = db_fetch_array($result))
 	{
 		$id = $id_row['gid'];
-		$group['nid'] = $id;
-		$group['group_type'] = $id_row['type'];
-		if(!array_key_exists($id, $groups))
+		if(node_load($id))
 		{
-			$groups[$id] = $group;
-		}
-		else
-		{
-			drupal_set_message(t("Duplicate group definitions found for group #") . check_plain($id) . 
-				t(" as type '") . check_plain($groups[$id]['group_type']) . "'.", 'warning');
+		  $group['nid'] = $id;
+		  $group['group_type'] = $id_row['type'];
+		  if(!array_key_exists($id, $groups))
+		  {
+		    $groups[$id] = $group;
+		  }
+		  else
+		  {
+		    drupal_set_message(t("Duplicate group definitions found for group # !nid  as type '!type'.", 
+		      array('!nid' => $id, '!type' => $groups[$id]['group_type'])), 'warning');
+		  }
 		}
 	}
 	return $groups;	
