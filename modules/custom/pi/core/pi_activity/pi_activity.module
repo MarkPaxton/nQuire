@@ -232,7 +232,8 @@ function pi_activity_add()
  * General form form for activity editing using drupal forms API.
  * @param $form_state
  */
-function pi_activity_form( &$node, $form_state ) {
+function pi_activity_form( &$node, $form_state )
+{
   /* construct form to edit the details of an activity
    * inc. pi_activity, pi_activity_status, pi_activity_actor & pi_stage_phase_activity tables
   */
@@ -339,6 +340,7 @@ function pi_activity_form( &$node, $form_state ) {
 
   $form['activity_phases_stages']['phase_nid'] = _pi_activity_form_generate_phase_select($inquiry_nid_default_value, $node->phase_nid);
 
+  
   $stages_default_value = array();
   if(is_array($form_state['storage']['activity_phases_stages']['stages']))
   {
@@ -578,85 +580,18 @@ function pi_activity_form( &$node, $form_state ) {
     '#default_value' => $referenced_node_id
   );
 
-  /*
-   $form['submit'] = array (
-  '#type' => 'submit',
-  '#value' => t( 'Save' ),
-  '#weight' => 100
-  );
-  */
-
   return $form;
 }
 
 function pi_activity_form_validate( $form, &$form_state )
 {
-  //echo "pi_activity_form_validate";
+  pi_debug_message("pi_activity_form_validate");
   //print_r( $form );
   //print_r( $form_state );
   //die();
-}
-
-function pi_activity_form_submit( $form, &$form_state )
-{
-  global $user;
-
-  //echo "pi_activity_form_submit";
-  //print_r( $form );
-  //print_r( $form_state );
-  //die();
-  /*
-   $new_node = new stdClass();
-
-  $new_node->title = $form_state['storage']['title'];
-  $new_node->type = 'pi_activity';
-  $new_node->uid = $user->uid;
-
-  node_save( $new_node );
-
-  $activity = new stdClass();
-
-  $activity->nid = $new_node->nid;
-  $activity->vid = $new_node->vid;
-  $activity->phase_nid = $form_state['storage']['activity_phases_stages']['phase_nid'];
-  //$activity->parent_activity = ;
-  //$activity->show_children_in_phase = ;
-  //$activity->referenced_node = ;
-  $activity->activity_type = $form_state['storage']['activity_type'];
-  //$activity->show_activity = ;
-  $activity->node_type = $form_state['storage']['node_type'];
-  $activity->parameters = $form_state['storage']['parameters'];
-  $activity->destination_after = $form_state['storage']['destination_after'];
-  $activity->audience = $form_state['storage']['selects']['audience'];
-  $activity->actor = $form_state['storage']['selects']['gid'];
-  $activity->weight = 1;
-
-  $activity->node_function = $form_state['storage']['node_function'];
-  $activity->visible_status = $form_state['storage']['visible_status'];
-
-  drupal_write_record( 'pi_activity', $activity );
-  */
-}
-
-function pi_activity_form_alter(&$form, &$form_state)
-{
-
-  if( arg( 0 ) == 'inquiry_____' )
+  if($form['#redirect'])
   {
-    $inquiry_nid = arg( 1 );
-
-    $node = node_load( $inquiry_nid );
-
-    //print_r( $node );
-
-    $form['inquiry_nid'] = array(
-    		'#type' => 'hidden',
-    		'#value' => $inquiry_nid,
-    );
-
-    //print_r( $form );
-    //print_r( $form_state );
-    //die();
+    pi_debug_message($form['#redirect']);
   }
 }
 
@@ -679,6 +614,8 @@ function pi_activity_form_pi_activity_node_form_alter(&$form, &$form_state) {
       $form['activity_phases_stages']['#suffix'] = '';
     }
   }
+  $form['og_nodeapi']['#access'] = FALSE;
+
   // ISSUE 2: content cannot be saved by another user
   /**
   * @TODO: Figure out the main cause why this happens. It has something
@@ -997,7 +934,7 @@ function pi_activity_load($node)
     {
       $stages[$stage_state_row['stage_nid']] = $stage_state_row['stage_state'];
     }
-    $activity->activity_phases_stages['stages']['stage_select'] = $stages;
+    $activity->activity_phases_stages['stages'] = $stages;
 
     //Now get the default node function and visible status from the status table
     $query = "SELECT * FROM {pi_activity_status} WHERE activity_id = %d AND gid = %d";
@@ -1594,7 +1531,7 @@ function pi_activity_delete(&$node)
   db_query($query, $node->nid, $node->vid);
 
   //delete from pi_activity_stage_state
-  $query = "DELETE FROM {pi_activity_stage} WHERE activity_nid = %d";
+  $query = "DELETE FROM {pi_activity_stage_state} WHERE activity_nid = %d";
   db_query($query, $node->nid);
 
   //delete from pi_activity_status

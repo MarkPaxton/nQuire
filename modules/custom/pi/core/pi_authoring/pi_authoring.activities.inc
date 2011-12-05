@@ -1,6 +1,12 @@
 <?php
 
-function pi_authoring_activities_edit( $phase )
+/**
+ * This page provides the activity ordering form used to set the activities in the right order for the inquiry
+ * it also acts at the activity authoring main page, with the link to add an activity
+ * Enter description here ...
+ * @param unknown_type $phase
+ */
+function pi_authoring_activities_edit($phase)
 {
 	global $user;
 	
@@ -11,7 +17,18 @@ function pi_authoring_activities_edit( $phase )
 	//set the page title to be the inquiry name
 	drupal_set_title("Editing " .  check_plain($phase->title));
 	//$output .= theme('pi_authoring_inquiry_phases', $phase->nid);	
-	$output .= theme('pi_authoring_inquiry_activities', $phase->inquiry_nid);
+	$new_activity_link = "node/add/pi-activity";
+	
+	if($phase->type == "pi_phase")
+	{
+	  $new_activity_link = "phase/" . $phase->nid . "/activity/add";
+	}
+	if($phase->type == "pi_inquiry")
+	{
+		$new_activity_link = "inqury/" . $phase->nid . "/activity/add";
+	}
+	
+	$output .= theme('pi_authoring_inquiry_activities', $new_activity_link);
 	
 	$activity_nids = pi_get_activities_for_phase_and_user($phase->nid, $user->uid);
 	
@@ -42,18 +59,14 @@ function pi_authoring_activities_edit( $phase )
 
 function pi_authoring_inquiry_activity_add( $node ) 
 {
-	//print_r( $node );
-	
 	//See pi_activity_form_alter
-	
-	$output = 'pi_authoring_inquiry_activity_add';
+	$output = '';
 	
 	if( !function_exists("node_add"))
 	{
 		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 	}
 	$output .= node_add('pi_activity');
-	
 	return $output;
 }
 
@@ -144,18 +157,17 @@ function pi_authoring_order_activities_form_submit($form, &$form_state)
  * Theme function for the inquiry phases page - provides the link to create a new phase in the inquiry
  * @param unknown_type $inquiry_id
  */
-function theme_pi_authoring_inquiry_activities($inquiry_id)
+function theme_pi_authoring_inquiry_activities($new_activity_link)
 {
 	$output='';
-	$link = l('here', "inquiry/$inquiry_id/activity/add");    	
+	$link = l('here', $new_activity_link);    	
 	// Display some boilerplate text about defining activities...
 	$output .="<div class='help'>\n";
-	$output .= "<p>Each activity in an inquiry is allocated to a phase.  ";
-	$output .= "A phase is a conceptual part of the inquiry model, for example, ";
-	$output .= " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all ";
-	$output .= "be phases in an inquiry. ";
-	$output .= "Click $link to add a new activity.</p>";
-	$output .= "</div>\n"; // #help
+	$output .= "<p>";
+	$output .= t("Each activity in an inquiry is allocated to a phase. A phase is a conceptual part of the inquiry model, for example, " .
+	  " <em>Find My Topic</em>, <em>Data Collection</em> and <em>Reflect</em> can all be phases in an inquiry. Click !link to add a new activity.</p>", 
+	  array('!link' => $link));
+	$output .= "</div>\n";
 	return $output;
 }
 

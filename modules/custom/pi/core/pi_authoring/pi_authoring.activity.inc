@@ -4,6 +4,37 @@
  *  In particular this holds a clever callback to redirect the browser to the inquiry page
  */
 
+
+
+/**
+ * this function provides a redirect back to the associated phase when an actibvity is
+ * redirected here from a form edit see pi_authoring_from_pi_activity_form_alter()
+ * @param object(node:pi_activity) $activity
+ */
+function pi_authoring_activity_inquiry($activity)
+{
+  if($activity->phase_nid !== false)
+  {
+    $phase = node_load($activity->phase_nid);
+    if($phase->inquiry_nid!==false)
+    {
+      $inquiry = node_load($phase->inquiry_nid); 
+      if($inquiry!==false)
+      {    
+	    drupal_goto('inquiry/' . $inquiry->nid . '/edit/phases');
+      }
+      else
+      {
+        pi_authoring_activity_phase($activity);
+      }
+    }
+    else
+    {
+      pi_authoring_activity_phase($activity);
+    }
+}
+
+
 /**
  * this function provides a redirect back to the associated phase when an actibvity is 
  * redirected here from a form edit see pi_authoring_from_pi_activity_form_alter() 

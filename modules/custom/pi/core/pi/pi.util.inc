@@ -59,10 +59,10 @@ function _pi_write_record_result_string($result)
  */
 function pi_util_inquiry_nid_validate($element, $form_state)
 {
-	if(!in_array($element['#value'], $element['#allowed_inquiry_nids']))
-	{
-		form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));
-	}
+  if($element['#type']!= 'hidden' && !in_array($element['#value'], $element['#allowed_inquiry_nids']))
+  {
+    form_error($element, t('The selected inquiry is not valid, please choose an existing inquiry.'));
+  }
 }
 
 
@@ -73,7 +73,7 @@ function pi_util_inquiry_nid_validate($element, $form_state)
  */
 function pi_util_phase_nid_validate($element, $form_state)
 {
-	if(!in_array($element['#value'], $element['#allowed_phase_nids']))
+	if($element['#type']!= 'hidden' && !in_array($element['#value'], $element['#allowed_phase_nids']))
 	{
 		form_error($element, t('The selected phase is not valid, please choose an existing phase from an inquiry.'));
 	}

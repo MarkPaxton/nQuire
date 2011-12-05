@@ -186,7 +186,7 @@ function pi_activity_get_activity_nid_for_content_nid($content_nid)
 {
   $activity_nid = null;
   $query = "SELECT `activity_id` FROM {pi_activity_node} WHERE `nid` = %d";
-  pi_debug_message(sprintf($query, $content_nid));
+  //pi_debug_message(sprintf($query, $content_nid));
   $result = db_fetch_object(db_query($query, $content_nid));
   if(isset($result->activity_id))
   {
