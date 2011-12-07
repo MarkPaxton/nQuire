@@ -840,10 +840,16 @@ function pi_authoring_form_pi_activity_node_form_alter(&$form, &$form_state)
   // or from /node/%node/edit
   $drupal_path = str_replace(base_path(), '', request_uri());
   $drupal_path = str_replace('?q=', '', $drupal_path);
-
   // Split the string into parts to get the inquiry id if it exists...
   $path_parts = explode('/', $drupal_path);
-
+  //if AHAH helper is used, then redirect is cleared, so reset it here....
+  if(count($path_parts)==2)
+  {
+    if ((strcasecmp($path_parts[0], 'ahah_helper')===0) && (strcasecmp(urldecode($path_parts[1]),'groups][info')===0))  
+    {
+      $form['#redirect'] = $form_state['storage']['redirect-submit'];
+    }
+  }
   // Look for /inquiry/{number}/activity/add
   // and
   // Look for /phase/{number}/activity/add
@@ -871,7 +877,7 @@ function pi_authoring_form_pi_activity_node_form_alter(&$form, &$form_state)
           //check it's loaded something, then check it's type...
           if(($potential_inquiry_or_phase_node !== FALSE))
           {
-            if($potential_inquiry_or_phase_node->type == 'pi_' . $destination)
+            if($potential_inquiry_or_phase_node->type == ('pi_' . $destination))
             {
               // Hurrah, it pased the test: it's an inquiry node
               // Make the inquiry selection on the form in advance and hide it
