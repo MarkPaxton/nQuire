@@ -81,28 +81,37 @@ function pi_setup_wizard_menu()
 		'access arguments' => array('access setup wizard'),
   	  	'type' => MENU_NORMAL_ITEM
 	);
-	
+
+	$items['admin/pi_setup_wizard/create_example_groups'] = array(
+			'title' => 'Step 3: Create example groups/class',
+	  	  	'page callback' => 'pi_setup_wizard_create_example_groups',
+			'access arguments' => array('access setup wizard'),
+	  	  	'type' => MENU_NORMAL_ITEM
+	);
+
+/*
 	$items['admin/pi_setup_wizard/create_users'] = array(
-		'title' => 'Step 3: Create User',
+		'title' => 'Step 4: Create User',
   	  	'page callback' => 'pi_setup_wizard_create_users',
 		'access arguments' => array('access setup wizard'),
   	  	'type' => MENU_NORMAL_ITEM
 	);
-	
+
 	$items['admin/pi_setup_wizard/create_class'] = array(
-		'title' => 'Step 4: Create Class',
+		'title' => 'Step 5: Create Class',
   	  	'page callback' => 'pi_setup_wizard_create_class',
 		'access arguments' => array('access setup wizard'),
   	  	'type' => MENU_NORMAL_ITEM
 	);
-	
+
+*/
 	$items['admin/pi_setup_wizard/create_inquiry'] = array(
 		'title' => 'Step 4: Create Inquiry',
   	  	'page callback' => 'pi_setup_wizard_create_inquiry',
 		'access arguments' => array('access setup wizard'),
   	  	'type' => MENU_NORMAL_ITEM
 	);
-	
+
 
 	return $items;
 }
@@ -119,7 +128,8 @@ function pi_setup_wizard_view()
 
 function pi_setup_wizard() {
 
-	$output = 'Start install....';
+	$output = t( 'Start install....first step' ) . ' ';
+	$output .= l( t('install missing modules'), 'admin/pi_setup_wizard/missing' );
 
 	return $output;
 }
@@ -209,13 +219,17 @@ function pi_setup_wizard_install_missing_form_submit($form, &$form_state) {
 
 	//print_r( $form_state );
 
+	include_once('includes/install.inc');
+
 	$modules_to_install = $form_state['values']['setup_wizard_install']['install'];
 
 	if( is_array( $modules_to_install ) ) {
 
 		$modules = array_keys( $modules_to_install );
 
-		module_enable( $modules );
+		//module_enable( $modules );
+		drupal_install_modules( $modules );
+		drupal_flush_all_caches();
 	}
 
 	drupal_goto( 'admin/pi_setup_wizard/missing' );
@@ -237,7 +251,7 @@ function pi_setup_wizard_og_setup() {
 
 	if( count( $og_group_types ) > 0  ) {
 		$output .= t( "Organic Group Node is set up. You can proceed with the next step." ) . "<br />";
-		$output .= l( 'Step 3', 'admin/pi_setup_wizard/create_users' );	
+		$output .= l( 'Step 3', 'admin/pi_setup_wizard/create_example_groups' );
 	}
 	else {
 		$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
@@ -253,7 +267,8 @@ function pi_setup_wizard_setup_og_form($form_state) {
 	$collapse_new_og = FALSE;
 
 	//$form['#attributes']['enctype'] = 'multipart/form-data';
-	$form['#submit'][] = 'pi_setup_wizard_setup_og_form_submit';
+	$form['#validate'][] = 'pi_setup_wizard_setup_og_form_validate';
+	$form['#submit'][]   = 'pi_setup_wizard_setup_og_form_submit';
 
 	$form['setup_wizard_install'] = array(
 		'#type' => 'fieldset',
@@ -274,15 +289,16 @@ function pi_setup_wizard_setup_og_form($form_state) {
 		}
 	}
 
-	if( count( $og_group_types ) > 0  ) {
+	if( count( $og_group_types ) > 0  )
+	{
 
 		$collapse_new_og = TRUE;
 
 		$form['setup_wizard_install']['og_group_types'] = array(
-			'#type' => 'checkboxes',
+			'#type' => 'radios',
 			'#title'  => t('Organic groups'),
 			'#description' => t('You can use one of the following existing node types or create a new one.'),
-			'#default_values' => array_keys( $og_group_types ),
+		//'#default_values' => array_keys( $og_group_types ),
 			'#options' => $og_group_types
 		);
 
@@ -300,12 +316,14 @@ function pi_setup_wizard_setup_og_form($form_state) {
 	$form['setup_wizard_install']['new_og']['type'] = array(
 		'#type' => 'textfield',
 		'#title'  => t('New Organic group type'),
+		'#value' => 'nquire_group',
 		'#description' => t('Please use only characters and underscore.'),
 	);
 
 	$form['setup_wizard_install']['new_og']['name'] = array(
 		'#type' => 'textfield',
 		'#title'  => t('New Organic group name'),
+		'#value' => 'OG Group type',
 		'#description' => t('A name for the new organic group.'),
 	);
 
@@ -317,48 +335,222 @@ function pi_setup_wizard_setup_og_form($form_state) {
 	return $form;
 }
 
+function pi_setup_wizard_setup_og_form_validate($form, &$form_state) {
+
+	if( !$form_state['values']['setup_wizard_install']['og_group_types'] ) {
+
+		if( !$form_state['values']['setup_wizard_install']['new_og']['type'] ) {
+			form_set_error( 'setup_wizard_install][new_og][type', t('If you don\'t select an existing group, the type is required') );
+		}
+		if( !$form_state['values']['setup_wizard_install']['new_og']['name'] ) {
+			form_set_error( 'setup_wizard_install][new_og][name', t('If you don\'t select an existing group, the name is is required') );
+		}
+	}
+
+}
+
 function pi_setup_wizard_setup_og_form_submit($form, &$form_state) {
 
-	//print_r( $form_state );
+	if( !$form_state['values']['setup_wizard_install']['og_group_types'] ) {
 
-	$og_group_types = $form_state['values']['setup_wizard_install']['og_group_types'];
+		$content_type = new stdClass();
 
-	if( is_array( $og_group_types ) ) {
-
-		$count_types = array_count_values( $og_group_types ) ;
-
-		if( $count_types[0] == count( $og_group_types ) ) {
-
-			$content_type = new stdClass();
-
-			$content_type->type = $form_state['values']['setup_wizard_install']['new_og']['type'];
-			$content_type->name = $form_state['values']['setup_wizard_install']['new_og']['name'];
-			$content_type->min_word_count = 0;
-			$content_type->title_label = 'Title';
-			$content_type->body_label = 'Body';
-			$content_type->has_title = 1;
-			$content_type->has_body = 1;
-			$content_type->module = 'node';
-			$content_type->custom = 1;
-			$content_type->modified = 1;
+		$content_type->type = $form_state['values']['setup_wizard_install']['new_og']['type'];
+		$content_type->name = $form_state['values']['setup_wizard_install']['new_og']['name'];
+		$content_type->min_word_count = 0;
+		$content_type->title_label = 'Title';
+		$content_type->body_label = 'Body';
+		$content_type->has_title = 1;
+		$content_type->has_body = 1;
+		$content_type->module = 'node';
+		$content_type->custom = 1;
+		$content_type->modified = 1;
 			
-			node_type_save( $content_type );
+		node_type_save( $content_type );
 			
-			variable_set( 'og_content_type_usage_' . $content_type->type, 'group' );
-			variable_set( 'og_max_groups_' . $content_type->type, '' );
-			
-		}
+		variable_set( 'og_content_type_usage_' . $content_type->type, 'group' );
+		variable_set( 'og_max_groups_' . $content_type->type, '' );
 
+		variable_set( 'nquire_og_group_type',  $content_type->type );
 	}
+	else {
+		variable_set( 'nquire_og_group_type', $form_state['values']['setup_wizard_install']['og_group_types'] );
+	}
+
+	drupal_goto( 'admin/pi_setup_wizard/create_example_groups' );
+
+}
+
+function pi_setup_wizard_create_example_groups() {
+
+	$output = "";
+
+	if( 1 == 0 ) {
+		$output .= t( "Example user groups already created!" ) . "<br />";
+		$output .= l( 'Step 4', 'admin/pi_setup_wizard/create_users' );
+	}
+	else {
+		$output .= drupal_get_form( 'pi_setup_wizard_create_example_groups_form' );
+	}
+
+	return $output;
+
+}
+
+function pi_setup_wizard_create_example_groups_form($form_state) {
+
+	$form = array();
+
+	$collapse_new_og = FALSE;
+
+	//$form['#attributes']['enctype'] = 'multipart/form-data';
+	$form['#validate'][] = 'pi_setup_wizard_create_example_groups_form_validate';
+	$form['#submit'][]   = 'pi_setup_wizard_create_example_groups_form_submit';
+
+	$form['setup_wizard_install'] = array(
+			'#type' => 'fieldset',
+			'#title'  => t('Step 3: Create Example Groups'),
+			'#collapsible' => FALSE,
+			'#tree' => TRUE,
+		    '#weight' => 0,
+	);
+
+
+	$form['setup_wizard_install']['group_school'] = array(
+			'#type' => 'textfield',
+			'#title'  => t('Name of school'),
+			'#value' => t( 'Example school' ), 
+			'#description' => t('Please enter a name of the example school.'),
+	);
+
+	$form['setup_wizard_install']['group_class'] = array(
+			'#type' => 'textfield',
+			'#title'  => t('Name of class'),
+			'#value' => t( 'Example class' ), 
+			'#description' => t('Please enter a name of the example class.'),
+	);
+
+	$form['setup_wizard_install']['group_group_a'] = array(
+			'#type' => 'textfield',
+			'#title'  => t('Name of a group'),
+			'#value' => t( 'Example group a' ), 
+			'#description' => t('Please enter a name of the example group.'),
+	);
+
+	$form['setup_wizard_install']['group_group_b'] = array(
+			'#type' => 'textfield',
+			'#title'  => t('Name of a group'),
+			'#value' => t( 'Example group b' ), 
+			'#description' => t('Please enter a name of the example group.'),
+	);
+
+	$form['setup_wizard_install']['submit'] = array(
+			'#type' => 'submit', 
+			'#value' => t('Create example groups')
+	);
+
+	return $form;
+}
+
+function pi_setup_wizard_create_example_groups_form_validate($form, &$form_state) {
+
+}
+
+function pi_setup_wizard_create_example_groups_form_submit($form, &$form_state) {
+	global $user;
+
+	$nquire_og_type = variable_get( 'nquire_og_group_type', NULL );
 	
-	drupal_goto( 'admin/pi_setup_wizard/create_users' );
+	if( $nquire_og_type ) {
+		
+		//print_r( $form_state);
+
+		$school = $form_state['values']['setup_wizard_install']['group_school'];
+		$class = $form_state['values']['setup_wizard_install']['group_class'];
+		$groupa = $form_state['values']['setup_wizard_install']['group_group_a'];
+		$groupb = $form_state['values']['setup_wizard_install']['group_group_b'];
+
+		$node = new stdClass();
+		$node->type = $nquire_og_type;
+		$node->uid = $user->uid;
+		$node->title = $school;
+		$node->body = t('Body');
+		$node->og_description = $school;
+		$node->og_selective = OG_CLOSED;
+		$node->og_register = OG_REGISTRATION_NEVER;
+		//$node->og_directory = OG_DIRECTORY_CHOOSE_FALSE;
+		$node->og_private = true;
+		node_save( $node );
+		//og_insert_group( $node );
+		og_save_subscription( $node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1) );
+		$nid_school = $node->nid;
+		
+		$node = new stdClass();
+		$node->type = $nquire_og_type;
+		$node->uid = $user->uid;
+		$node->title = $class;
+		$node->body = t('Body');
+		$node->og_description = $class;
+		$node->og_selective = OG_CLOSED;
+		$node->og_register = OG_REGISTRATION_NEVER;
+		//$node->og_directory = OG_DIRECTORY_CHOOSE_FALSE;
+		$node->og_private = true;
+		node_save( $node );
+		//og_insert_group( $node );
+		og_save_subscription( $node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1) );
+		$nid_class = $node->nid;
+		
+		$node = new stdClass();
+		$node->type = $nquire_og_type;
+		$node->uid = $user->uid;
+		$node->title = $groupa;
+		$node->body = t('Body');
+		$node->og_description = $groupa;
+		$node->og_selective = OG_CLOSED;
+		$node->og_register = OG_REGISTRATION_NEVER;
+		//$node->og_directory = OG_DIRECTORY_CHOOSE_FALSE;
+		$node->og_private = true;
+		node_save( $node );
+		//og_insert_group( $node );
+		og_save_subscription( $node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1) );
+		$nid_groupa = $node->nid;
+		
+		$node = new stdClass();
+		$node->type = $nquire_og_type;
+		$node->uid = $user->uid;
+		$node->title = $groupb;
+		$node->body = t('Body');
+		$node->og_description = $groupb;
+		$node->og_selective = OG_CLOSED;
+		$node->og_register = OG_REGISTRATION_NEVER;
+		//$node->og_directory = OG_DIRECTORY_CHOOSE_FALSE;
+		$node->og_private = true;
+		node_save( $node );
+		//og_insert_group( $node );
+		og_save_subscription( $node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1) );
+		$nid_groupb = $node->nid;
+		
+		$sql = "INSERT INTO {pi_group_type} ( gid, type ) VALUES ( %d, '%s' )";
+		db_query( $sql, $nid_school, 'multiclass' );
+		db_query( $sql, $nid_class, 'class' );
+		db_query( $sql, $nid_groupb, 'group' );
+		db_query( $sql, $nid_groupa, 'group' );
+		
+		$sql = "INSERT INTO {pi_group_hierarchy} ( gid, parent_gid ) VALUES ( %d, %d )";
+		db_query( $sql, $nid_groupa, $nid_class );
+		db_query( $sql, $nid_groupb, $nid_class );
+		db_query( $sql, $nid_class, $nid_school );
+
+		//drupal_goto( 'admin/pi_setup_wizard/create_users' );
+		drupal_goto( 'admin/pi_setup_wizard/create_inquiry' );
+	}
 
 }
 
 function pi_setup_wizard_create_users() {
 
 	$output = "Under construction.....";
-	
+
 	//$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
 
 	return $output;
@@ -367,7 +559,7 @@ function pi_setup_wizard_create_users() {
 function pi_setup_wizard_create_class() {
 
 	$output = "Under construction.....";
-	
+
 	//$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
 
 	return $output;
@@ -376,7 +568,8 @@ function pi_setup_wizard_create_class() {
 function pi_setup_wizard_create_inquiry() {
 
 	$output = "Under construction.....";
-	
+	$output .= l( t('Create an inquiry'), 'inquiry/add' );
+
 	//$output .= drupal_get_form( 'pi_setup_wizard_setup_og_form' );
 
 	return $output;
