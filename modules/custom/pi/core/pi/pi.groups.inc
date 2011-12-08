@@ -133,7 +133,7 @@ function pi_get_members_of_group($gid) {
   {
     $id = $row['uid'];
     $user = user_load($id);
-    if($user)
+    if($user!==FALSE)
     {
       $members[$id] = $user;
     }
@@ -177,6 +177,19 @@ function pi_get_type_of_group($gid) {
   return $result;
 }
 
+
+/**
+ * Check if a user is a member of the given group
+ * 
+ * @param uint $uid User id
+ * @param uint $gid Group id
+ * @return boolean true if user is in group
+ */
+function pi_group_check_membership($uid, $gid)
+{
+  return array_key_exists($uid, pi_get_members_of_group($gid));
+}
+
 /**
  * Returns an array containing the uids for the members of the group.
  * The group could be a group, class or multiclass.
@@ -187,19 +200,10 @@ function get_members_of_group($gid) {
   return $result;
 }
 
-/* DEPRICATED in favour of pi_get_type_of_group
- //this funciton needs to move to pi module
-function get_type_of_group($gid) {
-$query = "SELECT type FROM {pi_group_type} WHERE gid = %d ";
-$result = db_result(db_query($query, $gid));
-return $result;
-}
-*/
-
-
 /**
+ * Gets the group id of "$group_type" for a particular user 
  * Type can be group, class or multiclass.
- * Returns an array of gid values.
+ * *does not* Returns an array of gid values.
  */
 function get_group_of_type($uid, $group_type, $inquiry_id, $stage_id = NULL, $phase_id = NULL, $activity_id = NULL)
 {
@@ -214,29 +218,6 @@ function get_group_of_type($uid, $group_type, $inquiry_id, $stage_id = NULL, $ph
   . "AND ( {pi_inquiry_grouping}.activity_id = %d OR {pi_inquiry_grouping}.activity_id IS NULL)";
   $result = db_result(db_query($query, $group_type, $uid, $inquiry_id, $stage_id, $phase_id, $activity_id));
   // @fixme add warning for multiple groups being returned
-  return $result;
-}
-
-
-/**
- * Returns TRUE or FALSE depending on whether user is member of group.
- * @param unknown_type $gid
- * @param unknown_type $uid
- * @return Ambigous <string, NULL>
- */
-function check_member_of_group($gid, $uid) {
-  $members = get_members_of_group ($gid);
-
-  if ($members == NULL) {
-    $result = NULL;
-  }
-  elseif (in_array($uid, $members)) {
-    $result = TRUE;
-  }
-  else {
-    $result = FALSE;
-  };
-
   return $result;
 }
 
@@ -597,7 +578,7 @@ function pi_groups_generate_child_list($parents, &$group_data)
  *  e.g. if a class group nid is given, and type is 'group' an array of child group nids
  *  will be returned.  If multiclass is specified an array with one element (the class group's
  *  parent) will be returned.
- * The entire heirarch data is searched, so even oddly specified groups will be returned -
+ * The entire heirarchy data is searched, so even oddly specified groups will be returned -
  *   e.g a 'group' child of a 'multiclass'.
  * @param uint $group_id A nid of an og_group that is registered with nquire
  * @param string $associated_groups_type one of group, class, multiclass

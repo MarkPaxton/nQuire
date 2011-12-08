@@ -181,27 +181,22 @@ function get_node_ids_for_activity_type ($inquiry_id, $activity_type, $uid) {
  * Returns the activity nid for a content item, if it has one.
  * Assumes only one activivity nid per item
  * @param uint $content_nid
+ * @returns uint of an node id (unverified if it exits though) or NULL if no activity node found
  */
 function pi_activity_get_activity_nid_for_content_nid($content_nid)
 {
   $activity_nid = null;
   $query = "SELECT `activity_id` FROM {pi_activity_node} WHERE `nid` = %d";
-  //pi_debug_message(sprintf($query, $content_nid));
   $result = db_fetch_object(db_query($query, $content_nid));
   if(isset($result->activity_id))
   {
     $activity_nid = $result->activity_id;
   }
-  //pi_debug_message($activity_nid);
   return $activity_nid;
 }
 
-function get_activity_id_for_nid($nid) {	
-	return pi_activity_get_activity_nid_for_content_nid($nid);
-}
 
 /**
- * 
  * Get the activity ids for all child activities for an activity
  * @param unknown_type $activity_nid
  */
@@ -215,6 +210,8 @@ function pi_activity_get_child_activities_for_activity($activity_nid)
   }
     return $children;
 }
+
+
 /**
  * Uses arguments from the path and the pi_activity_table to return the activity type.
  */

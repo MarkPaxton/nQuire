@@ -64,7 +64,7 @@ function pi_fooddiary_select_day_js()
 	}
 	else
 	{
-		$activity_id = get_activity_id_for_nid($nid);
+		$activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
 		$phase_id = get_phase_id_for_activity_id($activity_id);
 
 		$output = "<script type=\"text/javascript\">
