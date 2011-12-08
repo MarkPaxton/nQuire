@@ -107,7 +107,7 @@ function pi_activity_add_activity_node_for_activity_content_node($parent_activit
  */
 function add_activity_when_activity_node_created($node, $node_function, $visible_status, $activity_title, $details, $activity_node = NULL)
 {
-  pi_debug_message("add_activity_when_activity_node_created called for " . $content_node->nid . "(" . $content_node->title . ")");
+  //pi_debug_message("add_activity_when_activity_node_created called for " . $content_node->nid . "(" . $content_node->title . ")");
   /*global $user;
    $uid = $user->uid;
   */
@@ -121,7 +121,7 @@ function add_activity_when_activity_node_created($node, $node_function, $visible
   }
   else
   {
-    pi_debug_message("add_activity_when_activity_node_created called with no activity - getting activity from details: " . $details->activity_id);
+    //pi_debug_message("add_activity_when_activity_node_created called with no activity - getting activity from details: " . $details->activity_id);
     $loaded_activity = node_load($details->activity_id);
   }
   $activity_node = $loaded_activity;

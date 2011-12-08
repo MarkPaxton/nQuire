@@ -192,7 +192,7 @@ function pi_activity_get_activity_nid_for_content_nid($content_nid)
   {
     $activity_nid = $result->activity_id;
   }
-  pi_debug_message($activity_nid);
+  //pi_debug_message($activity_nid);
   return $activity_nid;
 }
 

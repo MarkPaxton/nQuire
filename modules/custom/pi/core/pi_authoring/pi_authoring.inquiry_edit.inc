@@ -19,7 +19,7 @@ function pi_authoring_inquiry_node_edit($inquiry)
 	}
 	$output .= node_page_edit($inquiry);
 	// Set the title here to override the title being set in node_page_edit
-	drupal_set_title("Editing " .  check_plain($inquiry->title));
+	drupal_set_title(t("Editing @title", array("@title" => $inquiry->title)));
 	return $output;
 }
 
@@ -33,7 +33,7 @@ function pi_authoring_inquiry_phases($inquiry) {
 	$output = '';
 	
 	//set the page title to be the inquiry name
-	drupal_set_title("Editing " .  check_plain($inquiry->title));
+	drupal_set_title(t("Editing @title", array("@title" => $inquiry->title)));
 	$output .= theme('pi_authoring_inquiry_phases', $inquiry->nid);	
 	
 	// Query for inquiry phases 
@@ -168,7 +168,7 @@ function pi_authoring_inquiry_stages($inquiry) {
 	$output = '';
 	
 	//set the page title to be the inquiry name
-	drupal_set_title("Editing " .  check_plain($inquiry->title));
+	drupal_set_title(t("Editing @title", array("@title" => $inquiry->title)));
 	$output .= theme('pi_authoring_inquiry_stages', $inquiry->nid);
 	
 	// Query for inquiry phases and list them if there are any
@@ -186,6 +186,44 @@ function pi_authoring_inquiry_stages($inquiry) {
 	}
 	return $output;
 }
+
+
+/**
+* This generates the page to edit the order of stages in an inquiry
+* @param uint $inquiry_id is a valid inquiry id.
+*/
+function pi_authoring_inquiry_list_activities($inquiry) {
+	// Use this to apply module specific css
+	$output = '';
+
+	//set the page title to be the inquiry name
+	drupal_set_title(t("Editing @title", array("@title" => $inquiry->title)));
+	$output .= theme('pi_authoring_inquiry_list_activities', $inquiry->nid);
+
+	// Query for inquiry phases and list them if there are any
+	$stage_nids = pi_stage_load_nids($inquiry->nid);
+	$phase_nids = pi_phase_load_nids($inquiry->nid);
+	
+	if(!empty($stage_nids) && !empty($phase_nids))
+	{
+		// Get the phases names to show what phases each stage has.
+		//$output .= drupal_get_form('pi_authoring_activities', $stage_nids, $inquiry->nid);
+	}
+	else
+	{
+	  // Display a warning message to the user as there are no phases yet defined
+	  if(empty($phase_nids))
+	  {
+	    drupal_set_message("No phases  added so far in this inquiry; you need at least one phase and one stage in every inquiry.", 'warning', FALSE);
+	  }
+	  else
+	  {
+	    drupal_set_message("No  stages added so far in this inquiry; you need at least one stage in every inquiry.", 'warning', FALSE);
+	  }
+	}
+	return $output;
+}
+
 
 /**
  * Theme function for the inquiry stages page - provides the link to create a new phase in the inquiry
@@ -417,6 +455,25 @@ function theme_pi_authoring_order_stages_form($form) {
 	$output .= drupal_render($form);
 	return $output;
 }
+
+
+
+/**
+ * Theme function for the inquiry stages page - provides the link to create a new phase in the inquiry
+ * @param uint $inquiry_id
+ */
+function theme_pi_authoring_inquiry_list_activities($inquiry_id)
+{
+	$output='';
+	$link = l('here', "inquiry/$inquiry_id/activity/add");
+	// Display some boilerplate text about defining inquiries...
+	$output .="<div class='help'>\n";
+	$output .= "<p>The inquiry consists of activities allocated to different phases, which can be visdible or invisible in each stage.</p>";
+	$output .= "<p>To add an new activity click $link.</p>";
+	$output .= "</div>\n"; // #help
+	return $output;
+}
+
 
 
 

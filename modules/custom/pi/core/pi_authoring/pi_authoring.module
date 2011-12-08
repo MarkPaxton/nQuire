@@ -23,54 +23,54 @@ function pi_authoring_init() {
  */
 function pi_authoring_theme() {
   return array(
-		'pi_authoring_order_inquiries_form' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.inquiry_edit.inc',
+    	'pi_authoring_order_inquiries_form' => array(
+  		'arguments' => array('form' => NULL),
+  		'file' => 'pi_authoring.inquiry_edit.inc',
+    ),
+	'pi_authoring_inquiry_phases' => array(
+		'file' => 'pi_authoring.inquiry_edit.inc',
+    ),
+	'pi_authoring_order_phases_form' => array(
+		'arguments' => array('form' => NULL),
+		'file' => 'pi_authoring.inquiry_edit.inc',
+    ),
+	'pi_authoring_order_activities_form' => array(
+		'arguments' => array('form' => NULL),
+		'file' => 'pi_authoring.activities.inc',
+    ),
+	'pi_authoring_inquiry_activities' => array(
+		'arguments' => array('form' => NULL),
+		'file' => 'pi_authoring.activities.inc',
+    ),
+	'pi_authoring_inquiry_list_activities' => array(
+		'file' => 'pi_authoring.inquiry_edit.inc',
+    ),
+  	'pi_authoring_inquiry_stages' => array(
+  		'file' => 'pi_authoring.inquiry_edit.inc',
+    ),
+'pi_authoring_order_stages_form' => array(
+	'arguments' => array('form' => NULL),
+	'file' => 'pi_authoring.inquiry_edit.inc',
   ),
-		'pi_authoring_inquiry_phases' => array(
-			'file' => 'pi_authoring.inquiry_edit.inc',
+'pi_authoring_admin_groups_form' => array(
+	'arguments' => array('form' => NULL),
+	'file' => 'pi_authoring.admin_groups.inc',
   ),
-
-		'pi_authoring_order_phases_form' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.inquiry_edit.inc',
+'pi_authoring_admin_group_hierarchy_list' => array(
+	'arguments' => array('group_order' => NULL, 'group_list_by_type' => NULL, 'all_groups' => NULL),
+	'file' => 'pi_authoring.admin_group_hierarchy.inc',
   ),
-
-		'pi_authoring_order_activities_form' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.activities.inc',
+'pi_authoring_admin_group_hierarchy_form_class' => array(
+	'arguments' => array('form' => NULL),
+	'file' => 'pi_authoring.admin_group_hierarchy.inc',
   ),
-		'pi_authoring_inquiry_activities' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.activities.inc',
+'pi_authoring_admin_group_hierarchy_form_group' => array(
+	'arguments' => array('form' => NULL),
+	'file' => 'pi_authoring.admin_group_hierarchy.inc',
   ),
-
-		'pi_authoring_inquiry_stages' => array(
-			'file' => 'pi_authoring.inquiry_edit.inc',
-  ),
-		'pi_authoring_order_stages_form' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.inquiry_edit.inc',
-  ),
-		'pi_authoring_admin_groups_form' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.admin_groups.inc',
-  ),
-		'pi_authoring_admin_group_hierarchy_list' => array(
-			'arguments' => array('group_order' => NULL, 'group_list_by_type' => NULL, 'all_groups' => NULL),
-			'file' => 'pi_authoring.admin_group_hierarchy.inc',
-  ),
-		'pi_authoring_admin_group_hierarchy_form_class' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.admin_group_hierarchy.inc',
-  ),
-		'pi_authoring_admin_group_hierarchy_form_group' => array(
-			'arguments' => array('form' => NULL),
-			'file' => 'pi_authoring.admin_group_hierarchy.inc',
-  ),
-		'pi_authoring_admin_group_hierarchy_form_full' => array(
-			'arguments' => array('form' => NULL, 'class_or_group'=>''),
-			'file' => 'pi_authoring.admin_group_hierarchy.inc',
+'pi_authoring_admin_group_hierarchy_form_full' => array(
+	'arguments' => array('form' => NULL, 'class_or_group'=>''),
+	'file' => 'pi_authoring.admin_group_hierarchy.inc',
   )
   );
 }
@@ -233,6 +233,18 @@ function pi_authoring_menu() {
 		'weight' => 2,
   );
 
+  $items['inquiry/%node/edit/activities'] = array(
+  		'title' => 'Edit Activities',
+  		'file' => 'pi_authoring.inquiry_edit.inc',
+  		'page callback' => 'pi_authoring_inquiry_list_activities',
+  		'page arguments' => array(1),
+  		'type' => MENU_LOCAL_TASK,
+  		'access_callback' => TRUE,
+  		'access arguments' => array('access pi_authoring content'),
+  		'weight' => 3,
+  );
+  
+  
   // NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
   $items['inquiry/%node/phase/add'] = array(
 		'title' => 'Add a phase',
@@ -324,13 +336,12 @@ function pi_authoring_menu() {
   );
 
 
-
-
   $items['phase/%node/view'] = array(
 		'title' => 'View',
 		'type' => MENU_DEFAULT_LOCAL_TASK,
 		'weight' => 1
   );
+
   // NOTE: If you change the url below also change pi_authoring_form_pi_phase_node_form_alter()
   $items['phase/%node/edit'] = array(
 		'title' => 'Edit',

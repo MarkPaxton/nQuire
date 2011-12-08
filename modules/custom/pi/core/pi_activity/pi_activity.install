@@ -305,23 +305,23 @@ function _pi_activity_upgrade_set_activity_direct_references($current_node, $bat
     $first_result = db_fetch_array($result);
     if((!is_null($result)) && ($first_result!=FALSE))
     {
-      pi_debug_message("first result for activity  " . $activity_nid . " is " . $first_result['nid']);
+      //pi_debug_message("first result for activity  " . $activity_nid . " is " . $first_result['nid']);
       if($first_result['nid'] != 0)
       {
         // This is a directly referenced node
         // @todo - check this node exists?
-        pi_debug_message("Loading activity  " . $activity_nid);
+        //pi_debug_message("Loading activity  " . $activity_nid);
         $activity_node = node_load($activity_nid);
         if($activity_node)
         {
-          pi_debug_message("Activity " . $activity_nid . " is " . $activity_node->type);
+          //pi_debug_message("Activity " . $activity_nid . " is " . $activity_node->type);
           if($activity_node->type=='pi_activity')
           {
             $activity_node->referenced_node = $first_result['nid'];
-            pi_debug_message("Loading activity content " .  $first_result['nid']);
+            //pi_debug_message("Loading activity content " .  $first_result['nid']);
             $content_node = node_load($first_result['nid']);
-            pi_debug_message("nid " . $first_result['nid'] . " is a " . $content_node->type);
-            pi_debug_message("Assigning node " . $first_result['nid'] . " (" . $content_node->title . ") directly to activity " . $activity_nid . " (" . $activity_node->title . ")");
+            //pi_debug_message("nid " . $first_result['nid'] . " is a " . $content_node->type);
+            //pi_debug_message("Assigning node " . $first_result['nid'] . " (" . $content_node->title . ") directly to activity " . $activity_nid . " (" . $activity_node->title . ")");
             node_save($node);
             $delete_query = "DELETE FROM {pi_activity_node} WHERE pan_id = %d";
             db_query($delete_query, $first_result['pan_id']);
@@ -378,19 +378,19 @@ function _pi_activity_upgrade_set_child_activity_nodes($current_node, $batch_siz
     // of that type in the activity's phase.
     if(!is_null($generated_node_type))
     {
-      pi_debug_message("Finding nodes of type " . $generated_node_type . " for activity " . $row['nid'] );
+      //pi_debug_message("Finding nodes of type " . $generated_node_type . " for activity " . $row['nid'] );
       $child_nodes_query = "SELECT {pi_activity_node}.`nid` FROM {pi_activity_node} " .
         "LEFT JOIN {pi_activity} on {pi_activity_node}.`activity_id` = {pi_activity}.`nid` " .
           "LEFT JOIN {node} on {pi_activity_node}.`nid` = {node}.`nid` " .
           "WHERE {node}.`type` = '%s' AND {pi_activity}.`phase_nid` = %d";
-      pi_debug_message(sprintf($child_nodes_query, $generated_node_type, $row['phase_nid']));
+      //pi_debug_message(sprintf($child_nodes_query, $generated_node_type, $row['phase_nid']));
       $result_for_child_nodes = db_query($child_nodes_query, $generated_node_type, $row['phase_nid']);
 
       // finally for each child activity content node, get their activity node and set the parent_activity nid
       // from the directly referenced nodes
       while($child_nid_row = db_fetch_array($result_for_child_nodes))
       {
-        pi_debug_message("Setting activity parent for " . $child_nid_row['nid'] . " to ". $row['nid']);
+        //pi_debug_message("Setting activity parent for " . $child_nid_row['nid'] . " to ". $row['nid']);
         // First version for directly referenced nodes
         $child_activity_node_query = "SELECT `nid` FROM {pi_activity} WHERE `referenced_node` = %d";
         $result_for_child_activity_node = db_query($child_activity_node_query, $child_nid_row['nid']);
@@ -399,7 +399,7 @@ function _pi_activity_upgrade_set_child_activity_nodes($current_node, $batch_siz
           $child_activity_node = node_load($child_activity_node_row['nid']);
           if($child_activity_node!=FALSE)
           {
-            pi_debug_message("Assigning activity parent " . $row['nid'] . " activity child " . $child_activity_node_row['nid']);
+            //pi_debug_message("Assigning activity parent " . $row['nid'] . " activity child " . $child_activity_node_row['nid']);
             $child_activity_node->parent_activity = $row['nid'];
             node_save($child_activity_node);
           }
@@ -470,7 +470,7 @@ function _pi_activity_upgrade_copy_update_one_activity_id($table_name, $column_n
       if(($write_result != SAVED_NEW) && ($write_result != SAVED_UPDATED))
       {
         $result_string = _pi_write_record_result_string($write_result);
-        pi_debug_message("Unexpected result writing to $table_name - $result_string");
+        //pi_debug_message("Unexpected result writing to $table_name - $result_string");
       }
       $count++;
     }
