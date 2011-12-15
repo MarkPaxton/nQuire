@@ -180,7 +180,7 @@ function pi_get_type_of_group($gid) {
 
 /**
  * Check if a user is a member of the given group
- * 
+ *
  * @param uint $uid User id
  * @param uint $gid Group id
  * @return boolean true if user is in group
@@ -201,7 +201,7 @@ function get_members_of_group($gid) {
 }
 
 /**
- * Gets the group id of "$group_type" for a particular user 
+ * Gets the group id of "$group_type" for a particular user
  * Type can be group, class or multiclass.
  * *does not* Returns an array of gid values.
  */
@@ -221,6 +221,99 @@ function get_group_of_type($uid, $group_type, $inquiry_id, $stage_id = NULL, $ph
   return $result;
 }
 
+
+function pi_groups_get_users_actor_groups($uid, $actor_group, $audience_group_type)
+{
+  $return_groups = array();
+  $actor_group_type = pi_get_type_of_group($actor_group);
+  switch($audience_group_type)
+  {
+    case 'individual':
+      break;
+    case 'multiclass':
+      $return_groups[] = $actor_group;
+      break;
+    case 'class':
+      if (($actor_group_type=='multiclass') || ($actor_group_type=='group') )
+      {
+        // The user does the activity in their class/group and shares with multiclass
+        // (as does other classes/groups in multiclass)
+        $return_groups = pi_groups_get_users_associated_groups($uid, $audience_group_type, $actor_group);
+      }
+      if ($actor_group_type=='class')
+      {
+        $return_groups[] = $actor_group;
+      }
+      break;
+    case 'group':
+      if (($actor_group_type=='multiclass') || ($actor_group_type=='class'))
+      {
+        // The user does the activity in their /group and shares with multiclass or class
+        // (as does other classes/groups in multiclass)
+        $return_groups = pi_groups_get_users_associated_groups($uid, $audience_group_type, $actor_group);
+      }
+      if ($actor_group_type=='group')
+      {
+        $return_groups[] = $actor_group;
+      }
+      break;
+  }
+  return $return_groups;
+}
+
+
+function pi_groups_get_users_audience_groups($uid, $actor_group, $audience_group_type)
+{
+  $return_groups = array();
+  $actor_group_type = pi_get_type_of_group($actor_group);
+  switch($audience_group_type)
+  {
+    case 'individual':
+      break;
+    case 'multiclass':
+      // Result shared into multiclass of user
+      $return_groups[] =  pi_groups_get_users_associated_groups($uid, $audience_group_type, $actor_group);
+      break;
+    case 'class':
+      if ( ($actor_group_type=='group') || ($actor_group_type=='class') )
+      {
+        // Result shared in class of user
+        $return_groups = pi_groups_get_users_associated_groups($uid, $audience_group_type, $actor_group);
+      }
+      if ($actor_group_type=='multiclass')
+      {
+        //Result shared only by class of user in multiclass
+        $return_groups[] = $actor_group;
+      }
+      break;
+    case 'group':
+      // Result shared in the group of user only
+      $return_groups = pi_groups_get_users_associated_groups($uid, $audience_group_type, $actor_group);
+      break;
+  }
+  return $return_groups;
+}
+
+/**
+ * Get the specific id of the group this user is a member of that
+ * is part of the heirarchy of group $actor_gid.
+ * @param unknown_type $uid
+ * @param unknown_type $group_type
+ * @param unknown_type $actor_gid
+ */
+function pi_groups_get_users_associated_groups($uid, $group_type, $actor_gid)
+{
+  $return_groups = array();
+  $groups = pi_groups_get_associated_groups($actor_gid, $group_type);
+  foreach($groups as $gid)
+  {
+    if(pi_group_check_membership($uid, $gid))
+    {
+      $return_groups[] = $gid;
+    }
+  }
+  return $return_groups;
+}
 
 /**
  * Returns all groups (student group, class, etc.) of which the user is a member.
@@ -516,7 +609,7 @@ function pi_get_defined_group_nids() {
       $group = array();
       $group['nid'] = $id;
       $group['group_type'] = $type;
-      	
+       
       if(array_key_exists($id, $groups_seen))
       {
         drupal_set_message(t("Conflicting group definitions found for group !id. Using first value only, which is !value and not using type !type",

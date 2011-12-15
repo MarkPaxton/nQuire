@@ -590,12 +590,33 @@ function pi_activity_form_validate( $form, &$form_state )
 
 /**
  *
+ * Drupal API hook_form_alter(), to take away group membership if form is in an activity and
+ * move menu options
+ * @param &$form
+ * @param &$form_state
+ */
+function pi_activity_form_alter(&$form, &$form_state)
+{
+  $drupal_path = str_replace(base_path(), '', request_uri());
+  $drupal_path = str_replace('?q=', '', $drupal_path);
+  // Split the string into parts to get the inquiry id if it exists...
+  $path_parts = explode('/', $drupal_path);
+  if(strcasecmp($path_parts[0], 'activity')===0)
+  {
+    $form['menu']['#weight'] = 20;
+    $form['og_nodeapi']['#access'] = FALSE;
+  }
+}
+
+
+/**
+ *
  * Drupal API hook_form_FORM-ID_alter(), changes the form to alter the default node layout
  * @param &$form
  * @param &$form_state
  */
-function pi_activity_form_pi_activity_node_form_alter(&$form, &$form_state) {
-  $form['menu']['#weight'] = 10;
+function pi_activity_form_pi_activity_node_form_alter(&$form, &$form_state)
+{
   if (isset($form_state['post']))
   {
     ahah_helper_register($form, $form_state);
@@ -1130,12 +1151,10 @@ function pi_activity_insert($node)
           {
             $activity_statuses_to_add[] =  array(
               				'activity_id'=>$node->nid,
-            //@TODO FIXME Not sure if inquiry_id is still required ?
-							'inquiry_id'=> $node->inquiry_nid,
-              				'uid' => NULL,
               				'gid' => $audience_nid,
               				'node_function' => 'view',
-              				'visible_status' => 'view'	);
+              				'visible_status' => 'view'
+            );
           }
         }
         break;
@@ -1156,9 +1175,6 @@ function pi_activity_insert($node)
 
   foreach($activity_statuses_to_add as $status)
   {
-    //drupal_set_message( var_export( $status, TRUE ) );
-    //pi_debug_message("Writing status for " . $node->title);
-    //pi_debug_message($status);
     $result = drupal_write_record('pi_activity_status', $status);
     if($result == FALSE)
     {
@@ -1168,30 +1184,6 @@ function pi_activity_insert($node)
       drupal_set_message( t('Error saving pi_activity_status, node function !function, visible status !status for group !gid', $translate ), 'error' );
     }
   }
-
-
-  // Finally the related node if necessary
-  if($node->existing_nid!='none')
-  {
-    $activity_node = new stdClass();
-    $activity_node->activity_id = $node->nid;
-    $activity_node->nid = $node->existing_nid;
-
-    $result = drupal_write_record('pi_activity_node', $activity_node);
-    if($result == FALSE)
-    {
-      $translate['!nid'] = $node->existing_nid;
-      drupal_set_message( t('Error saving pi_activity_node (!nid)', $translate ), 'error' );
-    }
-  }
-  else {
-    $activity_node = new stdClass();
-    $activity_node->activity_id = $node->nid;
-    $activity_node->nid = 0;
-
-    $result = drupal_write_record('pi_activity_node', $activity_node);
-  }
-
 }
 
 /**
@@ -1605,12 +1597,6 @@ function _pi_activity_get_activity_stage_states($activity_nid)
 }
 
 
-function pi_activity_get_activity_actors($activity_id)
-{
-  $query = 'SELECT * FROM {pi_activity_actor} WHERE activity_id = %d';
-
-}
-
 /**
  * hook_theme() for pi_activity content
  */
@@ -1670,10 +1656,14 @@ function pi_activity_get_activity_content_nids($activity_id, $inquiry_id)
 
 
 
+/**
+ * Implementation of hook_nodeapi to add specific nQuire data when nodes are changed
+ *
+ * @param node $node
+ * @param String $op
+ */
 function pi_activity_nodeapi(&$node, $op)
 {
-  global $user;
-
   if ($node->type != 'image')
   {
     if(in_array($op, array('insert', 'update', 'delete')))
@@ -1682,126 +1672,127 @@ function pi_activity_nodeapi(&$node, $op)
       //check this from the args
       $details = get_inquiry_details_from_current_path();
 
-      if(is_object($details) && is_numeric($details->activity_id))
+      if(is_object($details))
       {
-        $activity = node_load( $details->activity_id );
-        $activity_type = $activity->activity_type;
-
-        //set PI activity node
-        if($op == 'insert')
+        $activity = node_load($details->activity_id);
+        if (pi_check_is_of_type($activity, 'pi_activity'))
         {
-          //error_log( $op . "===>" . $node->type );
-          //error_log( var_export( $node, TRUE) );
-          //error_log( var_export( $details, TRUE) );
+          $activity_type = $activity->activity_type;
 
-          //new content saved
-          switch( $node->type )
+          // Set PI activity node
+          $node_types_to_create_activity_for = array(
+          'pi_available_measures',
+          'pi_key_questions',
+          'pi_key_answers',
+          'pi_result_presentations',
+          'pi_fooddiary'
+          );
+          // If it is the food diary activity, don't add a new activity for pi_data content
+          if($activity_type!='pi_fooddiary')
           {
-            case 'pi_available_measures':
+            $node_types_to_create_activity_for[] = 'pi_data';
+          }
 
-              if( $activity_type != 'pi_fooddiary' && $activity_type != 'pi_fooddiary_measures' )
+          switch($op)
+          {
+            case 'insert':
+              //new content saved
+              switch($node->type)
               {
-                add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-              }
-              else if( $activity_type == 'pi_fooddiary_measures' )
-              {
-                $activity_node = new stdClass();
-                $activity_node->activity_type = 'pi_available_measures';
-                $activity_node->node_type = 'pi_available_measures';
-
-                add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details, $activity_node);
-              }
-              break;
-            case 'pi_key_questions':
-              update_node_title($node, $node->key_question);
-              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_question, $details);
-              break;
-            case 'pi_key_answers':
-              update_node_title($node, $node->key_answer);
-              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->key_answer, $details);
-              break;
-            case 'pi_result_presentations':
-              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-              break;
-            case 'pi_data':
-              //get_inquiry_details_from_current_path() does not work for datalogger
-              if( arg(1) == 'datalogger_data' )
-              {
-                $details = new stdClass;
-                $details->inquiry_id = arg(2);
-                $details->stage_id = arg(3);
-                $details->phase_id = arg(4);
-                $details->activity_id = arg(5);
-              }
-              //not generated by fooddiary
-              if( $activity_type != 'pi_fooddiary' )
-              {
-                add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-              }
-              break;
-            case 'pi_fooddiary':
-              add_activity_when_activity_node_created($node, 'edit', 'edit', $node->title, $details);
-              break;
-            default:
-              //In case the data are generated by another activity
-              //(e.g. fooddiary_data => generates pi_sort_measure)
-              //@TODO FIXME Nodeapi is called twice...once
-              if($node->type != '')
-              {
-                error_log("nodeapi, default " . $node->type);
-                if(isset($node->activity_id))
+                case 'pi_available_measures':
+                  if( $activity_type == 'pi_fooddiary_measures' )
+                  {
+                    $activity_node = new stdClass();
+                    $activity_node->activity_type = 'pi_available_measures';
+                    $activity_node->node_type = 'pi_available_measures';
+                    $activity =  $activity_node;
+                  }
+                  break;
+                case 'pi_key_questions':
+                  pi_util_set_node_title($node, $node->key_question);
+                  break;
+                case 'pi_key_answers':
+                  pi_util_set_node_title($node, $node->key_answer);
+                  break;
+                case 'pi_data':
+                  //get_inquiry_details_from_current_path() does not work for datalogger
+                  if( arg(1) == 'datalogger_data' )
+                  {
+                    $details = new stdClass;
+                    $details->inquiry_id = arg(2);
+                    $details->stage_id = arg(3);
+                    $details->phase_id = arg(4);
+                    $details->activity_id = arg(5);
+                  }
+                  break;
+                default:
+                  //In case the data are generated by another activity
+                  //(e.g. fooddiary_data => generates pi_sort_measure)
+                  //@TODO FIXME Nodeapi is called twice...once
+                  if($node->type != '')
                 {
-                  $details->activity_id = $node->activity_id;
+                  error_log("nodeapi, default " . $node->type);
+                  if(isset($node->activity_id))
+                  {
+                    $activity = node_load($activity_id);
+                  }
                 }
-  
-                add_new_pi_activity_node($node, 'edit', 'edit', $details);
+                break;
               }
-          }
-          _pi_activity_set_activity_content_audience($node, $details->activity_id);
-        }
 
-        if($op == 'update')
-        {
-          switch ($node->type)
-          {
-            case 'pi_available_measures':
-              update_activity_when_activity_node_updated($node, $node->title);
+              if(in_array($node->type, $node_types_to_create_activity_for))
+              {
+                pi_activity_add_new_activity_for_activity_content_node($node, 'edit', 'edit', $node->title, $activity);
+              }
+
+              _pi_activity_set_activity_content_audience($node, $details->activity_id);
+              _pi_activity_set_activity_content_actor($node, $details->activity_id);
               break;
-            case 'pi_key_answers':
-              update_node_title($node, $node->key_answer);
-              update_activity_when_activity_node_updated($node, $node->key_answer);
+            case 'update':
+              switch ($node->type)
+              {
+                case 'pi_available_measures':
+                  pi_util_set_node_title($activity, $node->title);
+                  break;
+                case 'pi_key_answers':
+                  pi_util_set_node_title($node, $node->key_answer);
+                  pi_util_set_node_title($activity, $node->key_answer);
+                  break;
+                case 'pi_key_questions':
+                  pi_util_set_node_title($node, $node->key_question);
+                  pi_util_set_node_title($activity, $node->key_question);
+                  break;
+                case 'pi_result_presentations':
+                  pi_util_set_node_title($activity, $node->title);
+                  break;
+                case 'pi_data':
+                  //none come from datalogger as it is not used to update existing data
+                  pi_util_set_node_title($activity, $node->title);
+                  break;
+              }
+              // Add group audience data for the activity content by getting the user's associated group
+              // of the given audience type
+              _pi_activity_set_activity_content_audience($node, $details->activity_id);
+              _pi_activity_set_activity_content_actor($node, $details->activity_id);
               break;
-            case 'pi_key_questions':
-              update_node_title($node, $node->key_question);
-              update_activity_when_activity_node_updated($node, $node->key_question);
-              break;
-            case 'pi_result_presentations':
-              update_activity_when_activity_node_updated($node, $node->title);
-              break;
-            case 'pi_data':
-              //none come from datalogger as it is not used to update existing data
-              update_activity_when_activity_node_updated($node, $node->title);
+            case 'delete':
+              //update existing content
+              $activity_id = pi_activity_get_activity_nid_for_content_nid($node->nid);
+              if($activity_id !== NULL)
+              {
+                node_delete($activity_id);
+              }
               break;
           }
-          // Add group audience data for the activity content by getting the user's associated group
-          // of the given audience type
-          _pi_activity_set_activity_content_audience($node, $details->activity_id);
         }
-      }
-
-      if($op == 'delete')
-      {
-        //update existing content
-        $activity_id = pi_activity_get_activity_nid_for_content_nid($node->nid);
-        if($activity_id !== NULL)
+        else
         {
-          node_delete($activity_id);
+          drupal_set_message(t("Activity @nid id is specified but it does not exist.", array("@nid", $details->activity_id)), 'error');
         }
       }
     }
   }
 }
-
 
 // ---------------------------------------------------------------------------
 
@@ -1815,7 +1806,7 @@ function pi_activity_get_link($activity_id, $uid)
 {
   $url = array('url'=>'', 'title'=>'');
 
-  $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
+  $image_path = '/' . drupal_get_path( 'module', 'pi' ) . '/images/';
   $status_image = array( 	'start' => 'creatable.png',
 							'edit' => 'editable.png',
 							'view' => 'viewable.png',
@@ -2127,8 +2118,8 @@ function _pi_activity_get_activity_actor_audience_result_type($actor_gid, $audie
 }
 
 /**
- * Set the OG Audience for the activity content node, e.g. audience will be the user's 
- * associated class if the actor was 'class', or do nothing if the audience is individual 
+ * Set the OG Audience 'view' permission for the activity content node, e.g. audience will be the user's
+ * associated class if the actor was 'class', or do nothing if the audience is individual
  * @param unknown_type $node The node that was just created/needs to be changed
  * @param unknown_type $activity_id The associated activity id that created the activity content.
  */
@@ -2143,20 +2134,87 @@ function _pi_activity_set_activity_content_audience($node, $activity_id)
     {
       if ($loaded_activity->audience != "individual")
       {
+        $actor_type = pi_get_type_of_group($loaded_activity->actor);
+        // if actor and audience are the same type then it's done as a group, so there is no need
+        // to set an additional audience
+        if($actor_type!=$loaded_activity->audience)
+        {
+          // Otherwise find out if it's a multi-actor or shared activity
+          if( (($actor_type=='group') && ($loaded_activity->audience=='multiclass')) ||
+          (($actor_type=='group') && ($loaded_activity->audience=='class')) ||
+          (($actor_type=='class') && ($loaded_activity->audience=='multiclass')) )
+          {
+            // This activity content should be shared with multi/class - add view to this group
+
+            // Get all audience groups for the activity associated with the actor group
+            // find the one that the content author is a member of...
+            $users_group = pi_groups_get_users_associated_groups($node->uid, $loaded_activity->audience, $loaded_activity->actor);
+            $context['groups'] = $users_group;
+            og_add_group_action($node, $context);
+          }
+        }
+      }
+      else
+      {
+        drupal_set_message(t('Activity @nid is a node but not an activity.', array('@nid' => $details->activity_id), 'error'));
+      }
+    }
+    else
+    {
+      drupal_set_message(t('Activity @nid does not exists.', array('@nid' => $details->activity_id), 'error'));
+    }
+  }
+}
+
+/**
+ * Set the OG Audience 'edit' permission for the activity content node, e.g. audience will be the user's
+ * associated class if the actor was 'class', or do nothing if the audience is individual
+ * @param unknown_type $node The node that was just created/needs to be changed
+ * @param unknown_type $activity_id The associated activity id that created the activity content.
+ */
+function _pi_activity_set_activity_content_actor($node, $activity_id)
+{
+  // Add group audience data for the activity content by getting the user's associated group
+  // of the given audience type
+  $loaded_activity = node_load($activity_id);
+  if($loaded_activity!==FALSE)
+  {
+    if($loaded_activity->type == 'pi_activity')
+    {
+      $actor_type = pi_get_type_of_group($loaded_activity->actor);
+      $users_actor_group = array();
+      // if actor and audience are the same type then it's done as a group, so set group audience ownership
+      // to the actors actor group
+      // Actor type greater than audience, so each group of type audience within actor grop gets
+      // their own result not shared
+      if( (($actor_type=='class') && ($loaded_activity->audience=='group')) ||
+      (($actor_type=='multiclass') && ($loaded_activity->audience=='group')) ||
+      (($actor_type=='multiclass') && ($loaded_activity->audience=='class')) )
+      {
+        //Each actor group within audience does their own activity, so get this users actual actor group
         // Get all audience groups for the activity associated with the actor group
         $activity_audience_groups = pi_groups_get_associated_groups($loaded_activity->actor, $loaded_activity->audience);
         // find the one that the content author is a member of...
-        $users_group = array();
         foreach($activity_audience_groups as $group_nid)
         {
           if(pi_group_check_membership($node->uid, $group_nid))
           {
-            $users_group[] = $group_nid;
+            $users_actor_group[] = $group_nid;
           }
         }
-        $context['groups'] = $users_group;
-        og_add_group_action($node, $context);
+        if(count($users_actor_group)==0)
+        {
+          drupal_set_message(t("Trying to assign activity content to a @type group the user isn't a member of (@gids)", array('@type' => $loaded_activity->actor, '@gids' => implode($activity_audience_groups, ", "))));
+        }
       }
+      else
+      {
+        // If it's not a multi-actor activity then just get the actor group from the activity data
+        $users_actor_group[] = $loaded_activity->actor;
+      }
+      $context['groups'] = $users_actor_group;
+      og_add_group_action($node, $context);
+
     }
     else
     {
@@ -2168,5 +2226,180 @@ function _pi_activity_set_activity_content_audience($node, $activity_id)
     drupal_set_message(t('Activity @nid does not exists.', array('@nid' => $details->activity_id), 'error'));
   }
 }
+
+
+/**
+ * Returns activity visible status and node function, prioritising specific user status (set as uid in table) rather than group ids.
+ * @param uint $activity_id
+ * @param uint $uid
+ * @return array(visible_status, node_function)
+ */
+function pi_activity_load_status($activity_id, $uid)
+{
+  $return_status = array();
+  $activity  = node_load($activity_id);
+  if(pi_check_is_node_of_type($activity, 'pi_activity'))
+  {
+    $return_status = pi_activity_get_user_status($activity_id, $uid);
+    if(count($return_status)>1)
+    {
+      drupal_set_message(t("More than one actor status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
+      array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
+	                       '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
+    }
+    if(count($return_status)==0)
+    {
+      if($activity->audience == 'individual')
+      {
+        $return_status = pi_activity_get_group_status($activity_id, $activity->actor);
+      }
+      else
+      {
+        if(count($return_status==0))
+        {
+          $users_actor_groups = pi_groups_get_users_actor_groups($uid, $activity->actor, $activity->audience);
+
+          if(count($users_actor_groups)>0)
+          {
+            foreach($users_actor_groups as $gid)
+            {
+              $return_status += pi_activity_get_group_status($activity_id, $gid);
+            }
+          }
+          if(count($return_status)>1)
+          {
+            drupal_set_message(t("More than one actor status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
+            array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
+                   '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
+          }
+          if(count($return_status==0))
+          {
+            $users_actor_groups = pi_groups_get_users_audience_groups($uid, $activity->actor, $activity->audience);
+            if(count($users_actor_groups)>0)
+            {
+              foreach($users_actor_groups as $gid)
+              {
+                $return_status += pi_activity_get_group_status($activity_id, $gid);
+              }
+            }
+            if(count($return_status)>1)
+            {
+              drupal_set_message(t("More than one audience status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
+              array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
+      '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
+            }
+          }
+        }
+      }
+    }
+  }
+  else
+  {
+    drupal_set_message('pi_activity_load_status: invalid value for activity_id passed', 'warning');
+  }
+
+  if(count($return_status)==0)
+  {
+    drupal_set_message(t("No status set for activity !activity for user !uid.", array('!activity' => $activity_id, '!uid' => $uid)), 'warning');
+    $return_status = NULL;
+  }
+  else
+  {
+    $return_status = $return_status[0];
+  }
+  return $return_status;
+}
+
+
+function _pi_activity_get_status_query($activity_nid, $id, $user_or_group='user')
+{
+  if($user_or_group=='group')
+  {
+    $find_column = 'gid';
+  }
+  else
+  {
+    $find_column = 'uid';
+  }
+
+  $query = "SELECT * FROM {pi_activity_status} WHERE (`$find_column`=%d) AND (`activity_id`=%d);";
+  $result = db_query($query, $id, $activity_nid);
+  $results = array();
+  while($one_result = db_fetch_array($result))
+  {
+    $results[] = $one_result;
+  }
+  return $results;
+}
+
+/**
+ * Get the status of an activity for a given user.
+ *
+ * @param unknown_type $activity_nid
+ * @param unknown_type $actor
+ */
+function pi_activity_get_user_status($activity_nid, $actor)
+{
+  return _pi_activity_get_status_query($activity_nid, $actor, 'user');
+}
+
+
+/**
+ * Get the status of an activity for a given group.
+ *
+ * @param unknown_type $activity_nid
+ * @param unknown_type $actor
+ */
+function pi_activity_get_group_status($activity_nid, $actor)
+{
+  return _pi_activity_get_status_query($activity_nid, $actor, 'group');
+}
+
+
+/**
+ * Sets the status of an activity for actor(god, updating if needed
+ *
+ * @param uint $activity_nid
+ * @param uint $actor Group ID
+ * @param String $visible
+ * @param String $function
+ * @returns result of drupal_write_record()
+ */
+function pi_activity_set_status($activity_nid, $actor, $visible, $function)
+{
+  $existing_status = pi_activity_get_status($activity_nid, $actor);
+  if($existing_status!=NULL)
+  {
+    $status = $existing_status;
+    $key = $existing_status['pas_id'];
+  }
+  else
+  {
+    $status = array();
+    $status['gid'] = $actor;
+    $status['activity_id'] = $activity_nid;
+    $key = NULL;
+  }
+
+  $status['visible_status'] = $visible;
+  $status['node_function'] = $function;
+  return drupal_write_record('pi_activity_status', $status, $key);
+}
+
+
+/**
+ * $activity_status_array is a keyed array comprising:
+ * $activity_status_array ->inquiry_id
+ * $activity_status_array ->activity_id
+ * $activity_status_array ->uid
+ * $activity_status_array ->gid
+ * $activity_status_array ->node_function
+ * $activity_status_array ->visible_status
+ */
+function pi_activity_save_status($activity_status)
+{
+  pi_activity_set_status($activity_status->activity_id, $activity_status->gid, $activity_status->visible_status, $activity_status->node_function);
+}
+
 
 ?>

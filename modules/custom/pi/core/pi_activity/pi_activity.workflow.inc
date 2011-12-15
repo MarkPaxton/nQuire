@@ -9,7 +9,7 @@
 
 function find_unique_node_type_for_uid_and_inquiry($node_type, $uid, $inquiry_id)
 {
-	$query = "SELECT {node}.`nid` FROM {node} " .
+  $query = "SELECT {node}.`nid` FROM {node} " .
       "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {node}.`nid` ". 
       "LEFT JOIN {pi_activity} ON {pi_activity_node}.`activity_id` = {pi_activity}.`nid` ". 
 	  "LEFT JOIN {pi_phase} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
@@ -19,42 +19,18 @@ function find_unique_node_type_for_uid_and_inquiry($node_type, $uid, $inquiry_id
 	  "AND ( {og_uid}.uid = %d OR {node}.uid = %d ) " . 
 	  "AND {pi_phase}.`inquiry_nid` = %d " . 
 	  "ORDER BY {node}.`nid` DESC ";
-	$result = db_result(db_query($query, $node_type, $uid, $uid, $inquiry_id));
-    return $result;
+  $result = db_result(db_query($query, $node_type, $uid, $uid, $inquiry_id));
+  return $result;
 }
 
 function find_sort_key_questions_nid_for_uid_and_inquiry($uid, $inquiry_id)
 {
-	return find_unique_node_type_for_uid_and_inquiry('pi_sort_key_questions', $uid, $inquiry_id);
+  return find_unique_node_type_for_uid_and_inquiry('pi_sort_key_questions', $uid, $inquiry_id);
 }
 
 function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id)
 {
-	return find_unique_node_type_for_uid_and_inquiry('pi_hypothesis', $uid, $inquiry_id);
-}
-
-
-/**
- * This function updates the title of the node in the node and node_revision table
- * @param $node
- */
-function update_node_title($node, $text=NULL)
-{
-  if ($text === NULL) {
-    $text = $node->body;
-  }
-  //get activity title from node body
-  $length = 250;
-  if(strlen($text) > $length)
-  {
-    $short_body = substr(check_plain($text), 0, $length);
-    $last_space = strrpos($short_body, " ");
-    $short_body = substr($short_body, 0, $last_space);
-    $text = $short_body."...";
-  }
-  
-  db_query("UPDATE node SET title='%s' WHERE vid=%d ", $text, $node->vid);
-  db_query("UPDATE node_revisions SET title='%s' WHERE vid= %d", $text, $node->vid);
+  return find_unique_node_type_for_uid_and_inquiry('pi_hypothesis', $uid, $inquiry_id);
 }
 
 function update_activity_when_activity_node_updated($node, $activity_title)
@@ -70,19 +46,19 @@ function update_activity_when_activity_node_updated($node, $activity_title)
 
 
 /**
- * 
+ *
  * Add an activity node when an activity content item is created
- * @param unknown_type $parent_activity
- * @param unknown_type $content_node
+ * @param node $parent_activity
+ * @param node $content_node
  */
 function pi_activity_add_activity_node_for_activity_content_node($parent_activity, $content_node)
 {
-  
+
   //This is the new activity node to be created
   $new_activity_node = new stdClass();
   //copy over current except for the activity_id
-  
-  
+
+
   $new_activity_node->title = $content_node->title;
   $new_activity_node->body = $parent_activity->description;
   $new_activity_node->activity_type = $parent_activity->activity_type;
@@ -92,7 +68,7 @@ function pi_activity_add_activity_node_for_activity_content_node($parent_activit
   $new_activity_node->audience = $parent_activity->audience;
   $new_activity_node->actor = $parent_activity->actor;
   $new_activity_node->weight = $parent_activity->weight;
-  
+
   node_save($new_activity_node);
 }
 
@@ -105,216 +81,221 @@ function pi_activity_add_activity_node_for_activity_content_node($parent_activit
  * @param unknown_type $activity_title
  * @param unknown_type $details
  */
-function add_activity_when_activity_node_created($node, $node_function, $visible_status, $activity_title, $details, $activity_node = NULL)
+function pi_activity_add_new_activity_for_activity_content_node($node, $node_function, $visible_status, $activity_title, $activity)
 {
-  //pi_debug_message("add_activity_when_activity_node_created called for " . $content_node->nid . "(" . $content_node->title . ")");
-  /*global $user;
-   $uid = $user->uid;
-  */
+  //pi_debug_message("pi_activity_add_activity_when_activity_content_node_created called for " . $content_node->nid . "(" . $content_node->title . ")");
   //load the defined "activity"
-  if( $activity_node !== NULL && is_object($activity_node) )
+  if(!pi_check_is_node_of_type($activity, 'pi_activity'))
   {
-    //$loaded_activity = $activity_node;
-    $loaded_activity = node_load($details->activity_id);
-    $loaded_activity->activity_type = $activity_node->activity_type;
-    $loaded_activity->node_type = $activity_node->node_type;
+    //pi_debug_message("pi_activity_add_activity_when_activity_content_node_created called with no activity - getting activity from details: " . $details->activity_id);
+    $activity = node_load(pi_activity_get_activity_nid_for_content_nid($node->nid));
+  }
+  if(pi_check_is_node_of_type($activity, 'pi_activity'))
+  {
+    pi_activity_add_activity_node_for_activity_content_node($activity, $node);
+    // Then set the status...
+    $new_activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
+    if(pi_check_is_node_of_type($activity))
+    {
+      pi_activity_set_status($nid, $actor);
+    }
+
   }
   else
   {
-    //pi_debug_message("add_activity_when_activity_node_created called with no activity - getting activity from details: " . $details->activity_id);
-    $loaded_activity = node_load($details->activity_id);
+    drupal_set_message(t("Can't identify activity for created node @nid, of type @type", array('@nid' => $node->nid, '@type'=>$node->type)), 'error');
   }
-  $activity_node = $loaded_activity;
-  pi_activity_add_activity_node_for_activity_content_node($activity_node, $node);
   /*
    //copy over current except for the activity_id
-	$activity_array = new stdClass();
-	$activity_array->title = check_plain($activity_title);
-	$activity_array->body = $loaded_activity->description;
-	$activity_array->activity_type = $loaded_activity->activity_type;
-	$activity_array->node_type = $loaded_activity->node_type;
-	$activity_array->parameters = $loaded_activity->parameters;
-	$activity_array->destination = $loaded_activity->destination;
-	$activity_array->audience = $loaded_activity->audience;
-	$activity_array->actor = $loaded_activity->actor;
-	$activity_array->weight = $loaded_activity->weight;
-	*/
-	/*
-	 * @todo The following code changes will cause problems with the authoring interface!
-	 * This part of the code uses the node id as activity id.
-	 * Authoring interface generates activity id via max(activity_id) + 1. This generated
-	 * activity_id will sooner or later conflict with a node id !
-	 *
-	 * Either change this code back to the original version, or change authoring interface.
-	 */
-	//$activity_array["nid"] = $node->nid;
-	//$new_activity_id = $node->nid;
+  $activity_array = new stdClass();
+  $activity_array->title = check_plain($activity_title);
+  $activity_array->body = $loaded_activity->description;
+  $activity_array->activity_type = $loaded_activity->activity_type;
+  $activity_array->node_type = $loaded_activity->node_type;
+  $activity_array->parameters = $loaded_activity->parameters;
+  $activity_array->destination = $loaded_activity->destination;
+  $activity_array->audience = $loaded_activity->audience;
+  $activity_array->actor = $loaded_activity->actor;
+  $activity_array->weight = $loaded_activity->weight;
+  */
+  /*
+   * @todo The following code changes will cause problems with the authoring interface!
+  * This part of the code uses the node id as activity id.
+  * Authoring interface generates activity id via max(activity_id) + 1. This generated
+  * activity_id will sooner or later conflict with a node id !
+  *
+  * Either change this code back to the original version, or change authoring interface.
+  */
+  //$activity_array["nid"] = $node->nid;
+  //$new_activity_id = $node->nid;
 
-	//create the new activity
-	//node_save($activity_array);
-	
-	//$new_activity_id = $activity_array->nid;
-/*	$new_activity_id = $node->nid;
+  //create the new activity
+  //node_save($activity_array);
 
-	//****new details object
-	$new_details = new stdClass;
-	$new_details->inquiry_id = $details->inquiry_id;
-	$new_details->stage_id = $details->stage_id;
-	$new_details->phase_id = $details->phase_id;
-	$new_details->activity_id = $new_activity_id;
+  //$new_activity_id = $activity_array->nid;
+  /*	$new_activity_id = $node->nid;
 
-	//set status for the new activity
-	//$activity_status = load_activity_status($details->activity_id, $user->uid);
-	$activity_status = pi_activity_load_status($details->activity_id, $user->uid);
-	
-	$new_activity_status = new stdClass;
-	$new_activity_status->inquiry_id = $details->inquiry_id;
-	$new_activity_status->activity_id = $new_activity_id;
-	$new_activity_status->uid = $activity_status['uid'];
-	$new_activity_status->gid = $activity_status['gid'];
-	$new_activity_status->node_function = $activity_status['node_function'];
-	$new_activity_status->visible_status = $activity_status['visible_status'];
+  //****new details object
+  $new_details = new stdClass;
+  $new_details->inquiry_id = $details->inquiry_id;
+  $new_details->stage_id = $details->stage_id;
+  $new_details->phase_id = $details->phase_id;
+  $new_details->activity_id = $new_activity_id;
 
-	save_activity_status($new_activity_status);*/
-/*
-	//set actor for the new activity
-	$activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
-	$new_activity_actor["inquiry_id"] = $details->inquiry_id;
-	$new_activity_actor["activity_id"] = $new_activity_id;
+  //set status for the new activity
+  //$activity_status = load_activity_status($details->activity_id, $user->uid);
+  $activity_status = pi_activity_load_status($details->activity_id, $user->uid);
 
-	///for audience smaller than actor in add activity
-	$actor_gid = $activity_actor[0]["gid"];
-	$actor_uid = $activity_actor[0]["uid"];
-	$actor_group_type = pi_get_type_of_group($actor_gid);
-	$users_group = get_group_of_type($uid, $loaded_activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
-	$audience_gid = $users_group;
-	$audience_group_type = $activity->audience;
+  $new_activity_status = new stdClass;
+  $new_activity_status->inquiry_id = $details->inquiry_id;
+  $new_activity_status->activity_id = $new_activity_id;
+  $new_activity_status->uid = $activity_status['uid'];
+  $new_activity_status->gid = $activity_status['gid'];
+  $new_activity_status->node_function = $activity_status['node_function'];
+  $new_activity_status->visible_status = $activity_status['visible_status'];
 
-	if( ($actor_group_type == 'group' && $audience_group_type == 'individual') ||
-	($actor_group_type == 'class' && $audience_group_type != 'class' && $audience_group_type != 'multiclass') )
-	{
-		$new_activity_actor["uid"] = $uid;
-		$new_activity_actor["gid"] = $audience_gid;
-	}
-	else
-	{
-		$new_activity_actor["uid"] = $activity_actor[0]["uid"];
-		$new_activity_actor["gid"] = $activity_actor[0]["gid"];
-	}
+  pi_activity_set_status($new_activity_status['activity_id'], $new_status['gid'], $new_activity_status['visible_status'], $new_activity_status['node_function']);*/
+  /*
+   //set actor for the new activity
+  $activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
+  $new_activity_actor["inquiry_id"] = $details->inquiry_id;
+  $new_activity_actor["activity_id"] = $new_activity_id;
 
-	insert_activity_actor($new_activity_actor);
-*/
-	//set the stage phase activity
-/*	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
+  ///for audience smaller than actor in add activity
+  $actor_gid = $activity_actor[0]["gid"];
+  $actor_uid = $activity_actor[0]["uid"];
+  $actor_group_type = pi_get_type_of_group($actor_gid);
+  $users_group = get_group_of_type($uid, $loaded_activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
+  $audience_gid = $users_group;
+  $audience_group_type = $activity->audience;
 
-	if(!$psp_id)
-	{
-		$psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
-	}
+  if( ($actor_group_type == 'group' && $audience_group_type == 'individual') ||
+  ($actor_group_type == 'class' && $audience_group_type != 'class' && $audience_group_type != 'multiclass') )
+  {
+  $new_activity_actor["uid"] = $uid;
+  $new_activity_actor["gid"] = $audience_gid;
+  }
+  else
+  {
+  $new_activity_actor["uid"] = $activity_actor[0]["uid"];
+  $new_activity_actor["gid"] = $activity_actor[0]["gid"];
+  }
 
-	$query = "SELECT position FROM {pi_stage_phase_activity} WHERE psp_id = %d ORDER BY position DESC";
-	$current_pos = db_result(db_query($query, $psp_id));
-	$new_pos = $current_pos + 1;
+  insert_activity_actor($new_activity_actor);
+  */
+  //set the stage phase activity
+  /*	$psp_id = get_psp_id_for_stage_and_phase($details->stage_id, $details->phase_id);
 
-	insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
-*/
-	//set pi activity node
-/*	add_new_pi_activity_node($node, $node_function, $visible_status, $new_details);
+  if(!$psp_id)
+  {
+  $psp_id = get_psp_id_for_stage_and_phase(NULL, $details->phase_id);
+  }
 
-	//set og if necessary for new node
-	if($loaded_activity->audience != "individual")
-	{
-		$users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
-		$context['groups'] = array($users_group);
-		og_add_group_action($node, $context);
-	}*/
+  $query = "SELECT position FROM {pi_stage_phase_activity} WHERE psp_id = %d ORDER BY position DESC";
+  $current_pos = db_result(db_query($query, $psp_id));
+  $new_pos = $current_pos + 1;
+
+  insert_stage_phase_activity($psp_id, $new_activity_id, $new_pos);
+  */
+  //set pi activity node
+  /*	add_new_pi_activity_node($node, $node_function, $visible_status, $new_details);
+
+  //set og if necessary for new node
+  if($loaded_activity->audience != "individual")
+  {
+  $users_group = get_group_of_type($uid, $loaded_activity->audience, $new_details->inquiry_id, $new_details->stage_id, $new_details->phase_id, $new_details->activity_id);
+  $context['groups'] = array($users_group);
+  og_add_group_action($node, $context);
+  }*/
 }
+
+
 
 function add_new_pi_activity_node($node, $node_function, $visible_status, $details)
 {
-	global $user;
-
-	$uid = $user->uid;
-	//set the PI activity node
-	
-	//$query = "INSERT INTO {pi_activity_node} SET inquiry_id = %d, activity_id = %d, nid = %d _";
-	//db_query($query, $details->inquiry_id, $details->activity_id, $node->nid);
-
-	$query = "INSERT INTO {pi_activity_node} SET activity_id = %d, nid = %d";
-	db_query($query, $details->activity_id, $node->nid);
-	
-	$activity = node_load($details->activity_id);
-
-	//@TODO FIXME function missing!
-	//$activity_status = load_activity_status($details->activity_id, $user->uid);
-
-	//if the status was not set specifically for this user and it is an individual activity
-	if ($activity->audience == "individual")
-	{
-		if ($activity_status->uid != $uid)
-		{
-			$activity_status->uid = $uid;
-			unset($activity_status->gid);
-			unset($activity_status->pas_id);
-		}
-	}
-	//set the correct group
-	else
-	{
-		$users_group = get_group_of_type($uid, $activity->audience, $details->inquiry_id, $details->stage_id, $details->phase_id, $details->activity_id);
-		$context['groups'] = array($users_group);
-		og_add_group_action($node, $context);
-
-		if ($users_group != $activity_status->gid)
-		{
-			$activity_status->gid = $users_group;
-			unset($activity_status->pas_id);
-			unset($activity_status->uid);
-		}
-	}
-
-	$loaded_activity_actor  = load_activity_actor ($details->inquiry_id, $details->activity_id);
-	$actor_gid = $loaded_activity_actor[0]["gid"];
-	$actor_uid = $loaded_activity_actor[0]["uid"];
-	$actor_group_type = pi_get_type_of_group($actor_gid);
-
-	$audience_gid = $users_group;
-	$audience_group_type = $activity->audience;
+  pi_activity_link_activity_content($node, $node_function, $visible_status, $details->activity_id);
+}
 
 
-	//find out if the audience is wider than the actor for the activity
-	//if so, set the status for the audience to view
-	if(($audience_group_type == 'class' && $actor_group_type != 'class' && $actor_group_type != 'multiclass' ) || ($audience_group_type == 'group' && !$actor_group_type))
-	{
-		$activity_status->node_function = 'view';
-		$activity_status->visible_status = 'view';
-		save_activity_status($activity_status);
-			
-		//extend activity actor to size of audience
-		$loaded_activity_actor[0]["gid"] = $audience_gid;
-		update_activity_actor($loaded_activity_actor[0]);
-			
-		//add extra status for the original actor
-		$actor_activity_status = $activity_status;
-		unset($activity_status->pas_id);
-		$activity_status->gid = $actor_gid;
-		$activity_status->uid = $actor_uid;
-		$activity_status->node_function = $node_function;
-		$activity_status->visible_status = $visible_status;
-		save_activity_status($activity_status);
-	}
-	elseif (($actor_group_type == 'class' && $audience_group_type != 'class' && $audience_group_type != 'multiclass' ) || ($actor_group_type == 'group' && $audience_group_type == 'individual'))
-	{
-		$activity_status->node_function = $node_function;
-		$activity_status->visible_status = $visible_status;
-		save_activity_status($activity_status);
-	}
-	else
-	{
-		$activity_status->node_function = $node_function;
-		$activity_status->visible_status = $visible_status;
-		save_activity_status($activity_status);
-	}
+/**
+ * Link an activity content node to a given activity, setting the status as given, and also adding
+ * view status to wider audience group
+ *
+ * @param unknown_type $node Content node to link to an activity
+ * @param unknown_type $node_function The function (view, add, edit) that the activity will use to link to the content node
+ * @param unknown_type $visible_status The UI status to show for the activity linking to the conent node
+ * @param unknown_type $details Current details of the inquiry
+ */
+function pi_activity_link_activity_content($node, $node_function, $visible_status, $activity_nid_to_link)
+{
+  // First check the linked activity is valid
+  $activity = node_load($activity_nid_to_link);
+  if(pi_check_is_node_of_type($activity, 'pi_activity'))
+  {
+    // First of call create the link in pi_activity_node
+    $activity_node = array();
+    $activity_node['activity_id'] = $activity_nid_to_link;
+    $activity_node['nid'] = $node->nid;
+    drupal_write_record('pi_activity_node', $activity_node);
+
+    // Then set the actor group status - get and use existing actor status if it exists otherwise
+    // create one. Update is done by passing the key column name in drupal write record, or left
+    // as an empty array to do an insert
+    $actor_activity_status = pi_activity_load_status($activity_nid_to_link, $node->uid);
+    $actor_status_key = array();
+    if($actor_activity_status['gid']==$activity->actor)
+    {
+      $activity_status_node = $actor_activity_status;
+      $actor_status_key = 'pas_id';
+    }
+    else
+    {
+      $activity_status_node = array();
+    }
+
+    $activity_status_node['activity_id'] = $activity->nid;
+    $activity_status_node['gid'] = $activity->actor;
+    $activity_status_node['visible_status'] = $visible_status;
+    $activity_status_node['node_function'] = $node_function;
+    drupal_write_record('pi_activity_status', $activity_status_node, $actor_status_key);
+
+    // Set group audience to audience of the activity
+    $users_group = pi_groups_get_users_audience_groups($node->uid, $activity->audience, $activity->actor);
+    $context['groups'] = $users_group;
+    og_add_group_action($node, $context);
+
+    if(!in_array($activity_status->gid, $users_group))
+    {
+      $activity_status->gid = $users_group;
+      unset($activity_status->pas_id);
+    }
+
+    //set the status for the audience to view
+    $audience_group_nids = pi_groups_get_audience_groups($actor_gid, $audience_group_type);
+    foreach($audience_group_nids as $audience_group_nid)
+    {
+      pi_activity_set_status($activity_node->nid, $audience_group_nid, 'view', 'view');
+    }
+
+    //extend activity actor to size of audience
+    // @TODO - change the activity view to get activities with a status set for the user rather than by actor
+    if(count($audience_group_nids)>0)
+    {
+      $activity->actor = $audience_gid[0];
+      node_save($activity);
+    }
+     
+    //add extra status for the original actor
+    $actor_groups =  pi_groups_get_users_actor_groups($node->uid, $activity->audience, $activity->actor);
+    foreach($actor_groups as $group_nid)
+    {
+      pi_activity_set_status($activity_nid_to_link, $group_nid, $node_function, $visible_status);
+    }
+  }
+  else
+  {
+    drupal_set_message(t('Trying to link an activity content to a node that does not exist or that is not a pi_activity (nid @nid).', array('@nid'=>$activity_nid_to_link)), 'error');
+  }
 }
 
 ?>

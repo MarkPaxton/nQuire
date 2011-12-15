@@ -24,6 +24,36 @@ function pi_debug_message($var_to_dump)
 	drupal_set_message(t('<pre>@data</pre>', array('@data' => ob_get_clean()), 'status'));
 }
 
+/**
+ * Check if the given $node is a node of type given
+ * @param $possible_node
+ * @param string $desired_type
+ * @return bool true if possible node is a node of desired type false if not 
+ */
+function pi_check_is_node_of_type($possible_node, $desired_type)
+{
+  $check = false;
+  if(is_object($possible_node))
+  {
+    if($possible_node->type==$desired_type)
+    {
+      $check= true;
+    }
+  }
+  return $check;
+}
+
+/**
+ * Check if a node exists and is of the given type
+ * @param uint $possible_nid
+ * @param string $desired_type
+ * @return bool true if possible node exists and is a node of desired type false if not 
+ */
+function pi_check_node_exists_and_is_of_type($possible_nid, $desired_type)
+{
+  return pi_check_is_node_of_type(node_load($possible_nid));
+}
+
 
 /**
  * Convert a result constant from drupal_write_record to a string for debug purposes
@@ -400,6 +430,32 @@ function pi_util_get_names_from_nids($nids)
 		}
 	}
 	return $return_data;
+}
+
+
+
+/**
+ * This function updates the title of the node in the node and node_revision table
+ * @param $node
+ * @param $title 
+ */
+function pi_util_set_node_title($node, $title=NULL)
+{
+	if ($title === NULL)
+	{
+		$title = $node->body;
+	}
+	//get activity title from node body
+	$length = 250;
+	if(strlen($title) > $length)
+	{
+		$short_body = substr(check_plain($title), 0, $length);
+		$last_space = strrpos($short_body, " ");
+		$short_body = substr($short_body, 0, $last_space);
+		$title = $short_body."...";
+	}
+    $node->title = $title;
+    node_save($node);
 }
 
 
