@@ -131,8 +131,8 @@ function pi_theme()
 		'pi_util_form_elements_float' => array(
 			'arguments' => array('form', 'form_state'),
 			'file' => 'pi.util.themes.inc'
-			)
-			);
+	)
+	);
 }
 
 function pi_nquire_admin() {
@@ -193,7 +193,7 @@ function get_inquiry_details_from_current_path() {
 	$result->inquiry_id = NULL;
 	$result->activity_id = NULL;
 	$result->stage_id = NULL;
-	
+
 	switch( arg(0) )
 	{
 		case'home':
@@ -250,8 +250,8 @@ function get_inquiry_details_from_current_path() {
 				$result->activity_id = $node->nid;
 				$result->stage_id = $node->activity_phases_stages['stages']['stage_select'];
 			}
-			 
-			 
+
+
 		case 'export':
 			//get inquiry from the database
 			//get direct from the activity id rather than session id
@@ -262,25 +262,25 @@ function get_inquiry_details_from_current_path() {
 			/*
 			if (arg(1))
 			{
-				$result->activity_id = (int) arg(1);
-				$query = "SELECT {pi_phase}.`nid`, {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
-          "LEFT JOIN {pi_activity} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " . 
-          "WHERE {pi_activity}.`nid` = %d";
-				$db_result = db_query($query, $result->activity_id);
+			$result->activity_id = (int) arg(1);
+			$query = "SELECT {pi_phase}.`nid`, {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
+			"LEFT JOIN {pi_activity} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
+			"WHERE {pi_activity}.`nid` = %d";
+			$db_result = db_query($query, $result->activity_id);
 
-				$row = db_fetch_array($db_result);
-				if($row)
-				{
-					$result->phase_id = $row['nid'];
-					$result->inquiry_id = $row['inquiry_nid'];
-				}
+			$row = db_fetch_array($db_result);
+			if($row)
+			{
+			$result->phase_id = $row['nid'];
+			$result->inquiry_id = $row['inquiry_nid'];
+			}
 			}
 			*/
 			if( is_numeric( arg(1) ) ) {
 
 				$node = node_load( arg(1) );
 				$phase = node_load( $node->phase_nid );
-				
+
 				$result->phase_id = $node->phase_nid;
 				$result->inquiry_id = $phase->inquiry_nid;
 				$result->activity_id = $node->nid;
@@ -291,7 +291,10 @@ function get_inquiry_details_from_current_path() {
 			$result->stage_id = $stage->stage_id;
 
 			break;
-		default;
+		default:
+			$result=null;
+		break;
+
 	}
 	return $result;
 }
@@ -587,7 +590,7 @@ function pi_check_teacher_flag_on_activity($activity_id) {
 		if($activity->type == "pi_activity")
 		{
 			$group = node_load($activity->actor);
-			
+				
 			if($group)
 			{
 				//@TODO FIX ME Hard coded node types are not a real clever idea !
@@ -618,7 +621,7 @@ function pi_check_teacher_flag_on_activity($activity_id) {
 	{
 		//drupal_set_message(t("Trying to check teacher status of activity %activity_id, but this activity does not exist.", array("%activity_id" => $activity_id)), 'warning');
 	}
-	
+
 	return $is_teacher_activity;
 }
 
@@ -679,27 +682,27 @@ function check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity
 	return pi_check_teacher_flag_on_activity($activity_id);
 	/*
 	 $query = "SELECT {pi_activity}.actor, {pi_activity_actor}.uid FROM {pi_activity_actor} "
-	 . "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-	 . "WHERE {pi_activity_actor}.inquiry_id = %d "
-	 . "AND {pi_activity_actor}.activity_id = %d "
-	 . "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
-	 $result = db_fetch_object(db_query($query, $inquiry_id, $activity_id, $uid, $uid));
-	 if($result->gid)
-	 {
-		$gid_node = node_load($result->gid);
-		if ($gid_node->type == "teacher_group")
-		{
-		return $result->gid;
-		}
-		else
-		{
-		return 0;
-		}
-		}
-		elseif ($result->uid)
-		{
-		return 0;
-		}*/
+	. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
+	. "WHERE {pi_activity_actor}.inquiry_id = %d "
+	. "AND {pi_activity_actor}.activity_id = %d "
+	. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid = %d)";
+	$result = db_fetch_object(db_query($query, $inquiry_id, $activity_id, $uid, $uid));
+	if($result->gid)
+	{
+	$gid_node = node_load($result->gid);
+	if ($gid_node->type == "teacher_group")
+	{
+	return $result->gid;
+	}
+	else
+	{
+	return 0;
+	}
+	}
+	elseif ($result->uid)
+	{
+	return 0;
+	}*/
 }
 
 function insert_stage_phase_activity($psp_id, $activity_id, $position) {
@@ -956,20 +959,20 @@ function get_psp_id_for_stage_and_phase($stage_id, $phase_id) {
  */
 /*
  function get_phases_of_stage($inquiry_id, $stage_id) {
- $query = "SELECT pi_stage_phase.phase_id FROM pi_stage_phase ";
- $query .= "LEFT JOIN pi_phase ON pi_phase.nid = pi_stage_phase.phase_id ";
- $query .= "WHERE pi_phase.inquiry_nid = '" . $inquiry_id ."' ";
- $query .= "AND pi_stage_phase.stage_id = '" . $stage_id . "'";
+$query = "SELECT pi_stage_phase.phase_id FROM pi_stage_phase ";
+$query .= "LEFT JOIN pi_phase ON pi_phase.nid = pi_stage_phase.phase_id ";
+$query .= "WHERE pi_phase.inquiry_nid = '" . $inquiry_id ."' ";
+$query .= "AND pi_stage_phase.stage_id = '" . $stage_id . "'";
 
- $result = db_query($query);
- $phase_nids = array();
- while($row=db_fetch_array($result))
- {
- $phase_nids[] = $row['phase_id'];
- }
- return $phase_nids;
- }
- */
+$result = db_query($query);
+$phase_nids = array();
+while($row=db_fetch_array($result))
+{
+$phase_nids[] = $row['phase_id'];
+}
+return $phase_nids;
+}
+*/
 
 /**
  * Returns array containing stage_id list.
@@ -977,20 +980,20 @@ function get_psp_id_for_stage_and_phase($stage_id, $phase_id) {
  */
 /*
  function get_stages_of_phase($inquiry_id, $phase_id) {
- $query = "SELECT pi_stage_phase.stage_id FROM pi_stage_phase ";
- $query .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_stage_phase.stage_id ";
- $query .= "WHERE pi_phase.inquiry_nid = '" . $inquiry_id ."' ";
- $query .= "AND pi_stage_phase.phase_id = '" . $phase_id . "'";
+$query = "SELECT pi_stage_phase.stage_id FROM pi_stage_phase ";
+$query .= "LEFT JOIN pi_stage ON pi_stage.stage_id = pi_stage_phase.stage_id ";
+$query .= "WHERE pi_phase.inquiry_nid = '" . $inquiry_id ."' ";
+$query .= "AND pi_stage_phase.phase_id = '" . $phase_id . "'";
 
- $result = db_query($query);
- $phase_nids = array();
- while($row=db_fetch_array($result))
- {
- $stage_nids[] = $row['stage_nid'];
- }
- return $stage_nids;
- }
- */
+$result = db_query($query);
+$phase_nids = array();
+while($row=db_fetch_array($result))
+{
+$stage_nids[] = $row['stage_nid'];
+}
+return $stage_nids;
+}
+*/
 
 /**
  * By previous we mean the started activity with the largest postion value.
@@ -1157,13 +1160,13 @@ function get_selected_measures_data_for_inquiry_and_user ($inquiry_id, $selected
 
 /*
  * $query = "SELECT pi_selected_measures.nid FROM pi_selected_measures
- * LEFT JOIN node_access ON node_access.nid = pi_selected_measures.nid
- * LEFT JOIN node ON node.nid = pi_selected_measures.nid
- * LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_selected_measures.nid
- * LEFT JOIN og_uid ON node_access.gid = og_uid.nid
- * WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "')
- * AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
- */
+* LEFT JOIN node_access ON node_access.nid = pi_selected_measures.nid
+* LEFT JOIN node ON node.nid = pi_selected_measures.nid
+* LEFT JOIN pi_activity_node ON pi_activity_node.nid =  pi_selected_measures.nid
+* LEFT JOIN og_uid ON node_access.gid = og_uid.nid
+* WHERE (og_uid.uid = '" . $uid . "' OR node.uid = '" . $uid . "')
+* AND pi_activity_node.inquiry_id = '" . $inquiry_id . "' ";
+*/
 
 function get_data_for_inquiry_measure_and_user ($inquiry_id, $measure_id, $uid) {
 
