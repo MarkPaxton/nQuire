@@ -3,27 +3,6 @@
  * @file nQuire general utility functions
  */
 
-
-
-/**
- * This is a debug function that prints a given variable to drupal message area
- * it uses output buffers (ob_start, ob_get_clean) and var_dump
- * @param $var_to_dump any variable
- */
-function pi_debug_message($var_to_dump)
-{
-	ob_start();
-	if(is_string($var_to_dump))
-	{
-	  echo($var_to_dump);
-	}
-	else 
-	{
-      var_dump($var_to_dump);
-	}
-	drupal_set_message(t('<pre>@data</pre>', array('@data' => ob_get_clean()), 'status'));
-}
-
 /**
  * Check if the given $node is a node of type given
  * @param $possible_node
@@ -51,7 +30,7 @@ function pi_check_is_node_of_type($possible_node, $desired_type)
  */
 function pi_check_node_exists_and_is_of_type($possible_nid, $desired_type)
 {
-  return pi_check_is_node_of_type(node_load($possible_nid));
+  return (is_numeric($possible_nid) ? pi_check_is_node_of_type(node_load($possible_nid), $desired_type) : false);
 }
 
 
