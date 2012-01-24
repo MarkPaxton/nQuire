@@ -53,7 +53,8 @@ function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
     "WHERE {pi_activity_node}.`activity_id` = %d AND {node}.`uid` = %d " .
     "ORDER BY {pi_activity_node}.`nid` DESC";
 
-  //    pi_debug_message(sprintf(str_replace(array("{", "}"), "", $query), $activity_id, $uid));
+  pi_debug_message(sprintf(str_replace(array("{", "}"), "", $query), $activity_id, $uid));
+  
   $result = db_query($query, $activity_id, $uid);
   $nids_returned = array();
   while($nid_result = db_fetch_object($result))

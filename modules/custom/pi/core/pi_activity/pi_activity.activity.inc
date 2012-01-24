@@ -17,7 +17,6 @@
  */
 function pi_activity_content_view($activity, $arg_node_function)
 {
-	pi_debug_message("point 1:  " . $arg_node_function);
 	global $user;
 	$activity_inquiry_id = pi_activity_get_inquiry_nid($activity->nid);
 	$output = '';
@@ -41,7 +40,6 @@ function pi_activity_content_view($activity, $arg_node_function)
 			case 'view':
 				//get nid
 				$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
-				pi_debug_message(($nid==null ? "null" : $nid) . " " . $user->uid );
 				if($nid!=NULL)
 				{
 					$loaded_node = node_load($nid);
@@ -61,17 +59,13 @@ function pi_activity_content_view($activity, $arg_node_function)
 				}
 				else
 				{
-					pi_debug_message($nid. " " . $user->uid );
-					$output .= t( 'Please use the "Edit" button to add content.' );
 					//drupal_set_message(t("Can't find the content this activity."), 'error');
-
-					/*drupal_set_message(t('Please use the "Edit" button to add content.'), 'info' );
 
 					$activity_link = 'activity/' . $activity->nid . '/edit';
 					$destination = drupal_get_destination();
 					unset($_REQUEST['destination']);
 					unset($_GET['destination']);
-					drupal_goto($activity_link, 'destination=activity/' . $activity->nid . '/edit');*/
+					drupal_goto($activity_link, 'destination=activity/' . $activity->nid . '/edit');
 				}
 				break;
 			case 'add':
@@ -85,8 +79,7 @@ function pi_activity_content_view($activity, $arg_node_function)
 				// 3) If an "Add x" activity of the correct node type exists, then the add function is available to be
 				//		called, so forward to that page using drupal_goto().
 				$node_function = pi_activity_get_node_function($activity->nid, $user->uid);
-				pi_debug_message($node_function);
-				/*if($node_function == 'add')
+				if($node_function == 'add')
 				{
 					// Normal add activity
 					$node_type = $activity->node_type;
@@ -111,13 +104,12 @@ function pi_activity_content_view($activity, $arg_node_function)
 						return '';
 					}
 
-				}*/
+				}
 				break;
 			case 'edit':
-				pi_debug_message("edit v");
-				
-				// Edit existing content or return not found if the nid isn't valid
+				// Edit existing content or create new
 				$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
+				
 				if(!function_exists("node_page_edit"))
 				{
 					include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
@@ -132,14 +124,7 @@ function pi_activity_content_view($activity, $arg_node_function)
 						'type' => $activity->node_type, 
 						'language' => ''
 					);
-					pi_debug_message($loaded_node);
-					if(!function_exists("node_page_edit"))
-					{
-						include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-					}
-					pi_debug_message($activity->node_type);
 					$output .= node_add($activity->node_type);
-					//$output .= node_page_edit($loaded_node);
 				}
 				else
 				{

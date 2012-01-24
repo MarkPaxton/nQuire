@@ -256,6 +256,7 @@ function pi_activity_link_activity_content($node, $node_function, $visible_statu
     // Set group audience to audience of the activity
     $users_group = pi_groups_get_users_audience_groups($node->uid, $activity->audience, $activity->actor);
     $context['groups'] = $users_group;
+    //pi_debug_message($context['groups']);
     og_add_group_action($node, $context);
 
     if(!in_array($activity_status->gid, $users_group))
