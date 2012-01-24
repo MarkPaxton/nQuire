@@ -211,12 +211,6 @@ function pi_activity_add_new_activity_for_activity_content_node($node, $node_fun
 
 
 
-function add_new_pi_activity_node($node, $node_function, $visible_status, $details)
-{
-  pi_activity_link_activity_content($node, $node_function, $visible_status, $details->activity_id);
-}
-
-
 /**
  * Link an activity content node to a given activity, setting the status as given, and also adding
  * view status to wider audience group
@@ -271,7 +265,7 @@ function pi_activity_link_activity_content($node, $node_function, $visible_statu
     }
 
     //set the status for the audience to view
-    $audience_group_nids = pi_groups_get_audience_groups($actor_gid, $audience_group_type);
+    $audience_group_nids = pi_groups_get_activity_audience($actor_gid, $audience_group_type);
     foreach($audience_group_nids as $audience_group_nid)
     {
       pi_activity_set_status($activity_node->nid, $audience_group_nid, 'view', 'view');

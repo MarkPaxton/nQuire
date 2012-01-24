@@ -42,6 +42,7 @@ function pi_activity_get_sorted_node_type($node_type)
  * Get the activity content node id for an activity and user
  * @param $activity_id
  * @param $uid
+ * @return NULL or uint nid
  */
 function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
   $nid_to_return = null;
@@ -98,46 +99,49 @@ function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
   }
   return $nid_to_return;
 }
-
-
+	
 /**
- * Returns the phase id.
- * Assumes 1-1 mapping of phases to activities
- * If more than one returns the one with the highest unique key in pi_stage_phase
+ * Returns the phase nid.
+ * @param uint $activity_nid
+ * @return uint nid of phase or NULL
  */
-function get_phase_id_for_activity_id($activity_nid) {
-  $activity = node_load($activity_nid);
+function pi_activity_get_phase_nid($activity_nid)
+	{
   $return_value = NULL;
-  if($activity != false)
+  $activity = node_load($activity_nid);
+  if(pi_check_is_node_of_type($activity, 'pi_activity'))
   {
-    if($activity->type = 'pi_activity')
-    {
       $return_value = $activity->phase_nid;
-    }
-    else
-    {
-      drupal_set_message(t("Can't get phase nid for node !nid, as it is not a pi_activity node",
-      array('!nid'=>$activity_nid)), 'error');
-    }
+      //Check this is a valid phase...
+      if(!pi_check_node_exists_and_is_of_type($return_value, 'pi_phase'))
+      {
+      	drupal_set_message(t("Can't get phase for activity !nid as it does not exist, or is not a valid phase.",
+      		array('!nid'=>$activity_nid)), 'error');
+      }
   }
   else
   {
-    drupal_set_message(t("Can't get phase nid for node !nid as it does not exist.",
-    array('!nid'=>$activity_nid)), 'error');
+  	drupal_set_message(t("Can't get phase nid for node !nid, as it is not a valid pi_activity node",
+  	array('!nid'=>$activity_nid)), 'error');
   }
   return $return_value;
 }
 
 /**
- * Returns the inquiry id.
- * Assumes 1-1 mapping of activities to phases
- */
-function get_inquiry_id_for_activity_id($activity_id) {
-  $phase_id = get_phase_id_for_activity_id($activity_id);
-  $phase = node_load($phase_id);
-  $inquiry_id = $phase->inquiry_nid;
-  return $inquiry_id;
+* Returns the inquiry id.
+* Assumes 1-1 mapping of activities to phases
+* @param uint nid for an activity.
+*/
+function pi_activity_get_inquiry_nid($activity_id)
+{
+	$phase_id = pi_activity_get_phase_nid($activity_id);
+	$phase = node_load($phase_id);
+	$inquiry_id = $phase->inquiry_nid;
+	return $inquiry_id;
 }
+
+
+
 
 /**
  * Returns an array of activity_ids of the specified activity_type
@@ -188,9 +192,12 @@ function pi_activity_get_activity_nid_for_content_nid($content_nid)
   $activity_nid = null;
   $query = "SELECT `activity_id` FROM {pi_activity_node} WHERE `nid` = %d";
   $result = db_fetch_object(db_query($query, $content_nid));
-  if(isset($result->activity_id))
+  if($result != false)
   {
-    $activity_nid = $result->activity_id;
+  	if(isset($result->activity_id))
+  	{
+    	$activity_nid = $result->activity_id;
+  	}
   }
   return $activity_nid;
 }

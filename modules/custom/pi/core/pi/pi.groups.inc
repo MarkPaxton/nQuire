@@ -174,6 +174,10 @@ function pi_group_get_name_list($og_id){
 function pi_get_type_of_group($gid) {
   $query = "SELECT type FROM {pi_group_type} WHERE gid = %d ORDER BY pgt_id ASC";
   $result = db_result(db_query($query, $gid));
+  if($result===false)
+  {
+  	$result == NULL;
+  }
   return $result;
 }
 
@@ -221,7 +225,98 @@ function get_group_of_type($uid, $group_type, $inquiry_id, $stage_id = NULL, $ph
   return $result;
 }
 
+/**
+ * Get all the actor groups for the given actor/audience combination
+ * If you need actor group information for a particular user see pi_groups_get_users_actor_groups()
+ * @param uint $actor_group Activity actor gid
+ * @param string $audience_group_type individual, group, class or multiclass
+ * @return array uint group id for the actor groups 
+ */
+function pi_groups_get_activity_actors($actor_group, $audience_group_type)
+{
+	$return_groups = array();
+	$actor_group_type = pi_get_type_of_group($actor_group);
+	switch($audience_group_type) 
+	{
+		case 'individual':
+			break;
+		case 'multiclass':
+			$return_groups[] = $actor_group;
+			break;
+		case 'class':
+			if (($actor_group_type=='multiclass') || ($actor_group_type=='group') )
+			{
+				// The user does the activity in their class/group and shares with multiclass
+				// (as does other classes/groups in multiclass)
+				$return_groups = pi_groups_get_associated_groups($actor_group, $audience_group_type);
+			}
+			if ($actor_group_type=='class')
+			{
+				$return_groups[] = $actor_group;
+			}
+			break;
+		case 'group':
+			if (($actor_group_type=='multiclass') || ($actor_group_type=='class'))
+			{
+				// The user does the activity in their /group and shares with multiclass or class
+				// (as does other classes/groups in multiclass)
+				$return_groups = pi_groups_get_associated_groups($actor_group, $audience_group_type);
+			}
+			if ($actor_group_type=='group')
+			{
+				$return_groups[] = $actor_group;
+			}
+			break;
+	}
+	return $return_groups;
+}
 
+
+/**
+ * return an array of the audience groups for the given type and actor
+ * @param unknown_type $actor_group
+ * @param unknown_type $audience_group_type
+ * @return uint[]
+ */
+function pi_groups_get_activity_audience($actor_group, $audience_group_type)
+{
+	$return_groups = array();
+	$actor_group_type = pi_get_type_of_group($actor_group);
+	switch($audience_group_type)
+	{
+		case 'individual':
+			break;
+		case 'multiclass':
+			// Result shared into multiclass of user
+			$return_groups[] =  pi_groups_get_associated_groups($audience_group_type, $actor_group);
+			break;
+		case 'class':
+			if ( ($actor_group_type=='group') || ($actor_group_type=='class') )
+			{
+				// Result shared in class of user
+				$return_groups = pi_groups_get_associated_groups($audience_group_type, $actor_group);
+			}
+			if ($actor_group_type=='multiclass')
+			{
+				//Result shared only by class of user in multiclass
+				$return_groups[] = $actor_group;
+			}
+			break;
+		case 'group':
+			// Result shared in the group of user only
+			$return_groups = pi_groups_get_associated_groups($audience_group_type, $actor_group);
+			break;
+	}
+	return $return_groups;
+}
+
+/**
+ * Get the the actor group for the given user, actor group for the activity and audience group type
+ * @param uiint $uid User
+ * @param uint $actor_group Activity actor gid
+ * @param string $audience_group_type individual, group, class or multiclass
+ * @return array uint group id for the actor groups
+ */
 function pi_groups_get_users_actor_groups($uid, $actor_group, $audience_group_type)
 {
   $return_groups = array();
@@ -261,7 +356,13 @@ function pi_groups_get_users_actor_groups($uid, $actor_group, $audience_group_ty
   return $return_groups;
 }
 
-
+/**
+ * Get the gids that user $uid belongs to that are audience groups of the activity.
+ * @param uint $uid
+ * @param uint $actor_group
+ * @param string $audience_group_type
+ * @return uint[]
+ */
 function pi_groups_get_users_audience_groups($uid, $actor_group, $audience_group_type)
 {
   $return_groups = array();
