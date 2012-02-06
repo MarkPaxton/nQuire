@@ -6,8 +6,8 @@
 
 /**
  * Produces the view of the activities, etc within a particular phase in an inquiry
- * @param $phase A node of type pi_phase
- * @return sting HTML output of the phase
+ * @param node $phase A node of type pi_phase
+ * @return String HTML output of the phase
  */
 function pi_inquiry_phase_view($phase)
 {

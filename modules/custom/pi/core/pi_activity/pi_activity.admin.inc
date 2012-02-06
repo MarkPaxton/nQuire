@@ -12,14 +12,14 @@
  * @param uint $activity_id The id of the pi_activity to work with
  * @param $arg_node_function The function to perform on the activity
  */
-function pi_activity_content($activity) {
+function pi_activity_content($activity)
+{
 	global $user;
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
 
 	$output = '';
 	drupal_set_title(t('Content for ' . $activity->title));
-	$content_nids = pi_activity_get_activity_content_nids($activity->nid, $details->inquiry_id);
+
+	$content_nids = pi_activity_get_activity_content_nids($activity->nid);
 	$title_row = array(t('Title'), t('Author')/*, t('Groups')*/);
 	$rows=array();
 	/*	ob_start();
@@ -35,15 +35,8 @@ function pi_activity_content($activity) {
 			$node = node_load($nid);
 			if(isset($node))
 			{
-				//	$node_groups = pi_activity_get_activity_content_group_access($node->nid);
 				$row[] = l($node->title, 'activity/' . $activity->nid . '/admin/view/' . $node->nid);
 				$row[] = user_load($node->uid)->name;
-				/*	$group_row = array();
-				 foreach($node_groups as $group)
-				 {
-				 $group_row[] = check_plain($group->title);
-				 }
-				 $row[] = implode(', ', $group_row);*/
 			}
 			else
 			{
@@ -97,18 +90,5 @@ function theme_pi_activity_admin_view_node($activity, $node_view_page)
 	return $output;
 }
 
-function pi_activity_get_activity_content_group_access($activity_content_nid)
-{
-	$query = "SELECT * FROM {node_access} "
-	. "LEFT JOIN {og} ON {node_access}.`gid` = {og}.`nid` "
-	. "LEFT JOIN {node} ON {node_access}.`nid` = {node}.`nid` "
-	. "WHERE {node_access}.`nid` = %d";
-	$result = db_query($query, $activity_content_nid);
-	$data = array();
-	while($row=db_fetch_object($result))
-	{
-		$data[] = $row;
-	}
-	return $data;
-}
+
 ?>
