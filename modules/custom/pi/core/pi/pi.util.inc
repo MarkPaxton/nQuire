@@ -438,5 +438,69 @@ function pi_util_set_node_title($node, $title=NULL)
 }
 
 
+/**
+ * Return an array of the drupal path elements in parts or null if there's a problem
+ */
+function pi_util_get_drupal_path_parts()
+{
+	$drupal_path_parts = NULL; 
+	//Strip the request url of the preceeding drupal stuff base_url and ?q=/
+	// so that it's possible to work out whether the page request was from /inquiry/%inquiry/phase/add
+	// or from /node/%node/edit
+	$drupal_path = str_replace(base_path(), '', request_uri());
+	$drupal_path = str_replace('?q=', '', $drupal_path);
+	// Split the string into parts
+	$drupal_path_parts = explode('/', $drupal_path);
+	return $drupal_path_parts;
+}
+
+
+/**
+ * 
+ * See if a url matches a given pattern, in the array specified. Each element in the array is compared with path parts
+ * and if the element is NULL then it's considered a wildcard.
+ * e.g. array("activity", NULL, "edit", NULL) would match the path
+ * /activity/ * /edit/ *   
+ *  URL parameterts, and the drupal installation folder are ignored
+ * @param String $url
+ * @param array $matches
+ */
+function pi_util_match_url($url, $matches = array())
+{
+	// Initially set it to true since we are only looking for one mismatch
+	$return_value = true;
+	
+	// Split the string into parts 
+	$path_parts =pi_util_get_drupal_path_parts();
+	
+	//See if there's the right number of path parts...
+	if(count($path_parts)>=count($matches))
+	{
+		// Now check all the parts for vaildity... activity NUMBER edit
+		$count = 0;
+		foreach($matches as $match)
+		{
+			if($matches[$count]!=NULL)
+			{
+				if(!strcasecmp($path_parts[$count], $matches[$count])==0)
+				{
+					$return_value = false;
+				}
+			}
+			$count++;
+		}
+	}
+	return $return_value;
+}
+
+/**
+ * Return the path part with the given index (see pi_util_get_drupal_path_parts)
+ * @param uint $index
+ */
+function pi_util_get_path_element($index)
+{
+	$parts = pi_util_get_drupal_path_parts();
+	return $parts[$index];
+}
 
 ?>
