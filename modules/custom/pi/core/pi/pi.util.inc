@@ -465,7 +465,7 @@ function pi_util_get_drupal_path_parts()
  * @param String $url
  * @param array $matches
  */
-function pi_util_match_url($url, $matches = array())
+function pi_util_match_url($matches = array())
 {
 	// Initially set it to true since we are only looking for one mismatch
 	$return_value = true;
@@ -482,7 +482,7 @@ function pi_util_match_url($url, $matches = array())
 		{
 			if($matches[$count]!=NULL)
 			{
-				if(!strcasecmp($path_parts[$count], $matches[$count])==0)
+				if(!strcasecmp($path_parts[$count], $matches[$count])!=0)
 				{
 					$return_value = false;
 				}
