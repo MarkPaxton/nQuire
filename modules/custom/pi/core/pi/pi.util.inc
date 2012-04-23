@@ -495,7 +495,7 @@ function pi_util_match_url($matches = array())
 
 /**
  * Return the path part with the given index (see pi_util_get_drupal_path_parts)
- * @param uint $index
+ * @param uint $index Starting at 0
  */
 function pi_util_get_path_element($index)
 {
