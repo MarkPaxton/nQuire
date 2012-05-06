@@ -270,7 +270,7 @@ function pi_activity_form( &$node, $form_state )
       //'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
       '#prefix' => "<div style='min-height:40px;'>",
       '#suffix' => '</div>'
-      );
+  );
 
   //This uses the generic submit callback provided by the ahah_helper module here
   // Is sets $form_state['rebuild'] = TRUE.
@@ -754,7 +754,7 @@ function _pi_activity_explain_actor_and_audience($actor_gid, $audience_group_typ
             )
         );
         break;
-        	
+         
       case 'done_as_single_group_not_shared':
         $setting_explanation = t("This activity will be done as a %actor_group_type by %actor_group_type '%group_name'.",
         array(
@@ -944,21 +944,6 @@ function pi_activity_load($node)
                     '@visible_status' => $activity->visible_status),'warning')
         );
     }
-    //@todo  change this to allow selection of a list of nodes rather than one
-    // Get the related node id if set: if there is a 0 node set, then use 'none'
-    $result = db_query('SELECT * FROM {pi_activity_node} WHERE activity_id = %d ORDER BY nid ASC LIMIT 1');
-    $activity->existing_nid = 'none';
-    if($result!=FALSE)
-    {
-      $row = db_fetch_array($result);
-      if($row['nid']!=0)
-      {
-        $activity->existing_nid = $row['nid'];
-      }
-      $activity->existing_nid_pan_id = $row['pan_id'];
-    }
-
-
   }
   else
   {
@@ -975,7 +960,7 @@ function pi_activity_load($node)
 /**
  *
  * hook_insert() implementation for pi_activity node
- * @param object:node $node
+ * @param $node
  */
 function pi_activity_insert($node)
 {
@@ -1060,7 +1045,7 @@ function pi_activity_insert($node)
         'node_function' => "edit"
     );
 
-    $activity_statuses_to_add += $default_status;
+    $activity_statuses_to_add[] = $default_status;
 
     // If it is a shared activity, then make a 'view' status for the share group
     // otherwise just make the standard activity status for the activity.
@@ -1083,32 +1068,41 @@ function pi_activity_insert($node)
         // do nothing - no view status needed for any other group
         break;
       case 'done_by_group_shared_with_larger_group':
-        $audience_id = pi_groups_get_associated_groups($node->actor, $node->audience);
-        // There should only be one larger group, so if more than one is returned, there's a problem
-        // if 0 is returned then there is also a problem, but it's less bad as it means the parent hasn't
-        // been assigned, rather than it having 2 parents (that's a DB error!).
-        if(count($audience_id)==0)
+        $actor_group = node_load($node->selects['gid']);
+        $actor_group_type = null;
+        if($actor_group!=null)
         {
-          drupal_set_message(t("Haven't set activity status to share the result of this activity as no associated group is defined for the actor group."), 'warning');
+          $actor_group_type = pi_get_type_of_group($actor_group->nid);
         }
-        else
+        if($actor_group_type!=null)
         {
-          if(count($audience_id)>1)
+          $audience_ids = pi_groups_get_associated_groups($node->selects['gid'], $node->selects['audience']);
+          // There should only be one larger group, so if more than one is returned, there's a problem
+          // if 0 is returned then there is also a problem, but it's less bad as it means the parent hasn't
+          // been assigned, rather than it having 2 parents (that's a DB error!).
+          if(count($audience_ids)==0)
           {
-            $translate['@actor_group_type'] = $actor_group_type;
-            $translate['%group_name'] = $group->title;
-            $translate['@audience_group_type'] = $node->audience;
-
-            drupal_set_message(t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type however there's more than one class associated with '%group_name' - please check the group hierarchy is set up correctly.", $translate), 'warning' );
+            drupal_set_message(t("Haven't set activity status to share the result of this activity as no associated group is defined for the actor group."), 'warning');
           }
-          foreach($audience_id as $audience_nid)
+          else
           {
-            $activity_statuses_to_add[] =  array(
-                'activity_id'=>$node->nid,
-                'gid' => $audience_nid,
-                'node_function' => 'view',
-                'visible_status' => 'view'
-            );
+            if(count($audience_ids)>1)
+            {
+              $translate['@actor_group_type'] = $actor_group_type;
+              $translate['%group_name'] = $group->title;
+              $translate['@audience_group_type'] = $node->selects['audience'];
+
+              drupal_set_message(t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type however there's more than one class associated with '%group_name' - please check the group hierarchy is set up correctly.", $translate), 'warning' );
+            }
+            foreach($audience_ids as $audience_nid)
+            {
+              $activity_statuses_to_add[] =  array(
+                  'activity_id'=>$node->nid,
+                  'gid' => $audience_nid,
+                  'node_function' => 'view',
+                  'visible_status' => 'view'
+              );
+            }
           }
         }
         break;
@@ -1617,9 +1611,8 @@ function pi_activity_get_activity_content_nids($activity_id)
  * Implementation of hook_nodeapi to add specific nQuire data when nodes are changed
  *  This function sets/updates activity data when activity content nodes are created, updated or deleted
  *  though the activity system
- *
- * @param node $node
- * @param String $op
+ * @param $node
+ * @param $op
  */
 function pi_activity_nodeapi(&$node, $op)
 {
@@ -1637,7 +1630,7 @@ function pi_activity_nodeapi(&$node, $op)
         $drupal_path = str_replace(base_path(), '', request_uri());
 
         $drupal_path = str_replace('?q=', '', $drupal_path);
-        	
+         
         // Split the string into parts to get the inquiry id if it exists...
         $path_parts = explode('/', $drupal_path);
         if(strcasecmp($path_parts[0], 'activity')===0)
@@ -2211,9 +2204,9 @@ function pi_activity_load_status($activity_id, $uid)
     $return_status = pi_activity_get_user_status($activity_id, $uid);
     if(count($return_status)>1)
     {
-      drupal_set_message(t("More than one actor status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
-          array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
-              '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
+      drupal_set_message(t("More than one actor status set for activity !activity for user !uid - and no actor group status nid set, so using first entry: !status, !function.",
+          array('!activity' => $activity_id, '!uid' => $uid,
+              '!status' => $return_status[0]['visible_status'], '!function' => $return_status[0]['node_function'])), 'warning');
     }
     if(count($return_status)==0)
     {
@@ -2245,7 +2238,7 @@ function pi_activity_load_status($activity_id, $uid)
           if(count($return_status)>1)
           {
             drupal_set_message(t("More than one actor status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
-                array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
+                array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($return_status)),
                     '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
           }
           // If there's no specific actor group sed for this user, then check the default actor group
@@ -2256,7 +2249,7 @@ function pi_activity_load_status($activity_id, $uid)
           if(count($return_status)>1)
           {
             drupal_set_message(t("More than one actor status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
-                array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
+                array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($return_status)),
                     '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
           }
           if(count($return_status==0))
@@ -2274,7 +2267,7 @@ function pi_activity_load_status($activity_id, $uid)
             if(count($return_status)>1)
             {
               drupal_set_message(t("More than one audience status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
-                  array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($status_groups)),
+                  array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($return_status)),
                       '!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
             }
           }
@@ -2367,22 +2360,26 @@ function pi_activity_get_group_status($activity_nid, $actor)
 function pi_activity_set_status($activity_nid, $actor, $visible, $function)
 {
   $existing_status = pi_activity_get_status($activity_nid, $actor);
+  $update = false;
   if($existing_status!=NULL)
   {
+    $update=true;
     $status = $existing_status;
-    $key = $existing_status['pas_id'];
   }
   else
   {
     $status = array();
     $status['gid'] = $actor;
     $status['activity_id'] = $activity_nid;
-    $key = NULL;
   }
-
   $status['visible_status'] = $visible;
   $status['node_function'] = $function;
-  return drupal_write_record('pi_activity_status', $status, $key);
+  $return = null;
+  if($update)
+    $return = drupal_write_record('pi_activity_status', $status, "pas_id");
+  else
+    drupal_write_record('pi_activity_status', $status);
+  return $return;
 }
 
 
@@ -2481,7 +2478,7 @@ function pi_activity_form_node_form_alter(&$form, &$form_state)
 function pi_activity_og_access_grants_alter(&$grants, $node)
 {
   $activity_nid = NULL;
-  //First see if activity is set in the url...  
+  //First see if activity is set in the url...
   if(pi_util_match_url(array('activity', NULL, NULL)))
   {
     $activity_nid = pi_util_get_path_element(1);
@@ -2491,15 +2488,83 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
     // Is it an existing node attached to an activity?
     $activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
   }
-  pi_debug_message("activity " . $activity_nid);
-  if(activity_nid!=NULL)
+  if($activity_nid!=NULL)
   {
     if(pi_check_node_exists_and_is_of_type($activity_nid, 'pi_activity'))
     {
-      $activity = node_load($activity_nid);
-      pi_debug_message("Content for activity " . $activiy->title . " is " . $node->title);
 
-      pi_debug_message($grants);
+      // If this is activity content, then set the group permissions appropriately
+      // remove permissions for any nquire groups that aren't actor/audience and then
+      // set view/edit/delete permissions depending on actor or audience
+      $activity = node_load($activity_nid);
+      $actor_groups = pi_groups_get_activity_actors($activity->actor, $activity->audience);
+      $audience_groups = pi_groups_get_activity_audience($activity->actor, $activity->audience);
+pi_debug_message($actor_groups);
+      $count = 0;
+      $grants_found = array();
+      for($count=0;$count<count($grants);$count++)
+      {
+        if(pi_get_type_of_group($grants[$count]["gid"])!=null)
+        {
+          if(in_array($grants[$count]["gid"], $actor_groups))
+          {
+            if(!in_array($grants[$count]["gid"], $grants_found))
+            {
+              $grants_found[] = $grants[$count]["gid"];
+            }
+            pi_debug_message("Setting all grant for " . $grants[$count]["gid"]);
+            $grants[$count]["grant_view"] = 1;
+            $grants[$count]["grant_update"] = 1;
+            $grants[$count]["grant_delete"] = 1;
+          }
+          else if(in_array($grants[$count]["gid"], $audience_groups))
+          {
+            if(!in_array($grants[$count]["gid"], $grants_found))
+            {
+              $grants_found[] = $grants[$count]["gid"];
+            }
+            pi_debug_message("Setting view grant for " . $grants[$count]["gid"]);
+            
+            $grants[$count]["grant_view"] = 1;
+            $grants[$count]["grant_update"] = 0;
+            $grants[$count]["grant_delete"] = 0;
+          } 
+          else
+          {
+            //Remove un needed nQuire group permissions
+            unset($grants[$count]);
+          }
+        }
+      }
+      foreach($actor_groups as $group_gid)
+      {
+        if(!in_array($group_gid, $grants_found))
+        {
+          $grant = array();
+          $grant["realm"] = "og_subscriber";
+          $grant["gid"] = $group_gid;
+          $grant["grant_view"] = 1;
+          $grant["grant_update"] = 1;
+          $grant["grant_delete"] = 1;
+          $grant["priority"] = 0;
+          $grants[] = $grant;
+          $grants_found[] = $group_gid;
+        }
+      }
+      foreach($audience_groups as $group_gid)
+      {
+        if(!in_array($group_gid, $grants_found))
+        {
+          $grant = array();
+          $grant["realm"] = "og_subscriber";
+          $grant["gid"] = $group_gid;
+          $grant["grant_view"] = 1;
+          $grant["grant_update"] = 0;
+          $grant["grant_delete"] = 0;
+          $grant["priority"] = 0;
+          $grants[] = $grant;
+        }
+      }
     }
   }
 }

@@ -327,21 +327,6 @@ function pi_activity_get_node_function($activity_id, $uid)
 	$activity_status = pi_activity_load_status($activity_id, $uid);
 	$result = $activity_status['node_function'];
 	return $result ;
-	/*
-	 $query = "SELECT pi_activity_status.node_function ";
-	$query .= "FROM pi_activity_status ";
-	$query .= "LEFT JOIN pi_activity_actor ";
-	$query .= "ON pi_activity_actor.inquiry_id = pi_activity_status.inquiry_id ";
-	$query .= "AND pi_activity_actor.activity_id = pi_activity_status.activity_id ";
-	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-	$query .= "WHERE pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
-	$query .= "AND pi_activity_status.activity_id = '" . $activity_id . "' ";
-	$query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
-
-	$result = db_fetch_object(db_query($query));
-
-	return $result->node_function;*/
-
 }
 
 /**
@@ -354,17 +339,10 @@ function pi_activity_get_node_function($activity_id, $uid)
  */
 function pi_activity_check_node_function($activity_id, $uid, $function) {
 	$node_function = pi_activity_get_node_function($activity_id, $uid);
-	pi_debug_message("pi_activity_check_node_function: function=" . $function . " node function=" . $node_function);
 	if ($node_function == $function)
-	{
 		$result = TRUE;
-	}
 	else
-	{
 		$result = FALSE;
-		//if($activity_id==78)
-		//  $result=TRUE;
-	}
 	return $result;
 }
 

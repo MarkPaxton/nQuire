@@ -1,5 +1,4 @@
 <?php
-// $Id: node-og-group-post.tpl.php,v 1.3 2008/11/09 17:17:54 weitzman Exp $
 
 /**
  * @file node-og-group-post.tpl.php
@@ -74,8 +73,8 @@
   </div>
   
   <?php if ($node->og_groups && $page) {
-          //print '<div class="groups">'. t('Groups'). ': ';
-          //print '<div class="links">'.  $og_links['view']. '</div></div>';
+          print '<div class="groups">'. t('Groups'). ': ';
+          print '<div class="links">'.  $og_links['view']. '</div></div>';
    } ?>
 
   <?php print $links; ?>
