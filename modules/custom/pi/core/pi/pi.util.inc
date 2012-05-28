@@ -249,6 +249,10 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	$item_groups = array();
 	$item_weights = array();
 	$items = array();
+	
+	//In order to avoid error message from foreach in case $grouped_itemes is NULL
+	$grouped_items = is_array( $grouped_items ) ? $grouped_items : array();
+	
 	foreach($grouped_items as $group_name => $group)
 	{
 		if( is_array($item_ids) )
