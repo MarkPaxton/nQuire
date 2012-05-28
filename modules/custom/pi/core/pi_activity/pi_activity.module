@@ -320,19 +320,16 @@ function pi_activity_form( &$node, $form_state )
   if(is_array($node_types))
   {
     $node_type_options = array('none'=>t('Select activity type...'));
+    $pi_data_node_types = variable_get('pi_measure_filter_content_types', array());
+    
     foreach($node_types as $node_type => $name)
     {
-      //@TODO FIXME For now we only use "tested" own activities!
-      if((strpos($name, "Inquiry " ) === 0
-          && $name != "Inquiry Activity"
-          && $name != "Inquiry Phase"
-          && $name != "Inquiry Stage")
-          || ($node_type == 'page')
-      )
-      {
-        $node_type_options[$node_type] = $name;
-        $allowed_activity_types = array_keys($node_types);
-      }
+    	
+    	if( in_array( $node_type, $pi_data_node_types ) )
+    	{
+    		$node_type_options[$node_type] = $name;
+    		$allowed_activity_types = array_keys($node_types);
+    	}
     }
   }
   else
@@ -885,6 +882,8 @@ function pi_activity_load($node)
   if($activity!=NULL)
   {
     //map activity_id to nid for backward compatability
+    $phase = node_load( $activity->phase_nid );
+  	$activity->inquiry_id = $phase->inquiry_nid;
     $activity->activity_id = &$activity->nid;
 
     // map destination_after to destination - using destination in forms overrides
@@ -950,7 +949,6 @@ function pi_activity_load($node)
     //@TODO FIXME
     if( $node->type != "pi_data" )
     {
-      print_r( $node );
       drupal_set_message(t('Error: Activity data not found in pi_activity table'), 'error');
     }
   }
@@ -1651,6 +1649,7 @@ function pi_activity_nodeapi(&$node, $op)
         // Set PI activity node
         $node_types_to_create_activity_for = array(
             'pi_available_measures',
+        	//'pi_measure_filter',
             'pi_key_questions',
             'pi_key_answers',
             'pi_result_presentations',
@@ -1921,8 +1920,6 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
 
   if($sort_activity!=FALSE)
   {
-    //print_r( $sort_activity );
-
     $type = node_get_types('type', $sort_activity->node_type);
 
     //if(isset($type->add_node_type))
