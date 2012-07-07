@@ -76,17 +76,25 @@ function pi_available_content_types_edit($form_state) {
     return $output;  
 }
 
-function pi_available_content_types_form(&$form_state, $edit = array()) {
-  $form['#prefix'] = "Select a content type to add to the list of available content types";
-
+/**
+ * Return all content types set as use in nQuire
+ */
+function pi_available_content_types_array() {
   $content_types = array();
   $query = "SELECT DISTINCT {node_type}.type FROM {node_type} LEFT JOIN {pi_available_content_types} ON {pi_available_content_types}.type = {node_type}.type WHERE {pi_available_content_types}.type IS NULL ";
   //$query = "SELECT DISTINCT node_type.type FROM node_type, pi_available_content_types WHERE NOT EXISTS (SELECT * FROM pi_available_content_types WHERE node_type.type = pi_available_content_types.type) ORDER BY node_type.type ASC";
   $result = db_query($query);
   while($row = db_fetch_object($result)) {
-    $content_types[$row->type] .= $row->type;
+  	$content_types[$row->type] .= $row->type;
   }
-  
+  return $content_types;
+}
+
+
+function pi_available_content_types_form(&$form_state, $edit = array()) {
+  $form['#prefix'] = "Select a content type to add to the list of available content types";
+
+  $content_types = pi_available_content_types_array();
   $form['choice'] = array(
     '#type' => 'select',
     '#options' => $content_types,

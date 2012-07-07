@@ -320,20 +320,21 @@ function pi_activity_form( &$node, $form_state )
   if(is_array($node_types))
   {
     $node_type_options = array('none'=>t('Select activity type...'));
-    $pi_data_node_types = variable_get('pi_measure_filter_content_types', array());
-    
-    foreach($node_types as $node_type => $name)
-    {
-    	
-    	if( in_array( $node_type, $pi_data_node_types ) )
-    	{
-    		$node_type_options[$node_type] = $name;
-    		$allowed_activity_types = array_keys($node_types);
-    	}
+
+
+    $content_types = pi_available_content_types_array();
+    $form['choice'] = array(
+        '#type' => 'select',
+        '#options' => $content_types,
+    );
+    foreach($node_types as $node_type => $name) {       
+      if( in_array( $node_type, $content_types ) ) {
+        $node_type_options[$node_type] = $name;
+        $allowed_activity_types = array_keys($node_types);
+      }
     }
   }
-  else
-  {
+  else {
     $node_type_options = array('none' => t('No activity types available, please check nQuire is correctly installed'));
     $allowed_activity_types = array();
   }
@@ -883,7 +884,7 @@ function pi_activity_load($node)
   {
     //map activity_id to nid for backward compatability
     $phase = node_load( $activity->phase_nid );
-  	$activity->inquiry_id = $phase->inquiry_nid;
+    $activity->inquiry_id = $phase->inquiry_nid;
     $activity->activity_id = &$activity->nid;
 
     // map destination_after to destination - using destination in forms overrides
@@ -1649,7 +1650,7 @@ function pi_activity_nodeapi(&$node, $op)
         // Set PI activity node
         $node_types_to_create_activity_for = array(
             'pi_available_measures',
-        	//'pi_measure_filter',
+            //'pi_measure_filter',
             'pi_key_questions',
             'pi_key_answers',
             'pi_result_presentations',
@@ -2496,7 +2497,7 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
       $activity = node_load($activity_nid);
       $actor_groups = pi_groups_get_activity_actors($activity->actor, $activity->audience);
       $audience_groups = pi_groups_get_activity_audience($activity->actor, $activity->audience);
-pi_debug_message($actor_groups);
+      pi_debug_message($actor_groups);
       $count = 0;
       $grants_found = array();
       for($count=0;$count<count($grants);$count++)
@@ -2521,11 +2522,11 @@ pi_debug_message($actor_groups);
               $grants_found[] = $grants[$count]["gid"];
             }
             pi_debug_message("Setting view grant for " . $grants[$count]["gid"]);
-            
+
             $grants[$count]["grant_view"] = 1;
             $grants[$count]["grant_update"] = 0;
             $grants[$count]["grant_delete"] = 0;
-          } 
+          }
           else
           {
             //Remove un needed nQuire group permissions
