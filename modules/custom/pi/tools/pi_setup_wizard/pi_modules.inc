@@ -3,6 +3,7 @@
 function get_required_pi_modules()
 {
 	$pi_modules[] = 'ahah_helper';
+	$pi_modules[] = 'views';
 	$pi_modules[] = 'og';
     $pi_modules[] = 'og_access';
 	$pi_modules[] = 'og_actions';
