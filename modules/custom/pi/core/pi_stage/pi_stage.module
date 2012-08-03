@@ -511,6 +511,27 @@ function pi_stage_load_nids($inquiry_nid) {
 
 /**
  * Queries the node database to provide a list of nids referring to stages in an
+ * phase given by $phase_nid, with user a member of the stage actor groups
+ * Use node_load($nid) to then access the stage details
+ * @param uint $phase_nid the nid of the phase to load the stages for
+ * @return array of nids referring to pi_stage nodes in the given inquiry
+ */
+function pi_stage_load_nids_for_phase($phase_nid)
+{
+  $query = "SELECT DISTINCT {pi_stage}.nid AS nid FROM {pi_stage} AS pi_stage " .
+		"LEFT JOIN {pi_stage_phase} AS pi_stage_phase ON pi_stage_phase.stage_id=pi_stage.nid " .
+		"WHERE pi_stage_phase.phase_id = %d";	
+  $result = db_query($query, $phase_nid);
+  $stage_nodes = array();
+  while($nid=db_result($result))
+  {
+    $stage_nodes[] = $nid;
+  }
+  return $stage_nodes;
+}
+
+/**
+ * Queries the node database to provide a list of nids referring to stages in an
  * inquiry given by $inquiry_nid, with user a member of the stage actor groups
  * Use node_load($nid) to then access the stage details
  * @param uint $inquiry_nid the nid of the inquiry to load the stages for
@@ -519,18 +540,18 @@ function pi_stage_load_nids($inquiry_nid) {
  */
 function pi_stage_load_nids_for_user($inquiry_nid, $uid)
 {
-  $query = "SELECT DISTINCT {pi_stage}.nid AS nid FROM {pi_stage} AS pi_stage " .
-		"LEFT JOIN {pi_stage_actor} AS pi_stage_actor ON pi_stage_actor.stage_id=pi_stage.nid " .
-		"LEFT JOIN {og_uid} AS og_uid ON og_uid.nid = pi_stage_actor.gid " .
-		"WHERE pi_stage.inquiry_nid = %d " .
-		"AND og_uid.uid = %d";	
-  $result = db_query($query, $inquiry_nid, $uid);
-  $stage_nodes = array();
-  while($nid=db_result($result))
-  {
-    $stage_nodes[] = $nid;
-  }
-  return $stage_nodes;
+	$query = "SELECT DISTINCT {pi_stage}.nid AS nid FROM {pi_stage} AS pi_stage " .
+			"LEFT JOIN {pi_stage_actor} AS pi_stage_actor ON pi_stage_actor.stage_id=pi_stage.nid " .
+			"LEFT JOIN {og_uid} AS og_uid ON og_uid.nid = pi_stage_actor.gid " .
+			"WHERE pi_stage.inquiry_nid = %d " .
+			"AND og_uid.uid = %d";
+	$result = db_query($query, $inquiry_nid, $uid);
+	$stage_nodes = array();
+	while($nid=db_result($result))
+	{
+		$stage_nodes[] = $nid;
+	}
+	return $stage_nodes;
 }
 
 
