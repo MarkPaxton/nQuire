@@ -249,6 +249,10 @@ function pi_sort_grouped_item_list($group_order, $grouped_items, $weight_index)
 	$item_groups = array();
 	$item_weights = array();
 	$items = array();
+	
+	//In order to avoid error message from foreach in case $grouped_itemes is NULL
+	$grouped_items = is_array( $grouped_items ) ? $grouped_items : array();
+	
 	foreach($grouped_items as $group_name => $group)
 	{
 		if( is_array($item_ids) )
@@ -465,7 +469,7 @@ function pi_util_get_drupal_path_parts()
  * @param String $url
  * @param array $matches
  */
-function pi_util_match_url($url, $matches = array())
+function pi_util_match_url($matches = array())
 {
 	// Initially set it to true since we are only looking for one mismatch
 	$return_value = true;
@@ -482,7 +486,7 @@ function pi_util_match_url($url, $matches = array())
 		{
 			if($matches[$count]!=NULL)
 			{
-				if(!strcasecmp($path_parts[$count], $matches[$count])==0)
+				if(!strcasecmp($path_parts[$count], $matches[$count])!=0)
 				{
 					$return_value = false;
 				}
@@ -495,7 +499,7 @@ function pi_util_match_url($url, $matches = array())
 
 /**
  * Return the path part with the given index (see pi_util_get_drupal_path_parts)
- * @param uint $index
+ * @param uint $index Starting at 0
  */
 function pi_util_get_path_element($index)
 {

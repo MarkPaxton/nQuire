@@ -12,18 +12,17 @@
 function pi_inquiry_phase_view($phase)
 {
   global $user;
-
   $details = get_inquiry_details_from_current_path();
+
+  $output = "";  
+  
   drupal_set_title($phase->title);
+  $output .= $phase->body;
 
   $activities = pi_get_activities_for_phase_and_user($phase->nid, $user->uid);
-
-  $output = "";
-  $output .= t("<p>" . $phase->body . "</p>");
-
   $hidden_created_activity_types = get_hidden_summary_activities($phase->inquiry_nid);
 
-  if ($activities)
+  if (count($activities)>0)
   {
     $list = array();
     $active_activity_flag = 0;
@@ -36,7 +35,7 @@ function pi_inquiry_phase_view($phase)
        
       // only display activities that are not in the hidden list
       //if(!(in_array($activity->type, $hidden_created_activity_types)))
-      if( !( in_array( $activity->node_type, $hidden_created_activity_types ) ) )
+      if( !(in_array($activity->node_type, $hidden_created_activity_types)) )
       {
         if($activity->referenced_node!==NULL)
         {
@@ -52,7 +51,7 @@ function pi_inquiry_phase_view($phase)
         }
         $loaded_actvity_node = node_load($nid);
 
-        if( !is_object( $loaded_actvity_node ) )
+        if(!is_object($loaded_actvity_node))
         {
           $loaded_actvity_node = $activity;
           //When it does generate nodes, check what type those nodes are and get the nids of the content

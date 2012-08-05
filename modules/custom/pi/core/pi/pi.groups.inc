@@ -176,7 +176,7 @@ function pi_get_type_of_group($gid) {
   $result = db_result(db_query($query, $gid));
   if($result===false)
   {
-  	$result == NULL;
+  	$result = NULL;
   }
   return $result;
 }
@@ -248,7 +248,7 @@ function pi_groups_get_activity_actors($actor_group, $audience_group_type)
 			{
 				// The user does the activity in their class/group and shares with multiclass
 				// (as does other classes/groups in multiclass)
-				$return_groups = pi_groups_get_associated_groups($actor_group, $audience_group_type);
+				$return_groups = pi_groups_get_associated_groups($actor_group, $actor_group_type);
 			}
 			if ($actor_group_type=='class')
 			{
@@ -260,7 +260,7 @@ function pi_groups_get_activity_actors($actor_group, $audience_group_type)
 			{
 				// The user does the activity in their /group and shares with multiclass or class
 				// (as does other classes/groups in multiclass)
-				$return_groups = pi_groups_get_associated_groups($actor_group, $audience_group_type);
+				$return_groups = pi_groups_get_associated_groups($actor_group, $actor_group_type);
 			}
 			if ($actor_group_type=='group')
 			{
@@ -282,19 +282,20 @@ function pi_groups_get_activity_audience($actor_group, $audience_group_type)
 {
 	$return_groups = array();
 	$actor_group_type = pi_get_type_of_group($actor_group);
+	pi_debug_message("ag " . $actor_group);
 	switch($audience_group_type)
 	{
 		case 'individual':
 			break;
 		case 'multiclass':
 			// Result shared into multiclass of user
-			$return_groups[] =  pi_groups_get_associated_groups($audience_group_type, $actor_group);
+			$return_groups[] =  pi_groups_get_associated_groups($actor_group, $audience_group_type);
 			break;
 		case 'class':
 			if ( ($actor_group_type=='group') || ($actor_group_type=='class') )
 			{
 				// Result shared in class of user
-				$return_groups = pi_groups_get_associated_groups($audience_group_type, $actor_group);
+				$return_groups = pi_groups_get_associated_groups($actor_group, $audience_group_type);
 			}
 			if ($actor_group_type=='multiclass')
 			{
@@ -304,7 +305,7 @@ function pi_groups_get_activity_audience($actor_group, $audience_group_type)
 			break;
 		case 'group':
 			// Result shared in the group of user only
-			$return_groups = pi_groups_get_associated_groups($audience_group_type, $actor_group);
+			$return_groups = pi_groups_get_associated_groups($actor_group, $audience_group_type);
 			break;
 	}
 	return $return_groups;
@@ -331,9 +332,7 @@ function pi_groups_get_users_actor_groups($uid, $actor_group, $audience_group_ty
     case 'class':
       if (($actor_group_type=='multiclass') || ($actor_group_type=='group') )
       {
-        // The user does the activity in their class/group and shares with multiclass
-        // (as does other classes/groups in multiclass)
-        $return_groups = pi_groups_get_users_associated_groups($uid, $audience_group_type, $actor_group);
+        $return_groups = pi_groups_get_users_associated_groups($uid, $actor_group_type, $actor_group);
       }
       if ($actor_group_type=='class')
       {
@@ -345,7 +344,7 @@ function pi_groups_get_users_actor_groups($uid, $actor_group, $audience_group_ty
       {
         // The user does the activity in their /group and shares with multiclass or class
         // (as does other classes/groups in multiclass)
-        $return_groups = pi_groups_get_users_associated_groups($uid, $audience_group_type, $actor_group);
+        $return_groups = pi_groups_get_users_associated_groups($uid, $actor_group_type, $actor_group);
       }
       if ($actor_group_type=='group')
       {
@@ -842,7 +841,7 @@ function pi_groups_get_associated_groups($group_id, $associated_groups_type)
   }
   else
   {
-    drupal_set_message(t('An invalid group id has been given to pi_groups_get_associated_groups.'), 'error');
+    drupal_set_message(t("An invalid group id has been given to pi_groups_get_associated_groups for $associated_groups_type."), 'error');
   }
   return $return_group_nids;
 }

@@ -46,39 +46,61 @@ function pi_activity_get_sorted_node_type($node_type)
  */
 function pi_get_activity_content_nid_for_activity_and_user($activity_id, $uid) {
 	$nid_to_return = null;
-
+	
 	// If there isn't a content nid directly owned by this user, then check the actor and audience group ownerships
 	if($nid_to_return==null)
 	{
+		$activity = node_load($activity_id);
 		$activity_content_nids = pi_activity_get_activity_content_nids($activity_id);
 
-		
-		$activity = node_load($activity_id);
-		$content_actor_groups = pi_groups_get_users_actor_groups($uid, $activity->actor, $activity->audience);
+		if( $activity->audience == 'individual' )
+		{
+			if( is_array( $activity_content_nids ) )
+			{
+				$nid_to_return = $activity_content_nids[ 0 ];
+				
+				if( count( $activity_content_nids ) > 1 )
+				{
+					drupal_set_message( t( "Multiple content for activity for this user found" ), 'warning' );
+				}
+				else
+				{
+					drupal_set_message( t( "Found activity content for this user" ), 'warning' );
+				}
+			}
+			else
+			{
+				drupal_set_message( t( "No activity content for this user found" ), 'warning' );
+			}
+		}
+		else
+		{
+			$content_actor_groups = pi_groups_get_users_actor_groups($uid, $activity->actor, $activity->audience);
 
-		$users_content_nids = array();
-		foreach($content_actor_groups as $actor_gid)
-		{
-			$group_nodes = og_group_child_nids($actor_gid);
-			$users_content_nids[$actor_gid] = array_intersect($activity_content_nids, $group_nodes);
-		}	
-		if(count($users_content_nids)>1)
-		{
-			drupal_set_message(t("Multiple actor groups returned for content for group activity @id and user @user - using first group @gid",
-			array("@id" => $activity_id, "@user" => $uid, "@gid" => $content_actor_groups[0])), 'warning');
-		}
-		$actor_group_nids = array_values($users_content_nids[$content_actor_groups[0]]);
-		$nids_to_return = (is_array($actor_group_nids) ? $actor_group_nids : array());
+			$users_content_nids = array();
+			foreach($content_actor_groups as $actor_gid)
+			{
+				$group_nodes = og_group_child_nids($actor_gid);
+				$users_content_nids[$actor_gid] = array_intersect($activity_content_nids, $group_nodes);
+			}
+			if(count($users_content_nids)>1)
+			{
+				drupal_set_message(t("Multiple actor groups returned for content for group activity @id and user @user - using first group @gid",
+				array("@id" => $activity_id, "@user" => $uid, "@gid" => $content_actor_groups[0])), 'warning');
+			}
+			$actor_group_nids = array_values($users_content_nids[$content_actor_groups[0]]);
+			$nids_to_return = (is_array($actor_group_nids) ? $actor_group_nids : array());
 		
-		if(count($nids_to_return)>1)
-		{
-			drupal_set_message(t("Multiple nids returned for content for group activity @id and user !user - using first nid @nid",
-			array("@id" => $activity_id, "@user" => $uid, "@nid" => $nids_to_return[0])), 'warning');
+			if(count($nids_to_return)>1)
+			{
+				drupal_set_message(t("Multiple nids returned for content for group activity @id and user !user - using first nid @nid",
+				array("@id" => $activity_id, "@user" => $uid, "@nid" => $nids_to_return[0])), 'warning');
+			}
+			if(count($nids_to_return>0))
+			{
+				$nid_to_return =  $nids_to_return[0];
+			}
 		}
-		if(count($nids_to_return>0))
-		{
-			$nid_to_return =  $nids_to_return[0];
-		}		
 	}
 	return $nid_to_return;
 }
@@ -327,21 +349,6 @@ function pi_activity_get_node_function($activity_id, $uid)
 	$activity_status = pi_activity_load_status($activity_id, $uid);
 	$result = $activity_status['node_function'];
 	return $result ;
-	/*
-	 $query = "SELECT pi_activity_status.node_function ";
-	$query .= "FROM pi_activity_status ";
-	$query .= "LEFT JOIN pi_activity_actor ";
-	$query .= "ON pi_activity_actor.inquiry_id = pi_activity_status.inquiry_id ";
-	$query .= "AND pi_activity_actor.activity_id = pi_activity_status.activity_id ";
-	$query .= "LEFT JOIN og_uid ON og_uid.nid = pi_activity_actor.gid ";
-	$query .= "WHERE pi_activity_status.inquiry_id = '" . $inquiry_id . "' ";
-	$query .= "AND pi_activity_status.activity_id = '" . $activity_id . "' ";
-	$query .= "AND (pi_activity_actor.uid =  '" . $uid. "' OR og_uid.uid =  '" . $uid . "')";
-
-	$result = db_fetch_object(db_query($query));
-
-	return $result->node_function;*/
-
 }
 
 /**
@@ -354,17 +361,10 @@ function pi_activity_get_node_function($activity_id, $uid)
  */
 function pi_activity_check_node_function($activity_id, $uid, $function) {
 	$node_function = pi_activity_get_node_function($activity_id, $uid);
-	pi_debug_message("pi_activity_check_node_function: function=" . $function . " node function=" . $node_function);
 	if ($node_function == $function)
-	{
 		$result = TRUE;
-	}
 	else
-	{
 		$result = FALSE;
-		//if($activity_id==78)
-		//  $result=TRUE;
-	}
 	return $result;
 }
 

@@ -118,13 +118,12 @@ function pi_activity_content_view($activity, $arg_node_function)
 				$output .= pi_activity_actor_audience_info($activity_inquiry_id, $activity->nid);
 				if($nid==NULL)
 				{
-					$loaded_node = array(
-						'uid' => $user->uid, 
-						'name' => (isset($user->name) ? $user->name : ''), 
-						'type' => $activity->node_type, 
-						'language' => ''
-					);
-					$output .= node_add($activity->node_type);
+				  $loaded_node = new stdClass;
+				  $loaded_node->uid = $user->uid; 
+				  $loaded_node->name = (isset($user->name) ? $user->name : ''); 
+			      $loaded_node->type = $activity->node_type;
+				  $loaded_node->language = '';
+				  $output .= node_page_edit($loaded_node);
 				}
 				else
 				{
