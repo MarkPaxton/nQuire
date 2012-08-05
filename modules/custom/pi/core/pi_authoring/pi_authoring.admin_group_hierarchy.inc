@@ -8,7 +8,7 @@
  */
 function pi_authoring_admin_group_hierarchy_view() {
 	$output = '<p>' . t('Use this page to assign your groups into their respective parents: e.g. all the Year 10 classes into the Year 10 group.  ' .
-	"If there are no groups listed, you need to create some using the Groups menu item, then categorise them on the nQurire groups page.</p>");
+	"If there are no groups listed, you need to create some using the Groups menu item, then categorise them on the nQuire groups page.</p>");
 	
 	$tree_roots = array();	
 	$all_groups_by_id = array();
@@ -41,7 +41,7 @@ function pi_authoring_admin_group_hierarchy_form($form_state, $class_or_group=''
 {
 	$form = array();
 	$form['#prefix'] = t('Use this page to assign your groups into their respective parents: e.g. all the Year 10 classes into the Year 10 group.  ' .
-	"If there are no groups listed, you need to create some using the Groups menu item, then categorise them on the nQurire groups page.</p>");
+	"If there are no groups listed, you need to create some using the Groups menu item, then categorise them on the nQuire groups page.</p>");
 	
 	switch($class_or_group)
 	{
