@@ -28,10 +28,6 @@ function find_sort_key_questions_nid_for_uid_and_inquiry($uid, $inquiry_id)
   return find_unique_node_type_for_uid_and_inquiry('pi_sort_key_questions', $uid, $inquiry_id);
 }
 
-function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id)
-{
-  return find_unique_node_type_for_uid_and_inquiry('pi_hypothesis', $uid, $inquiry_id);
-}
 
 function update_activity_when_activity_node_updated($node, $activity_title)
 {

@@ -46,8 +46,8 @@ function pi_activity_get_activity_content_nid_for_activity_and_user($activity_id
 		else
 		{
 			//Shared activity content
-
 			$content_actor_groups = pi_groups_get_users_actor_groups($uid, $activity->actor, $activity->audience);
+				
 			$users_content_nids = array();
 			// get all /activity content nids/ and compare with /all content nids of the users activity actor groups/
 			$all_content_nids = pi_activity_get_activity_content_nids($activity_id);
@@ -76,6 +76,7 @@ function pi_activity_get_activity_content_nid_for_activity_and_user($activity_id
 				drupal_set_message(t("Multiple nids returned for content for group activity @id and user !user - using first nid @nid",
 						array("@id" => $activity_id, "@user" => $uid, "@nid" => $nids_to_return[0])), 'warning');
 			}
+
 		}
 		if(count($nids_to_return)>0)
 			$nid_to_return = $nids_to_return[0];
@@ -110,32 +111,13 @@ function _pi_activity_set_activity_content_audience(&$node, $activity_id)
 {
 	// Add group audience data for the activity content by getting the user's associated group
 	// of the given audience type
-	$loaded_activity = node_load($activity_id);
-	if(pi_check_node_exists_and_is_of_type($activity_id, 'pi_activity'))
+	$activity = node_load($activity_id);
+	if(pi_check_is_node_of_type($activity, 'pi_activity'))
 	{
-		if ($loaded_activity->audience != "individual")
-		{
-			$actor_type = pi_get_type_of_group($loaded_activity->actor);
-			// if actor and audience are the same type then it's done as a group and not shared, so there is no need
-			// to set an additional audience
-			if($actor_type!=$loaded_activity->audience)
-			{
-				// Otherwise find out if it's a multi-actor or shared activity
-				if( (($actor_type=='group') && ($loaded_activity->audience=='multiclass')) ||
-						(($actor_type=='group') && ($loaded_activity->audience=='class')) ||
-						(($actor_type=='class') && ($loaded_activity->audience=='multiclass')) )
-				{
-					// This activity content should be shared with multi/class - add view to this group
-
-					// Get all audience groups for the activity associated with the actor group
-					// find the one that the content author is a member of...
-					$users_group = pi_groups_get_users_associated_groups($node->uid, $loaded_activity->audience, $loaded_activity->actor);
-					$context['groups'] = $users_group;
-					pi_debug_message("Adding audience group: " . $context['groups']);
-					og_add_group_action($node, $context);
-				}
-			}
-		}
+		$audience_gids = pi_groups_get_users_audience_groups($node->uid, $activity->actor, $activity->audience);
+		$context['groups'] = $audience_gids;
+		//pi_debug_message("Adding audience group: " . $context['groups']);
+		og_add_group_action($node, $context);
 	}
 	else
 		drupal_set_message(t('Activity @nid is a not an activity.', array('@nid' => $activity_id), 'error'));
@@ -151,43 +133,12 @@ function _pi_activity_set_activity_content_actor(&$node, $activity_id)
 {
 	// Add group audience data for the activity content by getting the user's associated group
 	// of the given audience type
-	$loaded_activity = node_load($activity_id);
-	if(pi_check_is_node_of_type($loaded_activity, 'pi_activity'))
+	$activity = node_load($activity_id);
+	if(pi_check_is_node_of_type($activity, 'pi_activity'))
 	{
-		$actor_type = pi_get_type_of_group($loaded_activity->actor);
-		$users_actor_group = array();
-		// if actor and audience are the same type then it's done as a group, so set group audience ownership
-		// to the actors actor group
-		// Actor type greater than audience, so each group of type audience within actor grop gets
-		// their own result not shared
-		if( (($actor_type=='class') && ($loaded_activity->audience=='group')) ||
-				(($actor_type=='multiclass') && ($loaded_activity->audience=='group')) ||
-				(($actor_type=='multiclass') && ($loaded_activity->audience=='class')) )
-		{
-			//Each actor group within audience does their own activity, so get this users actual actor group
-			// Get all audience groups for the activity associated with the actor group
-			$activity_audience_groups = pi_groups_get_associated_groups($loaded_activity->actor, $loaded_activity->audience);
-			// find the one that the content author is a member of...
-			foreach($activity_audience_groups as $group_nid)
-			{
-				if(pi_group_check_membership($node->uid, $group_nid))
-				{
-					$users_actor_group[] = $group_nid;
-				}
-			}
-			if(count($users_actor_group)==0)
-			{
-				drupal_set_message(t("Trying to assign activity content to a @type group the user isn't a member of (@gids)", array('@type' => $loaded_activity->actor, '@gids' => implode($activity_audience_groups, ", "))));
-			}
-		}
-		else
-		{
-			// If it's not a multi-actor activity then just get the actor group from the activity data
-			$users_actor_group[] = $loaded_activity->actor;
-		}
-		$context['groups'] = $users_actor_group;
+		$context['groups'] = pi_groups_get_users_actor_groups($node->uid, $activity->actor, $activity->audience);
+		//pi_debug_message("Adding actor group: " . $context['groups']);
 		og_add_group_action($node, $context);
-
 	}
 	else
 	{
@@ -263,7 +214,7 @@ function pi_activity_link_activity_content($node, $node_function, $visible_statu
 			$activity->actor = $audience_gid[0];
 			node_save($activity);
 		}
-		 
+			
 		//add extra status for the original actor
 		$actor_groups =  pi_groups_get_users_actor_groups($node->uid, $activity->audience, $activity->actor);
 		foreach($actor_groups as $group_nid)

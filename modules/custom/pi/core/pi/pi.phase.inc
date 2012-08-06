@@ -25,7 +25,6 @@ function pi_inquiry_phase_view($phase)
   {
     $list = array();
     $active_activity_flag = 0;
-
     foreach($activities as $activity_nid)
     {
       $activity = node_load($activity_nid);
@@ -34,11 +33,10 @@ function pi_inquiry_phase_view($phase)
        
       // only display activities that are not in the hidden list
       //if(!(in_array($activity->type, $hidden_created_activity_types)))
-      if( !(in_array($activity->node_type, $hidden_created_activity_types)) )
+      if(!(in_array($activity->node_type, $hidden_created_activity_types)) )
       {
         $nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
         $activity_content_node = node_load($nid);
-
         // If no content node is associated, then check for child nodes... 
         if(!is_object($activity_content_node))
         {
@@ -59,6 +57,7 @@ function pi_inquiry_phase_view($phase)
           }
         }
         
+
         $loaded_activity_status = pi_activity_get_activity_status_for_user($activity->nid, $user->uid);
 				if(count($loaded_activity_status)==NULL) {
 					$loaded_activity_status['visible_status'] = $activity->visible_status;
@@ -99,7 +98,6 @@ function pi_inquiry_phase_view($phase)
   {
     drupal_set_message(t('No activities are available in this phase at this stage.'));
   }
-
   return $output;
 }
 

@@ -19,13 +19,9 @@ function pi_groups_get_descriptions_from_nids($nids)
     {
       $n = node_load($nid);
       if($n!=NULL)
-      {
         $return_data[$nid] = $n->og_description;
-      }
       else
-      {
         $return_data[$nid] = NULL;
-      }
     }
   }
   return $return_data;
@@ -308,34 +304,36 @@ function pi_groups_get_activity_audience($actor_group, $audience_group_type)
  * @param $uid User
  * @param $actor_group Activity actor gid
  * @param $audience_group_type individual, group, class or multiclass
- * @return uint group id for the actor groups
+ * @return array() group ids for the actor groups
  */
 function pi_groups_get_users_actor_groups($uid, $actor_group, $audience_group_type)
 {
   $return_groups = array();
   $groups = pi_groups_get_activity_actors($actor_group, $audience_group_type);
-  $user_groups = array();
-  foreach($group_id as $gid)
+  foreach($groups as $gid)
+  {
   	if(pi_group_check_membership($uid, $gid))
-  		$user_groups[] = $gid;
+  		$return_groups[] = $gid;
+  }
   return $return_groups;
 }
 
 /**
  * Get the gids that user $uid belongs to that are audience groups of the activity.
- * @param uint $uid
- * @param uint $actor_group
- * @param string $audience_group_type
- * @return uint[]
+ * @param $uid
+ * @param $actor_group
+ * @param $audience_group_type
+ * @return array()
  */
 function pi_groups_get_users_audience_groups($uid, $actor_group, $audience_group_type)
 {
   $return_groups = array();
   $groups = pi_groups_get_activity_audience($actor_group, $audience_group_type);
-  $user_groups = array();
-  foreach($group_id as $gid)
+  foreach($groups as $gid)
+  {
   	if(pi_group_check_membership($uid, $gid))
-  		$user_groups[] = $gid;
+  		$return_groups[] = $gid;
+  }
   return $return_groups;
 	
 }

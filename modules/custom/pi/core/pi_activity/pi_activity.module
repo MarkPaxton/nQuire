@@ -579,13 +579,13 @@ function pi_activity_form_validate( $form, &$form_state )
  */
 function pi_activity_form_alter(&$form, &$form_state, $form_id)
 {
-	// This is for altering the actual activity form 
+	// This is for altering the actual activity form
 	if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id)
 		pi_activity_form_node_form_alter($form, $form_state);
 
 	// This is for altering the activity CONTENT forms...
 	// Split the string into parts to get the inquiry id if it exists...
-	
+
 	$path_part1 = pi_util_get_path_element(0);
 	if(strcasecmp($path_part1, 'activity')===0)
 	{
@@ -594,6 +594,17 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id)
 			$form['menu']['#weight'] = 20;
 			// Hide the Group options from activity content forms
 			$form['og_nodeapi']['#access'] = FALSE;
+			
+			$activity_id = pi_util_get_path_element(1);
+			$target_activity = node_load($activity_id);
+			if(pi_check_is_node_of_type($target_activity, 'pi_activity')) {
+				$redirect_destination = $target_activity->destination_after;
+				if($redirect_destination=='phase') 
+					 $form['#redirect'] = 'phase/' . $target_activity->phase_nid;
+				elseif($redirect_destination=='self')
+					$form['#redirect'] = "activity/$activity_id";
+				$form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
+			}
 		}
 	}
 }
@@ -609,7 +620,7 @@ function pi_activity_form_pi_activity_node_form_alter(&$form, &$form_state)
 {
 	if (isset($form_state['post']))
 	{
-		// This fixes a bug in ahah helper where the wrapper for a form element to be updated is also 
+		// This fixes a bug in ahah helper where the wrapper for a form element to be updated is also
 		//  inserted causing a duplicate  wrapper to be inserted inside the original
 		ahah_helper_register($form, $form_state);
 		if ($form_state['submitted'])
@@ -622,7 +633,7 @@ function pi_activity_form_pi_activity_node_form_alter(&$form, &$form_state)
 	}
 	// Hide group audience settings
 	$form['og_nodeapi']['#access'] = FALSE;
-	
+
 	$form['changed']['#default_value'] = $_SERVER['REQUEST_TIME'];
 }
 
@@ -1019,9 +1030,7 @@ function pi_activity_insert($node)
 	foreach($node->activity_phases_stages['stages']['stage_select'] as $stage_nid => $selected)
 	{
 		if($selected!=0)
-		{
 			$selected_stages[$stage_nid] = 'visible';
-		}
 	}
 
 	// Now set stage_states
@@ -1085,7 +1094,7 @@ function pi_activity_insert($node)
 
 		// If it is a shared activity, then make a 'view' status for the share group
 		// otherwise just make the standard activity status for the activity.
-		$activity_actor_audience_result_type = _pi_activity_get_activity_actor_audience_result_type($node->actor,  $node->selects['audience']);
+		$activity_actor_audience_result_type = _pi_activity_get_activity_actor_audience_result_type($node->selects['gid'], $node->actor);
 		switch($activity_actor_audience_result_type)
 		{
 			case 'done_as_individuals_in_group_not_shared':
@@ -1124,6 +1133,7 @@ function pi_activity_insert($node)
 					{
 						if(count($audience_ids)>1)
 						{
+							$group = node_load($node->actor);
 							$translate['@actor_group_type'] = $actor_group_type;
 							$translate['%group_name'] = $group->title;
 							$translate['@audience_group_type'] = $node->selects['audience'];
@@ -1153,12 +1163,8 @@ function pi_activity_insert($node)
 	}
 
 	if(is_array($activity_statuses_to_add))
-	{
 		if(count($activity_statuses_to_add)==0)
-		{
-			drupal_set_message( t('Error no pi_activity_status data' ), 'error' );
-		}
-	}
+		drupal_set_message( t('Error no pi_activity_status data' ), 'error' );
 
 	foreach($activity_statuses_to_add as $status)
 	{
@@ -1183,9 +1189,7 @@ function pi_activity_update($node)
 	$activity_row_data = _pi_activity_form_data_to_pi_activity_row($node);
 	$update_result = drupal_write_record('pi_activity', $activity_row_data, array('nid'));
 	if ($update_result == FALSE)
-	{
 		drupal_set_message('Error: Activity data not saved due to database problem; try saving again.', 'error');
-	}
 
 	// update associated pi_activity_stage_states
 	// get current ones; add new ones; delete old ones
@@ -1194,9 +1198,7 @@ function pi_activity_update($node)
 	//make a list of stages and pass_ids
 	$stage_state_pass_ids = array();
 	foreach($existing_stage_states as $pass_id => $row)
-	{
 		$stage_state_pass_ids[$row['stage_nid']] = $pass_id;
-	}
 
 	$selected_stages = array();
 	$stage_states_to_add = array();
@@ -1221,9 +1223,7 @@ function pi_activity_update($node)
 			// If the stage is not selected in the form, then check if a state is already set, and add it
 			// to the remove list if it is.
 			if(array_key_exists($stage_nid, $stage_state_pass_ids) && !array_key_exists($stage_nid, $stage_state_ids_to_remove))
-			{
 				$stage_state_ids_to_remove[$stage_nid] = $stage_state_pass_ids[$stage_nid];
-			}
 		}
 	}
 
@@ -1231,9 +1231,7 @@ function pi_activity_update($node)
 	foreach($stage_state_pass_ids as $stage_nid => $pass_id)
 	{
 		if(!array_key_exists($stage_nid, $selected_stages) && !array_key_exists($stage_nid, $stage_state_ids_to_remove))
-		{
 			$stage_state_ids_to_remove[$stage_nid] = $pass_id;
-		}
 	}
 
 	//Add only the non-exisitant state rows
@@ -1254,10 +1252,7 @@ function pi_activity_update($node)
 
 	// Remove all the unneeded state rows
 	foreach($stage_state_ids_to_remove as $pass_id)
-	{
 		db_query('DELETE FROM {pi_activity_stage_state} WHERE `pass_id` = %d', $pass_id);
-	}
-
 
 	// now update activity_statuses - one for the main activity and one for the shared view modde part of
 	// activities
@@ -1266,9 +1261,7 @@ function pi_activity_update($node)
 	if($result!=FALSE)
 	{
 		while($status_row = db_fetch_array($result))
-		{
 			$existing_activity_statuses[$status_row['gid']] = $status_row;
-		}
 	}
 
 	$activity_statuses_to_add = array();
@@ -1711,7 +1704,7 @@ function pi_activity_nodeapi(&$node, $op)
 								//@TODO FIXME Nodeapi is called twice...once
 								if($node->type != '')
 									if(isset($node->activity_id))
-										$activity = node_load($activity_id);
+									$activity = node_load($activity_id);
 								break;
 						}
 
@@ -2040,7 +2033,6 @@ function _pi_activity_get_activity_actor_audience_result_type($actor_gid, $audie
 			'multiclass' => 3
 	);
 	$group = node_load($actor_gid);
-
 	$actor_group_type = pi_get_type_of_group($actor_gid);
 
 	$audience_value = $group_values[$audience_group_type];
@@ -2143,6 +2135,16 @@ function pi_activity_form_node_form_alter(&$form, &$form_state)
 			}
 		}
 	}
+	// Look for /activity/{number}/edit
+	if(pi_util_match_url(array('inquiry', NULL, 'activity', 'add')) || pi_util_match_url(array('inquiry', NULL, 'activity', 'edit')) )
+	{
+		$activity = node_load($potential_activity_id);
+		if(pi_check_is_node_of_type($activity, 'pi_activity'))
+		{
+			
+		}
+		$form['#redirect'] = "activity/";
+	}
 }
 
 /**
@@ -2151,7 +2153,7 @@ function pi_activity_form_node_form_alter(&$form, &$form_state)
  * @param array $grants
  * @param $node
  */
-function pi_activity_og_access_grants_alter(&$grants, $node)
+function pi_activity_og_access_grants_alter_XXX(&$grants, $node)
 {
 	$activity_nid = NULL;
 	//First see if activity is set in the url...
@@ -2160,7 +2162,7 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 		$activity_nid = pi_util_get_path_element(1);
 	else
 		$activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	
+
 	if($activity_nid!=NULL)
 	{
 		if(pi_check_node_exists_and_is_of_type($activity_nid, 'pi_activity'))
@@ -2174,7 +2176,7 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 			pi_debug_message("Actor groups " . implode(", ", $actor_groups));
 			$audience_groups = pi_groups_get_users_audience_groups($node->uid, $activity->actor, $activity->audience);
 			pi_debug_message("Audience groups " . implode(", ", $audience_groups));
-				
+
 			$count = 0;
 			$grants_found = array();
 			for($count=0;$count<count($grants);$count++)
@@ -2207,14 +2209,14 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 					}
 				}
 			}
-			
+				
 			$new_grants = array();
 			foreach($grants as $grant)
 				if($grant!=NULL)
-					$new_grants[] = $grant;
+				$new_grants[] = $grant;
 
 			$grants = $new_grants;
-			
+				
 			foreach($actor_groups as $group_gid)
 			{
 				if(!in_array($group_gid, $grants_found))
@@ -2246,7 +2248,7 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 			}
 		}
 	}
-	
+
 }
 
 
