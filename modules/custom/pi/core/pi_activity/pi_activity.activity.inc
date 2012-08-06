@@ -39,7 +39,7 @@ function pi_activity_content_view($activity, $arg_node_function)
 		{
 			case 'view':
 				//get nid
-				$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
+				$nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
 				if($nid!=NULL)
 				{
 					$loaded_node = node_load($nid);
@@ -108,7 +108,7 @@ function pi_activity_content_view($activity, $arg_node_function)
 				break;
 			case 'edit':
 				// Edit existing content or create new
-				$nid = pi_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
+				$nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
 				
 				if(!function_exists("node_page_edit"))
 				{

@@ -53,7 +53,6 @@ function update_activity_when_activity_node_updated($node, $activity_title)
  */
 function pi_activity_add_activity_node_for_activity_content_node($parent_activity, $content_node)
 {
-
   //This is the new activity node to be created
   $new_activity_node = new stdClass();
   //copy over current except for the activity_id
@@ -73,13 +72,12 @@ function pi_activity_add_activity_node_for_activity_content_node($parent_activit
 }
 
 /**
- *
  * Add an activity node when an activity content item is created
- * @param unknown_type $node
- * @param unknown_type $node_function
- * @param unknown_type $visible_status
- * @param unknown_type $activity_title
- * @param unknown_type $details
+ * @param $node
+ * @param $node_function
+ * @param $visible_status
+ * @param $activity_title
+ * @param $activity
  */
 function pi_activity_add_new_activity_for_activity_content_node($node, $node_function, $visible_status, $activity_title, $activity)
 {
@@ -144,7 +142,7 @@ function pi_activity_add_new_activity_for_activity_content_node($node, $node_fun
 
   //set status for the new activity
   //$activity_status = load_activity_status($details->activity_id, $user->uid);
-  $activity_status = pi_activity_load_status($details->activity_id, $user->uid);
+  $activity_status = pi_activity_get_activity_status_for_user($details->activity_id, $user->uid);
 
   $new_activity_status = new stdClass;
   $new_activity_status->inquiry_id = $details->inquiry_id;
@@ -157,7 +155,7 @@ function pi_activity_add_new_activity_for_activity_content_node($node, $node_fun
   pi_activity_set_status($new_activity_status['activity_id'], $new_status['gid'], $new_activity_status['visible_status'], $new_activity_status['node_function']);*/
   /*
    //set actor for the new activity
-  $activity_actor = load_activity_actor($details->inquiry_id, $details->activity_id, NULL, NULL);
+  $activity_actor = pi_activity_load_activity_actor($details->activity_id);
   $new_activity_actor["inquiry_id"] = $details->inquiry_id;
   $new_activity_actor["activity_id"] = $new_activity_id;
 
@@ -211,86 +209,5 @@ function pi_activity_add_new_activity_for_activity_content_node($node, $node_fun
 
 
 
-/**
- * Link an activity content node to a given activity, setting the status as given, and also adding
- * view status to wider audience group
- *
- * @param unknown_type $node Content node to link to an activity
- * @param unknown_type $node_function The function (view, add, edit) that the activity will use to link to the content node
- * @param unknown_type $visible_status The UI status to show for the activity linking to the conent node
- * @param unknown_type $details Current details of the inquiry
- */
-function pi_activity_link_activity_content($node, $node_function, $visible_status, $activity_nid_to_link)
-{
-  // First check the linked activity is valid
-  $activity = node_load($activity_nid_to_link);
-  if(pi_check_is_node_of_type($activity, 'pi_activity'))
-  {
-    // First of call create the link in pi_activity_node
-    $activity_node = array();
-    $activity_node['activity_id'] = $activity_nid_to_link;
-    $activity_node['nid'] = $node->nid;
-    drupal_write_record('pi_activity_node', $activity_node);
-
-    // Then set the actor group status - get and use existing actor status if it exists otherwise
-    // create one. Update is done by passing the key column name in drupal write record, or left
-    // as an empty array to do an insert
-    $actor_activity_status = pi_activity_load_status($activity_nid_to_link, $node->uid);
-    $actor_status_key = array();
-    if($actor_activity_status['gid']==$activity->actor)
-    {
-      $activity_status_node = $actor_activity_status;
-      $actor_status_key = 'pas_id';
-    }
-    else
-    {
-      $activity_status_node = array();
-    }
-
-    $activity_status_node['activity_id'] = $activity->nid;
-    $activity_status_node['gid'] = $activity->actor;
-    $activity_status_node['visible_status'] = $visible_status;
-    $activity_status_node['node_function'] = $node_function;
-    drupal_write_record('pi_activity_status', $activity_status_node, $actor_status_key);
-
-    // Set group audience to audience of the activity
-    $users_group = pi_groups_get_users_audience_groups($node->uid, $activity->audience, $activity->actor);
-    $context['groups'] = $users_group;
-    //pi_debug_message($context['groups']);
-    og_add_group_action($node, $context);
-    
-    if(!in_array($activity_status->gid, $users_group))
-    {
-      $activity_status->gid = $users_group;
-      unset($activity_status->pas_id);
-    }
-
-    //set the status for the audience to view
-    $audience_group_nids = pi_groups_get_activity_audience($actor_gid, $audience_group_type);
-    foreach($audience_group_nids as $audience_group_nid)
-    {
-      pi_activity_set_status($activity_node->nid, $audience_group_nid, 'view', 'view');
-    }
-
-    //extend activity actor to size of audience
-    // @TODO - change the activity view to get activities with a status set for the user rather than by actor
-    if(count($audience_group_nids)>0)
-    {
-      $activity->actor = $audience_gid[0];
-      node_save($activity);
-    }
-     
-    //add extra status for the original actor
-    $actor_groups =  pi_groups_get_users_actor_groups($node->uid, $activity->audience, $activity->actor);
-    foreach($actor_groups as $group_nid)
-    {
-      pi_activity_set_status($activity_nid_to_link, $group_nid, $node_function, $visible_status);
-    }
-  }
-  else
-  {
-    drupal_set_message(t('Trying to link an activity content to a node that does not exist or that is not a pi_activity (nid @nid).', array('@nid'=>$activity_nid_to_link)), 'error');
-  }
-}
 
 ?>

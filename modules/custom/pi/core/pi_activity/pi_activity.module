@@ -4,6 +4,8 @@
 
 module_load_include('inc', 'pi_activity', 'pi_activity.workflow' );
 module_load_include('inc', 'pi_activity', 'pi_activity.extra' );
+module_load_include('inc', 'pi_activity', 'pi_activity.status' );
+module_load_include('inc', 'pi_activity', 'pi_activity.content' );
 
 
 /**
@@ -239,7 +241,7 @@ function pi_activity_form(&$node, $form_state)
 		$phase = node_load($phase_nid);
 	else
 		$phase=false;
-	
+
 	if($phase!=FALSE)
 	{
 		if($phase->inquiry_nid!=NULL)
@@ -250,10 +252,10 @@ function pi_activity_form(&$node, $form_state)
 			}
 		}
 	}
-	
-	
-	
-	
+
+
+
+
 	// If there's no value in storage and the node has one set, then use that
 	if(isset($node->inquiry_nid) && !isset($form_state['storage']['inquiry_nid']))
 	{
@@ -283,14 +285,14 @@ function pi_activity_form(&$node, $form_state)
 			'#default_value' => $inquiry_nid_default_value,
 			'#element_validate' => array('pi_util_inquiry_nid_validate'),
 			'#ahah' => array(
-				'path'    => ahah_helper_path(array('activity_phases_stages')),
-				'wrapper' => 'activity-phases-stages-wrapper',
+					'path'    => ahah_helper_path(array('activity_phases_stages')),
+					'wrapper' => 'activity-phases-stages-wrapper',
 			),
 			//this fixes some layout issues with the ahah throbber
 			//'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
 			'#prefix' => "<div style='min-height:40px;'>",
 			'#suffix' => '</div>'
-			);
+	);
 
 	//This uses the generic submit callback provided by the ahah_helper module here
 	// Is sets $form_state['rebuild'] = TRUE.
@@ -577,26 +579,29 @@ function pi_activity_form_validate( $form, &$form_state )
  */
 function pi_activity_form_alter(&$form, &$form_state, $form_id)
 {
-	$drupal_path = str_replace(base_path(), '', request_uri());
-	$drupal_path = str_replace('?q=', '', $drupal_path);
-	// Split the string into parts to get the inquiry id if it exists...
-	$path_parts = explode('/', $drupal_path);
-	if(strcasecmp($path_parts[0], 'activity')===0)
-	{
-		$form['menu']['#weight'] = 20;
-		$form['og_nodeapi']['#access'] = FALSE;
-	}
-
+	// This is for altering the actual activity form 
 	if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id)
-	{
 		pi_activity_form_node_form_alter($form, $form_state);
+
+	// This is for altering the activity CONTENT forms...
+	// Split the string into parts to get the inquiry id if it exists...
+	
+	$path_part1 = pi_util_get_path_element(0);
+	if(strcasecmp($path_part1, 'activity')===0)
+	{
+		if($form_id != 'pi_activity_node_from') {
+			// Move the menu to the bottom of activity content forms
+			$form['menu']['#weight'] = 20;
+			// Hide the Group options from activity content forms
+			$form['og_nodeapi']['#access'] = FALSE;
+		}
 	}
 }
 
 
 /**
  *
- * Drupal API hook_form_FORM-ID_alter(), changes the form to alter the default node layout
+ * Drupal API hook_form_FORM-ID_alter() changes the pi_activity editing form layout
  * @param &$form
  * @param &$form_state
  */
@@ -604,6 +609,8 @@ function pi_activity_form_pi_activity_node_form_alter(&$form, &$form_state)
 {
 	if (isset($form_state['post']))
 	{
+		// This fixes a bug in ahah helper where the wrapper for a form element to be updated is also 
+		//  inserted causing a duplicate  wrapper to be inserted inside the original
 		ahah_helper_register($form, $form_state);
 		if ($form_state['submitted'])
 		{
@@ -613,13 +620,9 @@ function pi_activity_form_pi_activity_node_form_alter(&$form, &$form_state)
 			$form['activity_phases_stages']['#suffix'] = '';
 		}
 	}
+	// Hide group audience settings
 	$form['og_nodeapi']['#access'] = FALSE;
-
-	// ISSUE 2: content cannot be saved by another user
-	/**
-	* @TODO: Figure out the main cause why this happens. It has something
-	* to do with staying on the node form instead of redirecting to the view.
-	**/
+	
 	$form['changed']['#default_value'] = $_SERVER['REQUEST_TIME'];
 }
 
@@ -660,8 +663,8 @@ function _pi_activity_form_generate_phase_select($inquiry_nid, $default_value='n
 			'#default_value' => $default_value,
 			'#element_validate' => array('pi_util_phase_nid_validate'),
 			'#ahah' => array(
-				'path'    => ahah_helper_path(array('activity_phases_stages')),
-				'wrapper' => 'activity-phases-stages-wrapper',
+					'path'    => ahah_helper_path(array('activity_phases_stages')),
+					'wrapper' => 'activity-phases-stages-wrapper',
 			),
 			//this fixes some layout issues with the ahah throbber
 			//'#attributes' => array('style'=>'overflow:auto;border: thin solid black;'),
@@ -786,7 +789,7 @@ function _pi_activity_explain_actor_and_audience($actor_gid, $audience_group_typ
 						)
 				);
 				break;
-				 
+					
 			case 'done_as_single_group_not_shared':
 				$setting_explanation = t("This activity will be done as a %actor_group_type by %actor_group_type '%group_name'.",
 				array(
@@ -950,19 +953,19 @@ function pi_activity_load($node)
 		$result_rows = pi_activity_get_group_status($activity->nid, $activity->actor);
 		//pi_debug_message($result_rows);
 
-		// There should only be one result for this... unless it's specifically been overridden in thedb
+		// There should only be one result for this... unless it's specifically been overridden in the db
 		// per user/group statuses aren't implemented here
 		switch(count($result_rows))
 		{
 			case 0:
-				$activity->visible_function = NULL;
+				$activity->visible_status = NULL;
 				$activity->node_function = NULL;
 				drupal_set_message(t("No activity status set for activity !id, group !gid",
 						array('!id' => $node->nid, '!gid' => $activity->actor)), 'warning');
 				break;
 			case 1:
 				// This is the ideal case, so just copy the data as needed
-				$activity->visible_function = $result_rows[0]['visible_status'];
+				$activity->visible_status = $result_rows[0]['visible_status'];
 				$activity->node_function = $result_rows[0]['node_function'];
 				break;
 			default:
@@ -1610,33 +1613,14 @@ function pi_activity_teaser($node, $activity, $link_node_function)
 	{
 		//Add activity ID to node, needed for the PI chart module
 		$node->activity_id = $activity->nid;
-
 		$output .= node_view($node, TRUE, TRUE);
 	}
 	else
-	{
 		$output .= $activity->body;
-	}
 	return $output;
 }
 
 
-/**
- * Returns a list of nids of activity nodes generated for the given pi_activity
- * @param uint $inquiry_id the id of a pi_inquiry to get all related nodes for the activity (n.b. this is probably not needed)
- * @return array(uint) an array of all the activity content nids for the given activity_is
- */
-function pi_activity_get_activity_content_nids($activity_id)
-{
-	$activity_content_nids = array();
-	$query = "SELECT `nid` FROM {pi_activity_node} WHERE `activity_id` = %d";
-	$result = db_query($query, $activity_id);
-	while($row = db_fetch_array($result))
-	{
-		$activity_content_nids[] = $row['nid'];
-	}
-	return $activity_content_nids;
-}
 
 
 
@@ -1660,19 +1644,12 @@ function pi_activity_nodeapi(&$node, $op)
 			{
 				//Node not associated to an activity in the database yet, so check url also
 
-				$drupal_path = str_replace(base_path(), '', request_uri());
-
-				$drupal_path = str_replace('?q=', '', $drupal_path);
-				 
 				// Split the string into parts to get the inquiry id if it exists...
-				$path_parts = explode('/', $drupal_path);
+				$path_parts = pi_util_get_drupal_path_parts();
 				if(strcasecmp($path_parts[0], 'activity')===0)
 				{
 					if(is_numeric($path_parts[1]))
-					{
 						$activity_nid = $path_parts[1];
-					}
-
 				}
 			}
 			// Presuming the referred activity id checks out then update it as needed
@@ -1733,23 +1710,15 @@ function pi_activity_nodeapi(&$node, $op)
 								//(e.g. fooddiary_data => generates pi_sort_measure)
 								//@TODO FIXME Nodeapi is called twice...once
 								if($node->type != '')
-								{
 									if(isset($node->activity_id))
-									{
 										$activity = node_load($activity_id);
-									}
-								}
 								break;
 						}
 
 						if(in_array($node->type, $node_types_to_create_activity_for))
-						{
 							pi_activity_add_new_activity_for_activity_content_node($node, 'edit', 'edit', $node->title, $activity);
-						}
 						else
-						{
 							pi_activity_link_activity_content($node, 'edit', 'edit', $activity->nid);
-						}
 						_pi_activity_set_activity_content_audience($node, $activity_nid);
 						_pi_activity_set_activity_content_actor($node, $activity_nid);
 						break;
@@ -2012,7 +1981,7 @@ function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type)
 			"LEFT JOIN {node_access} node_access ON node.`nid` = node_access.`nid` " .
 			"LEFT JOIN {og_uid} og_uid ON node_access.`gid` = og_uid.`nid` " .
 			"LEFT JOIN {pi_activity_node} pi_activity_node ON pi_activity_node.`nid` = node.`nid`  " .
-			"LEFT JOIN {pi_activity} pi_activity ON pi_activity_node.`activity_id` = pi_activity_node.`nid`  " .
+			"LEFT JOIN {pi_activity} pi_activity ON pi_activity_node.`activity_id` = pi_activity.`nid`  " .
 			"LEFT JOIN {pi_phase} pi_phase ON pi_activity.`phase_nid` = pi_phase.`nid` " .
 			"WHERE TYPE = '%s'  AND pi_phase.`inquiry_nid` = %d " .
 			"AND STATUS = '1' AND ((node.`uid` = %d) OR (og_uid.`uid` = %d) )";
@@ -2116,318 +2085,6 @@ function _pi_activity_get_activity_actor_audience_result_type($actor_gid, $audie
 	return $activity_setting;
 }
 
-/**
- * Set the OG Audience 'view' permission for the activity content node, e.g. audience will be the user's
- * associated class if the actor was 'class', or do nothing if the audience is individual
- * @param unknown_type $node The node that was just created/needs to be changed
- * @param unknown_type $activity_id The associated activity id that created the activity content.
- */
-function _pi_activity_set_activity_content_audience(&$node, $activity_id)
-{
-	// Add group audience data for the activity content by getting the user's associated group
-	// of the given audience type
-	$loaded_activity = node_load($activity_id);
-	if($loaded_activity!==FALSE)
-	{
-		if($loaded_activity->type == 'pi_activity')
-		{
-			if ($loaded_activity->audience != "individual")
-			{
-				$actor_type = pi_get_type_of_group($loaded_activity->actor);
-				// if actor and audience are the same type then it's done as a group, so there is no need
-				// to set an additional audience
-				if($actor_type!=$loaded_activity->audience)
-				{
-					// Otherwise find out if it's a multi-actor or shared activity
-					if( (($actor_type=='group') && ($loaded_activity->audience=='multiclass')) ||
-							(($actor_type=='group') && ($loaded_activity->audience=='class')) ||
-							(($actor_type=='class') && ($loaded_activity->audience=='multiclass')) )
-					{
-						// This activity content should be shared with multi/class - add view to this group
-
-						// Get all audience groups for the activity associated with the actor group
-						// find the one that the content author is a member of...
-						$users_group = pi_groups_get_users_associated_groups($node->uid, $loaded_activity->audience, $loaded_activity->actor);
-						$context['groups'] = $users_group;
-						og_add_group_action($node, $context);
-					}
-				}
-			}
-			else
-			{
-				drupal_set_message(t('Activity @nid is a node but not an activity.', array('@nid' => $details->activity_id), 'error'));
-			}
-		}
-		else
-		{
-			drupal_set_message(t('Activity @nid does not exists.', array('@nid' => $details->activity_id), 'error'));
-		}
-	}
-}
-
-/**
- * Set the OG Audience 'edit' permission for the activity content node, e.g. audience will be the user's
- * associated class if the actor was 'class', or do nothing if the audience is individual
- * @param unknown_type $node The node that was just created/needs to be changed
- * @param unknown_type $activity_id The associated activity id that created the activity content.
- */
-function _pi_activity_set_activity_content_actor(&$node, $activity_id)
-{
-	// Add group audience data for the activity content by getting the user's associated group
-	// of the given audience type
-	$loaded_activity = node_load($activity_id);
-	if(pi_check_is_node_of_type($loaded_activity, 'pi_activity'))
-	{
-		$actor_type = pi_get_type_of_group($loaded_activity->actor);
-		$users_actor_group = array();
-		// if actor and audience are the same type then it's done as a group, so set group audience ownership
-		// to the actors actor group
-		// Actor type greater than audience, so each group of type audience within actor grop gets
-		// their own result not shared
-		if( (($actor_type=='class') && ($loaded_activity->audience=='group')) ||
-				(($actor_type=='multiclass') && ($loaded_activity->audience=='group')) ||
-				(($actor_type=='multiclass') && ($loaded_activity->audience=='class')) )
-		{
-			//Each actor group within audience does their own activity, so get this users actual actor group
-			// Get all audience groups for the activity associated with the actor group
-			$activity_audience_groups = pi_groups_get_associated_groups($loaded_activity->actor, $loaded_activity->audience);
-			// find the one that the content author is a member of...
-			foreach($activity_audience_groups as $group_nid)
-			{
-				if(pi_group_check_membership($node->uid, $group_nid))
-				{
-					$users_actor_group[] = $group_nid;
-				}
-			}
-			if(count($users_actor_group)==0)
-			{
-				drupal_set_message(t("Trying to assign activity content to a @type group the user isn't a member of (@gids)", array('@type' => $loaded_activity->actor, '@gids' => implode($activity_audience_groups, ", "))));
-			}
-		}
-		else
-		{
-			// If it's not a multi-actor activity then just get the actor group from the activity data
-			$users_actor_group[] = $loaded_activity->actor;
-		}
-		$context['groups'] = $users_actor_group;
-		og_add_group_action($node, $context);
-
-	}
-	else
-	{
-		drupal_set_message(t('Activity @nid is not an activity.', array('@nid' => $details->activity_id), 'error'));
-	}
-}
-
-
-/**
- * Returns activity visible status and node function, prioritising specific user status (set as uid in table) rather than group ids.
- * @param uint $activity_id
- * @param uint $uid
- * @return array(visible_status, node_function)
- */
-function pi_activity_load_status($activity_id, $uid)
-{
-	$return_status = array();
-	$activity  = node_load($activity_id);
-	if(pi_check_is_node_of_type($activity, 'pi_activity'))
-	{
-		// First see if there's a status set specifically for this user
-		$return_status = pi_activity_get_user_status($activity_id, $uid);
-		if(count($return_status)>1)
-		{
-			drupal_set_message(t("More than one actor status set for activity !activity for user !uid - and no actor group status nid set, so using first entry: !status, !function.",
-					array('!activity' => $activity_id, '!uid' => $uid,
-							'!status' => $return_status[0]['visible_status'], '!function' => $return_status[0]['node_function'])), 'warning');
-		}
-		if(count($return_status)==0)
-		{
-			// If there's no user status set, then check the activities Actor group for a status
-			// for an individual activity
-			$actor_groups = pi_groups_get_users_actor_groups($uid, $activity->actor, $activity->audience);
-			if($activity->audience == 'individual')
-			{
-				foreach($actor_groups as $actor_group)
-				{
-					$return_status[] = pi_activity_get_group_status($activity_id, $actor_group);
-				}
-			}
-			else
-			{
-				if(count($return_status==0))
-				{
-					// For group activities, find the actor group for this user and this activity and
-					// check the status there
-					$users_actor_groups = pi_groups_get_users_actor_groups($uid, $activity->actor, $activity->audience);
-
-					if(count($users_actor_groups)>0)
-					{
-						foreach($users_actor_groups as $gid)
-						{
-							$return_status += pi_activity_get_group_status($activity_id, $gid);
-						}
-					}
-					if(count($return_status)>1)
-					{
-						drupal_set_message(t("More than one actor status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
-								array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($return_status)),
-										'!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
-					}
-					// If there's no specific actor group sed for this user, then check the default actor group
-					if(count($return_status==0))
-					{
-						$return_status += pi_activity_get_group_status($activity_id, $activity->actor);
-					}
-					if(count($return_status)>1)
-					{
-						drupal_set_message(t("More than one actor status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
-								array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($return_status)),
-										'!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
-					}
-					if(count($return_status==0))
-					{
-						// If there's no actor group valid for this user and activity
-						// then check the audience status instead
-						$users_actor_groups = pi_groups_get_users_audience_groups($uid, $activity->actor, $activity->audience);
-						if(count($users_actor_groups)>0)
-						{
-							foreach($users_actor_groups as $gid)
-							{
-								$return_status += pi_activity_get_group_status($activity_id, $gid);
-							}
-						}
-						if(count($return_status)>1)
-						{
-							drupal_set_message(t("More than one audience status set for activity !activity for group(s) !gid - and no actor group status nid set, so using first entry group: !status, !function.",
-									array('!activity' => $activity_id, '!gid' => implode(', ', array_keys($return_status)),
-											'!status' => $return_status['visible_status'], '!function' => $return_status['node_function'])), 'warning');
-						}
-					}
-				}
-			}
-		}
-	}
-	else
-	{
-		drupal_set_message('pi_activity_load_status: invalid value for activity_id passed', 'warning');
-	}
-
-	if(count($return_status)==0)
-	{
-		drupal_set_message(t("No status set for activity !activity for user !uid.", array('!activity' => $activity_id, '!uid' => $uid)), 'warning');
-		$return_status = NULL;
-	}
-	else
-	{
-		$return_status = $return_status[0];
-	}
-	return $return_status;
-}
-
-
-/**
- *
- * Gets the activity status for an activity for the given group or user.
- * @param unknown_type $activity_nid
- * @param unknown_type $id Either a group id or a user id as indicated by $user_or_group parameter
- * @param unknown_type $user_or_group 'user' or 'group' to indicated what type of status query it is
- * @return array() of activity statuses
- */
-function _pi_activity_get_status_query($activity_nid, $id, $user_or_group='user')
-{
-	if($user_or_group=='group')
-	{
-		$find_column = 'gid';
-	}
-	else
-	{
-		$find_column = 'uid';
-	}
-
-	$query = "SELECT * FROM {pi_activity_status} WHERE (`$find_column`=%d) AND (`activity_id`=%d);";
-	$result = db_query($query, $id, $activity_nid);
-	$results = array();
-	while($one_result = db_fetch_array($result))
-	{
-		$results[] = $one_result;
-	}
-	return $results;
-}
-
-/**
- * Get the status of an activity for a given user.
- *
- * @param uint $activity_nid
- * @param uint $actor
- * @return array() of activity statuses
- */
-function pi_activity_get_user_status($activity_nid, $actor)
-{
-	return _pi_activity_get_status_query($activity_nid, $actor, 'user');
-}
-
-
-/**
- * Get the status of an activity for a given group.
- *
- * @param uint $activity_nid
- * @param uint $actor
- * @return array() of activity statuses
- */
-function pi_activity_get_group_status($activity_nid, $actor)
-{
-	return _pi_activity_get_status_query($activity_nid, $actor, 'group');
-}
-
-
-/**
- * Sets the status of an activity for actor(god, updating if needed
- *
- * @param uint $activity_nid
- * @param uint $actor Group ID
- * @param String $visible
- * @param String $function
- * @returns result of drupal_write_record()
- */
-function pi_activity_set_status($activity_nid, $actor, $visible, $function)
-{
-	$existing_status = pi_activity_get_status($activity_nid, $actor);
-	$update = false;
-	if($existing_status!=NULL)
-	{
-		$update=true;
-		$status = $existing_status;
-	}
-	else
-	{
-		$status = array();
-		$status['gid'] = $actor;
-		$status['activity_id'] = $activity_nid;
-	}
-	$status['visible_status'] = $visible;
-	$status['node_function'] = $function;
-	$return = null;
-	if($update)
-		$return = drupal_write_record('pi_activity_status', $status, "pas_id");
-	else
-		drupal_write_record('pi_activity_status', $status);
-	return $return;
-}
-
-
-/**
- * $activity_status_array is a keyed array comprising:
- * $activity_status_array ->inquiry_id
- * $activity_status_array ->activity_id
- * $activity_status_array ->uid
- * $activity_status_array ->gid
- * $activity_status_array ->node_function
- * $activity_status_array ->visible_status
- */
-function pi_activity_save_status($activity_status)
-{
-	pi_activity_set_status($activity_status->activity_id, $activity_status->gid, $activity_status->visible_status, $activity_status->node_function);
-}
 
 
 /**
@@ -2444,60 +2101,47 @@ function pi_activity_form_node_form_alter(&$form, &$form_state)
 	//Strip the request url of the preceeding drupal stuff base_url and ?q=/
 	// so that it's possible to work out whether the page request was from /inquiry/%inquiry/phase/add
 	// or from /node/%node/edit
-	$drupal_path = str_replace(base_path(), '', request_uri());
-	$drupal_path = str_replace('?q=', '', $drupal_path);
-	// Split the string into parts to get the inquiry id if it exists...
-	$path_parts = explode('/', $drupal_path);
+	$path_parts = pi_util_get_drupal_path_parts();
 	//if AHAH helper is used, then redirect is cleared, so reset it here....
-	if(count($path_parts)==2)
-	{
-		if(strcasecmp($path_parts[0], 'ahah_helper')===0)
-		{
-			$form['#redirect'] = $form_state['storage']['redirect-activity-submit'];
-		}
-	}
-	// Look for /activity/{number}/edit
-	// First see if the array is big enough to avoid looking at null refs.
-	if(count($path_parts)>= 3)
-	{
-		// Now check all the parts for vaildity... activity NUMBER edit
-		if(strcasecmp($path_parts[0], 'activity')===0)
-		{
-			if(is_numeric($path_parts[1]))
-			{
-				$potential_activity_id = $path_parts[1];
+	if(pi_util_match_url(array('ahah_helper')))
+		$form['#redirect'] = $form_state['storage']['redirect-activity-submit'];
 
-				// the last part of the url is a special case since it could be either
-				// /activity/%activity/edit OR
-				// /activity/%activity/edit?some=query&string=too OR
-				// /activity/%activity/edit&some=query&string=too
-				$valid_strings = array('edit', 'edit?', 'edit&');
-				if(in_array(strtolower($path_parts[2]), $valid_strings))
+	// Look for /activity/{number}/edit
+	if(pi_util_match_url(array('activity', NULL, NULL)))
+	{
+		if(is_numeric($path_parts[1]))
+		{
+			$potential_activity_id = $path_parts[1];
+
+			// the last part of the url is a special case since it could be either
+			// /activity/%activity/edit OR
+			// /activity/%activity/edit?some=query&string=too OR
+			// /activity/%activity/edit&some=query&string=too
+			$valid_strings = array('edit', 'edit?', 'edit&');
+			if(in_array(strtolower($path_parts[2]), $valid_strings))
+			{
+				//Set the destination from activity details
+				$activity = node_load($potential_activity_id);
+				if(pi_check_is_node_of_type($activity, 'pi_activity'))
 				{
-					//Set the destination from activity details
-					$activity = node_load($potential_activity_id);
-					if(pi_check_is_node_of_type($activity, 'pi_activity'))
+					$destination = $activity->destination_after;
+					if($destination=='phase')
 					{
-						$destination = $activity->destination_after;
-						if($destination=='phase')
-						{
-							$form['#redirect'] = "phase/" . $activity->phase_nid;
-						}
-						elseif($destination=='self')
-						{
-							$form['#redirect'] = "activity/$potential_activity_id";
-						}
-						$form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
+						$form['#redirect'] = "phase/" . $activity->phase_nid;
 					}
-					else
+					elseif($destination=='self')
 					{
-						// It wasn't a valid inquiry node, so fall back to standard phase editing page
-						drupal_set_message(t("An activity nid (@nid) was specified for this activity, but the id didn't refer to a valid activity node.", array("@nid" => $potential_activity_id)), 'warning');
+						$form['#redirect'] = "activity/$potential_activity_id";
 					}
+					$form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
+				}
+				else
+				{
+					// It wasn't a valid inquiry node, so fall back to standard phase editing page
+					drupal_set_message(t("An activity nid (@nid) was specified for this activity, but the id didn't refer to a valid activity node.", array("@nid" => $potential_activity_id)), 'warning');
 				}
 			}
 		}
-		//otherwise if it's not related to activities so don't touch the form
 	}
 }
 
@@ -2511,27 +2155,26 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 {
 	$activity_nid = NULL;
 	//First see if activity is set in the url...
+	// or is it an existing node attached to an activity?
 	if(pi_util_match_url(array('activity', NULL, NULL)))
-	{
 		$activity_nid = pi_util_get_path_element(1);
-	}
 	else
-	{
-		// Is it an existing node attached to an activity?
 		$activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	}
+	
 	if($activity_nid!=NULL)
 	{
 		if(pi_check_node_exists_and_is_of_type($activity_nid, 'pi_activity'))
 		{
-
+			pi_debug_message("Starting to change access for node");
 			// If this is activity content, then set the group permissions appropriately
 			// remove permissions for any nquire groups that aren't actor/audience and then
 			// set view/edit/delete permissions depending on actor or audience
 			$activity = node_load($activity_nid);
-			$actor_groups = pi_groups_get_activity_actors($activity->actor, $activity->audience);
-			$audience_groups = pi_groups_get_activity_audience($activity->actor, $activity->audience);
-			pi_debug_message($actor_groups);
+			$actor_groups = pi_groups_get_users_actor_groups($node->uid, $activity->actor, $activity->audience);
+			pi_debug_message("Actor groups " . implode(", ", $actor_groups));
+			$audience_groups = pi_groups_get_users_audience_groups($node->uid, $activity->actor, $activity->audience);
+			pi_debug_message("Audience groups " . implode(", ", $audience_groups));
+				
 			$count = 0;
 			$grants_found = array();
 			for($count=0;$count<count($grants);$count++)
@@ -2541,9 +2184,7 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 					if(in_array($grants[$count]["gid"], $actor_groups))
 					{
 						if(!in_array($grants[$count]["gid"], $grants_found))
-						{
 							$grants_found[] = $grants[$count]["gid"];
-						}
 						pi_debug_message("Setting all grant for " . $grants[$count]["gid"]);
 						$grants[$count]["grant_view"] = 1;
 						$grants[$count]["grant_update"] = 1;
@@ -2555,8 +2196,6 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 						{
 							$grants_found[] = $grants[$count]["gid"];
 						}
-						pi_debug_message("Setting view grant for " . $grants[$count]["gid"]);
-
 						$grants[$count]["grant_view"] = 1;
 						$grants[$count]["grant_update"] = 0;
 						$grants[$count]["grant_delete"] = 0;
@@ -2564,10 +2203,18 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 					else
 					{
 						//Remove un needed nQuire group permissions
-						unset($grants[$count]);
+						$grants[$count] = NULL;
 					}
 				}
 			}
+			
+			$new_grants = array();
+			foreach($grants as $grant)
+				if($grant!=NULL)
+					$new_grants[] = $grant;
+
+			$grants = $new_grants;
+			
 			foreach($actor_groups as $group_gid)
 			{
 				if(!in_array($group_gid, $grants_found))
@@ -2599,6 +2246,7 @@ function pi_activity_og_access_grants_alter(&$grants, $node)
 			}
 		}
 	}
+	
 }
 
 

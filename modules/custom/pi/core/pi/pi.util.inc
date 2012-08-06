@@ -94,71 +94,11 @@ function pi_util_phase_nid_validate($element, $form_state)
  * @param array $y
  * @return bool result of $x['#weight'] > $y['#weight']
  */
-function my_weight_compare($x, $y) {
+function pi_util_weight_compare($x, $y) {
 	$xw = (int) $x['#weight'];
 	$yw = (int) $y['#weight'];
 	return $xw > $yw;
 }
-
-
-function compare_phase($a, $b) {
-	$aposition = $a->position;
-	$bposition = $b->position;
-	$aphase = $a->phase_id;
-	$bphase = $b->phase_id;
-	if ($aphase == $bphase) {
-		if ($aposition == $bposition) {
-			return 0;
-		};
-		if ($aposition < $bposition) {
-			return -1;
-		};
-		if ($aposition > $bposition) {
-			return 1;
-		};
-	}
-	else {
-		if ($aphase < $bphase) {
-			return -1;
-		};
-		if ($aphase > $bphase) {
-			return 1;
-		};
-	}
-}
-
-function compare_status($a, $b) {
-	$aposition = $a->position;
-	$bposition = $b->position;
-	$status = array();
-	$status["start"] = 0;
-	$status["edit"] = 1;
-	$status["view"] = 2;
-	$status["unavailable"] = 3;
-	$astatus = $status[$a->visible_status];
-	$bstatus = $status[$b->visible_status];
-	if ($astatus == $bstatus) {
-		if ($aposition == $bposition) {
-			return 0;
-		};
-		if ($aposition < $bposition) {
-			return -1;
-		};
-		if ($aposition > $bposition) {
-			return 1;
-		};
-	}
-	else {
-		if ($astatus < $bstatus) {
-			return -1;
-		};
-		if ($astatus > $bstatus) {
-			return 1;
-		};
-	}
-}
-
-
 
 /**
  *
@@ -462,10 +402,11 @@ function pi_util_get_drupal_path_parts()
 /**
  * 
  * See if a url matches a given pattern, in the array specified. Each element in the array is compared with path parts
- * and if the element is NULL then it's considered a wildcard.
+ * and if the element is NULL then it's considered a wildcard, size of the arrays is the minimum number of parts in the path, no maximum length can
+ * be specified here
  * e.g. array("activity", NULL, "edit", NULL) would match the path
  * /activity/ * /edit/ *   
- *  URL parameterts, and the drupal installation folder are ignored
+ *  URL parameters, and the drupal installation folder are ignored
  * @param String $url
  * @param array $matches
  */
@@ -473,26 +414,24 @@ function pi_util_match_url($matches = array())
 {
 	// Initially set it to true since we are only looking for one mismatch
 	$return_value = true;
-	
 	// Split the string into parts 
 	$path_parts =pi_util_get_drupal_path_parts();
-	
 	//See if there's the right number of path parts...
 	if(count($path_parts)>=count($matches))
 	{
-		// Now check all the parts for vaildity... activity NUMBER edit
+		// Now check all the parts for vaildity... 
 		$count = 0;
 		foreach($matches as $match)
 		{
-			if($matches[$count]!=NULL)
-			{
-				if(!strcasecmp($path_parts[$count], $matches[$count])!=0)
-				{
+			//pi_debug_message("compare " . $match . " with " . $path_parts[$count]);
+			if($match!=NULL)
+				if(strcasecmp($path_parts[$count], $match)!==0)
 					$return_value = false;
-				}
-			}
 			$count++;
 		}
+	}
+	else {
+		$return_value = false;
 	}
 	return $return_value;
 }
@@ -505,6 +444,35 @@ function pi_util_get_path_element($index)
 {
 	$parts = pi_util_get_drupal_path_parts();
 	return $parts[$index];
+}
+
+/*pre-php 5.3 array_replace compatability fix*/
+/*this allows code to work for Paul*/
+if (!function_exists('array_replace'))
+{
+	function array_replace( array &$array, array &$array1, $filterEmpty=false )
+	{
+		$args = func_get_args();
+		$count = func_num_args()-1;
+
+		for ($i = 0; $i < $count; ++$i) {
+			if (is_array($args[$i])) {
+				foreach ($args[$i] as $key => $val) {
+					if ($filterEmpty && empty($val)) continue;
+					$array[$key] = $val;
+				}
+			}
+			else {
+				trigger_error(
+						__FUNCTION__ . '(): Argument #' . ($i+1) . ' is not an array',
+						E_USER_WARNING
+				);
+				return NULL;
+			}
+		}
+
+		return $array;
+	}
 }
 
 ?>
