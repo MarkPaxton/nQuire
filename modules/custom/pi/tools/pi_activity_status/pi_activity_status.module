@@ -18,12 +18,6 @@ function get_activity_participants($node_details) {
 	/*get autual audiences for this i/s/p/a*/
 	//get the grouping for this i/s/p/a
 
-	/* CANDIDATE_FIX 
-	 * error: undefined function get_grouping()
-	 * solution: include pi.depricated.ind
-	 */
-	module_load_include("inc", "pi", "pi.depricated");
-	
 	$grouping = get_grouping ($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
 
 	$groups = get_groups_from_grouping ($grouping);
@@ -233,17 +227,13 @@ function generate_status_table($activity_participants, $node_details, $audience)
 
 	$headings = array(ucwords($audience), "Status");
 	$table = array();
-	
-	/* CANDIDATE_FIX
-	 * error: undefined function get_visible_status_of_activity()
-	 * solution: call pi_activity_get_visible_status_of_activity() instead.
-	 * This change is applied to lines 246 and 260 below.
-	 */
 
 	if ($audience == "individual") {
 		foreach ($activity_participants as $activity_participant) {
 			if ($activity_participant != 1) {
-				$table[] = array(t(get_user_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[pi_activity_get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $activity_participant)] . "\"/>"));
+				/* FIX (eloy) */
+//				$table[] = array(t(get_user_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[pi_activity_get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $activity_participant)] . "\"/>"));
+        $table[] = array(t(get_user_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[pi_activity_get_visible_status_of_activity($node_details->activity_id, $activity_participant)] . "\"/>"));
 			}
 		}
 	}
@@ -257,7 +247,9 @@ function generate_status_table($activity_participants, $node_details, $audience)
 			if ($group_member->uid == 1) {
 				$group_member = $group_member = db_fetch_object($members_of_group);
 			}
-			$table[] = array(t(get_group_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[pi_activity_get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $group_member->uid)] . "\"/>"));
+      /* FIX (eloy) */
+//			$table[] = array(t(get_group_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[pi_activity_get_visible_status_of_activity($node_details->inquiry_id, $node_details->activity_id, $group_member->uid)] . "\"/>"));
+			$table[] = array(t(get_group_name($activity_participant)), t("<img src=\"" . $image_path. $status_image[pi_activity_get_visible_status_of_activity($node_details->activity_id, $group_member->uid)] . "\"/>"));
 		}
 	}
 	$content .= theme('table', $headings, $table);

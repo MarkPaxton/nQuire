@@ -172,13 +172,18 @@ function pi_activity_link_activity_content($node, $node_function, $visible_statu
 		// as an empty array to do an insert
 		if($activity->audience == 'individual') {
 			$activity_status_node = pi_activity_get_user_status($activity_nid_to_link, $node->uid);
-			$activity_status_node['gid'] == null;
-			$activity_status_node['uid'] == $node->uid;
+			/* FIX (eloy) */
+//      $activity_status_node['gid'] == null;
+//			$activity_status_node['uid'] == $node->uid;
+      $activity_status_node['gid'] = null;
+			$activity_status_node['uid'] = $node->uid;
 		}
 		else {
 			$activity_status_node = pi_activity_get_activity_status_for_user($activity_nid_to_link, $node->uid);
 			$activity_status_node['gid'] = $activity->actor;
-			$activity_status_node['uid'] == null;
+      /* FIX (eloy) */
+			//$activity_status_node['uid'] == null;
+			$activity_status_node['uid'] = null;
 		}
 
 		if($activity_status_node['gid']!=null)
@@ -206,7 +211,7 @@ function pi_activity_link_activity_content($node, $node_function, $visible_statu
 		//set the status for the audience to view
 		$audience_group_nids = pi_groups_get_activity_audience($activity->actor, $audience_group_type);
 		foreach($audience_group_nids as $audience_group_nid)
-			pi_activity_set_status($activity_node->nid, $audience_group_nid, 'view', 'view');
+      pi_activity_set_status($activity_node->nid, $audience_group_nid, 'view', 'view');
 
 		//extend activity actor to size of audience
 		// @TODO - change the activity view to get activities with a status set for the user rather than by actor

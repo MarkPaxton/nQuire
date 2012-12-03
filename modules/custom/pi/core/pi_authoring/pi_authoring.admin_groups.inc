@@ -3,6 +3,21 @@
  * 
  */
 
+function pi_authoring_add_user_to_group() {
+	
+	$output = t( "List of existing (for you accessible) groups" ) . ":";
+	
+	$output .= "<ul>";
+	foreach( og_all_groups_options() as $key => $og_name ) {
+		
+		$output .= "<li>" . l( $og_name, "og/users/" . $key . "/add_user" ) . "</li>";
+		
+	}
+	$output .= "</ul>";
+	
+	return $output;
+}
+
 
 /** Generates the page to that contains the form to allow assigning the groups as multiclass/class/group 
  * @return string

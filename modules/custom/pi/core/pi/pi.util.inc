@@ -356,29 +356,34 @@ function pi_util_get_names_from_nids($nids)
 }
 
 
+/**
+ * Shorten text to length given, trimmign whole words and add postfix text to the end if it's shortened
+ * @param $text
+ * @param $length
+ * @param $postfix
+ */
+function pi_util_trim_text($text, $length=250, $postfix="...") {
+	$return_text = $text;
+	if(strlen($text) > $length) {
+		$short_body = substr($text, 0, $length);
+		$last_space = strrpos($short_body, " ");
+		$short_body = substr($short_body, 0, $last_space);
+		$return_text = $short_body . $postfix;
+	}
+	return $return_text;
+}
+
 
 /**
  * This function updates the title of the node in the node and node_revision table
  * @param $node
- * @param $title 
+ * @param $title
  */
-function pi_util_set_node_title($node, $title=NULL)
-{
+function pi_util_set_node_title($node, $title=NULL) {
 	if ($title === NULL)
-	{
 		$title = $node->body;
-	}
-	//get activity title from node body
-	$length = 250;
-	if(strlen($title) > $length)
-	{
-		$short_body = substr(check_plain($title), 0, $length);
-		$last_space = strrpos($short_body, " ");
-		$short_body = substr($short_body, 0, $last_space);
-		$title = $short_body."...";
-	}
-    $node->title = $title;
-    node_save($node);
+	$node->title = pi_util_trim_text(check_plain($title));
+	node_save($node);
 }
 
 

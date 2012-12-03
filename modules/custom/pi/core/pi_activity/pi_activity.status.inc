@@ -152,9 +152,10 @@ function pi_activity_get_group_status($activity_nid, $actor)
  * @param String $function
  * @returns result of drupal_write_record()
  */
-function pi_activity_set_status($activity_nid, $actor, $visible, $function)
+function pi_activity_set_status($activity_nid, $actor, $visible, $function) 
 {
-	$existing_status = pi_activity_get_status($activity_nid, $actor);
+  /* FIX (eloy) */
+	$existing_status = _pi_activity_get_status_query($activity_nid, $actor, 'group');
 	$update = false;
 	if($existing_status!=NULL)
 	{
