@@ -55,6 +55,7 @@
         this.structureFeatureTable('_buildColumn', value[i]);
       }
 
+      this.structureFeatureTable('_enableSaveButton', false);
     },
     _createLink: function(op, title, inline) {
       return $('<a>').attr('op', op).html(title).attr('href', '#').addClass(inline ? 'link-button' : 'normal-link');
@@ -65,7 +66,11 @@
 
       var headCell = $('<td>').addClass('feature-cell').attr('column-id', column.id).html(column.title);
 
-      this.find('tr.structure-feature-list').children(':last').before(headCell);
+      if (options.allowCreate) {
+        this.find('tr.structure-feature-list').children(':last').before(headCell);
+      } else {
+        this.find('tr.structure-feature-list').append(headCell);
+      }
 
       this.find('tr').not('.structure-feature-list').each(function() {
         var row = $(this);
@@ -86,7 +91,11 @@
           }).appendTo(valueCell);
         }
 
-        row.children(':last').before(valueCell);
+        if (options.allowCreate) {
+          row.children(':last').before(valueCell);
+        } else {
+          row.append(valueCell);
+        }
       });
     },
     _openAddNewColumnDialog: function() {
@@ -100,6 +109,7 @@
         var n = this.data('nextNewId');
         this.data('nextNewId', n + 1);
         this.structureFeatureTable('_buildColumn', {id: 'new' + n, title: title, values: {}});
+        this.structureFeatureTable('_dataModified');
       }
     },
     _openColumnDialog: function(title, columnId, useInput, callback) {
@@ -160,8 +170,40 @@
       var cell = $('td[column-id="' + columnId + '"][item-id="' + itemId + '"]');
       cell.attr('value', value);
       cell.find('a').html(options.values[value]);
-    }
+      this.structureFeatureTable('_dataModified');
+    },
+    _dataModified: function() {
+      var self = this;
 
+      var data = [];
+
+      this.find('td.feature-cell').each(function() {
+        var cell = $(this);
+        var id = cell.attr('column-id');
+        var column = {
+          id: id,
+          title: cell.html(),
+          values: {}
+        };
+        self.find('td.value-cell[column-id="' + id + '"]').each(function() {
+          var valueCell = $(this);
+          column.values[valueCell.attr('item-id')] = valueCell.attr('value');
+        });
+        data.push(column);
+      });
+
+      this.nQuireWidget('setDataValue', data);
+      this.structureFeatureTable('_enableSaveButton', true);
+    },
+    _enableSaveButton: function(enabled) {
+      var button = $('#edit-submit');
+      if (enabled) {
+        button.removeAttr('disabled');
+      } else {
+        button.attr('disabled', 'disabled');
+      }
+      return this;
+    }
   };
 
   $.fn.structureFeatureTable = function(method) {

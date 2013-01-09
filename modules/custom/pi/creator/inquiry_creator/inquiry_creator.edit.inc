@@ -35,6 +35,12 @@ function inquiry_creator_main($nid, $op = '', $item = 0) {
     case 'stages':
       $output .= drupal_get_form('inquiry_creator_stages_form', $design);
       break;
+    case 'groups':
+      $output .= drupal_get_form('inquiry_creator_groups_form', $design);
+      break;
+    case 'roles':
+      $output .= drupal_get_form('inquiry_creator_roles_form', $design);
+      break;
     default: /* other things */
       break;
   }
@@ -160,6 +166,61 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
   inquiry_creator_form_cancel($form, $form_state);
 }
 
+function inquiry_creator_groups_form(&$form_state, $node) {
+  $form = array();
+
+  _inquiry_creator_create_inquiry_id_form_item($node, $form);
+  inquiry_structure_groups_table_create_form_item($form, 'groups', $node->structure, $node->groups);
+  _inquiry_creator_create_form_buttons('inquiry_creator_groups_form_submit', $form);
+
+  return $form;
+}
+function inquiry_creator_groups_form_submit($form, $form_state) {
+  global $user;
+  $node = node_load($form_state['values']['inquiry_design']);
+  if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+
+    $node->groups = $form_state['values']['groups'];
+    $node->revision = TRUE;
+    node_save($node);
+  }
+  inquiry_creator_form_cancel($form, $form_state);
+}
+
+function inquiry_creator_roles_form(&$form_state, $node) {
+  $form = array();
+
+  _inquiry_creator_create_inquiry_id_form_item($node, $form);
+  inquiry_structure_roles_table_create_form_item($form, 'roles', $node->structure, $node->roles);
+  _inquiry_creator_create_form_buttons('inquiry_creator_roles_form_submit', $form);
+
+  return $form;
+}
+function inquiry_creator_roles_form_submit($form, $form_state) {
+  global $user;
+  $node = node_load($form_state['values']['inquiry_design']);
+  if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+    $roles = json_decode($form_state['values']['roles']);
+    $id = 0;
+    foreach ($roles as $role) {
+      if (is_numeric($role->id)) {
+        $id = max($id, $role->id);
+      }
+    }
+
+    foreach ($roles as $role) {
+      if (!is_numeric($role->id)) {
+        $role->id = ++$id;
+      }
+    }
+
+    $node->roles = json_encode($roles);
+    $node->revision = TRUE;
+    node_save($node);
+  }
+  inquiry_creator_form_cancel($form, $form_state);
+}
+
 function inquiry_creator_stages_form(&$form_state, $node) {
   $form = array();
 
@@ -169,7 +230,27 @@ function inquiry_creator_stages_form(&$form_state, $node) {
 
   return $form;
 }
+function inquiry_creator_stages_form_submit($form, $form_state) {
+  global $user;
+  $node = node_load($form_state['values']['inquiry_design']);
+  if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+    $stages = json_decode($form_state['values']['stages']);
+    $id = 0;
+    foreach ($stages as $stage) {
+      if (is_numeric($stage->id)) {
+        $id = max($id, $stage->id);
+      }
+    }
 
-function inquiry_creator_roles_form($node) {
-  
+    foreach ($stages as $stage) {
+      if (!is_numeric($stage->id)) {
+        $stage->id = ++$id;
+      }
+    }
+
+    $node->stages = json_encode($stages);
+    $node->revision = TRUE;
+    node_save($node);
+  }
+  inquiry_creator_form_cancel($form, $form_state);
 }
