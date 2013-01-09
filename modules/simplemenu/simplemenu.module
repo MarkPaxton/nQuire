@@ -1,0 +1,631 @@
+<?php
+
+/**
+ * @file
+ * Creates a simplemenu.
+ */
+
+/**
+ * Implementation of hook_menu().
+ */
+function simplemenu_menu() {
+  $items = array();
+
+  $items['admin/settings/simplemenu'] = array(
+    'title' => 'SimpleMenu',
+    'description' => 'Select the menu to display.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('simplemenu_admin_settings'),
+    'access arguments' => array('administer simplemenu'),
+    'file' => 'simplemenu.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Is simplemenu enabled for this page request?
+ */
+function simplemenu_enabled() {
+  static $enabled;
+
+  if (!isset($enabled)) {
+    global $theme;
+    $exclusions = variable_get('simplemenu_exclusions', array());
+    $enabled = empty($exclusions[$theme])
+      && user_access('view simplemenu')
+      && _simplemenu_page_visibility()
+      && _simplemenu_superuser_active();
+  }
+
+  return $enabled;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function simplemenu_init() {
+  // do a simple access check here, since theme isn't available to check yet
+  if (simplemenu_enabled()) {
+    // we first run add menu because it could be completely empty in which
+    // case we want to avoid sending any output
+    if (_simplemenu_add_menu()) {
+      _simplemenu_add_css();    // basic CSS must be before _simplemenu_add_theme()
+      _simplemenu_add_theme();
+      _simplemenu_add_js();
+    }
+  }
+}
+
+/** \brief Add the simplemenu variable with the menu to be displayed.
+ *
+ * This function loads the menu to be displayed and transforms it so
+ * it works with superfish.
+ *
+ * If the cache version of the simplemenu JavaScript string cannot be
+ * created, then it is sent inline whether or not the user asked for it
+ * to be sent inline.
+ */
+function _simplemenu_add_menu() {
+  $menu = simplemenu_get_menu();
+  if (!$menu) {
+    return FALSE;
+  }
+
+  $simplemenu = 'var simplemenu=' . drupal_to_js($menu) . ';';
+
+  // Note that if file_downloads is set to private the file wouldn't be visible
+  // from the outside so we cannot cache it... It is fixed in D7 with the
+  // use of protocols such as 'public://css'.
+  $has_file = variable_get('simplemenu_cache_menu', TRUE)
+    && variable_get('file_downloads', FILE_DOWNLOADS_PUBLIC) == FILE_DOWNLOADS_PUBLIC;
+  if ($has_file) {
+    $js_path = file_create_path('js'); // same path as concatenated Core JS
+    $js_md5 = md5($simplemenu); // this is a lot faster than transferring the menu for each page!
+    $js_filename = $js_path . '/simplemenu-' . $js_md5 . '.js';
+
+    $has_file = file_check_directory($js_path, FILE_CREATE_DIRECTORY);
+    if ($has_file) {
+      // The old way was to send the whole menu each time
+      if (!file_exists($js_filename)) {
+        // use LOCK so concurrent writes don't mess up the file
+        @file_put_contents($js_filename, $simplemenu);
+        $has_file = file_exists($js_filename);
+      }
+      else {
+        $has_file = TRUE;
+      }
+    }
+  }
+
+  $scope = variable_get('simplemenu_menu_scope', 'footer');
+  if ($has_file) {
+    drupal_add_js($js_filename, 'module', $scope);
+  }
+  else {
+    drupal_add_js($simplemenu, 'inline', $scope);
+  }
+
+  return TRUE;
+}
+
+/** \brief Generate the CSS and add it to the page.
+ *
+ * This function generates the dynamic CSS and then insert that to
+ * the header of the page.
+ *
+ * The function regenerates the CSS only when the settings were
+ * modified. Otherwise, it uses the cached version.
+ *
+ * The function has a fall back, in case the dynamic CSS cannot
+ * be created.
+ */
+function _simplemenu_add_css() {
+  global $user;
+
+  $simplemenu_path = drupal_get_path('module', 'simplemenu');
+
+  // set $use_ctools to false if not private downloads
+  $use_ctools = false;
+
+  // test if the file area is private as drupal_add_css fails for generated files in this case
+  if (variable_get('file_downloads', FILE_DOWNLOADS_PUBLIC) != FILE_DOWNLOADS_PUBLIC) {
+
+    // ctools css api can handle adding generated css with private filesystems
+    // check if there is a suitable version and set $use_ctools to true if so
+    if (module_exists('ctools') && module_invoke('ctools', 'api_version', '1.0')) {
+      ctools_include('css');
+      $use_ctools = true;
+    }
+    else {
+      // use the static version of the CSS if private files and no ctools
+      drupal_add_css($simplemenu_path .'/simplemenu.css');
+      return;   
+    }
+  }
+
+  $css_path = file_create_path('css'); // same path as concatenated Core CSS
+  if (file_check_directory($css_path, FILE_CREATE_DIRECTORY)) {
+    $fix = variable_get('simplemenu_fix', 'scroll');
+
+    // XXX add a variable simplemenu_update which is set to TRUE whenever
+    //     the settings get modified and false here
+    $output_filename = variable_get('simplemenu_css_filename', '');
+    if (!$output_filename || !file_exists($output_filename)) {
+      $tags = array(
+        '@MENUBAR_ZINDEX@' => simplemenu_get_zindex('simplemenu_menubar_zindex', 9999),
+        '@DROPDOWN_ZINDEX@' => simplemenu_get_zindex('simplemenu_dropdown_zindex', 9999),
+      );
+      switch ($fix) {
+      case 'top':
+        $tags['@FIX@'] = "position: fixed;\n  top: 0;";
+        $tags['@STICKY_TABLE@'] = "table.sticky-header {\n  top: 21px !important\n}";
+        break;
+
+      case 'bottom':
+        $tags['@FIX@'] = "position: fixed;\n  bottom: 0;";
+        $tags['@STICKY_TABLE@'] = '';
+        break;
+
+      default: // scroll
+        $tags['@FIX@'] = 'position: relative;';
+        $tags['@STICKY_TABLE@'] = '';
+        break;
+
+      }
+      $css = file_get_contents($simplemenu_path . '/simplemenu.css.tpl');
+      $css = strtr($css, $tags);
+      $css_md5 = md5($css);
+      $output_filename = $css_path . '/simplemenu-' . $css_md5 . '.css';
+      if (!file_exists($output_filename)) {
+        // new content, create a new file
+        file_put_contents($output_filename, $css);
+      }
+      else {
+        // this call is rather ugly, but we must make sure that the
+        // system cache will take the current Simplemenu CSS in account
+        _drupal_flush_css_js();
+      }
+      variable_set('simplemenu_css_filename', $output_filename);
+    }
+    
+    if ($use_ctools) {
+      ctools_css_add_css($output_filename);
+    }
+    else {
+      drupal_add_css($output_filename);
+    }
+  }
+  else {
+    // in case we cannot create the dynamic CSS
+    $last_msg = variable_get('simplemenu_css_error', 0);
+    if (($last_msg != -1 && $last_msg + 3600 > time()) || $user->uid == 1) {
+      // avoid displaying the error on each page... only once per hour.
+      // (unless you are the admin, in which case you probably want to know!)
+      variable_set('simplemenu_css_error', time());
+      drupal_set_message(t('Simplemenu could not create the folder @path in order to save the dynamic CSS data.',
+        array('@path' => $css_path)), 'warning');
+    }
+
+    // use a default that cannot react to the dynamic changes...
+    drupal_add_css($simplemenu_path .'/simplemenu.css');
+  }
+}
+
+/** \brief The cache is being cleared.
+ *
+ * Simplemenu uses a cache which, when being cleared, needs to be rebuilt.
+ * This means we want to delete the CSS filename info since that file is
+ * being deleted at that time.
+ */
+function simplemenu_flush_caches() {
+  variable_del('simplemenu_css_filename');
+}
+
+/** \brief Add the module theme.
+ *
+ * This function adds a theme for the Simplemenu look.
+ *
+ * By default, the original theme is used. The module also offers the
+ * blackblue theme. It is also possible to create new themes or use
+ * the theming of the current theme for simplemenu (so the menu fits
+ * perfectly for that theme.)
+ */
+function _simplemenu_add_theme() {
+  // we want to put the simplemenu theme CSS first
+  // so we can change some CSS entries dynamically
+  // but at this time the simplemenu.css is used to
+  // reset many of the CSS entries... Hmmm...
+  $simplemenu_theme = variable_get('simplemenu_theme', 'original');
+  if ($simplemenu_theme != 'custom') {
+    $simplemenu_path = drupal_get_path('module', 'simplemenu');
+    $theme_file = $simplemenu_path . '/themes/' . $simplemenu_theme
+                                  . '/' . $simplemenu_theme . '.css';
+    if (is_file($theme_file)) {
+      drupal_add_css($theme_file);
+    }
+  }
+}
+
+/** \brief Add the JavaScript that makes it all work.
+ *
+ * This function adds the Simplemenu JavaScript, the Superfish JavaScript
+ * and settings from the user.
+ */
+function _simplemenu_add_js() {
+  $simplemenu_path = drupal_get_path('module', 'simplemenu');
+
+  // Settings
+  $fix = variable_get('simplemenu_fix', 'scroll');
+  switch ($fix) {
+  case 'top':
+    $element = 'body';
+    $placement = 'prepend';
+    break;
+
+  case 'bottom':
+    $element = 'body';
+    $placement = 'append';
+    break;
+
+  default: // 'scroll'
+    // let user defined other elements when not fixed
+    $element = variable_get('simplemenu_element', 'body');
+    $placement = variable_get('simplemenu_element_method', 'prepend');
+    break;
+
+  }
+  $settings = array(
+    'effect' => variable_get('simplemenu_effect', 'opacity'),
+    'effectSpeed' => variable_get('simplemenu_effect_speed', 'fast'),
+    'element' => $element,
+    'placement' => $placement,
+    'hideDelay' => variable_get('simplemenu_hide_delay', 800),
+    'detectPopup' => variable_get('simplemenu_detect_popup', 1),
+  );
+  drupal_add_js(array('simplemenu' => $settings), 'setting');
+
+  // Simplemenu
+  drupal_add_js($simplemenu_path . '/simplemenu.js');
+
+  // Superfish
+  $superfish = variable_get('simplemenu_superfish_version', 'superfish-1.4.1.js');
+  if ($superfish != 'custom') {
+    drupal_add_js($simplemenu_path . '/' . $superfish);
+  }
+}
+
+/**
+ * \brief Retrieve the zindex for the CSS files.
+ *
+ * This function retrieves a z-index from a Drupal variable and
+ * transform it to fit in a CSS file.
+ *
+ * \param[in] $name The name of the z-index variable to read.
+ * \param[in] $default The default value to use when the variable is not defined.
+ *
+ * \return A string representing the current value of the specified z-index.
+ */
+function simplemenu_get_zindex($name, $default) {
+  $zindex = variable_get($name, $default);
+
+  if ($zindex == -1) {
+    $zindex = '';
+  }
+  else {
+    $zindex = 'z-index: ' . $zindex . ';';
+  }
+
+  return $zindex;
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function simplemenu_perm() {
+  return array('view simplemenu', 'administer simplemenu');
+}
+
+/**
+ * Render an HTML list of links for a given menu.
+ */
+function simplemenu_get_menu() {
+  simplemenu_running(TRUE);
+
+  // if a user turned off menu module but SimpleMenu was previously set
+  // reset variable so a menu appears
+  $all_menus = array(variable_get('simplemenu_menu', 'navigation:0'));
+  drupal_alter('simplemenu_menus', $all_menus);
+
+  if (count($all_menus) > 1) {
+    // if menu is not enable then we cannot have a count other than 1
+    $menu_titles = menu_get_menus();
+    $tree = array();
+    foreach ($all_menus as $full_name) {
+      list($menu_name, $mlid) = explode(':', $full_name);
+      $tree[] = array(
+        'link' => array(
+          'simplemenu_multi_menu_root' => TRUE,
+          'mlid' => $mlid,
+          'menu_name' => $full_name,
+          'hidden' => FALSE,
+          'title' => $menu_titles[$menu_name],
+          'href' => 'admin/settings/simplemenu', /// ??? -- we should not have a link here
+          'in_active_trail' => FALSE,
+          'has_children' => TRUE,
+          'localized_options' => array(
+            'attributes' => array('class' => 'simplemenu-top-level'),
+          ),
+        ),
+        'below' => simplemenu_menu_tree($full_name),
+      );
+    }
+  }
+  else {
+    reset($all_menus);
+    $tree = simplemenu_menu_tree(current($all_menus));
+  }
+
+  // allow other modules to modify the menu tree
+  drupal_alter('simplemenu_tree', $tree);
+
+  // now generate the output
+  // by default avoid calling the theme() function
+  $in_block = !variable_get('simplemenu_call_theme', FALSE);
+  if (!$in_block) {
+    // if we are editing a block, then we MUST avoid calling theme().
+    $in_block = arg(0) == 'admin' && arg(1) == 'build' && arg(2) == 'block';
+    if ($in_block && arg(3)) {
+      $in_block = arg(3) == 'list';
+    }
+  }
+  if ($in_block) {
+    // this is a duplicate of the Core function where I replaced
+    // the theme() calls with the actual function code (& optimized!)
+    $menu = simplemenu_tree_output($tree, '');
+  }
+  else {
+    // See http://drupal.org/node/816036
+    //     http://drupal.org/node/336119
+    //
+    // This function calls theme() and that's bad for anyone
+    // who uses more than one theme (admin theme(), blocks
+    // list, etc.) and the theming of the menu items may very
+    // well break the simplemenu expected <ul>/<li> combinaison.
+    $menu = menu_tree_output($tree);
+  }
+
+  if (!$menu) {
+    if (variable_get('simplemenu_hide_when_empty', FALSE)) {
+      // this is useful for people who have different users with
+      // different roles and when some do not have enough right
+      // to see anything, the menu disappears completely
+      simplemenu_running(FALSE);
+      return;
+    }
+    // some default in case no menu was selected
+    $menu = '<ul class="menu"><li><a href="' . url('admin/settings/simplemenu') . '">'
+        . t('No menu items found. Try a different menu as the default.') . '</a></li></ul>';
+  }
+
+  // add the id to the UL tag here instead of the JavaScript
+  // otherwise it could be added to the <div> tag instead...
+  $pos = strpos($menu, '>');
+  $menu = str_replace('class="menu', 'class="menu clear-block', substr($menu, 0, $pos))
+        . ' id="simplemenu"' . substr($menu, $pos);
+
+  simplemenu_running(FALSE);
+  return '<div class="simplemenu-block">' . $menu . '</div>';
+}
+
+
+/**
+ * @brief Is the simplemenu being built?
+ *
+ * Track whether the simplemenu is currently being built.
+ * This allows other modules to alter their behaviour for the simplemenu.
+ *
+ * This function is safe in a multi-website or even a multi-server environment.
+ *
+ * @param optional boolean $new_state
+ *    Set to TRUE when the simplemenu is being generated.  
+ *    Set to FALSE at the end of the generation process.
+ *
+ * @return Boolean
+ * TRUE if simplemenu is currently being built.
+ */
+function simplemenu_running($new_state = NULL) {
+  static $state = FALSE;
+  if(!is_null($new_state)) {
+    $state = (bool) $state;
+  }
+  return $state;
+}
+
+
+/**
+ * \brief Duplicate of menu_tree_output() to handle the block list.
+ *
+ * This function handles the block list properly by skipping the
+ * theme() function usage whenever the user is in the list of blocks
+ * page. This means the possible theming of simplemenu will "break"
+ * on that page.
+ *
+ * \param[in] $tree The menu tree to be displayed.
+ * \param[in] $id The identifier to add to the ul tag.
+ *
+ * \return The menu tree in the form of a \<ul> list.
+ */
+function simplemenu_tree_output($tree, $id) {
+  static $cnt = 0;
+
+  $output = '';
+  $items = array();
+
+  // Pull out just the menu items we are going to render so that we
+  // get an accurate count for the first/last classes.
+  foreach ($tree as $data) {
+    if (!$data['link']['hidden']) {
+      $items[] = $data;
+    }
+  }
+
+  $inactive_parents = module_exists('simplemenu_inactive_parents');
+
+  $last_item = count($items) - 1;
+  foreach ($items as $i => $data) {
+
+    if ($data['link']['title'] == '-') {
+      $link = '<span class="simplemenu-separator"></span>';
+    }
+    elseif ($inactive_parents && !empty($data['link']['has_children'])) {
+      ++$cnt;
+      $link = '<a name="menu-id-' . $cnt . '">' . $data['link']['title'] . '</a>';
+    }
+    elseif (empty($data['link']['localized_options'])) {
+      $link = l($data['link']['title'], $data['link']['href']);
+    }
+    else {
+      $link = l($data['link']['title'], $data['link']['href'], $data['link']['localized_options']);
+    }
+
+    $menu = $data['below'] ? simplemenu_tree_output($data['below'], $data['link']['mlid']) : '';
+
+    if ($menu) {
+      $class = 'expanded';
+    }
+    elseif ($data['link']['has_children']) {
+      $class = 'collapsed';
+    }
+    else {
+      $class = 'leaf';
+    }
+    if ($i == 0) {
+      $class .= ' first';
+    }
+    if ($i == $last_item) {
+      $class .= ' last';
+    }
+    if ($data['link']['in_active_trail']) {
+      $class .= ' active-trail';
+    }
+    $output .= '<li class="'. $class .'" id="simplemenu-li-'. $data['link']['mlid'] .'">'. $link . $menu ."</li>\n";
+  }
+
+  if ($id) {
+    $id = ' id="simplemenu-ul-' . $id . '"';
+  }
+
+  return $output ? '<ul class="menu"' . $id . '>'. $output .'</ul>' : '';
+}
+
+/**
+ * Custom implementation of menu_tree().
+ * We want to retrieve the entire menu structure for a given menu,
+ * regardless of whether or not the menu item is expanded or not.
+ */
+function simplemenu_menu_tree($menu_name = 'navigation:0') {
+  static $menu_tree = array();
+
+  if (!isset($menu_tree[$menu_name])) {
+    $menu_tree[$menu_name] = simplemenu_tree_all_data($menu_name);
+  }
+  return $menu_tree[$menu_name];
+}
+
+/**
+ * Modified menu_tree_all_data(), providing the complete menu tree below $root_menu
+ * (which can be *any* menu item, not just the root of a custom menu).
+ *
+ * @param $root_menu
+ *   root menu item of the tree to return as "menu_name:mlid" (mlid = menu link id)
+ *
+ * @todo we don't actually need $menu_name, $mlid would be sufficient
+ */
+function simplemenu_tree_all_data($root_menu = 'navigation:0') {
+  static $tree = array();
+
+  list($menu_name, $mlid) = explode(':', $root_menu);
+
+  // Generate the cache ID.
+  // "links:navigation:all:2" means "all from root to 2" (what the ...), so for "all from 2 down" we do "links:navigation:all:2:all"
+  $cid = "links:$menu_name:all:$mlid" . ($mlid ? ':all' : '');
+
+  if (!isset($tree[$cid])) {
+    // If the static variable doesn't have the data, check {cache_menu}.
+    $cache = cache_get($cid, 'cache_menu');
+    if ($cache && isset($cache->data)) {
+      $data = $cache->data;
+    }
+    else {
+      // Build and run the query, and build the tree.
+      $where = '';
+      $args = array($menu_name);
+      if ($mlid > 0) {
+        $item = menu_link_load($mlid);
+        if ($item) {
+          // The tree is a subtree of $menu_name, so we need to restrict the query to
+          // this subtree.
+          $px = "p" . (int) $item['depth'];
+          $where = " AND ml.$px = %d AND ml.mlid != %d";
+          $args = array($menu_name, $item[$px], $mlid);
+        }
+      }
+      // Select the links from the table, and recursively build the tree.  We
+      // LEFT JOIN since there is no match in {menu_router} for an external
+      // link.
+      $data['tree'] = menu_tree_data(db_query("
+        SELECT m.load_functions, m.to_arg_functions, m.access_callback, m.access_arguments, m.page_callback, m.page_arguments, m.title, m.title_callback, m.title_arguments, m.type, m.description, ml.*
+        FROM {menu_links} ml LEFT JOIN {menu_router} m ON m.path = ml.router_path
+        WHERE ml.menu_name = '%s'". $where ."
+        ORDER BY p1 ASC, p2 ASC, p3 ASC, p4 ASC, p5 ASC, p6 ASC, p7 ASC, p8 ASC, p9 ASC", $args));
+      $data['node_links'] = array();
+      menu_tree_collect_node_links($data['tree'], $data['node_links']);
+      // Cache the data.
+      cache_set($cid, $data, 'cache_menu');
+    }
+    // Check access for the current user to each item in the tree.
+    menu_tree_check_access($data['tree'], $data['node_links']);
+    $tree[$cid] = $data['tree'];
+  }
+
+  return $tree[$cid];
+}
+
+/**
+ * Determine if simplemenu should be displayed based on visibility settings.
+ *
+ * @return boolean
+ */
+function _simplemenu_page_visibility() {
+  $operator = variable_get('simplemenu_visibility_operator', 0);
+  $pages = variable_get('simplemenu_visibility_pages', '');
+
+  if ($pages) {
+    $path = drupal_get_path_alias($_GET['q']);
+    // Compare with the internal and path alias (if any).
+    $page_match = drupal_match_path($path, $pages);
+    if ($path != $_GET['q']) {
+      $page_match = $page_match || drupal_match_path($_GET['q'], $pages);
+    }
+    // When $operator has a value of 0, the menu is displayed on
+    // all pages except those listed in $pages. When set to 1, it
+    // is displayed only on those pages listed in $pages.
+    $page_match = !($operator ^ $page_match);
+  }
+  else {
+    $page_match = TRUE;
+  }
+
+  return $page_match;
+}
+
+/**
+ * Check whether the superuser/admin should be shown simplemenu.
+ */
+function _simplemenu_superuser_active() {
+  global $user;
+  return $user->uid != 1 || variable_get('simplemenu_uid1', 1) == 1;
+}
+
+// vim: ts=2 sw=2 et syntax=php

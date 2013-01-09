@@ -1,0 +1,101 @@
+<?php
+
+// $Id: inquiry_design.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry content type
+ */
+
+/**
+ * Implementation of _perm hook i.e. who has access to the authoring pages
+ */
+function inquiry_creator_perm() {
+  return array('access inquiry_creator content');
+}
+
+/**
+ * This implements the theme hook for inquiry_creator which defines the available theme
+ * functions within this module
+ * @return array of theme names and arguments
+ */
+function inquiry_creator_theme() {
+  return array(
+      'inquiry_creator_design_list' => array(
+          'arguments' => array('list' => array()),
+          'file' => 'inquiry_creator.list.inc',
+      ),
+      'inquiry_creator_inquiry_metadata' => array(
+          'arguments' => array('node' => NULL),
+          'file' => 'inquiry_creator.edit.inc',
+      ),
+      'inquiry_creator_inquiry_main' => array(
+          'arguments' => array('node' => NULL),
+          'file' => 'inquiry_creator.edit.inc',
+      ),
+      'inquiry_creator_edit_menu' => array(
+          'arguments' => array('node' => NULL, 'current_op' => ''),
+          'file' => 'inquiry_creator.edit.inc',
+      ),
+  );
+}
+
+/**
+ * Implementation of _menu hook which has a info page displaying a table of swim lanes
+ * similar to the paper based one for authoring and a set of numbered links to define
+ * elements of the inquiry i.e. the inquiry, phases, stages and activities along with
+ * audience, groups and individual users who will be able to access them
+ */
+function inquiry_creator_menu() {
+  $items = array();
+
+  $items['creator'] = array(
+      'title' => 'Inquiry Creator',
+      'file' => 'inquiry_creator.list.inc',
+      'page callback' => 'inquiry_creator_home',
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+
+  $items['creator/new'] = array(
+      'title' => 'Inquiry Creator - new inquiry',
+      'file' => 'inquiry_creator.edit.inc',
+      'page callback' => 'inquiry_creator_new',
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+
+  $items['creator/%'] = array(
+      'title' => 'Inquiry Creator - inquiry view',
+      'file' => 'inquiry_creator.edit.inc',
+      'page callback' => 'inquiry_creator_main',
+      'page arguments' => array(1, 2),
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+
+  $items['creator/%/edit'] = array(
+      'title' => 'Inquiry Creator - inquiry edit',
+      'file' => 'inquiry_creator.edit.inc',
+      'page callback' => 'inquiry_creator_edit',
+      'page arguments' => array(1),
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+
+  return $items;
+}
+
+function inquiry_creator_nodeapi(&$node, $op) {
+  if ($node->type === 'inquiry_design' && ($op === 'insert' || $op === 'update')) {
+    drupal_goto("creator/{$node->nid}/");
+  }
+}
+

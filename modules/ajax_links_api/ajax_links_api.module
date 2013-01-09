@@ -1,0 +1,185 @@
+<?php
+
+/**
+ * @file
+ * Make any links or create new links to load content to particular DIV via 
+ * jQuery Ajax.
+ */
+
+/**
+ * Implements hook_init().
+ */
+function ajax_links_api_init() {
+  drupal_add_js(drupal_get_path('module', 'ajax_links_api') . '/files/ajax_links_api.js');
+  drupal_add_css(drupal_get_path('module', 'ajax_links_api') . '/files/ajax_links_api.css');
+}
+/**
+ * Implements hook_menu().
+ */
+function ajax_links_api_menu() {
+  // Admin setting.
+  $items['admin/settings/ajax-links-api'] = array(
+    'title' => 'Ajax links API',
+    'description' => 'Ajax links API settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('ajax_links_api_admin'),
+    'access arguments' => array('administer site configuration'),
+  );
+  // Test page.
+  $items['ajax-links-api/test'] = array(
+    'title' => 'Ajax links API test',
+    'page callback' => 'ajax_links_api_test',
+    'access arguments' => array('administer site configuration'),
+	'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+/**
+ * Callback function for admin setting.
+ */
+function ajax_links_api_admin() {
+  $form['ajax_links_api_selector'] = array(
+    '#prefix' => l(t('Demo'), 'ajax-links-api/test'),
+    '#type' => 'textfield',
+    '#title' => t('CSS Selector'),
+    '#default_value' => variable_get('ajax_links_api_selector', '.region-content'),
+  );
+  return system_settings_form($form);
+}
+/**
+ * Implements hook_theme().
+ */
+function ajax_links_api_theme() {
+  return array(
+    'ajax_links_api_link' => array(
+      'arguments' => array('title' => NULL, 'path' => NULL , 'target' => NULL),
+    ),
+  );
+}
+/**
+ * Ajax links API.
+ *
+ * @param string $title
+ *   Title to display.
+ * @param string $path
+ *   Drupal path eg: user/login.
+ * @param string $target
+ *   ID or CLASS of DIV to be replaced. eg: #content-content or .content.
+ *
+ * @return string
+ *   a link with class ajax_link and rel=$target.
+ */
+function l_ajax($title, $path, $target) {
+  if ($target == NULL) {
+    $target = variable_get('ajax_links_api_selector', '.region-content');
+  }
+  return theme('ajax_links_api_link', $title, $path, $target);
+}
+/**
+ * Theme ajax_links_api.
+ */
+function theme_ajax_links_api_link($title, $path, $target) {
+  global $base_path;
+  $link = l($title, $path, $options = array(
+    'attributes' => array(
+      'class' => 'ajax_link',
+      'rel' => $target,
+    )));
+  return $link;
+}
+/**
+ * Implements hook_preprocess_page().
+ */
+function ajax_links_api_preprocess_page(&$vars) {
+  // This is used to display only $content.
+  if (isset($_GET['ajax']) && $_GET['ajax'] == 1) {
+	$vars['template_file'] = 'page-ajax';	
+  }
+}
+/**
+ * Implements hook_help().
+ */
+function ajax_links_api_help($path, $arg) {
+  if ($path == 'admin/settings/ajax-links-api') {
+    $output = t('
+	<h2><strong>Before you start (Important)</strong> : </h2>
+	
+	<p>Open the page.tpl.php file for your theme, and search for $content.The $content should be surrounded by a div with an class (or id).If not, add the div yourself.<br/> 
+	<p>Example : <code>@example</code> </p>
+	In above case, just enter ".region-content" <a href="#ajax-links-api-admin">here</a>
+	<br/><a href="@help">more detailed documentation</a><br/>',
+    array(
+      '@help' => url('admin/help/ajax_links_api'),
+      '@example' => '<div class="region-content"><?php print $content; ?></div>',
+    ));
+  }
+  if ($path == 'ajax-links-api/test') {
+    $output = t('
+	<h2><strong>How to use Ajax links API</strong></h2>
+	
+	<p><strong>Method 1</strong> : in your tpl => <code>l_ajax($title,$path,$target)</code></p>
+	<p>* $title: Title to display.<br />
+	* $path : Drupal path. <br />
+	* $target (optional): ID or CLASS of DIV to be replaced. Default value is ".region-content", you can change default value <a href="@admin">here</a></p>
+	<p>Example : <code>l_ajax("add page","node/add/page",".region-content")</code>.</p>
+	
+	<p><strong>Method 2</strong> : Add class="ajax_link" to any link. In this case target div will be default CSS selector defined . You can override target by specifying rel="".</p>
+	<p>Example : <code>@example2</code></p>',
+    array(
+      '@admin' => url('admin/settings/ajax-links-api'),
+      '@example2' => '<a class="ajax_link" href="node/add/page" rel=".region-content">Add page</a>',
+    ));
+  }
+  if ($path == 'admin/help#ajax_links_api') {
+    $output = t('
+	<h2><strong>Before you start (Important)</strong> : </h2>
+	
+	<p>Open the page.tpl.php file for your theme, and search for $content.The $content should be surrounded by a div with an class (or id).If no div add the div yourself.<br/> 
+	<p>Example : <code>@example</code> </p>
+	In this case, just enter ".region-content" <a href="@admin">here</a></p>
+	
+	<h2><strong>How to use Ajax links API</strong></h2>
+	
+	<p><strong>Method 1</strong> : in your tpl => <code>l_ajax($title,$path,$target)</code></p>
+	<p>* $title: Title to display in link.<br />
+	* $path : Drupal path. <br />
+	* $target (optional): ID or CLASS of DIV to be replaced. Default value is ".region-content", you can change default value <a href="@admin">here</a></p>
+	<p>Example : <code>l_ajax("add page","node/add/page",".region-content")</code>.</p>
+	
+	<p><strong>Method 2</strong> : Add class="ajax_link" to any link. In this case target div will be default CSS selector defined . You can override target by specifying rel="".</p>
+	<p>Example : <code>@example2</code></p>
+	<h2><a href="@demo">DEMO</a></h2><br/>',
+    array(
+      '@example' => '<div class="region-content"><?php print $content; ?></div>',
+      '@admin' => url('admin/settings/ajax-links-api'),
+      '@demo' => url('ajax-links-api/test'),
+      '@example2' => '<a class="ajax_link" href="node/add/page" rel=".region-content">Add page</a>',
+    ));
+  }
+  return $output;
+}
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function ajax_links_api_theme_registry_alter(&$theme_registry) {
+  $mod_path = drupal_get_path('module', 'ajax_links_api') . '/templates';
+  $theme_registry_copy = $theme_registry; // munge on a copy
+  _theme_process_registry($theme_registry_copy, 'phptemplate', 'theme_engine', 'pow', $mod_path);
+  $theme_registry += array_diff_key($theme_registry_copy, $theme_registry);
+  $hooks = array('page');
+  foreach ($hooks as $h) {
+    if(is_array($theme_registry[$h]['theme paths'])) {
+      $first_element = array_shift($theme_registry[$h]['theme paths']);
+      array_unshift($theme_registry[$h]['theme paths'], $first_element, $mod_path);
+    }
+  }
+}
+/**
+ * Callback - ajax-links-api/test.
+ */
+function ajax_links_api_test() {
+  $target = variable_get('ajax_links_api_selector', '.region-content');
+  $ouptut = '<h2>Test link (load this test page with ajax link):</h2>' . l_ajax('Load this page', 'ajax-links-api/test', $target);
+  $ouptut .= '<br /><h2>Test link (load Profile):</h2>' . l_ajax('load node form', 'node/add/page', '.test2') . '<div class="test2"></div>';
+  return $ouptut;
+}

@@ -1,0 +1,169 @@
+<?php
+
+// $Id: inquiry_design.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry content type
+ */
+
+/**
+ * hook_node_info()Define the inquiry_design node type
+ */
+function inquiry_design_node_info() {
+  return array(
+      'inquiry_design' => array(
+          'name' => t('Inquiry Design'), // Required.
+          'module' => 'inquiry_design', // Required.
+          'description' => t('An nQuire Inquiry Design'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Inquiry Name'),
+          'has_body' => TRUE,
+          'body_label' => t('Inquiry Description'),
+      )
+  );
+}
+
+/**
+ * Define permissions available for inquiry_design module
+ */
+function inquiry_design_perm() {
+  return array('create inquiry design', 'edit own inquiry design', 'edit any inquiry design', 'delete own inquiry design', 'delete any inquiry design');
+}
+
+/**
+ * Work out if a user has permission to do something with an Inquiry
+ */
+function inquiry_design_access($op, $node, $account) {
+  $is_author = $account->uid == $node->uid;
+  switch ($op) {
+    case 'create':
+      // Allow if user's role has 'create inquiry' permission.
+      return user_access('create inquiry design', $account);
+    case 'update':
+      // Allow if user's role has 'edit own inquiry' permission and user is
+      // the author; or if the user's role has 'edit any inquiry' permission.
+      return user_access('edit own inquiry design', $account) && is_author ||
+              user_access('edit any inquiry design', $account);
+    case 'delete':
+      // Allow if user's role has 'delete own inquiry' permission and user is
+      // the author; or if the user's role has 'delete any inquiry' permission.
+      return user_access('delete own inquiry design', $account) && $is_author ||
+              user_access('delete any inquiry design', $account);
+  }
+}
+
+/**
+ * The form for adding/editing an Inquiry Design
+ */
+function inquiry_design_form($node) {
+  // Get metadata for the node type which is defined in inquiry_design_info()
+  $type = node_get_types('type', $node);
+
+  $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => check_plain($type->title_label),
+      '#description' => t('The title for the inquiry.'),
+      '#required' => TRUE,
+      '#default_value' => $node->title,
+  );
+
+  //Show a simple textarea, no input selector required....
+  $form['body_filter']['body'] = array(
+      '#type' => 'textarea',
+      '#title' => check_plain($type->body_label),
+      '#description' => t('An introduction to the inquiry, e.g. about the goals of the inquiry, the scientific field etc.'),
+      '#default_value' => $node->body,
+      '#required' => TRUE
+  );
+  
+  return $form;
+}
+
+function _inquiry_design_savenode($node) {
+  $result = drupal_write_record('inquiry_design', $data_to_write);
+
+  if ($result != SAVED_NEW || $result != SAVED_UPDATED) {
+    $result_string = _pi_write_record_result_string($result);
+    drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+  }
+}
+
+/**
+ * INSERT command for a new inquiry
+ */
+function inquiry_design_insert($node) {
+  db_query("INSERT INTO {inquiry_design} (nid, vid, inquiry, structure, stages, groups, roles) VALUES (%d, %d, 0, '%s', '%s', '%s', '%s')", $node->nid, $node->vid, $node->structure, $node->stages, $node->groups, $node->roles);
+}
+
+/**
+ * UPDATE command for an existing inquiry
+ */
+function inquiry_design_update($node) {
+  if ($node->revision) {
+    inquiry_design_insert($node);
+  } else {
+    db_query("UPDATE {inquiry_design} SET inquiry='0', structure='%s', stages='%s', groups='%s', roles='%s' WHERE vid='%d'", $node->structure, $node->stages, $node->groups, $node->roles, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function inquiry_design_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case 'delete revision':
+      // Notice that we're matching a single revision based on the node's vid.
+      db_query('DELETE FROM {inqury_design} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * DELETE command for an inquiry
+ * @todo this should delete all the associated data with the inquiry too!
+ */
+function inquiry_design_delete(&$node) {
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {inquiry_design} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * node loader function for inquiry type called when noad_load() is called
+ */
+function inquiry_design_load($node) {
+  $design = db_fetch_object(db_query('SELECT * FROM {inquiry_design} WHERE vid = %d', $node->vid));
+
+  return $design;
+}
+
+/**
+ * Builds the view for the inquiry
+ * @todo Add a detailed inquiry view to be used in the whole system
+ */
+function inquiry_design_view($node, $teaser = FALSE, $page = FALSE) {
+  // If $teaser is FALSE, the entire node is being displayed.
+  if (!$teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+
+    // render the inquiry description using a theme function
+    $node->content['layout'] = array(
+        '#value' => theme('inquiry_layout', $node),
+        '#weight' => 1,
+    );
+    // Add more involved inquiry layout here
+  }
+
+  // If $teaser is true, node is being displayed as a teaser,
+  // in this case, just show the description and none of the rest of the inquiry stuff
+  if ($teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+  return $node;
+}
+

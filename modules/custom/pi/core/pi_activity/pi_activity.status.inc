@@ -84,7 +84,8 @@ function pi_activity_get_activity_status_for_user($activity_id, $uid)
 	}
 	else
 	{
-		drupal_set_message('pi_activity_get_activity_status_for_user: invalid value for activity_id passed', 'warning');
+    /* FIX (eloy) warning temporary removed */
+		//drupal_set_message('pi_activity_get_activity_status_for_user: invalid value for activity_id passed', 'warning');
 	}
 	if(count($return_status)==0)
 		$return_status = NULL;

@@ -1,0 +1,89 @@
+<?php
+
+/**
+ * @file
+ * Make all the simplemenu parent menu items non-clickable.
+ */
+
+/**
+ * \brief Make the 'select' a list.
+ *
+ * Transform the menu selector from a drop-down to a list so people
+ * can select more than one menu.
+ */
+function simplemenu_multi_menu_form_simplemenu_admin_settings_alter(&$form, $form_state) {
+  $form['default_menu']['simplemenu_menus'] = $form['default_menu']['simplemenu_menu'];
+  unset($form['default_menu']['simplemenu_menu']);
+  $def = variable_get('simplemenu_menus', array(variable_get('simplemenu_menu', 'navigation:0')));
+  $form['default_menu']['simplemenu_menus']['#multiple'] = TRUE;
+  $form['default_menu']['simplemenu_menus']['#title'] = t('Menus');
+  $form['default_menu']['simplemenu_menus']['#default_value'] = $def;
+  $form['default_menu']['simplemenu_menus']['#description'] = t('Select one or more menus to show each one of them (use Ctrl or Shift to select multiple entries.) Please, avoid selecting a parent and a child from the same menu.');
+}
+
+/**
+ * \brief Replace the default with our own user selection.
+ *
+ * In this case we ignore the user selection unless the simplemenu_menus
+ * was not yet defined, then we keep the default.
+ */
+function simplemenu_multi_menu_simplemenu_menus_alter($all_menus) {
+  $all_menus = variable_get('simplemenu_menus', $all_menus);
+}
+
+/**
+ * \brief Alter the menu item link theme registry.
+ *
+ * This function grabs the simplemenu theme registry for the
+ * menu_item_link theming. This gives us a way to remove the
+ * link and replace it with a name (anchor) instead.
+ *
+ * This is only applied to the Simplemenu as intefering with
+ * other menus could have unwanted side effects.
+ *
+ * \note
+ * This is called at the time the theme registry is built.
+ * It is then put in the cache until next time the registry
+ * is built by the system (i.e. caches are cleared by user,
+ * because a module is installed, etc.)
+ */
+function simplemenu_multi_menu_theme_registry_alter(&$theme_registry) {
+  global $theme;
+
+  // Save theme function
+  $themes = variable_get('simplemenu_multi_menu_theme_function', array());
+  $themes[$theme] = $theme_registry['menu_item_link']['function'];
+  variable_set('simplemenu_multi_menu_theme_function', $themes);
+
+  // Replace with our own
+  $theme_registry['menu_item_link']['function'] = 'simplemenu_multi_menu_theme_menu_item_link';
+}
+
+/**
+ * \brief Transform the menu item link.
+ *
+ * This function intercepts the menu item link theming function of
+ * the system and 
+ */
+function simplemenu_multi_menu_theme_menu_item_link($link) {
+  global $theme;
+  static $cnt = 0;
+
+  // this is a drop down?
+  if (!empty($link['simplemenu_multi_menu_root']) && simplemenu_running()) {
+    ++$cnt;
+    return '<a name="menu-id-' . $cnt . '">' . $link['title'] . '</a>';
+  }
+
+  // got a theme function?
+  $themes = variable_get('simplemenu_multi_menu_theme_function', array());
+  if (isset($themes[$theme])) {
+    return $themes[$theme]($link);
+  }
+
+  // somehow the preprocess function did not get called?!
+  // use the core default
+  return theme_menu_item_link($link);
+}
+
+// vim: ts=2 sw=2 et syntax=php
