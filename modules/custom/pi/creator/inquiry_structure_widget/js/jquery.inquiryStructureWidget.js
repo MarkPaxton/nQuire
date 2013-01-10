@@ -77,10 +77,10 @@
 
       element.data('item', item);
       element.data('type', type);
-
-      var formatElement = $('<div>').addClass('inquiry-structure-' + type).appendTo(element);
-
-      var itemElement = $('<div>').addClass('row').appendTo(formatElement);
+      
+      $('<div>').addClass('inquiry-structure-tree-bullet-' + type).appendTo(element);
+      
+      var itemElement = $('<div>').addClass('inquiry-structure-' + type).appendTo(element);
 
       var handle = $('<div>').addClass('inquiry-item-handle').appendTo(itemElement);
       var data = $('<div>').addClass('item-data').appendTo(itemElement);
@@ -88,6 +88,8 @@
       $('<div>').addClass('item-status').html('*').appendTo(data);
       if (type === 'phase') {
         $('<div>').addClass('inquiry-phase-icon').appendTo(data);
+      } else {
+        $('<div>').addClass('inquiry-activity-icon').addClass(item.type).appendTo(data);
       }
       $('<div>').addClass('inquiry-' + type + '-title').html(item.title).appendTo(data);
       $('<div>').addClass('inquiry-item-buttons').appendTo(data);
