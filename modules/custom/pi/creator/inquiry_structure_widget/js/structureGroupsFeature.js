@@ -4,6 +4,7 @@
 var nQuireStructureGroupTable = {
   options: {
     defaultColumn: 'Grouping',
+    canRename: false,
     freeTextColumn: false,
     defaultValue: 'individual',
     allowCreate: false,

@@ -52,50 +52,45 @@
     _buildStructure: function(data) {
       for (var i = 0; i < data.length; i++) {
         var activities = data[i].activities;
-        this.inquiryStructureWidget('_buildPhaseContainer', data[i]);
+        this.inquiryStructureWidget('_buildItemElement', data[i], 'phase');
         for (var j = 0; j < activities.length; j++) {
           this.inquiryStructureWidget('_buildItemElement', activities[j], 'activity');
         }
       }
 
-      this.inquiryStructureWidget('_checkActivityErrors');
+      this.inquiryStructureWidget('_updateView');
 
       this.inquiryStructureWidget('_enableSaveButton', false);
 
       return this;
     },
-    _buildPhaseContainer: function(item) {
-      var self = this;
-      var element = $('<div>').attr('item-id', item.id)
-              .addClass('inquiry-structure-phase-container');
-      this.append(element);
-
-      this.inquiryStructureWidget('_buildItemElement', item, 'phase');
-    },
     _buildItemElement: function(item, type) {
       var self = this;
-
       var element = $('<div>').attr('item-id', item.id)
-              .addClass('inquiry-structure-' + type);
+              .addClass('inquiry-structure-' + type + '-container');
 
-      var itemElement = $('<div>').addClass('row').appendTo(element);
-
-      var handle = $('<div>').addClass('handle').appendTo(itemElement);
-      var data = $('<div>').addClass('item-data').appendTo(itemElement);
-
-      var titleRow = $('<div>').addClass('row').appendTo(data);
-      var messagesRow = $('<div>').addClass('row').appendTo(data);
-
-      $('<div>').addClass('title').html(item.title).appendTo(titleRow);
-      $('<div>').addClass('buttons rowpart').appendTo(titleRow);
-
-      $('<div>').addClass('item-status').appendTo(messagesRow);
-      $('<div>').addClass('item-warning').appendTo(messagesRow);
+      if (type === 'phase') {
+        this.append(element);
+      } else {
+        this.children(':last').append(element);
+      }
 
       element.data('item', item);
       element.data('type', type);
 
-      this.children(':last').append(element);
+      var formatElement = $('<div>').addClass('inquiry-structure-' + type).appendTo(element);
+
+      var itemElement = $('<div>').addClass('row').appendTo(formatElement);
+
+      var handle = $('<div>').addClass('inquiry-item-handle').appendTo(itemElement);
+      var data = $('<div>').addClass('item-data').appendTo(itemElement);
+
+      $('<div>').addClass('item-status').html('*').appendTo(data);
+      if (type === 'phase') {
+        $('<div>').addClass('inquiry-phase-icon').appendTo(data);
+      }
+      $('<div>').addClass('inquiry-' + type + '-title').html(item.title).appendTo(data);
+      $('<div>').addClass('inquiry-item-buttons').appendTo(data);
 
       var start = function(event, ui) {
         ui.item.data('originalPositionTop', ui.item.offset().top);
@@ -108,13 +103,13 @@
         }
       };
 
-      this.sortable({items: ".inquiry-structure-phase-container", handle: '.handle', revert: 100, start: start, stop: stop});
+      this.sortable({items: ".inquiry-structure-phase-container", handle: '.inquiry-item-handle', revert: 100, start: start, stop: stop});
       this.children().each(function() {
-        $(this).sortable({items: ".inquiry-structure-activity", connectWith: '.inquiry-structure-phase-container', handle: '.handle', revert: 100, start: start, stop: stop});
+        $(this).sortable({items: ".inquiry-structure-activity-container", connectWith: '.inquiry-structure-phase-container', handle: '.inquiry-item-handle', revert: 100, start: start, stop: stop});
       });
 
-      this.inquiryStructureWidget('_updateItemInfo', item.id);
 
+      this.inquiryStructureWidget('_updateItemInfo', item.id);
       return this;
     },
     _updateItemInfo: function(itemId) {
@@ -123,18 +118,19 @@
       var status = this.data('status')[itemId].status;
       var element = this.find('div[item-id="' + itemId + '"]');
 
-      element.find('.item-status').removeClass()
-              .addClass('item-status item-status-' + status)
-              .html(status);
+      element.find('.item-data').removeClass()
+              .addClass('item-data item-' + status);
 
-      var buttons = element.find('.buttons');
+      var buttons = element.find('.inquiry-item-buttons');
       buttons.html('');
 
+      buttons.append('&nbsp;&nbsp;');
       if (status === 'deleted') {
         buttons.append(this.inquiryStructureWidget('_createLink', 'undelete', 'do not delete'));
       } else {
-        buttons.append(this.inquiryStructureWidget('_createLink', 'rename', 'rename'));
-        buttons.append(this.inquiryStructureWidget('_createLink', 'delete', 'delete'));
+        buttons.append(this.inquiryStructureWidget('_createLink', 'rename', 'rename'))
+                .append('&nbsp;&nbsp;')
+                .append(this.inquiryStructureWidget('_createLink', 'delete', 'delete'));
       }
 
       buttons.children().click(function() {
@@ -195,14 +191,12 @@
       status[id] = {status: 'new'};
       this.data('status', status);
 
+      this.inquiryStructureWidget('_buildItemElement', item, category);
 
       if (category === 'phase') {
-        this.inquiryStructureWidget('_buildPhaseContainer', item);
         for (var i = 0; i < definition.activities.length; i++) {
           this.inquiryStructureWidget('_createItem', 'activity', definition.activities[i]);
         }
-      } else {
-        this.inquiryStructureWidget('_buildItemElement', item, category);
       }
     },
     _modifyItem: function(itemId, action) {
@@ -222,18 +216,32 @@
     _itemAction: function(itemId, action) {
       alert(itemId + ' ' + action);
     },
+    _updateView: function() {
+      this.inquiryStructureWidget('_checkActivityErrors');
+      this.inquiryStructureWidget('_updatePhaseNumbers');
+    },
+    _updatePhaseNumbers: function() {
+      var i = 0;
+      $('.inquiry-phase-icon').each(function() {
+        $(this).removeClass().addClass('inquiry-phase-icon')
+                .html('Phase ' + (i + 1) + ':&nbsp;');
+        i++;
+      });
+    },
     _dataModified: function() {
       var data = [];
       this.children('.inquiry-structure-phase-container').each(function() {
         var phase = $(this);
-        var phaseItem = phase.children('.inquiry-structure-phase').data('item');
+        var phaseItem = phase.data('item');
         phaseItem.activities = [];
-        phase.children('.inquiry-structure-activity').each(function() {
+        phase.children('.inquiry-structure-activity-container').each(function() {
           var activityItem = $(this).data('item');
           phaseItem.activities.push(activityItem);
         });
         data.push(phaseItem);
       });
+
+      this.inquiryStructureWidget('_updateView');
 
       this.nQuireWidget('setDataValue', data);
       this.inquiryStructureWidget('_enableSaveButton', true);

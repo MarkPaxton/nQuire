@@ -43,6 +43,7 @@ function theme_inquiry_structure_widget($id) {
   drupal_add_js(drupal_get_path('module', 'inquiry_structure_widget') . '/js/inquiryStructureWidget.js');
   drupal_add_js(drupal_get_path('module', 'inquiry_structure_widget') . '/js/jquery.inquiryStructureWidget.js');
   drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/inquiryStructureWidget.css');
+  drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/activityIcons.css');
 
   drupal_add_js(drupal_get_path('module', 'inquiry_structure_widget') . '/js/jquery.nQuireTooltip.js');
   drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/nQuireTooltip.css');
@@ -67,6 +68,7 @@ function theme_inquiry_structure_widget_base_feature_table($id, $structure, $lau
   drupal_add_js(drupal_get_path('module', 'inquiry_structure_widget') . '/js/' . $launcher . '.js');
   drupal_add_js(drupal_get_path('module', 'inquiry_structure_widget') . '/js/jquery.structureFeatureTable.js');
   drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/inquiryStructureWidget.css');
+  drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/activityIcons.css');
 
   drupal_add_js(drupal_get_path('module', 'inquiry_structure_widget') . '/js/jquery.nQuireTooltip.js');
   drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/nQuireTooltip.css');
@@ -76,24 +78,37 @@ function theme_inquiry_structure_widget_base_feature_table($id, $structure, $lau
   } else {
     $structure = json_decode($structure);
 
-    $output = "<div nquire-widget='inquiry-$id' data-element-name='$id'>" 
-     . "<table><tr class='structure-feature-list'><td></td></tr>";
+    $output = '<div>' 
+    ."<div nquire-widget='inquiry-$id' data-element-name='$id' class='inquiry-feature-table-container'>" 
+     . "<table class='inquiry-feature-table'><tr class='structure-feature-list'><td></td></tr>";
 
-    foreach ($structure as $phase) {
-      $output .= _inquiry_structure_widget_create_item_table_row($phase, 'phase');
+    foreach ($structure as $i => $phase) {
+      $output .= _inquiry_structure_widget_create_item_table_row($phase, 'phase', $i);
       foreach ($phase->activities as $activity) {
-        $output .= _inquiry_structure_widget_create_item_table_row($activity, 'activity');
+        $output .= _inquiry_structure_widget_create_item_table_row($activity, 'activity', $i);
       }
     }
 
-    $output .= '</table></div>';
+    $output .= '</table></div></div>';
   }
 
   return $output;
 }
 
-function _inquiry_structure_widget_create_item_table_row($item, $type) {
-  return "<tr item-id='{$item->id}' type='{$type}' class='inquiry-structure-{$type}'><td class='item-cell'>{$item->title}</td></tr>";
+function _inquiry_structure_widget_create_item_table_row($item, $type, $phaseIndex) {
+  $output = "<tr item-id='{$item->id}' type='{$type}'><td class='item-cell'>";
+  $output .= "<div class='inquiry-structure-{$type} row'>";
+  if ($type === 'activity') {
+    $output .= "<div class='inquiry-activity-icon {$item->type}'></div>";
+  } else if ($type === 'phase') {
+    $output .= "<div class='inquiry-phase-icon $phaseIndex'>" . t('Phase ') . ($phaseIndex + 1) . ":&nbsp</div>";
+  }
+  $output .= "<div class='inquiry-{$type}-title'>{$item->title}</div>";
+  
+  $output .= "</div>";
+  
+  $output .= "</td></tr>";
+  return $output;
 }
 
 function inquiry_structure_stages_table_create_form_item(&$form, $id, $structure, $value) {
@@ -117,7 +132,8 @@ function inquiry_structure_roles_table_create_form_item(&$form, $id, $structure,
       '#default_value' => $value,
       '#prefix' => theme('inquiry_structure_widget_roles_feature_table', $id, $structure),
   );
-}function theme_inquiry_structure_widget_roles_feature_table($id, $structure) {
+}
+function theme_inquiry_structure_widget_roles_feature_table($id, $structure) {
   $output = '<p>' . t('Here you can create roles and assign them different permission for each activity. Later, users will be assigned to concrete roles. In this way you can control what each user can do in the inquiry activities.');
   $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'structureRolesFeature');
   return $output;

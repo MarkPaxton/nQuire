@@ -1,7 +1,7 @@
 
 
 
-var nQuireStructureStageTable = {
+var nQuireStructureRolesTable = {
   options: {
     defaultColumn: 'New Role',
     freeTextColumn: true,
@@ -19,13 +19,13 @@ var nQuireStructureStageTable = {
   },
   init: function() {
     var self = this;
-    $("div[nquire-widget='inquiry-stages']").each(function() {
+    $("div[nquire-widget='inquiry-roles']").each(function() {
       $(this).structureFeatureTable(self.options);
     });
   }
 };
 
 $(function() {
-  nQuireJavascriptModules.register('nQuireStructureStageTable', nQuireStructureStageTable);
+  nQuireJavascriptModules.register('nQuireStructureRolesTable', nQuireStructureRolesTable);
 });
 

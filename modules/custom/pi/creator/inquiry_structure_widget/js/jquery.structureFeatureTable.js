@@ -9,6 +9,7 @@
     init: function(options) {
       var _options = $.extend({
         allowCreate: true,
+        canRename: true,
         newButtonLabel: 'Add',
         newDialogTitle: 'Add new column',
         renameDialogTitle: 'Rename column',
@@ -33,7 +34,7 @@
       });
 
       if (_options.allowCreate) {
-        var button = this.structureFeatureTable('_createLink', 'new', _options.newButtonLabel, false);
+        var button = this.structureFeatureTable('_createLink', _options.newButtonLabel, false);
         var row = this.find('tr.structure-feature-list');
         $('<td class="new-feature-cell">').appendTo(row).append(button);
         button.click(function(event) {
@@ -57,14 +58,47 @@
 
       this.structureFeatureTable('_enableSaveButton', false);
     },
-    _createLink: function(op, title, inline) {
-      return $('<a>').attr('op', op).html(title).attr('href', '#').addClass(inline ? 'link-button' : 'normal-link');
+    _createLink: function(title, inline) {
+      return $('<a>').html(title).attr('href', '#').addClass(inline ? 'link-button' : 'normal-link');
+    },
+    _updateFeatureButtons: function() {
+      var self = this;
+      var options = this.data('options');
+      var buttonElements = this.find('.feature-buttons');
+
+      var canDelete = options.allowEmpty || buttonElements.length > 1;
+
+      buttonElements.each(function() {
+        var element = $(this);
+
+        element.empty();
+        if (options.canRename) {
+          self.structureFeatureTable('_createLink', 'rename', true).attr('op', 'rename').appendTo(element);
+        }
+
+        if (canDelete) {
+          self.structureFeatureTable('_createLink', 'delete', true).attr('op', 'delete').appendTo(element);
+        }
+      });
+
+      this.find('.feature-buttons > a').click(function(event) {
+        var button = $(this);
+        alert(button.parents('.feature-cell').attr('column-id') + ' ' + button.attr('op'));
+        event.preventDefault();
+        event.stopPropagation();
+      });
+    },
+    _removeColumn: function(column) {
+      this.structureFeatureTable('_updateFeatureButtons');
     },
     _buildColumn: function(column) {
       var options = this.data('options');
       var self = this;
 
-      var headCell = $('<td>').addClass('feature-cell').attr('column-id', column.id).html(column.title);
+      var headCell = $('<td>').addClass('feature-cell').attr('column-id', column.id);
+      headCell
+              .append($('<div>').addClass('feature-title').html(column.title))
+              .append($('<div>').addClass('feature-buttons'));
 
       if (options.allowCreate) {
         this.find('tr.structure-feature-list').children(':last').before(headCell);
@@ -83,7 +117,7 @@
 
           valueCell.addClass('value-cell')
                   .attr('column-id', column.id).attr('item-id', itemId).attr('value', value);
-          self.structureFeatureTable('_createLink', 'value', options.values[value], false).click(function(event) {
+          self.structureFeatureTable('_createLink', options.values[value], false).click(function(event) {
             var cell = $(this).parent();
             self.structureFeatureTable('_openValueDialog', cell);
             event.preventDefault();
@@ -97,6 +131,7 @@
           row.append(valueCell);
         }
       });
+      this.structureFeatureTable('_updateFeatureButtons');
     },
     _openAddNewColumnDialog: function() {
       var self = this;
@@ -154,7 +189,7 @@
         creationCallback: function(content) {
           var ul = $('<ul>').appendTo(content);
           for (var key in options.values) {
-            var link = self.structureFeatureTable('_createLink', 'select', options.values[key], false)
+            var link = self.structureFeatureTable('_createLink', options.values[key], false)
                     .attr('value', key)
                     .click(function() {
               self.structureFeatureTable('_changeValue', cell.attr('column-id'), cell.attr('item-id'), $(this).attr('value'));
@@ -182,7 +217,7 @@
         var id = cell.attr('column-id');
         var column = {
           id: id,
-          title: cell.html(),
+          title: cell.children('.feature-title').html(),
           values: {}
         };
         self.find('td.value-cell[column-id="' + id + '"]').each(function() {
