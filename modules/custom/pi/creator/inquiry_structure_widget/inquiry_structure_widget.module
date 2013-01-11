@@ -10,6 +10,9 @@ function inquiry_structure_widget_theme() {
       'inquiry_structure_widget' => array(
           'arguments' => array('id' => ''),
       ),
+      'inquiry_structure_widget_view' => array(
+          'arguments' => array('node' => NULL),
+      ),
       'inquiry_structure_widget_base_feature_table' => array(
           'arguments' => array('id' => '', 'structure' => '[]', 'launcher' => ''),
       ),
@@ -23,6 +26,55 @@ function inquiry_structure_widget_theme() {
           'arguments' => array('id' => '', 'structure' => '[]'),
       ),
   );
+}
+
+function theme_inquiry_structure_widget_view($node) {
+
+  $structure = json_decode($node->structure);
+
+  if (count($structure) === 0) {
+    $link = l(t('here'), 'creator/' . $node->nid . '/activities');
+    $output = '<p>' . t('There are no phases or activities in this inquiry. Click ') . $link . t(' to start creating them.');
+  } else {
+    drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/inquiryStructureWidget.css');
+    drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/activityIcons.css');
+
+    $output = '<p>' . t('Click on the <i>edit</i> link beside each activity or phase to edit their details.') . '</p>';
+
+    $output .= '<div class="inquiry-structure-container">';
+
+    foreach ($structure as $i => $phase) {
+
+      $output .= '<div class="inquiry-structure-phase-container">'
+              . '<div class="inquiry-structure-tree-bullet-phase"></div>'
+              . '<div class="inquiry-structure-phase">'
+              . '<div class="item-data">'
+              . '<div class="inquiry-phase-icon">Phase ' . ($i + 1) . ':&nbsp;</div>'
+              . '<div class="inquiry-phase-title">' . $phase->title . '</div>'
+              . '</div>'
+              . '</div>'
+              . '&nbsp;&nbsp;<div class="inquiry-item-buttons">' . l(t('edit'), 'creator/' . $node->nid . '/phase/' . $phase->id, array('attributes' => array('class' => 'link-button'))) . '</div>';
+
+      foreach ($phase->activities as $j => $activity) {
+        $output .= '<div class="inquiry-structure-activity-container">'
+        . '<div class="inquiry-structure-tree-bullet-activity"></div>'
+        . '<div class="inquiry-structure-activity">'
+        . '<div class="item-data">'
+        . '<div class="inquiry-activity-icon ' . $activity->type . '"></div>'
+        . '<div class="inquiry-activity-title">' . $activity->title . '</div>'
+        . '</div>'
+        . '</div>'
+        . '&nbsp;&nbsp;<div class="inquiry-item-buttons">' . l(t('edit'), 'creator/' . $node->nid . '/activity/' . $activity->id, array('attributes' => array('class' => 'link-button'))) . '</div>'
+        . '</div>';
+      }
+
+      $output .= '</div>';
+    }
+
+    $output .= '</div>';
+  }
+
+  return $output;
 }
 
 function inquiry_structure_widget_create_form_item(&$form, $id, $value) {
@@ -78,13 +130,13 @@ function theme_inquiry_structure_widget_base_feature_table($id, $structure, $act
   } else {
     $structure = json_decode($structure);
 
-    $output = '<div>' 
-    ."<div nquire-widget='inquiry-$id' data-element-name='$id' class='inquiry-feature-table-container'>" 
-     . "<table class='inquiry-feature-table'><tr class='structure-feature-list'><td></td></tr>";
-    
+    $output = '<div>'
+            . "<div nquire-widget='inquiry-$id' data-element-name='$id' class='inquiry-feature-table-container'>"
+            . "<table class='inquiry-feature-table'><tr class='structure-feature-list'><td></td></tr>";
+
     foreach ($structure as $i => $phase) {
       $activityCount = count($phase->activities);
-      
+
       $output .= _inquiry_structure_widget_create_item_table_row($phase, 'phase', $i, $activeItemType, $activityCount === 0, $i !== 0);
       foreach ($phase->activities as $j => $activity) {
         $output .= _inquiry_structure_widget_create_item_table_row($activity, 'activity', $i, $activeItemType, $j === $activityCount - 1, FALSE);
@@ -99,13 +151,13 @@ function theme_inquiry_structure_widget_base_feature_table($id, $structure, $act
 
 function _inquiry_structure_widget_create_item_table_row($item, $type, $phaseIndex, $activeItemType, $endOfPhase, $phaseAfterFirst) {
   $isActive = $activeItemType === 'all' || $activeItemType === $type;
-  
+
   $trClassname = 'structure-tablerow' . ($endOfPhase ? ' structure-tablerow-endofphase' : '') . ($phaseAfterFirst ? ' structure-tablerow-phaseafterfirst' : '');
   $output = "<tr item-id='{$item->id}' type='{$type}' class='$trClassname'>";
-  
+
   $tdClassname = 'item-cell' . ($isActive ? ' structure-tablecell-active-item' : '');
   $output .= "<td class='$tdClassname'>";
-  
+
   $output .= "<div class='inquiry-structure-tree-bullet-{$type}'></div>";
   $output .= "<div class='inquiry-structure-{$type}'>";
   if ($type === 'activity') {
@@ -115,11 +167,11 @@ function _inquiry_structure_widget_create_item_table_row($item, $type, $phaseInd
   }
   $output .= "<div class='inquiry-{$type}-title'>{$item->title}</div>";
   $output .= "</div>";
-  
+
   if ($isActive) {
     $output .= '<div class="arrow-shaft"></div><div class="arrow-head"></div>';
   }
-  
+
   $output .= "</td></tr>";
   return $output;
 }
@@ -132,6 +184,7 @@ function inquiry_structure_stages_table_create_form_item(&$form, $id, $structure
       '#prefix' => theme('inquiry_structure_widget_stages_feature_table', $id, $structure),
   );
 }
+
 function theme_inquiry_structure_widget_stages_feature_table($id, $structure) {
   $output = '<p>' . t('Here you can organize phases in different stages. When the inquiry is being carried out, it will be possible at any moment to decide the active stage. In this way, access to activities can be controled in time.');
   $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'phase', 'structureStagesFeature');
@@ -146,6 +199,7 @@ function inquiry_structure_roles_table_create_form_item(&$form, $id, $structure,
       '#prefix' => theme('inquiry_structure_widget_roles_feature_table', $id, $structure),
   );
 }
+
 function theme_inquiry_structure_widget_roles_feature_table($id, $structure) {
   $output = '<p>' . t('Here you can create roles and assign them different permission for each activity. Later, users will be assigned to concrete roles. In this way you can control what each user can do in the inquiry activities.');
   $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'activity', 'structureRolesFeature');

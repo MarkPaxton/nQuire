@@ -28,6 +28,7 @@ function inquiry_creator_main($nid, $op = '', $item = 0) {
 
   switch ($op) {
     case '': /* main view, nothing is being edited */
+      $output .= theme('inquiry_structure_widget_view', $design);
       break;
     case 'activities': /* activity structure is being edited */
       $output .= drupal_get_form('inquiry_creator_activities_form', $design);
