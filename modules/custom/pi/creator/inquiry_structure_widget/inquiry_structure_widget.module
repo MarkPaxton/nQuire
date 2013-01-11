@@ -61,7 +61,7 @@ function theme_inquiry_structure_widget($id) {
   return $output;
 }
 
-function theme_inquiry_structure_widget_base_feature_table($id, $structure, $launcher) {
+function theme_inquiry_structure_widget_base_feature_table($id, $structure, $activeItemType, $launcher) {
   nquire_commons_load_javascript_module_support();
   nquire_commons_load_nquire_widget_support();
 
@@ -81,11 +81,13 @@ function theme_inquiry_structure_widget_base_feature_table($id, $structure, $lau
     $output = '<div>' 
     ."<div nquire-widget='inquiry-$id' data-element-name='$id' class='inquiry-feature-table-container'>" 
      . "<table class='inquiry-feature-table'><tr class='structure-feature-list'><td></td></tr>";
-
+    
     foreach ($structure as $i => $phase) {
-      $output .= _inquiry_structure_widget_create_item_table_row($phase, 'phase', $i);
-      foreach ($phase->activities as $activity) {
-        $output .= _inquiry_structure_widget_create_item_table_row($activity, 'activity', $i);
+      $activityCount = count($phase->activities);
+      
+      $output .= _inquiry_structure_widget_create_item_table_row($phase, 'phase', $i, $activeItemType, $activityCount === 0, $i !== 0);
+      foreach ($phase->activities as $j => $activity) {
+        $output .= _inquiry_structure_widget_create_item_table_row($activity, 'activity', $i, $activeItemType, $j === $activityCount - 1, FALSE);
       }
     }
 
@@ -95,17 +97,28 @@ function theme_inquiry_structure_widget_base_feature_table($id, $structure, $lau
   return $output;
 }
 
-function _inquiry_structure_widget_create_item_table_row($item, $type, $phaseIndex) {
-  $output = "<tr item-id='{$item->id}' type='{$type}'><td class='item-cell'>";
-  $output .= "<div class='inquiry-structure-{$type} row'>";
+function _inquiry_structure_widget_create_item_table_row($item, $type, $phaseIndex, $activeItemType, $endOfPhase, $phaseAfterFirst) {
+  $isActive = $activeItemType === 'all' || $activeItemType === $type;
+  
+  $trClassname = 'structure-tablerow' . ($endOfPhase ? ' structure-tablerow-endofphase' : '') . ($phaseAfterFirst ? ' structure-tablerow-phaseafterfirst' : '');
+  $output = "<tr item-id='{$item->id}' type='{$type}' class='$trClassname'>";
+  
+  $tdClassname = 'item-cell' . ($isActive ? ' structure-tablecell-active-item' : '');
+  $output .= "<td class='$tdClassname'>";
+  
+  $output .= "<div class='inquiry-structure-tree-bullet-{$type}'></div>";
+  $output .= "<div class='inquiry-structure-{$type}'>";
   if ($type === 'activity') {
     $output .= "<div class='inquiry-activity-icon {$item->type}'></div>";
   } else if ($type === 'phase') {
     $output .= "<div class='inquiry-phase-icon $phaseIndex'>" . t('Phase ') . ($phaseIndex + 1) . ":&nbsp</div>";
   }
   $output .= "<div class='inquiry-{$type}-title'>{$item->title}</div>";
-  
   $output .= "</div>";
+  
+  if ($isActive) {
+    $output .= '<div class="arrow-shaft"></div><div class="arrow-head"></div>';
+  }
   
   $output .= "</td></tr>";
   return $output;
@@ -121,7 +134,7 @@ function inquiry_structure_stages_table_create_form_item(&$form, $id, $structure
 }
 function theme_inquiry_structure_widget_stages_feature_table($id, $structure) {
   $output = '<p>' . t('Here you can organize phases in different stages. When the inquiry is being carried out, it will be possible at any moment to decide the active stage. In this way, access to activities can be controled in time.');
-  $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'structureStagesFeature');
+  $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'phase', 'structureStagesFeature');
   return $output;
 }
 
@@ -135,7 +148,7 @@ function inquiry_structure_roles_table_create_form_item(&$form, $id, $structure,
 }
 function theme_inquiry_structure_widget_roles_feature_table($id, $structure) {
   $output = '<p>' . t('Here you can create roles and assign them different permission for each activity. Later, users will be assigned to concrete roles. In this way you can control what each user can do in the inquiry activities.');
-  $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'structureRolesFeature');
+  $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'activity', 'structureRolesFeature');
   return $output;
 }
 
@@ -155,6 +168,6 @@ function theme_inquiry_structure_widget_groups_feature_table($id, $structure) {
           . '<li>' . t('Communitary: all the participants work together in the activities.') . '</li>'
           . '</ul>';
 
-  $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'structureGroupsFeature');
+  $output .= theme('inquiry_structure_widget_base_feature_table', $id, $structure, 'phase', 'structureGroupsFeature');
   return $output;
 }

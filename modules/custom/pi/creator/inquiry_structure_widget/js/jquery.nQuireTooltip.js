@@ -13,6 +13,13 @@
       }
 
       tooltip.removeClass('nquire-tooltip-hidden');
+      this.nQuireTooltip('_position', tooltip);
+      return this;
+    },
+    close: function() {
+      var tooltip = this.nQuireTooltip('_getTooltip');
+      tooltip.addClass('nquire-tooltip-hidden');
+      return this;
     },
     _getTooltip: function() {
       var tooltip = $('#nquire-tooltip');
@@ -30,9 +37,37 @@
       }
       return tooltip;
     },
-    close: function() {
-      var tooltip = this.nQuireTooltip('_getTooltip');
-      tooltip.addClass('nquire-tooltip-hidden');
+    _position: function(tooltip) {
+      var pos = this.offset();
+      var params = [['top', 'height', true, true], ['left', 'width', false, false]];
+      var margin = 5;
+
+      for (var i in params) {
+        var posParam = params[i][0];
+        var sizeParam = params[i][1];
+        var before = params[i][2];
+        var fromOposite = params[i][3];
+
+        var ePos = this.offset()[posParam];
+        var eSize = this[sizeParam]();
+        var tSize = tooltip[sizeParam]();
+
+        var tPos = ePos;
+        if (before) {
+          tPos -= tSize;
+          if (fromOposite) {
+            tPos += eSize;
+          } else {
+            tPos -= margin;
+          }
+        } else if (!fromOposite) {
+          tPos += eSize + margin;
+        }
+
+        console.log(posParam + ' ' + tPos);
+        tooltip.css(posParam, tPos + 'px');
+      }
+      return this;
     }
   };
 

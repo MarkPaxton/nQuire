@@ -79,10 +79,10 @@
       element.data('type', type);
       
       $('<div>').addClass('inquiry-structure-tree-bullet-' + type).appendTo(element);
-      
+      $('<div>').addClass('inquiry-item-handle').appendTo(element);
       var itemElement = $('<div>').addClass('inquiry-structure-' + type).appendTo(element);
+      $('<div>').addClass('inquiry-item-buttons').appendTo(element);
 
-      var handle = $('<div>').addClass('inquiry-item-handle').appendTo(itemElement);
       var data = $('<div>').addClass('item-data').appendTo(itemElement);
 
       $('<div>').addClass('item-status').html('*').appendTo(data);
@@ -92,7 +92,6 @@
         $('<div>').addClass('inquiry-activity-icon').addClass(item.type).appendTo(data);
       }
       $('<div>').addClass('inquiry-' + type + '-title').html(item.title).appendTo(data);
-      $('<div>').addClass('inquiry-item-buttons').appendTo(data);
 
       var start = function(event, ui) {
         ui.item.data('originalPositionTop', ui.item.offset().top);
@@ -148,12 +147,12 @@
       var self = this;
 
       var head = type === 'activity' ?
-              "Click on an activity type to add it to the inquiry." :
-              "Click on a phase type to add it to the inquiry.";
+              "Click on an activity to add it to the inquiry." :
+              "Click on a phase to add it to the inquiry.";
 
       var types = this.data('availableTypes')[type];
 
-      this.nQuireTooltip({
+      $('#inquiry-structure-add-' + type).nQuireTooltip({
         creationCallback: function(content) {
 
           content.append($('<p>').html(head));

@@ -108,15 +108,15 @@
 
       this.find('tr').not('.structure-feature-list').each(function() {
         var row = $(this);
-        var valueCell = $('<td>');
+        var valueCell = $('<td>').addClass('value-cell');
 
         if (options.forItemType === 'all' || options.forItemType === row.attr('type')) {
           var itemId = row.attr('item-id');
           var value = typeof column.values[itemId] !== 'undefined' ?
                   column.values[itemId] : options.defaultValue;
 
-          valueCell.addClass('value-cell')
-                  .attr('column-id', column.id).attr('item-id', itemId).attr('value', value);
+          valueCell.attr('column-id', column.id).attr('item-id', itemId).attr('value', value);
+
           self.structureFeatureTable('_createLink', options.values[value], false).click(function(event) {
             var cell = $(this).parent();
             self.structureFeatureTable('_openValueDialog', cell);
@@ -131,6 +131,8 @@
           row.append(valueCell);
         }
       });
+
+      this.structureFeatureTable('_updateOddEvenClasses');
       this.structureFeatureTable('_updateFeatureButtons');
     },
     _openAddNewColumnDialog: function() {
@@ -184,18 +186,25 @@
     _openValueDialog: function(cell) {
       var self = this;
       var options = this.data('options');
+      var currentValue = cell.attr('value');
 
-      cell.nQuireTooltip({
+      cell.find('a').nQuireTooltip({
         creationCallback: function(content) {
-          var ul = $('<ul>').appendTo(content);
           for (var key in options.values) {
-            var link = self.structureFeatureTable('_createLink', options.values[key], false)
-                    .attr('value', key)
-                    .click(function() {
-              self.structureFeatureTable('_changeValue', cell.attr('column-id'), cell.attr('item-id'), $(this).attr('value'));
-              self.nQuireTooltip('close');
-            });
-            $('<li>').appendTo(ul).append(link);
+            var element;
+            var row = $('<div>').addClass('feature-value-option').appendTo(content);
+            row.append($('<div>').addClass('nQuire-tooltip-bullet-leaf'));
+            if (key !== currentValue) {
+              element = self.structureFeatureTable('_createLink', options.values[key], false)
+                      .attr('value', key)
+                      .click(function() {
+                self.structureFeatureTable('_changeValue', cell.attr('column-id'), cell.attr('item-id'), $(this).attr('value'));
+                self.nQuireTooltip('close');
+              });
+            } else {
+              element = $('<div>').html(options.values[key]);
+            }
+            row.append(element);
           }
         }
       });
@@ -238,6 +247,33 @@
         button.attr('disabled', 'disabled');
       }
       return this;
+    },
+    _updateOddEvenClasses: function() {
+      var iOdd = false;
+
+      this.find('.structure-tablerow').each(function() {
+        var row = $(this);
+        var cOdd = false;
+        var active = row.find('.structure-tablecell-active-item').length > 0;
+        var itemClass;
+        
+        if (active) {
+          itemClass = iOdd ? 'item-odd' : 'item-even';
+          iOdd = !iOdd;
+        }
+      
+        $(this).find('.value-cell').each(function() {
+          var cell = $(this);
+
+          cell.removeClass().addClass('value-cell')
+                  .addClass(cOdd ? 'column-odd' : 'column-even');
+          
+          if (active) {
+            cell.addClass(itemClass);
+          }
+          cOdd = !cOdd;
+        });
+      });
     }
   };
 
