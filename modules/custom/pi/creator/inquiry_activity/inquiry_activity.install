@@ -1,0 +1,80 @@
+<?php
+
+// $Id: inquiry_activity.install,v 0.1 $
+
+/**
+ * Implementation of hook_install(): creates the database table for inquiry_activity
+ */
+function inquiry_activity_install() {
+  // Create tables.
+  drupal_install_schema('inquiry_activity');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_inquiry_activity", array('status'));
+  //variable_set("comment_inquiry_activity", COMMENT_NODE_DISABLED);
+  variable_set('upload_inquiry_activity', 0);
+}
+
+/**
+ * Implementation of hook_uninstall(): removes the inquiry_activity table
+ */
+function inquiry_activity_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('inquiry_activity');
+  //Options are status, promote, sticky, revision
+  variable_del("node_options_inquiry_activity");
+  //variable_del("comment_inquiry_activity");
+  variable_del('upload_inquiry_activity');
+}
+
+/**
+ * Implementation of hook_schema(): Describes the inquiry_activity table
+ */
+function inquiry_activity_schema() {
+
+  $schema = array();
+
+  $schema['inquiry_activity'] = array(
+      'description' => 'Inquiry Activity',
+      'fields' => array(
+          'nid' => array(
+              'description' => 'node id',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'vid' => array(
+              'description' => 'The current vid version identifier',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'activity' => array(
+              'description' => 'The actual activity linked to this design',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'activity_type' => array(
+              'description' => 'Activity type',
+              'type' => 'text',
+              'size' => 'small',
+              'not null' => TRUE,
+          ),
+          'data' => array(
+              'description' => 'JSON temporal activity data',
+              'type' => 'text',
+              'size' => 'medium',
+              'not null' => TRUE,
+          ),
+      ),
+      'primary key' => array('nid', 'vid'),
+      'unique keys' => array('vid' => array('vid')),
+      'indexes' => array('nid' => array('nid'))
+  );
+
+
+  return $schema;
+}

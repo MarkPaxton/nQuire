@@ -8,7 +8,6 @@ var nQuireStructureGroupTable = {
     freeTextColumn: false,
     defaultValue: 'individual',
     allowCreate: false,
-    newButtonLabel: '',
     allowEmpty: false,
     values: {
       individual: 'Individual',

@@ -1,0 +1,75 @@
+<?php
+
+// $Id: inquiry_phase.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry content type
+ */
+
+/**
+ * hook_node_info()Define the inquiry_phase node type
+ */
+function inquiry_phase_node_info() {
+  return array(
+      'inquiry_phase' => array(
+          'name' => t('Inquiry Phase'), // Required.
+          'module' => 'inquiry_phase', // Required.
+          'description' => t('An nQuire Inquiry Phase'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Phase Name'),
+          'has_body' => TRUE,
+          'body_label' => t('Phase Description'),
+      )
+  );
+}
+
+/**
+ * Work out if a user has permission to do something with an Inquiry
+ */
+function inquiry_phase_access($op, $node, $account) {
+  $is_author = $account->uid == $node->uid;
+  switch ($op) {
+    case 'create':
+      // Allow if user's role has 'create inquiry' permission.
+      return user_access('create inquiry design', $account);
+    case 'update':
+      // Allow if user's role has 'edit own inquiry' permission and user is
+      // the author; or if the user's role has 'edit any inquiry' permission.
+      return user_access('edit own inquiry design', $account) && is_author ||
+              user_access('edit any inquiry design', $account);
+    case 'delete':
+      // Allow if user's role has 'delete own inquiry' permission and user is
+      // the author; or if the user's role has 'delete any inquiry' permission.
+      return user_access('delete own inquiry design', $account) && $is_author ||
+              user_access('delete any inquiry design', $account);
+  }
+}
+
+
+/**
+ * Builds the view for the phase
+ * @todo Add a detailed inquiry view to be used in the whole system
+ */
+function inquiry_phase_view($node, $teaser = FALSE, $page = FALSE) {
+  // If $teaser is FALSE, the entire node is being displayed.
+  if (!$teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+
+    // render the inquiry description using a theme function
+    $node->content['layout'] = array(
+        '#value' => theme('inquiry_layout', $node),
+        '#weight' => 1,
+    );
+    // Add more involved inquiry layout here
+  }
+
+  // If $teaser is true, node is being displayed as a teaser,
+  // in this case, just show the description and none of the rest of the inquiry stuff
+  if ($teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+  return $node;
+}
+

@@ -28,7 +28,9 @@ function inquiry_structure_widget_theme() {
   );
 }
 
-function theme_inquiry_structure_widget_view($node) {
+function theme_inquiry_structure_widget_view($node, $item = '') {
+
+  $use_edit_buttons = strlen($item) === 0;
 
   $structure = json_decode($node->structure);
 
@@ -39,33 +41,43 @@ function theme_inquiry_structure_widget_view($node) {
     drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/inquiryStructureWidget.css');
     drupal_add_css(drupal_get_path('module', 'inquiry_structure_widget') . '/css/activityIcons.css');
 
-    $output = '<p>' . t('Click on the <i>edit</i> link beside each activity or phase to edit their details.') . '</p>';
-
-    $output .= '<div class="inquiry-structure-container">';
+    $output = '<div class="inquiry-structure-container">';
 
     foreach ($structure as $i => $phase) {
 
       $output .= '<div class="inquiry-structure-phase-container">'
+              . '<div class="item-cell" type="phase">'
               . '<div class="inquiry-structure-tree-bullet-phase"></div>'
               . '<div class="inquiry-structure-phase">'
               . '<div class="item-data">'
               . '<div class="inquiry-phase-icon">Phase ' . ($i + 1) . ':&nbsp;</div>'
               . '<div class="inquiry-phase-title">' . $phase->title . '</div>'
               . '</div>'
-              . '</div>'
-              . '&nbsp;&nbsp;<div class="inquiry-item-buttons">' . l(t('edit'), 'creator/' . $node->nid . '/phase/' . $phase->id, array('attributes' => array('class' => 'link-button'))) . '</div>';
+              . '</div>';
+      if ($use_edit_buttons) {
+        $output .= '&nbsp;&nbsp;<div class="inquiry-item-buttons">' . l(t('edit'), 'creator/' . $node->nid . '/phase/' . $phase->id, array('attributes' => array('class' => 'link-button'))) . '</div>';
+      } else if ($item === $phase->id) {
+        $output .= '<div class="arrow-shaft"></div><div class="arrow-head"></div>';
+      }
+      $output .= '</div>';
 
       foreach ($phase->activities as $j => $activity) {
         $output .= '<div class="inquiry-structure-activity-container">'
-        . '<div class="inquiry-structure-tree-bullet-activity"></div>'
-        . '<div class="inquiry-structure-activity">'
-        . '<div class="item-data">'
-        . '<div class="inquiry-activity-icon ' . $activity->type . '"></div>'
-        . '<div class="inquiry-activity-title">' . $activity->title . '</div>'
-        . '</div>'
-        . '</div>'
-        . '&nbsp;&nbsp;<div class="inquiry-item-buttons">' . l(t('edit'), 'creator/' . $node->nid . '/activity/' . $activity->id, array('attributes' => array('class' => 'link-button'))) . '</div>'
-        . '</div>';
+                . '<div class="item-cell" type="activity">'
+                . '<div class="inquiry-structure-tree-bullet-activity"></div>'
+                . '<div class="inquiry-structure-activity">'
+                . '<div class="item-data">'
+                . '<div class="inquiry-activity-icon ' . $activity->type . '"></div>'
+                . '<div class="inquiry-activity-title">' . $activity->title . '</div>'
+                . '</div>'
+                . '</div>';
+        if ($use_edit_buttons) {
+          $output .= '&nbsp;&nbsp;<div class="inquiry-item-buttons">' . l(t('edit'), 'creator/' . $node->nid . '/activity/' . $activity->id, array('attributes' => array('class' => 'link-button'))) . '</div>';
+        } else if ($item === $activity->id) {
+          $output .= '<div class="arrow-shaft"></div><div class="arrow-head"></div>';
+        }
+        $output .= '</div>'
+                . '</div>';
       }
 
       $output .= '</div>';
@@ -105,10 +117,11 @@ function theme_inquiry_structure_widget($id) {
 
   $output .= "<div nquire-widget='inquiry-structure' data-element-name='$id'></div>";
 
-  $output .= "<div>"
-          . "<div id='inquiry-structure-add-phase'>" . t('Add phase') . "</div>"
-          . "<div id='inquiry-structure-add-activity'>" . t('Add activity') . "</div>"
-          . "</div>";
+  $output .= "<div><div class='edit-link-menu-container'>"
+          . "<table class='edit-link-menu'><tr>"
+          . "<td class='edit-link-container active'><a id='inquiry-structure-add-phase' href='#'>" . t('Add phase') . "</a></td>"
+          . "<td class='edit-link-container active'><a id='inquiry-structure-add-activity' href='#'>" . t('Add activity') . "</a></td>"
+          . "</tr></table></div></div>";
 
   return $output;
 }
@@ -156,7 +169,7 @@ function _inquiry_structure_widget_create_item_table_row($item, $type, $phaseInd
   $output = "<tr item-id='{$item->id}' type='{$type}' class='$trClassname'>";
 
   $tdClassname = 'item-cell' . ($isActive ? ' structure-tablecell-active-item' : '');
-  $output .= "<td class='$tdClassname'>";
+  $output .= "<td class='$tdClassname' type='$type'>";
 
   $output .= "<div class='inquiry-structure-tree-bullet-{$type}'></div>";
   $output .= "<div class='inquiry-structure-{$type}'>";

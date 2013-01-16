@@ -38,7 +38,7 @@
         var row = this.find('tr.structure-feature-list');
         $('<td class="new-feature-cell">').appendTo(row).append(button);
         button.click(function(event) {
-          self.structureFeatureTable('_openAddNewColumnDialog');
+          self.structureFeatureTable('_openColumnDialog', button, _options.newDialogTitle, null, '_addNewColumn', true);
           event.stopPropagation();
           event.preventDefault();
         });
@@ -77,19 +77,40 @@
         }
 
         if (canDelete) {
+          if (options.canRename) {
+            element.append('&nbsp;&nbsp;');
+          }
           self.structureFeatureTable('_createLink', 'delete', true).attr('op', 'delete').appendTo(element);
         }
       });
 
       this.find('.feature-buttons > a').click(function(event) {
+
         var button = $(this);
-        alert(button.parents('.feature-cell').attr('column-id') + ' ' + button.attr('op'));
+        var op = button.attr('op');
+        var parent = button.parents('.feature-cell');
+        var columnId = parent.attr('column-id');
+
+        if (op === 'delete') {
+          self.structureFeatureTable('_openColumnDialog', button, options.deleteDialogTitle, columnId, '_removeColumn', false);
+        } else if (op === 'rename') {
+          var title = parent.children('.feature-title').html();
+          self.structureFeatureTable('_openColumnDialog', button, options.renameDialogTitle, columnId, '_renameColumn', true, title);
+        }
+
         event.preventDefault();
         event.stopPropagation();
       });
     },
-    _removeColumn: function(column) {
+    _removeColumn: function(id) {
+      alert('delete ' + id);
       this.structureFeatureTable('_updateFeatureButtons');
+      this.structureFeatureTable('_updateOddEvenClasses');
+      this.structureFeatureTable('_dataModified');
+    },
+    _renameColumn: function(id, title) {
+      this.find('td.feature-cell[column-id="' + id + '"] > div.feature-title').html(title);
+      this.structureFeatureTable('_dataModified');
     },
     _buildColumn: function(column) {
       var options = this.data('options');
@@ -135,13 +156,7 @@
       this.structureFeatureTable('_updateOddEvenClasses');
       this.structureFeatureTable('_updateFeatureButtons');
     },
-    _openAddNewColumnDialog: function() {
-      var self = this;
-      var options = this.data('options');
-
-      this.structureFeatureTable('_openColumnDialog', null, options.newDialogTitle, true, '_addNewColumnDialog');
-    },
-    _addNewColumnDialog: function(id, title) {
+    _addNewColumn: function(id, title) {
       if (title.length > 0) {
         var n = this.data('nextNewId');
         this.data('nextNewId', n + 1);
@@ -149,15 +164,19 @@
         this.structureFeatureTable('_dataModified');
       }
     },
-    _openColumnDialog: function(title, columnId, useInput, callback) {
+    _openColumnDialog: function(element, title, columnId, callback, useInput, inputValue) {
       var self = this;
 
-      this.find('.new-feature-cell > a').nQuireTooltip({
+      element.nQuireTooltip({
         creationCallback: function(content) {
           content.append($('<p>').html(title));
 
           if (useInput) {
             var input = $('<input>').attr('id', 'new-column-input').appendTo(content);
+            if (inputValue) {
+              input.val(inputValue);
+            }
+
             input.keypress(function(event) {
               if (event.which === 13) {
                 event.preventDefault();
@@ -168,11 +187,11 @@
             });
           }
 
-          var buttons = $('<div>').appendTo(content);
-          var create = $('<button>').html('Ok').appendTo(buttons);
+          var buttons = $('<div>').addClass('tooltip-buttons').appendTo(content);
+          var ok = $('<button>').html('Ok').appendTo(buttons);
           var cancel = $('<button>').html('Cancel').appendTo(buttons);
 
-          create.click(function() {
+          ok.click(function() {
             self.structureFeatureTable(callback, columnId, input ? input.val() : null);
             self.nQuireTooltip('close');
           });
@@ -251,23 +270,32 @@
     _updateOddEvenClasses: function() {
       var iOdd = false;
 
+      this.find('.structure-feature-list').each(function() {
+        var cOdd = false;
+        $(this).find('.feature-cell').each(function() {
+          $(this).removeClass().addClass('feature-cell')
+                  .addClass(cOdd ? 'column-odd' : 'column-even');
+          cOdd = !cOdd;
+        });
+      });
+
       this.find('.structure-tablerow').each(function() {
         var row = $(this);
         var cOdd = false;
         var active = row.find('.structure-tablecell-active-item').length > 0;
         var itemClass;
-        
+
         if (active) {
           itemClass = iOdd ? 'item-odd' : 'item-even';
           iOdd = !iOdd;
         }
-      
+
         $(this).find('.value-cell').each(function() {
           var cell = $(this);
 
           cell.removeClass().addClass('value-cell')
                   .addClass(cOdd ? 'column-odd' : 'column-even');
-          
+
           if (active) {
             cell.addClass(itemClass);
           }

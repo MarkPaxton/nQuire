@@ -8,6 +8,9 @@ var nQuireStructureRolesTable = {
     defaultValue: 'noaccess',
     allowCreate: true,
     newButtonLabel: 'Add role',
+    newDialogTitle: 'Enter the name of the new role:',
+    deleteDialogTitle: 'Are you sure to delete this role?',
+    renameDialogTitle: 'Changing the role name:',
     allowEmpty: true,
     values: {
       noaccess: 'No access',

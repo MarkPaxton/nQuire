@@ -159,8 +159,9 @@
 
           var list = $('<ul>').appendTo(content);
           for (var key in types) {
-            var item = $('<li>').html(types[key].title).attr('item-type', key);
-            list.append(item);
+            var itemLi = $('<li>').appendTo(list);
+            var item = self.inquiryStructureWidget('_createLink', 'new', types[key].title).attr('item-type', key).appendTo(itemLi);
+            
             item.click(function() {
               var selectedKey = $(this).attr('item-type');
               self.nQuireTooltip('close');
@@ -169,9 +170,9 @@
             });
           }
 
-          $('<p>').html('cancel').click(function() {
+          $('<a>').attr('href', '#').html('Cancel').click(function() {
             self.nQuireTooltip('close');
-          }).appendTo(content);
+          }).appendTo($('<p>').appendTo(content));
         }
       });
     },

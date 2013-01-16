@@ -20,17 +20,19 @@ function inquiry_creator_edit($nid) {
   return $output;
 }
 
-function inquiry_creator_main($nid, $op = '', $item = 0) {
+function inquiry_creator_main($nid, $op = '', $item = '') {
   $design = node_load($nid);
   drupal_set_title($design->title);
 
   $output = theme('inquiry_creator_inquiry_main', $design, $op, $item);
 
   switch ($op) {
-    case '': /* main view, nothing is being edited */
-      $output .= theme('inquiry_structure_widget_view', $design);
+    case '':
+
+      $output .= '<p>' . t('Click on the edit link beside each activity or phase to edit their details.') . '</p>'
+              . theme('inquiry_structure_widget_view', $design, $item);
       break;
-    case 'activities': /* activity structure is being edited */
+    case 'structure': /* activity structure is being edited */
       $output .= drupal_get_form('inquiry_creator_activities_form', $design);
       break;
     case 'stages':
@@ -72,33 +74,48 @@ function theme_inquiry_creator_inquiry_main($node, $current_op = '') {
 
 function theme_inquiry_creator_edit_menu($node, $current_op) {
   drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/editMenu.css');
-  
+
   $ops = array(
-      'activities' => t('Edit structure'),
-      'stages' => t('Edit temporal organization'),
-      'groups' => t('Edit collaboration organization'),
-      'roles' => t('Edit roles'),
+      array('activities', t('Edit activities'), TRUE),
+      array('structure', t('Edit structure'), FALSE),
+      array('stages', t('Edit temporal organization'), FALSE),
+      array('groups', t('Edit collaboration organization'), FALSE),
+      array('roles', t('Edit roles'), FALSE),
   );
 
   $use_links = strlen($current_op) === 0;
 
   $output = '<div>';
 
-  foreach ($ops as $op => $text) {
-    $output .= '<div class="edit-link-container' . ($use_links ? ' active' : ($op === $current_op ? ' selected' : '')) . '">';
-    if ($use_links) {
-      $output .= l($text, "creator/{$node->nid}/$op");
-    } else if ($op === $current_op) {
-      $output .= "<b>$text</b>";
+  $output .='<table class="edit-link-menu"><tr>';
+  foreach ($ops as $op_data) {
+    $output .= '<td class="edit-link-container' . ($use_links ? ' active' : ($op_data[0] === $current_op ? ' selected' : '')) . '">';
+
+    if ($op_data[0] === $current_op || ($use_links && $op_data[2])) {
+      $output .= "<b>$op_data[1]</b>";
+    } else if ($use_links) {
+      $output .= l($op_data[1], "creator/{$node->nid}/{$op_data[0]}");
     } else {
-      $output .= $text;
+      $output .= $op_data[1];
     }
 
-    $output .= '</div>';
+    //$output .= '</div>';
+    $output .= '</td>';
   }
 
+  $output .= '</table>';
   $output .= '</div>';
 
+  return $output;
+}
+
+function theme_inquiry_creator_side_form($design, $item, $form) {
+  $output = '<table class="item-edit-table"><tr><td>'
+          . theme('inquiry_structure_widget_view', $design, $item)
+          . '</td><td class="item-edit-form-container">'
+          . $form
+          . '</td></tr></table>';
+  
   return $output;
 }
 
@@ -145,29 +162,23 @@ function inquiry_creator_activities_form(&$form_state, $node) {
 }
 
 function inquiry_creator_activities_form_submit($form, $form_state) {
+  module_load_include('inc', 'inquiry_creator', 'inquiry_creator.phases');
+
   global $user;
   $node = node_load($form_state['values']['inquiry_design']);
   if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
     $phases = json_decode($form_state['values']['structure']);
-    $id = 0;
-    foreach ($phases as $phase) {
-      if (is_numeric($phase->id)) {
-        $id = max($id, $phase->id);
-      }
-      foreach ($phase->activities as $activity) {
-        if (is_numeric($activity->id)) {
-          $id = max($id, $activity->id);
-        }
-      }
-    }
 
     foreach ($phases as $phase) {
       if (!is_numeric($phase->id)) {
-        $phase->id = ++$id;
+        $phase_node = inquiry_creator_create_phase_stub($phase->title);
+        $phase->id = $phase_node->nid;
       }
+
       foreach ($phase->activities as $activity) {
         if (!is_numeric($activity->id)) {
-          $activity->id = ++$id;
+          $activity_node = inquiry_activity_editor_create_activity_stub($activity->type, $activity->title);
+          $activity->id = $activity_node->nid;
         }
       }
     }
@@ -307,7 +318,7 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
     $node->title = $form_state['values']['title'];
     $node->body = $form_state['values']['body'];
     $node->revision = TRUE;
-    // node_save($node);
+    node_save($node);
   }
   inquiry_creator_form_cancel($form, $form_state);
 }

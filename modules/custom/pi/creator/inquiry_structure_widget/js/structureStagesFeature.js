@@ -6,8 +6,12 @@ var nQuireStructureStageTable = {
     defaultColumn: 'Stage 1',
     freeTextColumn: true,
     defaultValue: 'view',
-    allowCreate: true,
+    allowCreate: true,    
     newButtonLabel: 'Add stage',
+    newDialogTitle: 'Enter the name of the new stage:',
+    deleteDialogTitle: 'Are you sure to delete this stage?',
+    renameDialogTitle: 'Changing the stage name:',
+
     allowEmpty: false,
     values: {
       hidden: 'Not visible',
