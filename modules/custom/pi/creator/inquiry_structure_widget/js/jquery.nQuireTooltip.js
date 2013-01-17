@@ -8,12 +8,15 @@
 
       var content = tooltip.find('.nquire-tooltip-content');
       content.html('');
+
+      tooltip.removeClass('nquire-tooltip-hidden');
+
       if (options && options.creationCallback) {
         options.creationCallback(content);
       }
 
-      tooltip.removeClass('nquire-tooltip-hidden');
       this.nQuireTooltip('_position', tooltip);
+
       return this;
     },
     close: function() {

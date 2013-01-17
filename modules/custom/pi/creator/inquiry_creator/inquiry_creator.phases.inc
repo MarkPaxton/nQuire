@@ -17,7 +17,7 @@ function inquiry_creator_phase_edit($design_nid, $phase_nid) {
   
   $form = drupal_get_form('inquiry_creator_phase_form', $design, $node);
 
-  $output .= theme('inquiry_creator_side_form', $design, $phase_nid, $form);
+  $output .= theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
   return $output;
 }
 
@@ -51,5 +51,5 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
 }
 
 function inquiry_creator_phase_form_submit($form, $form_state) {
-  
+  inquiry_creator_form_cancel($form, $form_state);
 }

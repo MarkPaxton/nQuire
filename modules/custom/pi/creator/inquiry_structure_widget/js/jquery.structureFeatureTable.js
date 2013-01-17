@@ -176,6 +176,8 @@
             if (inputValue) {
               input.val(inputValue);
             }
+            
+            input.focus();
 
             input.keypress(function(event) {
               if (event.which === 13) {

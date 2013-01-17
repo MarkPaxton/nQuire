@@ -25,11 +25,6 @@
         event.preventDefault();
         event.stopPropagation();
       });
-      $('#inquiry-structure-add-activity').click(function(event) {
-        self.inquiryStructureWidget('_openNewItemDialog', 'activity');
-        event.preventDefault();
-        event.stopPropagation();
-      });
 
       this.inquiryStructureWidget('_initData');
     },
@@ -64,20 +59,22 @@
 
       return this;
     },
-    _buildItemElement: function(item, type) {
+    _buildItemElement: function(item, type, container) {
       var self = this;
       var element = $('<div>').attr('item-id', item.id)
               .addClass('inquiry-structure-' + type + '-container');
 
       if (type === 'phase') {
         this.append(element);
+      } else if (container) {
+        container.append(element);
       } else {
         this.children(':last').append(element);
       }
 
       element.data('item', item);
       element.data('type', type);
-      
+
       $('<div>').addClass('inquiry-structure-tree-bullet-' + type).appendTo(element);
       $('<div>').addClass('inquiry-item-handle').appendTo(element);
       var itemElement = $('<div>').addClass('inquiry-structure-' + type).appendTo(element);
@@ -129,13 +126,19 @@
       if (status === 'deleted') {
         buttons.append(this.inquiryStructureWidget('_createLink', 'undelete', 'do not delete'));
       } else {
-        buttons.append(this.inquiryStructureWidget('_createLink', 'rename', 'rename'))
-                .append('&nbsp;&nbsp;')
-                .append(this.inquiryStructureWidget('_createLink', 'delete', 'delete'));
+        //.append(this.inquiryStructureWidget('_createLink', 'rename', 'rename'))
+        //.append('&nbsp;&nbsp;')
+        buttons.append(this.inquiryStructureWidget('_createLink', 'delete', 'delete'));
+        if (element.hasClass('inquiry-structure-phase-container')) {
+          buttons.append('&nbsp;&nbsp;&nbsp;');
+          buttons.append(this.inquiryStructureWidget('_createLink', 'addactivity', 'add activity'));
+        }
       }
 
-      buttons.children().click(function() {
-        self.inquiryStructureWidget('_itemAction', itemId, $(this).attr('op'));
+      buttons.children().click(function(event) {
+        self.inquiryStructureWidget('_itemAction', $(this), itemId, $(this).attr('op'));
+        event.preventDefault();
+        event.stopPropagation();
       });
 
       return this;
@@ -143,7 +146,7 @@
     _createLink: function(op, title) {
       return $('<a>').attr('op', op).html(title).attr('href', '#').addClass('link-button');
     },
-    _openNewItemDialog: function(type) {
+    _openNewItemDialog: function(button, type, container) {
       var self = this;
 
       var head = type === 'activity' ?
@@ -152,7 +155,7 @@
 
       var types = this.data('availableTypes')[type];
 
-      $('#inquiry-structure-add-' + type).nQuireTooltip({
+      button.nQuireTooltip({
         creationCallback: function(content) {
 
           content.append($('<p>').html(head));
@@ -161,11 +164,11 @@
           for (var key in types) {
             var itemLi = $('<li>').appendTo(list);
             var item = self.inquiryStructureWidget('_createLink', 'new', types[key].title).attr('item-type', key).appendTo(itemLi);
-            
+
             item.click(function() {
               var selectedKey = $(this).attr('item-type');
               self.nQuireTooltip('close');
-              self.inquiryStructureWidget('_createItem', type, selectedKey);
+              self.inquiryStructureWidget('_createItem', type, selectedKey, container);
               self.inquiryStructureWidget('_dataModified');
             });
           }
@@ -176,7 +179,7 @@
         }
       });
     },
-    _createItem: function(category, type) {
+    _createItem: function(category, type, container) {
       var n = this.data('nextNewId');
       this.data('nextNewId', n + 1);
 
@@ -193,7 +196,7 @@
       status[id] = {status: 'new'};
       this.data('status', status);
 
-      this.inquiryStructureWidget('_buildItemElement', item, category);
+      this.inquiryStructureWidget('_buildItemElement', item, category, container);
 
       if (category === 'phase') {
         for (var i = 0; i < definition.activities.length; i++) {
@@ -215,12 +218,13 @@
 
       this.inquiryStructureWidget('_dataModified');
     },
-    _itemAction: function(itemId, action) {
-      alert(itemId + ' ' + action);
-    },
-    _updateView: function() {
-      this.inquiryStructureWidget('_checkActivityErrors');
-      this.inquiryStructureWidget('_updatePhaseNumbers');
+    _itemAction: function(button, itemId, action) {
+      if (action === 'addactivity') {
+        var container = this.find('div[item-id="' + itemId + '"]');
+        this.inquiryStructureWidget('_openNewItemDialog', button, 'activity', container);
+      } else {
+        alert(itemId + ' ' + action);
+      }
     },
     _updatePhaseNumbers: function() {
       var i = 0;

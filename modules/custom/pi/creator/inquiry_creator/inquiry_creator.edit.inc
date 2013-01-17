@@ -109,12 +109,16 @@ function theme_inquiry_creator_edit_menu($node, $current_op) {
   return $output;
 }
 
-function theme_inquiry_creator_side_form($design, $item, $form) {
+function theme_inquiry_creator_side_form($design, $item, $type, $form) {
+  nquire_commons_load_javascript_module_support();
+  drupal_add_js(drupal_get_path('module', 'inquiry_creator') . '/js/editFormPosition.js');
+  drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/sideForm.css');
+
   $output = '<table class="item-edit-table"><tr><td>'
           . theme('inquiry_structure_widget_view', $design, $item)
-          . '</td><td class="item-edit-form-container">'
+          . '</td><td><div class="item-edit-form-container item-edit-form-container-' . $type . '">'
           . $form
-          . '</td></tr></table>';
+          . '</div></td></tr></table>';
   
   return $output;
 }
