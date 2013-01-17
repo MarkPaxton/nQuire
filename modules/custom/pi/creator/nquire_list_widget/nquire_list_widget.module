@@ -1,0 +1,44 @@
+<?php
+
+// $Id: inquiry_design.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry content type
+ */
+function nquire_list_widget_theme() {
+  return array(
+      'nquire_list_widget' => array(
+          'arguments' => array('id' => ''),
+      ),
+  );
+}
+
+function nquire_list_widget_create_form_item(&$form, $id, $value, $title, $description) {
+  $form[$id] = array(
+      '#type' => 'hidden',
+      '#required' => FALSE,
+      '#default_value' => $value,
+      '#prefix' => theme('nquire_list_widget', $id, $title, $description),
+  );
+}
+
+function theme_nquire_list_widget($id, $title, $description) {
+  nquire_commons_load_javascript_module_support();
+  nquire_commons_load_nquire_widget_support();
+  nquire_commons_load_nquire_tooltip_support();
+
+  jquery_ui_add(array('ui.draggable', 'ui.droppable', 'ui.sortable'));
+
+  drupal_add_js(drupal_get_path('module', 'nquire_list_widget') . '/js/nQuireListWidget.js');
+  drupal_add_js(drupal_get_path('module', 'nquire_list_widget') . '/js/jquery.nQuireListWidget.js');
+  drupal_add_css(drupal_get_path('module', 'nquire_list_widget') . '/css/nQuireListWidget.css');
+
+  $output = nquire_commons_create_widget_title($title)
+          . "<div nquire-widget='nquire-list' data-element-name='$id' class='nquire-list-container'>"
+          . "<ul></ul>"
+          . "<a href='#'>" . t('Add key question') . "</a>"
+          . "</div>"
+          . nquire_commons_create_widget_description($description);
+
+  return $output;
+}

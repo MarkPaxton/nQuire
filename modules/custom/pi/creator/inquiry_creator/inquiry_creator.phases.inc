@@ -14,7 +14,7 @@ function inquiry_creator_phase_edit($design_nid, $phase_nid) {
   $node = node_load($phase_nid);
 
   $output = theme('inquiry_creator_inquiry_main', $design, 'activities');
-  
+
   $form = drupal_get_form('inquiry_creator_phase_form', $design, $node);
 
   $output .= theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
@@ -25,6 +25,11 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
   $form = array();
 
   _inquiry_creator_create_inquiry_id_form_item($design, $form);
+  $form['phase_id'] = array(
+      '#type' => 'hidden',
+      '#default_value' => $node->nid,
+      '#required' => TRUE,
+  );
 
   $type = node_get_types('type', $node);
 
@@ -51,5 +56,17 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
 }
 
 function inquiry_creator_phase_form_submit($form, $form_state) {
+  $design = node_load($form_state['values']['inquiry_design']);
+  $phase = node_load($form_state['values']['phase_id']);
+  $title = $form_state['values']['title'];
+
+  if ($design && $phase && inquiry_design_set_item_title($design, $phase->nid, $title)) {
+    $phase->title = $form_state['values']['title'];
+    $phase->body = $form_state['values']['body'];
+
+    node_save($phase);
+    node_save($design);
+  }
+
   inquiry_creator_form_cancel($form, $form_state);
 }

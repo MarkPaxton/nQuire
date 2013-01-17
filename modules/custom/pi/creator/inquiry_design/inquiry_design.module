@@ -159,3 +159,30 @@ function inquiry_design_view($node, $teaser = FALSE, $page = FALSE) {
   return $node;
 }
 
+
+function inquiry_design_set_item_title($node, $id, $title) {
+  $structure = json_decode($node->structure);
+  $found = FALSE;
+  
+  foreach($structure as $phase) {
+    if ($phase->id == $id) {
+      $phase->title = $title;
+      $found = TRUE;
+      break;
+    } else {
+      foreach ($phase->activities as $activity) {
+        if ($activity->id == $id) {
+      $activity->title = $title;
+      $found = TRUE;
+      break 2;
+        }
+      }
+    }
+  }
+  
+  if ($found) {
+    $node->structure = json_encode($structure);
+  }
+  
+  return $found;
+}
