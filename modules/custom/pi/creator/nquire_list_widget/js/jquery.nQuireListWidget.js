@@ -35,9 +35,9 @@
     _createItem: function(value) {
       var self = this;
       $('<input>').attr('type', 'text').appendTo($('<li>').appendTo(this.find('ul')))
-              .keypressed(function() {
+              .keyup(function() {
         self.nQuireListWidget('_dataModified');
-      });
+      }).val(value ? value : '');
       return this;
     },
     _dataModified: function() {

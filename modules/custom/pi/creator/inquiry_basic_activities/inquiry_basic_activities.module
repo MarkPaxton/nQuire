@@ -1,5 +1,15 @@
 <?php
 
+function inquiry_basic_activities_menu() {
+  $items['creator/toolform'] = array(
+      'page callback' => 'inquiry_basic_activities_update_toolform',
+      'access arguments' => array('access inquiry_creator content'),
+      'type' => MENU_CALLBACK,
+      'file' => 'inquiry_basic_activities.tools.inc',
+  );
+  return $items;
+}
+
 /**
  * Implementation of nQuire Creator hook 'form' for 'hypothesis' activity.
  * 
@@ -7,35 +17,77 @@
  * @param type $design
  * @param type $form
  */
-function inquiry_basic_activities_nquire_creator_activity_hypothesis_form($activity, $design, &$form) {
-  $data = json_decode($activity->data);
+function inquiry_basic_activities_nquire_creator_activity_hypothesis_form($activity, $design, &$form, &$form_state) {
+  $data = $data = nquire_commons_decode_data($activity->data);
 
   $form['data']['hypothesis'] = array(
       '#type' => 'textarea',
       '#title' => t('Default hypothesis'),
       '#description' => t('You can propose a default hypothesis, or leave it blank if users must write the hypothesis on their own.'),
-      '#default_value' => '',
+      '#default_value' => nquire_commons_form_data_default_value($data, 'hypothesis', $form_state, 'hipothesys', ''),
       '#required' => FALSE,
   );
-  $form['data']['editable'] = array(
+  $form['data']['hypothesis_editable'] = array(
       '#type' => 'checkbox',
       '#title' => t('Is the default Hypothesis editable?'),
       '#description' => t('Select this option if the hypothesis can be modified by the inquiry participants.'),
-      '#default_value' => TRUE,
+      '#default_value' => nquire_commons_form_data_default_value($data, 'hypothesis_editable', $form_state, 'hypothesis_editable', TRUE),
   );
 }
 
-function inquiry_basic_activities_nquire_creator_activity_keyquestions_form($activity, $design, &$form) {
-  $data = json_decode($activity->data);
+/**
+ * Implementation of nQuire Creator hook 'form_process' for 'hypothesis' activity.
+ * 
+ * @param type $activity
+ * @param type $design
+ * @param type $form
+ */
+function inquiry_basic_activities_nquire_creator_activity_hypothesis_form_process(&$activity, $design, $form_values) {
+  $data = array();
+  $data['hypothesis'] = $form_values['hypothesis'];
+  $data['hypothesis_editable'] = $form_values['hypothesis_editable'];
 
-  nquire_list_widget_create_form_item($form['data'], 'keyquestions', '', t('Default key questions:'), t('You can add some default key questions, or leave this blank for the users to create their own.')
-          . '<br/>' . t('Leave the question slots empty if you do not want to add questions.'));
+  $activity->data = json_encode($data);
+}
 
-  $form['data']['editable'] = array(
+function inquiry_basic_activities_nquire_creator_activity_keyquestions_form($activity, $design, &$form, &$form_state) {
+  $data = $data = nquire_commons_decode_data($activity->data);
+
+  $value = nquire_commons_form_data_default_value($data, 'keyquestions', $form_state, 'keyquestions', '[]');
+  $title = t('Default key questions:');
+  $description = t('You can add some default key questions, or leave this blank for the users to create their own.')
+          . '<br/>' . t('Leave the question slots empty if you do not want to add questions.');
+
+  nquire_list_widget_create_form_item($form['data'], 'keyquestions', $value, $title, $description);
+
+  $form['data']['keyquestions_editable'] = array(
       '#type' => 'checkbox',
       '#title' => t('Are the default Key questios editable?'),
       '#description' => t('Select this option if the users are allows to edit, create and delete their key questions.'),
-      '#default_value' => TRUE,
+      '#default_value' => nquire_commons_form_data_default_value($data, 'keyquestions_editable', $form_state, 'keyquestions_editable', TRUE),
   );
 }
 
+function inquiry_basic_activities_nquire_creator_activity_keyquestions_form_process(&$activity, $design, $form_values) {
+  $data = array();
+  $data['keyquestions'] = $form_values['keyquestions'];
+  $data['keyquestions_editable'] = $form_values['keyquestions_editable'];
+
+  $activity->data = json_encode($data);
+}
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_form($activity, $design, &$form, &$form_state) {
+  $data = nquire_commons_decode_data($activity->data);
+
+  $title = t('Scientific instrument');
+  $description = t('Select a scientific instrument that the participants will use to collect data. ')
+          . '<br/>' . t('Alternatively, select \'No instrument\' if data will be manually entered by the users.');
+
+  module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
+  _inquiry_basic_activities_tool_form($form, $form_state, $data, $title, $description);
+}
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_form_process(&$activity, $design, $form_values) {
+  module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
+  _inquiry_basic_activities_tool_form_process($activity, $design, $form_values);
+}

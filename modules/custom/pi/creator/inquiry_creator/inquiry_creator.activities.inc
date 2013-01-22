@@ -24,13 +24,14 @@ function inquiry_creator_create_activity_stub($type, $title) {
   return $node;
 }
 
-function inquiry_creator_activity_form(&$form_state, $design, $node) {
+function _inquiry_creator_activity_form(&$form_state, $design, $node) {
   $form = array();
 
+  module_load_include('inc', 'inquiry_creator', 'inquiry_creator.edit');
   _inquiry_creator_create_inquiry_id_form_item($design, $form);
   $form['activity_id'] = array(
       '#type' => 'hidden',
-      '#default_value' => $node->nid,
+      '#default_value' => nquire_commons_form_default_value($form_state, 'activiy_id', $node->nid),
       '#required' => TRUE,
   );
 
@@ -53,7 +54,7 @@ function inquiry_creator_activity_form(&$form_state, $design, $node) {
       '#required' => TRUE
   );
   
-  inquiry_available_activities_invoke('form', $node, $design, $form);
+  inquiry_available_activities_invoke('form', $node, $design, $form, $form_state);
 
   _inquiry_creator_create_form_buttons('inquiry_creator_activity_form_submit', $form, $design);
 
@@ -69,7 +70,7 @@ function inquiry_creator_activity_form_submit($form, $form_state) {
     $activity->title = $form_state['values']['title'];
     $activity->body = $form_state['values']['body'];
     
-    inquiry_available_activities_invoke('form_process', $activity, $design, $form_state['values']['data']);
+    inquiry_available_activities_invoke('form_process', $activity, $design, $form_state['values']);
     
     node_save($activity);
     node_save($design);

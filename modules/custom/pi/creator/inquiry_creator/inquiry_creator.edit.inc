@@ -111,6 +111,8 @@ function theme_inquiry_creator_edit_menu($node, $current_op) {
 
 function theme_inquiry_creator_side_form($design, $item, $type, $form) {
   nquire_commons_load_javascript_module_support();
+  nquire_commons_load_ahah_fix();
+  
   drupal_add_js(drupal_get_path('module', 'inquiry_creator') . '/js/editFormPosition.js');
   drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/sideForm.css');
 
@@ -167,6 +169,7 @@ function inquiry_creator_activities_form(&$form_state, $node) {
 
 function inquiry_creator_activities_form_submit($form, $form_state) {
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.phases');
+  module_load_include('inc', 'inquiry_creator', 'inquiry_creator.activities');
 
   global $user;
   $node = node_load($form_state['values']['inquiry_design']);

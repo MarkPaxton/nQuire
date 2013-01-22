@@ -1,0 +1,115 @@
+<?php
+
+function vm_designer_menu() {
+  $items['creator/vm/set'] = array(
+      'page callback' => 'vm_designer_update_setform',
+      'access arguments' => array('access inquiry_creator content'),
+      'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function vm_designer_nquire_creator_tool_vm_form($tool_data, &$form, $form_state) {
+
+  $set = nquire_commons_form_data_default_value($tool_data, 'vm_set', $form_state, 'vm_set', 'moonrock');
+  $mode = nquire_commons_form_data_default_value($tool_data, 'vm_mode', $form_state, 'vm_mode', TRUE);
+  $selected = nquire_commons_form_data_default_value($tool_data, 'vm_selected', $form_state, 'vm_selected', array());
+
+  $form['vm'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Virtual Microscope'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+  );
+
+  $form['vm']['vm_set'] = array(
+      '#type' => 'select',
+      '#options' => array(
+          'moonrock' => 'Moon Rock samples',
+          'counterfeit' => 'Coin samples',
+          'physiology' => 'Snail physiology samples',
+      ),
+      '#required' => FALSE,
+      '#title' => t('Virtual Microscope sample set'),
+      '#description' => t('Select the collection of samples that will be used in this activity.'),
+      '#default_value' => $set,
+      '#ahah' => array(
+          'path' => 'creator/vm/set/',
+          'wrapper' => 'vm-selected-samples',
+          'method' => 'replace',
+          'effect' => 'fade',
+      ),
+  );
+
+  $form['vm']['vm_mode'] = array(
+      '#type' => 'radios',
+      '#title' => t('What samples will be available?'),
+      '#description' => t('Select whether the participants will see a selected number of samples and/or will be able to search the whole sample collection.'),
+      '#default_value' => $mode,
+      '#options' => array('search' => t('Only search'), 'list' => t('Only selected samples'), 'both' => t('Search and selected samples')),
+      '#required' => FALSE,
+      '#ahah' => array(
+          'path' => 'creator/vm/set/',
+          'wrapper' => 'vm-selected-samples',
+          'method' => 'replace',
+          'effect' => 'fade',
+      ),
+  );
+
+  $form['vm']['vm_selected_prefix'] = array(
+      '#value' => '<div id="vm-selected-samples">',
+  );
+
+  if ($mode !== 'search') {
+    switch ($set) {
+      case 'moonrock':
+        $samples = array(
+            'a' => 'Rock 1',
+            'b' => 'Rock 2',
+        );
+        break;
+      case 'physiology':
+        $samples = array(
+            'c' => 'Snail 1',
+            'd' => 'Snail 2',
+        );
+        break;
+      case 'counterfeit':
+        $samples = array(
+            'e' => 'Pound 1',
+            'f' => 'Pound 2',
+        );
+        break;
+    }
+    $form['vm']['vm_selected'] = array(
+        '#type' => 'checkboxes',
+        '#title' => t('Selected samples'),
+        '#description' => t('Here you can select a number of samples that will be highlighted by nQuire.') . '<br/>'
+        . t('Participants will see the samples listed here without need to make any search.'),
+        '#options' => $samples,
+        '#default_value' => $selected,
+        '#required' => FALSE,
+    );
+  } else {
+    $form['vm']['vm_selected'] = array();
+  }
+  $form['vm']['vm_selected_suffix'] = array(
+      '#value' => '</div>',
+  );
+}
+
+function vm_designer_update_setform() {
+  $new_form = nquire_commons_rebuild_ahah_form();
+
+  $sample_selection_form = $new_form['data']['tool_form']['vm']['vm_selected'];
+  $output = drupal_render($sample_selection_form);
+
+  drupal_json(array('status' => TRUE, 'data' => $output));
+}
+
+function vm_designer_nquire_creator_tool_vm_form_process(&$tool_data, $form_values) {
+  $tool_data['vm_set'] = $form_values['vm_set'];
+  $tool_data['vm_mode'] = $form_values['vm_mode'];
+  $tool_data['vm_selected'] = $form_values['vm_selected'];
+  return;
+}
