@@ -1,0 +1,61 @@
+<?php
+
+/**
+ * 
+ * Registers an activity type in the authoring tool so that it ca be ofered 
+ * to designers. Modules registering an activity must implement a number of
+ * nQuire hooks:
+ * 
+ *  - [module]_nquire_creator_measure_[type]_form($measure_data, &$form)
+ *  - [module]_nquire_creator_measure_[type]_form_process(&$measure_data, $form_values)
+ * 
+ * @param type $type The activity type being registered
+ * @param type $module The module that manages the registered activity type
+ */
+function inquiry_available_measures_register($type, $module, $required_tool) {
+  $activities = variable_get('inquiry_nquire_creator_measure_types_measures', array());
+  $activities[$type] = array('module' => $module, 'tool' => $required_tool);
+  variable_set('inquiry_nquire_creator_measure_types_measures', $activities);
+}
+
+function inquiry_available_measures_forget($type) {
+  $activities = variable_get('inquiry_nquire_creator_measure_types_measures', array());
+  unset($activities[$type]);
+  variable_set('inquiry_nquire_creator_measure_types_measures', $activities);
+}
+
+function inquiry_available_measures_types() {
+  return variable_get('inquiry_nquire_creator_measure_types_measures', array());
+}
+
+function inquiry_available_measures_module_for_type($measure_type) {
+  $types = inquiry_available_measures_types();
+  return isset($types[$measure_type]) ? $types[$measure_type]['module'] : FALSE;
+}
+
+function _inquiry_available_measures_is_available($measure_def, $tool) {
+  return $measure_def && ($measure_def['tool'] === 'none' || $measure_def['tool'] === $tool);
+}
+
+function inquiry_available_measures_for_tool($tool) {
+  $types = inquiry_available_measures_types();
+  $list = array();
+  foreach ($types as $type => $def) {
+    if (_inquiry_available_measures_is_available($def, $tool)) {
+      $list[$type] = $type;
+    }
+  }
+  return $list;
+}
+
+function inquiry_available_measures_invoke($nquire_creator_hook, $measure_type, &$a = NULL, &$b = NULL, &$c = NULL, &$d = NULL) {
+  $module = inquiry_available_measures_module_for_type($measure_type);
+  if ($module) {
+    $fname = "{$module}_nquire_creator_measure_{$measure_type}_{$nquire_creator_hook}";
+    if (function_exists($fname)) {
+      return $fname($a, $b, $c, $d);
+    }
+  }
+
+  return FALSE;
+}

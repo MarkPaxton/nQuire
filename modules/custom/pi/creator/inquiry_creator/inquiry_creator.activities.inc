@@ -24,16 +24,20 @@ function inquiry_creator_create_activity_stub($type, $title) {
   return $node;
 }
 
+function _inquiry_creator_create_activity_id_form_item($activity, &$form) {
+  $form['activity_id'] = array(
+      '#type' => 'hidden',
+      '#default_value' => $activity->nid,
+      '#required' => TRUE,
+  );
+}
+
 function _inquiry_creator_activity_form(&$form_state, $design, $node) {
   $form = array();
 
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.edit');
   _inquiry_creator_create_inquiry_id_form_item($design, $form);
-  $form['activity_id'] = array(
-      '#type' => 'hidden',
-      '#default_value' => nquire_commons_form_default_value($form_state, 'activiy_id', $node->nid),
-      '#required' => TRUE,
-  );
+  _inquiry_creator_create_activity_id_form_item($node, $form);
 
   $type = node_get_types('type', $node);
 
