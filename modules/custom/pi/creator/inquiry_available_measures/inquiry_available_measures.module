@@ -8,6 +8,7 @@
  * 
  *  - [module]_nquire_creator_measure_[type]_form($measure_data, &$form)
  *  - [module]_nquire_creator_measure_[type]_form_process(&$measure_data, $form_values)
+ *  - [module]_nquire_creator_measure_[type]_name()
  * 
  * @param type $type The activity type being registered
  * @param type $module The module that manages the registered activity type
@@ -42,7 +43,7 @@ function inquiry_available_measures_for_tool($tool) {
   $list = array();
   foreach ($types as $type => $def) {
     if (_inquiry_available_measures_is_available($def, $tool)) {
-      $list[$type] = $type;
+      $list[$type] = inquiry_available_measures_invoke('name', $type);
     }
   }
   return $list;
@@ -58,4 +59,9 @@ function inquiry_available_measures_invoke($nquire_creator_hook, $measure_type, 
   }
 
   return FALSE;
+}
+
+function inquiry_available_measures_name($measure_type) {
+  $name = inquiry_available_measures_invoke('name', $measure_type);
+  return $name ? $name : $measure_type;
 }

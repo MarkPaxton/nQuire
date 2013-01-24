@@ -1,9 +1,12 @@
 <?php
 
 function inquiry_creator_create_phase_stub($title) {
+  global $user;
+  
   $node = new stdClass();
   $node->type = 'inquiry_phase';
   $node->title = $title;
+  $node->uid = $user->uid;
 
   node_save($node);
   return $node;
@@ -50,7 +53,7 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
       '#required' => TRUE
   );
 
-  _inquiry_creator_create_form_buttons('inquiry_creator_phase_form_submit', $form, $design);
+  _inquiry_creator_create_form_buttons('inquiry_creator_phase_form_submit', "creator/{$design->nid}/", $form);
 
   return $form;
 }

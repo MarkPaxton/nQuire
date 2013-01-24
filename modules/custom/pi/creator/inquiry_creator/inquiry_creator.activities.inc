@@ -15,10 +15,13 @@ function inquiry_creator_activity_edit($design_nid, $activity_nid) {
 
 
 function inquiry_creator_create_activity_stub($type, $title) {
+  global $user;
+  
   $node = new stdClass();
   $node->type = 'inquiry_activity';
   $node->activity_type = $type;
   $node->title = $title;
+  $node->uid = $user->uid;
 
   node_save($node);
   return $node;
@@ -60,7 +63,7 @@ function _inquiry_creator_activity_form(&$form_state, $design, $node) {
   
   inquiry_available_activities_invoke('form', $node, $design, $form, $form_state);
 
-  _inquiry_creator_create_form_buttons('inquiry_creator_activity_form_submit', $form, $design);
+  _inquiry_creator_create_form_buttons('inquiry_creator_activity_form_submit', "creator/{$design->nid}/", $form);
 
   return $form;
 }
@@ -80,5 +83,5 @@ function inquiry_creator_activity_form_submit($form, $form_state) {
     node_save($design);
   }
 
-  inquiry_creator_form_cancel($form, $form_state);
+  inquiry_creator_form_close($form, $form_state);
 }

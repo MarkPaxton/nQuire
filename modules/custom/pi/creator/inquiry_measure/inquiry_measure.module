@@ -1,0 +1,119 @@
+<?php
+
+// $Id: inquiry_measure.module,v 0.1 2010/03/17 MCP $
+
+/**
+ * @file  This module provides the implementation of the Inquiry content type
+ */
+
+/**
+ * hook_node_info()Define the inquiry_measure node type
+ */
+function inquiry_measure_node_info() {
+  return array(
+      'inquiry_measure' => array(
+          'name' => t('Inquiry Measure'), // Required.
+          'module' => 'inquiry_measure', // Required.
+          'description' => t('An nQuire Inquiry Measure'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Measure Name'),
+          'has_body' => TRUE,
+          'body_label' => t('Measure Description'),
+      )
+  );
+}
+
+/**
+ * Work out if a user has permission to do something with an Inquiry
+ */
+function inquiry_measure_access($op, $node, $account) {
+  $is_author = $account->uid == $node->uid;
+  switch ($op) {
+    case 'create':
+      // Allow if user's role has 'create inquiry' permission.
+      return user_access('create inquiry design', $account);
+    case 'update':
+      // Allow if user's role has 'edit own inquiry' permission and user is
+      // the author; or if the user's role has 'edit any inquiry' permission.
+      return user_access('edit own inquiry design', $account) && is_author ||
+              user_access('edit any inquiry design', $account);
+    case 'delete':
+      // Allow if user's role has 'delete own inquiry' permission and user is
+      // the author; or if the user's role has 'delete any inquiry' permission.
+      return user_access('delete own inquiry design', $account) && $is_author ||
+              user_access('delete any inquiry design', $account);
+  }
+}
+
+/**
+ * INSERT command for a new activity
+ */
+function inquiry_measure_insert($node) {
+  db_query("INSERT INTO {inquiry_measure} (nid, vid, measure, measure_type, data) VALUES (%d, %d, 0, '%s', '%s')", $node->nid, $node->vid, $node->measure_type, $node->data);
+}
+
+/**
+ * UPDATE command for an existing inquiry
+ */
+function inquiry_measure_update($node) {
+  if ($node->revision) {
+    inquiry_measure_insert($node);
+  } else {
+    db_query("UPDATE {inquiry_measure} SET measure='0', measure_type='%s', data='%s' WHERE vid='%d'", $node->measure_type, $node->data, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function inquiry_measure_nodeapi(&$node, $op, $teaser, $page) {
+  switch ($op) {
+    case 'delete revision':
+      // Notice that we're matching a single revision based on the node's vid.
+      db_query('DELETE FROM {inquiry_measure} WHERE vid = %d', $node->vid);
+      break;
+  }
+}
+
+/**
+ * DELETE command for an inquiry
+ * @todo this should delete all the associated data with the inquiry too!
+ */
+function inquiry_measure_delete(&$node) {
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {inquiry_measure} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * node loader function for inquiry type called when noad_load() is called
+ */
+function inquiry_measure_load($node) {
+  $data = db_fetch_object(db_query('SELECT * FROM {inquiry_measure} WHERE vid = %d', $node->vid));
+
+  return $data;
+}
+
+function inquiry_measure_theme() {
+  return array(
+      'inquiry_measure_list_view' => array(
+          'arguments' => array('node' => NULL),
+      ),
+  );
+}
+
+/**
+ * Builds the view for the measure
+ * @todo Add a detailed inquiry view to be used in the whole system
+ */
+function inquiry_measure_view($node, $teaser = FALSE, $page = FALSE) {
+  $node = node_prepare($node, $teaser);
+  return $node;
+}
+
+function theme_inquiry_measure_list_view($node) {
+  return check_plain($node->title); 
+}

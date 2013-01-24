@@ -9,7 +9,7 @@ function inquiry_basic_activities_update_toolform() {
   drupal_json(array('status' => TRUE, 'data' => $output));
 }
 
-function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data, $title, $description, $measures_form) {
+function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data, $title, $description, $measures_form = FALSE, $base_path = NULL) {
   $tool_value = nquire_commons_form_data_default_value($activity_data, 'tool.type', $form_state, 'tool_type', 'none');
 
   $form['data']['tool_type'] = array(
@@ -44,8 +44,7 @@ function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data
   }
 
   if ($measures_form) {
-    
-    inquiry_creator_add_measures_form_links($activity_data['measures'], $form['data']['tool_form'], $form_state, $tool_value);
+    inquiry_creator_add_measures_form_links($activity_data['measures'], $tool_value, $form['data']['tool_form'], $base_path);
   }
 
   $form['data']['tool_form'][] = array(
@@ -64,6 +63,11 @@ function _inquiry_basic_activities_tool_form_process(&$activity, $design, $form_
 
   if ($type !== 'none') {
     inquiry_available_tools_invoke('form_process', $type, $data['tool'], $form_values);
+  }
+
+  $old_data = nquire_commons_decode_data($activity->data);
+  if (isset($old_data['measures'])) {
+    $data['measures'] = $old_data['measures'];
   }
 
   $activity->data = json_encode($data);

@@ -21,7 +21,7 @@
       var self = this;
 
       $('#inquiry-structure-add-phase').click(function(event) {
-        self.inquiryStructureWidget('_openNewItemDialog', 'phase');
+        self.inquiryStructureWidget('_openNewItemDialog', $('#inquiry-structure-add-phase'), 'phase', this);
         event.preventDefault();
         event.stopPropagation();
       });
