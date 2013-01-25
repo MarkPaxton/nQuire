@@ -1,22 +1,20 @@
 <?php
 
-
 function inquiry_creator_activity_edit($design_nid, $activity_nid) {
   $design = node_load($design_nid);
   $node = node_load($activity_nid);
 
   $output = theme('inquiry_creator_inquiry_main', $design, 'activities');
-  
+
   $form = drupal_get_form('inquiry_creator_activity_form', $design, $node);
-  
+
   $output .= theme('inquiry_creator_side_form', $design, $activity_nid, 'activity', $form);
   return $output;
 }
 
-
 function inquiry_creator_create_activity_stub($type, $title) {
   global $user;
-  
+
   $node = new stdClass();
   $node->type = 'inquiry_activity';
   $node->activity_type = $type;
@@ -37,6 +35,10 @@ function _inquiry_creator_create_activity_id_form_item($activity, &$form) {
 
 function _inquiry_creator_activity_form(&$form_state, $design, $node) {
   $form = array();
+
+  nquire_commons_form_set_default_link_action($form, 'submit');
+
+  ahah_helper_register($form, $form_state);
 
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.edit');
   _inquiry_creator_create_inquiry_id_form_item($design, $form);
@@ -60,10 +62,10 @@ function _inquiry_creator_activity_form(&$form_state, $design, $node) {
       '#default_value' => $node->body,
       '#required' => TRUE
   );
-  
+
   inquiry_available_activities_invoke('form', $node, $design, $form, $form_state);
 
-  _inquiry_creator_create_form_buttons('inquiry_creator_activity_form_submit', "creator/{$design->nid}/", $form);
+  inquiry_creator_create_form_save_delete_cancel_buttons($form, 'inquiry_creator_activity_form_submit', 'inquiry_creator_activity_form_delete', "creator/{$design->nid}/");
 
   return $form;
 }
@@ -73,14 +75,34 @@ function inquiry_creator_activity_form_submit($form, $form_state) {
   $activity = node_load($form_state['values']['activity_id']);
   $title = $form_state['values']['title'];
 
-  if ($design && $activity && inquiry_design_set_item_title($design, $activity->nid, $title)) {
-    $activity->title = $form_state['values']['title'];
-    $activity->body = $form_state['values']['body'];
-    
-    inquiry_available_activities_invoke('form_process', $activity, $design, $form_state['values']);
-    
-    node_save($activity);
-    node_save($design);
+  if ($design && $activity) {
+    $changed = FALSE;
+    $design_changed = FALSE;
+
+    if ($activity->title !== $title) {
+      if (inquiry_design_set_item_title($design, $activity->nid, $title)) {
+        $design_changed = TRUE;
+      }
+      $activity->title = $title;
+      $changed = TRUE;
+    }
+
+    if ($activity->body !== $form_state['values']['body']) {
+      $activity->body = $form_state['values']['body'];
+      $changed = TRUE;
+    }
+
+    $data_changed = inquiry_available_activities_invoke('form_process', $activity, $design, $form_state['values']);
+
+    if ($changed || $data_changed) {
+      $activity->revision = TRUE;
+      node_save($activity);
+    }
+
+    if ($design_changed) {
+      $design->revision = TRUE;
+      node_save($design);
+    }
   }
 
   inquiry_creator_form_close($form, $form_state);

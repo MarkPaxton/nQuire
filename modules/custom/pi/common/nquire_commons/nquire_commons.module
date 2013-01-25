@@ -1,55 +1,53 @@
 <?php
 
 function nquire_commons_nids_by_type_and_user($type, $uid) {
-  
+
   $nids = array();
-  
+
   $query = "SELECT nid FROM {node} WHERE {node}.type='%s' AND {node}.uid='%d'";
   $result = db_query($query, $type, $uid);
-  while($row = db_fetch_array($result)) {
+  while ($row = db_fetch_array($result)) {
     $nids[] = $row['nid'];
   }
-  
-  return $nids;  
+
+  return $nids;
 }
 
 function nquire_commons_nodes_by_type_and_user($type, $uid) {
   $nids = nquire_commons_nids_by_type_and_user($type, $uid);
-  
+
   $nodes = array();
-  foreach($nids as $nid) {
+  foreach ($nids as $nid) {
     $nodes[$nid] = node_load($nid);
   }
-  
-  return $nodes;  
+
+  return $nodes;
 }
 
 function nquire_commons_nodes2table($nodes, $fields) {
   $rows = array();
-  foreach($nodes as $node) {
+  foreach ($nodes as $node) {
     $row = array();
-    foreach($fields as $field) {
+    foreach ($fields as $field) {
       $row[] = $node->$field;
     }
     $rows[] = $row;
-  } 
+  }
   return $rows;
-} 
-
+}
 
 function nquire_commons_load_javascript_module_support() {
-  drupal_add_js(drupal_get_path('module', 'nquire_commons') .'/js/modules.js');
+  drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/modules.js');
 }
 
 function nquire_commons_load_ahah_fix() {
-  drupal_add_css(drupal_get_path('module', 'nquire_commons') .'/css/ahahFix.css');
+  drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/ahahFix.css');
 }
 
 function nquire_commons_load_nquire_widget_support() {
-  drupal_add_css(drupal_get_path('module', 'nquire_commons') .'/css/nQuireWidget.css');
-  drupal_add_js(drupal_get_path('module', 'nquire_commons') .'/js/jquery.nQuireWidget.js');
+  drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/nQuireWidget.css');
+  drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/jquery.nQuireWidget.js');
 }
-
 
 function nquire_commons_load_nquire_tooltip_support() {
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/jquery.nQuireTooltip.js');
@@ -59,13 +57,27 @@ function nquire_commons_load_nquire_tooltip_support() {
 function nquire_commons_load_submit_form_links() {
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/submitFormLinks.js');
 }
+
 function nquire_commons_form_submit_link($text, $path) {
-  return l($text, $path, array('attributes' => array('class' => 'automatic-form-submit')));
+  return l($text, $path, array(
+      'attributes' => array(
+          'class' => 'automatic-form-submit',
+          'form_destination' => $path,
+          'onclick' => 'return nQuireSubmitFormLinks.launch(this);',
+          )));
+}
+
+function nquire_commons_form_set_default_link_action(&$form, $action) {
+  $form['external_link_action'] = array(
+      '#type' => 'hidden',
+      '#default_value' => $action,
+  );
 }
 
 function nquire_commons_create_widget_title($title) {
   return "<div class='nquire-widget-title'>$title</div>";
 }
+
 function nquire_commons_create_widget_description($description) {
   return "<div class='nquire-widget-description'>$description</div>";
 }
@@ -73,10 +85,10 @@ function nquire_commons_create_widget_description($description) {
 function nquire_commons_form_default_value($form_state, $path, $default) {
   if (isset($form_state['values'])) {
     $path_sections = explode('.', $path);
-    
+
     $state = $form_state['values'];
     $valid = TRUE;
-    foreach($path_sections as $section) {
+    foreach ($path_sections as $section) {
       if (isset($state[$section])) {
         $state = $state[$section];
       } else {
@@ -84,15 +96,14 @@ function nquire_commons_form_default_value($form_state, $path, $default) {
         break;
       }
     }
-    
+
     if ($valid) {
       return $state;
     }
   }
-  
+
   return $default;
 }
-
 
 function nquire_commons_form_data_default_value($data, $data_path, $form_state, $form_state_path, $default) {
   $_default = nquire_commons_read_data_value($data, $data_path, $default);
@@ -129,26 +140,4 @@ function nquire_commons_read_data_value($data, $path, $default) {
 
 function nquire_commons_decode_data($data, $default = '{}') {
   return json_decode($data && strlen(data) > 0 ? $data : $default, TRUE);
-}
-
-
-function nquire_commons_rebuild_ahah_form() {
-  include_once 'modules/node/node.pages.inc';
-  // We're starting in step #3, preparing for #4.
-  $form_state = array('storage' => NULL, 'submitted' => FALSE);
-  $form_build_id = $_POST['form_build_id'];
-  // Step #4.
-  $form = form_get_cache($form_build_id, $form_state);
-
-  // Preparing for #5.
-  $args = $form['#parameters'];
-  $form_id = array_shift($args);
-  $form_state['post'] = $form['#post'] = $_POST;
-  $form['#programmed'] = $form['#redirect'] = FALSE;
-
-  // Step #5.
-  drupal_process_form($form_id, $form, $form_state);
-  // Step #6 and #7 and #8.
-  $new_form = drupal_rebuild_form($form_id, $form_state, $args, $form_build_id);
-  return $new_form;
 }

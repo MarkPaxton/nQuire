@@ -2,7 +2,7 @@
 
 function inquiry_creator_create_phase_stub($title) {
   global $user;
-  
+
   $node = new stdClass();
   $node->type = 'inquiry_phase';
   $node->title = $title;
@@ -26,6 +26,8 @@ function inquiry_creator_phase_edit($design_nid, $phase_nid) {
 
 function inquiry_creator_phase_form(&$form_state, $design, $node) {
   $form = array();
+
+  nquire_commons_form_set_default_link_action($form, 'submit');
 
   _inquiry_creator_create_inquiry_id_form_item($design, $form);
   $form['phase_id'] = array(
@@ -53,7 +55,7 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
       '#required' => TRUE
   );
 
-  _inquiry_creator_create_form_buttons('inquiry_creator_phase_form_submit', "creator/{$design->nid}/", $form);
+  inquiry_creator_create_form_save_delete_cancel_buttons($form, 'inquiry_creator_phase_form_submit', 'inquiry_creator_phase_form_submit', "creator/{$design->nid}/");
 
   return $form;
 }
@@ -63,13 +65,26 @@ function inquiry_creator_phase_form_submit($form, $form_state) {
   $phase = node_load($form_state['values']['phase_id']);
   $title = $form_state['values']['title'];
 
-  if ($design && $phase && inquiry_design_set_item_title($design, $phase->nid, $title)) {
-    $phase->title = $form_state['values']['title'];
-    $phase->body = $form_state['values']['body'];
+  if ($design && $phase) {
+    $changed = FALSE;
 
-    node_save($phase);
-    node_save($design);
+    if ($phase->title !== $form_state['values']['title']) {
+      if (inquiry_design_set_item_title($design, $phase->nid, $title)) {
+        $design->revision = TRUE;
+        node_save($design);
+      }
+      $changed = TRUE;
+    } else if ($phase->body !== $form_state['values']['body']) {
+      $changed = TRUE;
+    }
+
+    if ($changed) {
+      $phase->title = $form_state['values']['title'];
+      $phase->body = $form_state['values']['body'];
+      $phase->revision = TRUE;
+      node_save($phase);
+    }
   }
 
-  inquiry_creator_form_cancel($form, $form_state);
+  inquiry_creator_form_close($form, $form_state);
 }

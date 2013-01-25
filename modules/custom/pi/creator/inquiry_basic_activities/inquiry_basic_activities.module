@@ -47,11 +47,17 @@ function inquiry_basic_activities_nquire_creator_activity_hypothesis_form_proces
   $data['hypothesis'] = $form_values['hypothesis'];
   $data['hypothesis_editable'] = $form_values['hypothesis_editable'];
 
-  $activity->data = json_encode($data);
+  $new_data = json_encode($data);
+  if ($activity->data !== $new_data) {
+    $activity->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
 }
 
 function inquiry_basic_activities_nquire_creator_activity_keyquestions_form($activity, $design, &$form, &$form_state) {
-  $data = $data = nquire_commons_decode_data($activity->data);
+  $data = nquire_commons_decode_data($activity->data);
 
   $value = nquire_commons_form_data_default_value($data, 'keyquestions', $form_state, 'keyquestions', '[]');
   $title = t('Default key questions:');
@@ -73,7 +79,13 @@ function inquiry_basic_activities_nquire_creator_activity_keyquestions_form_proc
   $data['keyquestions'] = $form_values['keyquestions'];
   $data['keyquestions_editable'] = $form_values['keyquestions_editable'];
 
-  $activity->data = json_encode($data);
+  $new_data = json_encode($data);
+  if ($activity->data !== $new_data) {
+    $activity->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
 }
 
 function inquiry_basic_activities_nquire_creator_activity_collectdata_form($activity, $design, &$form, &$form_state) {
@@ -89,5 +101,5 @@ function inquiry_basic_activities_nquire_creator_activity_collectdata_form($acti
 
 function inquiry_basic_activities_nquire_creator_activity_collectdata_form_process(&$activity, $design, $form_values) {
   module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
-  _inquiry_basic_activities_tool_form_process($activity, $design, $form_values);
+  return _inquiry_basic_activities_tool_form_process($activity, $design, $form_values);
 }

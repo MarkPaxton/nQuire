@@ -45,7 +45,6 @@ function inquiry_activity_access($op, $node, $account) {
   }
 }
 
-
 /**
  * INSERT command for a new activity
  */
@@ -72,12 +71,15 @@ function inquiry_activity_update($node) {
  * hook_nodeapi().
  */
 function inquiry_activity_nodeapi(&$node, $op, $teaser, $page) {
-  switch ($op) {
-    case 'delete revision':
-      // Notice that we're matching a single revision based on the node's vid.
-      db_query('DELETE FROM {inquiry_activity} WHERE vid = %d', $node->vid);
-      break;
+  if ($node->type === 'inquiry_activity') {
+    switch ($op) {
+      case 'delete revision':
+        // Notice that we're matching a single revision based on the node's vid.
+        db_query('DELETE FROM {inquiry_activity} WHERE vid = %d', $node->vid);
+        break;
+    }
   }
+  return;
 }
 
 /**

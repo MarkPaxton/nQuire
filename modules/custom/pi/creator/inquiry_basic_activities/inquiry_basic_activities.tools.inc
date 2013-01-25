@@ -1,14 +1,5 @@
 <?php
 
-function inquiry_basic_activities_update_toolform() {
-  $new_form = nquire_commons_rebuild_ahah_form();
-
-  $choice_form = $new_form['data']['tool_form'];
-  $output = drupal_render($choice_form);
-
-  drupal_json(array('status' => TRUE, 'data' => $output));
-}
-
 function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data, $title, $description, $measures_form = FALSE, $base_path = NULL) {
   $tool_value = nquire_commons_form_data_default_value($activity_data, 'tool.type', $form_state, 'tool_type', 'none');
 
@@ -26,7 +17,7 @@ function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data
       ),
       '#default_value' => $tool_value,
       '#ahah' => array(
-          'path' => 'creator/toolform/',
+          'path' => ahah_helper_path(array('data', 'tool_form')),
           'wrapper' => 'instrument-dependent-section-container',
           'method' => 'replace',
           'effect' => 'fade',
@@ -70,5 +61,11 @@ function _inquiry_basic_activities_tool_form_process(&$activity, $design, $form_
     $data['measures'] = $old_data['measures'];
   }
 
-  $activity->data = json_encode($data);
+  $new_data = json_encode($data);
+  if ($activity->data !== $new_data) {
+    $activity->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
 }

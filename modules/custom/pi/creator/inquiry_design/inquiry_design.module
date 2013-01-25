@@ -75,10 +75,9 @@ function inquiry_design_form($node) {
       '#default_value' => $node->body,
       '#required' => TRUE
   );
-  
+
   return $form;
 }
-
 
 /**
  * INSERT command for a new inquiry
@@ -96,6 +95,7 @@ function inquiry_design_update($node) {
   } else {
     db_query("UPDATE {inquiry_design} SET inquiry='0', structure='%s', stages='%s', groups='%s', roles='%s' WHERE vid='%d'", $node->structure, $node->stages, $node->groups, $node->roles, $node->vid);
   }
+  return;
 }
 
 /**
@@ -106,12 +106,15 @@ function inquiry_design_update($node) {
  * hook_nodeapi().
  */
 function inquiry_design_nodeapi(&$node, $op, $teaser, $page) {
-  switch ($op) {
-    case 'delete revision':
-      // Notice that we're matching a single revision based on the node's vid.
-      db_query('DELETE FROM {inquiry_design} WHERE vid = %d', $node->vid);
-      break;
+  if ($node->type === 'inquiry_design') {
+    switch ($op) {
+      case 'delete revision':
+        // Notice that we're matching a single revision based on the node's vid.
+        db_query('DELETE FROM {inquiry_design} WHERE vid = %d', $node->vid);
+        break;
+    }
   }
+  return;
 }
 
 /**
@@ -159,12 +162,11 @@ function inquiry_design_view($node, $teaser = FALSE, $page = FALSE) {
   return $node;
 }
 
-
 function inquiry_design_set_item_title($node, $id, $title) {
   $structure = json_decode($node->structure);
   $found = FALSE;
-  
-  foreach($structure as $phase) {
+
+  foreach ($structure as $phase) {
     if ($phase->id == $id) {
       $phase->title = $title;
       $found = TRUE;
@@ -172,17 +174,17 @@ function inquiry_design_set_item_title($node, $id, $title) {
     } else {
       foreach ($phase->activities as $activity) {
         if ($activity->id == $id) {
-      $activity->title = $title;
-      $found = TRUE;
-      break 2;
+          $activity->title = $title;
+          $found = TRUE;
+          break 2;
         }
       }
     }
   }
-  
+
   if ($found) {
     $node->structure = json_encode($structure);
   }
-  
+
   return $found;
 }
