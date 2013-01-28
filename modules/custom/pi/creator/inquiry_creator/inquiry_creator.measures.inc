@@ -64,6 +64,8 @@ function _inquiry_creator_create_measure_id_form_item($measure, &$form) {
 function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {
   $form = array();
 
+  ahah_helper_register($form, $form_state);
+  
   nquire_commons_form_set_default_link_action($form, 'submit');
 
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.edit');
@@ -79,7 +81,7 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
 
   $title = nquire_commons_form_node_default_value($measure, 'title', $form_state, 'title', '');
   $description = nquire_commons_form_node_default_value($measure, 'body', $form_state, 'description', '');
-  $type = nquire_commons_form_data_default_value($data, 'type', $form_state, 'measure_type', '');
+  $type = nquire_commons_form_node_default_value($measure, 'measure_type', $form_state, 'measure_type', '');
 
 
   $form['title'] = array(
@@ -99,14 +101,14 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
       '#required' => TRUE
   );
 
-  $options = inquiry_available_measures_for_tool($tool);
+  $options = inquiry_available_features_list_measures_for_tool($tool);
 
   if (!isset($options[$type])) {
     if ($type === '') {
-      $options[$type] = t('-Select a measure type');
+      $options[$type] = t('- Select a measure type');
     } else {
-      $required_tool = inquiry_available_measures_required_tool($type);
-      $options[$type] = inquiry_available_measures_name($type) . t(' (unavailable as @tool is not used)', array('@tool' => inquiry_available_tools_name($required_tool)));
+      $required_tool = inquiry_available_features_measure_required_tool($type);
+      $options[$type] = inquiry_available_features_name('measure', $type) . t(' (unavailable as @tool is not used)', array('@tool' => inquiry_available_features_name('tool', $required_tool)));
     }
   }
 
@@ -119,9 +121,31 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
       '#default_value' => $type,
       '#required' => TRUE,
       '#options' => $options,
+            '#ahah' => array(
+          'path' => ahah_helper_path(array('measure_data')),
+          'wrapper' => 'inquiry-creator-measure-custom-form',
+          'method' => 'replace',
+          'effect' => 'fade',
+      ),
   );
+  
+  $form['measure_data'] = array();
+  $form['measure_data']['wrapper_prefix'] = array(
+      '#value' => '<div id="inquiry-creator-measure-custom-form">',
+  );
+  $form['measure_data']['help'] = array(
+      '#value' => '<p>' . check_plain(inquiry_available_features_invoke('measure', 'help', $type)) . '</p>',
+  );
+  
+  inquiry_available_features_invoke('measure', 'form', $measure, $form, $form_state);
+  
+  $form['measure_data']['wrapper_suffix'] = array(
+      '#value' => '</div>',
+  );
+  
+  
 
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_measure_form_submit', "creator/{$node->nid}/");
+  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_measure_form_submit', "creator/{$design->nid}/activity/{$activity->nid}/");
 
   return $form;
 }

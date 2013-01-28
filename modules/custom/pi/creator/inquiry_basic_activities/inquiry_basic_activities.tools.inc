@@ -31,7 +31,7 @@ function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data
   );
 
   if ($tool_value !== 'none') {
-    inquiry_available_tools_invoke('form', $tool_value, $activity_data['tool'], $form['data']['tool_form'], $form_state);
+    inquiry_available_features_invoke('tool', 'form', $tool_value, $activity_data['tool'], $form['data']['tool_form'], $form_state);
   }
 
   if ($measures_form) {
@@ -53,7 +53,7 @@ function _inquiry_basic_activities_tool_form_process(&$activity, $design, $form_
   $data['tool']['type'] = $type;
 
   if ($type !== 'none') {
-    inquiry_available_tools_invoke('form_process', $type, $data['tool'], $form_values);
+    inquiry_available_features_invoke('tool', 'form_process', $type, $data['tool'], $form_values);
   }
 
   $old_data = nquire_commons_decode_data($activity->data);

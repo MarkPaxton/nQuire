@@ -1,0 +1,98 @@
+<?php
+
+/**
+ * 
+ * Registers a feature type in the authoring tool so that it can be ofered 
+ * to designers. Modules registering an activity must implement a number of
+ * nQuire hooks:
+ * 
+ *  - [module]_nquire_creator_[category]_[type]_form($item, $design, &$form, $form_state) 
+ *  - [module]_nquire_creator_[category]_[type]_form_process(&$item, $design, $data_values) returns whether activity has changed
+ *  - [module]_nquire_creator_[category]_[type]_name($item_type, $design, $data_values) returns whether activity has changed
+ * 
+ * @param type $category The item category being registered 
+ * @param type $type The item type being registered
+ * @param type $module The module that manages the registered item type
+ */
+function inquiry_available_features_register($category, $type, $module) {
+  $types = _inquiry_available_features_modules($category);
+  $types[$type] = $module;
+  _inquiry_available_features_set_modules($category, $types);
+}
+
+function inquiry_available_features_forget($category, $type) {
+  $types = _inquiry_available_features_modules($category);
+  unset($types[$type]);
+  _inquiry_available_features_set_modules($category, $types);
+}
+
+function _inquiry_available_features_modules($category) {
+  return variable_get("nquire_creator_available_{$category}_types", array());
+}
+
+function _inquiry_available_features_set_modules($category, $types) {
+  variable_set("nquire_creator_available_{$category}_types", $types);
+}
+
+function _inquiry_available_feature_type($category, $item) {
+  if (is_object($item)) {
+    $attr = "{$category}_type";
+    return isset($item->$attr) ? $item->$attr : NULL;
+  } else {
+    return $item;
+  }
+}
+
+function _inquiry_available_features_module_for_type($category, $item_type) {
+  $types = _inquiry_available_features_modules($category);
+  return isset($types[$item_type]) ? $types[$item_type] : FALSE;
+}
+
+function _inquiry_available_features_types($category) {
+  return array_keys(variable_get("nquire_creator_available_{$category}_types", array()));
+}
+
+function inquiry_available_features_invoke($category, $nquire_creator_hook, &$item, &$a = NULL, &$b = NULL, &$c = NULL, &$d = NULL) {
+  $type = _inquiry_available_feature_type($category, $item);
+  $module = _inquiry_available_features_module_for_type($category, $type);
+
+  if ($module) {
+    $fname = "{$module}_nquire_creator_{$category}_{$type}_{$nquire_creator_hook}";
+    if (function_exists($fname)) {
+      return $fname($item, $a, $b, $c, $d);
+    }
+  }
+
+  return FALSE;
+}
+
+function inquiry_available_features_name($category, $type) {
+  $result = inquiry_available_features_invoke($category, 'name', $type);
+  return $result ? $result : $type;
+}
+
+function inquiry_available_features_measure_required_tool($type) {
+  $result = inquiry_available_features_invoke('measure', 'required_tool', $type);
+  return $result ? $result : 'none';
+}
+
+function inquiry_available_features_list($category) {
+  $result = array();
+  foreach (_inquiry_available_features_types($category) as $key) {
+    $result[$key] = inquiry_available_features_name($category, $key);
+  }
+  return $result;
+}
+
+function inquiry_available_features_list_measures_for_tool($tool_type) {
+  $tools = inquiry_available_features_list('measure');
+  $result = array();
+  foreach($tools as $key => $value) {
+    $required_tool = inquiry_available_features_measure_required_tool($key);
+    if ($required_tool === 'none' || $required_tool === $tool_type) {
+      $result[$key] = $value;
+    }
+  }
+  return $result;
+}
+

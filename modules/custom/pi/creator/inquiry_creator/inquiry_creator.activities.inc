@@ -36,9 +36,9 @@ function _inquiry_creator_create_activity_id_form_item($activity, &$form) {
 function _inquiry_creator_activity_form(&$form_state, $design, $node) {
   $form = array();
 
-  nquire_commons_form_set_default_link_action($form, 'submit');
-
   ahah_helper_register($form, $form_state);
+
+  nquire_commons_form_set_default_link_action($form, 'submit');
 
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.edit');
   _inquiry_creator_create_inquiry_id_form_item($design, $form);
@@ -63,7 +63,7 @@ function _inquiry_creator_activity_form(&$form_state, $design, $node) {
       '#required' => TRUE
   );
 
-  inquiry_available_activities_invoke('form', $node, $design, $form, $form_state);
+  inquiry_available_features_invoke('activity', 'form', $node, $design, $form, $form_state);
 
   inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_activity_form_submit', "creator/{$design->nid}/");
 
@@ -92,7 +92,7 @@ function inquiry_creator_activity_form_submit($form, $form_state) {
       $changed = TRUE;
     }
 
-    $data_changed = inquiry_available_activities_invoke('form_process', $activity, $design, $form_state['values']);
+    $data_changed = inquiry_available_features_invoke('activity', 'form_process', $activity, $design, $form_state['values']);
 
     if ($changed || $data_changed) {
       $activity->revision = TRUE;
@@ -161,7 +161,7 @@ function _inquiry_creator_activity_delete_node($activity_nid) {
   $activity = node_load($activity_nid);
 
   if ($activity && $activity->type === 'inquiry_activity' && $activity->uid == $user->uid) {
-    inquiry_available_activities_invoke('delete', $activity);
+    inquiry_available_features_invoke('activity', 'delete', $activity);
     node_delete($activity_nid);
 
     return TRUE;
