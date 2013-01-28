@@ -37,7 +37,7 @@
         var phase = originalData[i];
         status[phase.id] = {status: 'saved', pos: i};
         for (var j = 0; j < phase.activities.length; j++) {
-          status[phase.activities[j].id] = {status: 'saved', modified: false, startpos: [phase.id, j]};
+          status[phase.activities[j].id] = {status: 'saved', modified: false, originalPhase: phase.id};
         }
       }
       this.data('status', status);
@@ -126,9 +126,12 @@
       if (status === 'deleted') {
         buttons.append(this.inquiryStructureWidget('_createLink', 'undelete', 'do not delete'));
       } else {
-        //.append(this.inquiryStructureWidget('_createLink', 'rename', 'rename'))
-        //.append('&nbsp;&nbsp;')
-        buttons.append(this.inquiryStructureWidget('_createLink', 'delete', 'delete'));
+        if (status === 'new') {
+          //.append(this.inquiryStructureWidget('_createLink', 'rename', 'rename'))
+          //.append('&nbsp;&nbsp;')
+          buttons.append(this.inquiryStructureWidget('_createLink', 'delete', 'delete')).append('&nbsp;&nbsp;');
+        }
+
         if (element.hasClass('inquiry-structure-phase-container')) {
           buttons.append('&nbsp;&nbsp;&nbsp;');
           buttons.append(this.inquiryStructureWidget('_createLink', 'addactivity', 'add activity'));
@@ -222,9 +225,27 @@
       if (action === 'addactivity') {
         var container = this.find('div[item-id="' + itemId + '"]');
         this.inquiryStructureWidget('_openNewItemDialog', button, 'activity', container);
-      } else {
-        alert(itemId + ' ' + action);
+      } else if (action === 'delete') {
+        this.inquiryStructureWidget('_removeItem', itemId);
       }
+    },
+    _removeItem: function(itemId) {
+      var self = this;
+      var container = this.find('div[item-id="' + itemId + '"]');
+      if (container.hasClass('inquiry-structure-phase-container')) {
+        container.children('.inquiry-structure-activity-container').each(function() {
+          var activityContainer = $(this);
+          var activityId = activityContainer.attr('item-id');
+          var status = self.data('status', status)[activityId];
+          if (status.status !== 'new') {
+            var originalPhaseContainer = self.find('div.inquiry-structure-phase-container[item-id="' + status.originalPhase + '"]');
+            activityContainer.appendTo(originalPhaseContainer);
+          }
+        });
+      }
+      
+      container.remove();
+      this.inquiryStructureWidget('_dataModified');
     },
     _updatePhaseNumbers: function() {
       var i = 0;

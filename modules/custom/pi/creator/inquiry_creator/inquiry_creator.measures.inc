@@ -63,7 +63,7 @@ function _inquiry_creator_create_measure_id_form_item($measure, &$form) {
 
 function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {
   $form = array();
-  
+
   nquire_commons_form_set_default_link_action($form, 'submit');
 
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.edit');
@@ -121,14 +121,14 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
       '#options' => $options,
   );
 
-  inquiry_creator_create_form_save_delete_cancel_buttons($form, 'inquiry_creator_measure_form_submit', 'inquiry_creator_measure_form_delete', "creator/{$node->nid}/");
+  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_measure_form_submit', "creator/{$node->nid}/");
 
   return $form;
 }
 
 function inquiry_creator_measure_form_submit($form, $form_state) {
   global $user;
-  
+
   $activity = node_load($form_state['values']['activity_id']);
 
   $measure_nid = $form_state['values']['measure_id'];
@@ -214,20 +214,17 @@ function inquiry_creator_measure_delete_form(&$form_state, $design, $activity, $
 function inquiry_creator_measure_delete_form_submit($form, $form_state) {
   global $user;
 
-  $measure = node_load($form_state['values']['measure_id']);
+  $measure_nid = $form_state['values']['measure_id'];
 
-  if ($measure && $measure->type === 'inquiry_measure' && $user->uid === $measure->uid) {
-    $nid = $measure->nid;
-    node_delete($nid);
-
+  if (_inquiry_creator_measure_delete_node($measure_nid)) {
     $activity = node_load($form_state['values']['activity_id']);
     if ($activity && $activity->type === 'inquiry_activity' && $user->uid === $activity->uid) {
       $data = nquire_commons_decode_data($activity->data);
       if (isset($data['measures'])) {
-        if (($key = array_search($nid, $data['measures'], FALSE)) !== FALSE) {
+        if (($key = array_search($measure_nid, $data['measures'], FALSE)) !== FALSE) {
           unset($data['measures'][$key]);
           $activity->data = json_encode($data);
-          $activity->revision = TRUE;          
+          $activity->revision = TRUE;
           node_save($activity);
         }
       }
@@ -236,3 +233,17 @@ function inquiry_creator_measure_delete_form_submit($form, $form_state) {
 
   inquiry_creator_form_close($form, $form_state);
 }
+
+function _inquiry_creator_measure_delete_node($nid) {
+  global $user;
+
+  $measure = node_load($nid);
+
+  if ($measure && $measure->type === 'inquiry_measure' && $measure->uid == $user->uid) {
+    node_delete($nid);
+    return TRUE;
+  }
+  
+  return FALSE;
+}
+

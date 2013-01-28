@@ -97,7 +97,7 @@ function inquiry_creator_menu() {
       'access arguments' => array('access inquiry_creator content'),
       'weight' => 1,
   );
-  
+
   $items['creator/%/phase/%'] = array(
       'title' => 'Edit phase',
       'file' => 'inquiry_creator.phases.inc',
@@ -108,7 +108,17 @@ function inquiry_creator_menu() {
       'access arguments' => array('access inquiry_creator content'),
       'weight' => 1,
   );  
-  
+  $items['creator/%/phase/%/delete'] = array(
+      'title' => 'Edit phase',
+      'file' => 'inquiry_creator.phases.inc',
+      'page callback' => 'inquiry_creator_phase_delete',
+      'page arguments' => array(1, 3),
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+
   $items['creator/%/activity/%'] = array(
       'title' => 'Edit activity',
       'file' => 'inquiry_creator.activities.inc',
@@ -118,8 +128,18 @@ function inquiry_creator_menu() {
       'access_callback' => TRUE,
       'access arguments' => array('access inquiry_creator content'),
       'weight' => 1,
-  );  
-  
+  );
+  $items['creator/%/activity/%/delete'] = array(
+      'title' => 'Delete activity',
+      'file' => 'inquiry_creator.activities.inc',
+      'page callback' => 'inquiry_creator_activity_delete',
+      'page arguments' => array(1, 3),
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+
   $items['creator/%/activity/%/measure/add'] = array(
       'title' => 'Add new measure',
       'file' => 'inquiry_creator.measures.inc',
@@ -129,7 +149,7 @@ function inquiry_creator_menu() {
       'access_callback' => TRUE,
       'access arguments' => array('access inquiry_creator content'),
       'weight' => 1,
-  );  
+  );
   $items['creator/%/activity/%/measure/%'] = array(
       'title' => 'Edit measure',
       'file' => 'inquiry_creator.measures.inc',
@@ -154,9 +174,6 @@ function inquiry_creator_menu() {
   return $items;
 }
 
-
-
-
 function inquiry_creator_activity_form(&$form_state, $design, $node) {
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.activities');
   return _inquiry_creator_activity_form(&$form_state, $design, $node);
@@ -165,4 +182,9 @@ function inquiry_creator_activity_form(&$form_state, $design, $node) {
 function inquiry_creator_add_measures_form_links($measures_data, $current_tool, &$form, $base_path) {
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.measures');
   _inquiry_creator_add_measures_form_links($measures_data, $current_tool, $form, $base_path);
+}
+
+function inquiry_creator_delete_measure_node($nid) {
+  module_load_include('inc', 'inquiry_creator', 'inquiry_creator.measures');
+  return _inquiry_creator_measure_delete_node($nid);
 }
