@@ -19,9 +19,9 @@ function theme_inquiry_creator_measure_list($list, $current_tool, $base_path) {
   if (!$list || count($list) === 0) {
     $output .= '<p>' . t('<i>There are no measures in this activity. Click <b>Add new measure</b> to start creating measures.</i>') . '</p>';
   } else {
-    $output .= '<ul>';
-    $edit_path = $base_path . '/measure/';
 
+    $rows = array();
+    $edit_path = $base_path . '/measure/';
     foreach ($list as $nid) {
       $measure = node_load($nid);
       $edit_link = nquire_commons_form_submit_link(t('edit'), $edit_path . $measure->nid);
@@ -33,13 +33,34 @@ function theme_inquiry_creator_measure_list($list, $current_tool, $base_path) {
         $measure_type_name = '<strike>' . $measure_type_name . '</strike>';
       }
 
-      $output .= '<li>'
-              . '<b>' . $measure->title . '</b>'
-              . ' (' . $measure_type_name . ') '
-              . ' <small>&nbsp;&nbsp;' . $edit_link . '&nbsp;&nbsp;' . $delete_link . '</small>'
-              . '</li>';
+      $rows[] = array($measure->title, $measure_type_name, '<small>&nbsp;&nbsp;' . $edit_link . '&nbsp;&nbsp;' . $delete_link . '</small>');
     }
-    $output .= '</ul>';
+
+    $header = array(t('Measure'), t('Type'), '');
+    $output .= theme('table', $header, $rows, array('id' => 'measures-table'));
+
+    /*
+      $output .= '<ul>';
+      $edit_path = $base_path . '/measure/';
+
+      foreach ($list as $nid) {
+      $measure = node_load($nid);
+      $edit_link = nquire_commons_form_submit_link(t('edit'), $edit_path . $measure->nid);
+      $delete_link = nquire_commons_form_submit_link(t('delete'), $edit_path . $measure->nid . '/delete');
+
+      $measure_type_name = inquiry_available_features_name('measure', $measure->measure_type);
+      $required_tool = inquiry_available_features_measure_required_tool($measure->measure_type);
+      if ($required_tool !== 'none' && $required_tool !== $current_tool) {
+      $measure_type_name = '<strike>' . $measure_type_name . '</strike>';
+      }
+
+      $output .= '<li>'
+      . '<b>' . $measure->title . '</b>'
+      . ' (' . $measure_type_name . ') '
+      . ' <small>&nbsp;&nbsp;' . $edit_link . '&nbsp;&nbsp;' . $delete_link . '</small>'
+      . '</li>';
+      }
+      $output .= '</ul>'; */
   }
 
   $output .= '</div>';

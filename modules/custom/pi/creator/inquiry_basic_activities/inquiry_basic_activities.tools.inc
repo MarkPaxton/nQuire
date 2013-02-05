@@ -2,19 +2,14 @@
 
 function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data, $title, $description, $measures_form = FALSE, $base_path = NULL) {
   $tool_value = nquire_commons_form_data_default_value($activity_data, 'tool.type', $form_state, 'tool_type', 'none');
-
+  
+  $options = array('none' => t('-- No instrument')) + inquiry_available_features_list('tool');
+  
   $form['data']['tool_type'] = array(
       '#type' => 'select',
       '#title' => $title,
       '#description' => $description,
-      '#options' => array(
-          'none' => t('- No instrument'),
-          'vm' => t('Virtual microscope'),
-          'treezilla' => t('Treezilla'),
-          'ispot' => t('iSpot'),
-          'pirate' => t('Pirate remote telescope'),
-          'fits' => t('Astronomy image processing software'),
-      ),
+      '#options' => $options,
       '#default_value' => $tool_value,
       '#ahah' => array(
           'path' => ahah_helper_path(array('data', 'tool_form')),

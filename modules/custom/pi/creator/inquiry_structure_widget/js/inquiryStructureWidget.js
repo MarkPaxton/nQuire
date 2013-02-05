@@ -38,6 +38,11 @@ var nQuireStructureWidget = {
         multiplicity: '*',
         requires: []
       },
+      exploretool: {
+        title: 'Explore a scientific instrument',
+        multiplicity: '*',
+        requires: []
+      },
       analysedata: {
         title: 'Analyse my data',
         multiplicity: '*',
