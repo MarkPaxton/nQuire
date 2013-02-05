@@ -103,7 +103,7 @@
       });
     },
     _removeColumn: function(id) {
-      alert('delete ' + id);
+      this.find('td[column-id="' + id + '"]').remove();
       this.structureFeatureTable('_updateFeatureButtons');
       this.structureFeatureTable('_updateOddEvenClasses');
       this.structureFeatureTable('_dataModified');
@@ -129,14 +129,14 @@
 
       this.find('tr').not('.structure-feature-list').each(function() {
         var row = $(this);
-        var valueCell = $('<td>').addClass('value-cell');
+        var valueCell = $('<td>').addClass('value-cell').attr('column-id', column.id);
 
         if (options.forItemType === 'all' || options.forItemType === row.attr('type')) {
           var itemId = row.attr('item-id');
           var value = typeof column.values[itemId] !== 'undefined' ?
                   column.values[itemId] : options.defaultValue;
 
-          valueCell.attr('column-id', column.id).attr('item-id', itemId).attr('value', value);
+          valueCell.attr('item-id', itemId).attr('value', value);
 
           self.structureFeatureTable('_createLink', options.values[value], false).click(function(event) {
             var cell = $(this).parent();
@@ -250,7 +250,7 @@
           title: cell.children('.feature-title').html(),
           values: {}
         };
-        self.find('td.value-cell[column-id="' + id + '"]').each(function() {
+        self.find('td.value-cell[column-id="' + id + '"][item-id]').each(function() {
           var valueCell = $(this);
           column.values[valueCell.attr('item-id')] = valueCell.attr('value');
         });

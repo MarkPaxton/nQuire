@@ -1,6 +1,146 @@
 <?php
 
-
 function inquiry_basic_measures_nquire_creator_measure__number_name() {
   return t('Number');
+}
+
+function inquiry_basic_measures_nquire_creator_measure__number_description() {
+  return t('A numeric value entered by the user. This measure will be presented as a textfield. nQuire will check that the value is a valid number.');
+}
+
+function inquiry_basic_measures_nquire_creator_measure__number_form($measure, &$form, $form_state) {
+
+  $data = nquire_commons_decode_data($measure->data);
+
+  $units = nquire_commons_form_data_default_value($data, 'units', $form_state, 'units', '');
+
+  $form['units'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Units'),
+      '#description' => t('Write here the units for this measure, if any.'),
+      '#default_value' => $units,
+      '#required' => TRUE,
+  );
+}
+
+
+function inquiry_basic_measures_nquire_creator_measure__number_form_process($measure, $form_values) {
+  $data = array();
+  $data['units'] = trim($form_values['units']);
+
+  $new_data = json_encode($data);
+  if ($measure->data !== $new_data) {
+    $measure->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+
+
+
+
+
+
+
+function inquiry_basic_measures_nquire_creator_measure__text_name() {
+  return t('Text');
+}
+
+function inquiry_basic_measures_nquire_creator_measure__text_description() {
+  return t('A free text value entered by the user. This measure will be presented as a textfield, or a textarea with the selected number of rows.');
+}
+
+function inquiry_basic_measures_nquire_creator_measure__options_name() {
+  return t('Option selection');
+}
+
+function inquiry_basic_measures_nquire_creator_measure__options_description() {
+  return t('A menu selection, that lets the user choose one or several items. You can create below the items that will be offered to the user when creating data.');
+}
+
+function inquiry_basic_measures_nquire_creator_measure__options_form($measure, &$form, $form_state) {
+
+  $data = nquire_commons_decode_data($measure->data);
+
+  $options = nquire_commons_form_data_default_value($data, 'options', $form_state, 'options', '');
+  if (is_array($options)) {
+    $options = implode("\n", $options);
+  }
+
+  $widget = nquire_commons_form_data_default_value($data, 'widget', $form_state, 'widget', 'menu');
+  $multiple = nquire_commons_form_data_default_value($data, 'multiple_options', $form_state, 'multiple_options', FALSE);
+
+  $form['options'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Options'),
+      '#description' => t('Write here the options that will be offered to the users when creating data. Please enter each option in a different line.'),
+      '#default_value' => $options,
+      '#required' => TRUE,
+      '#validate' => array('inquiry_basic_measures_nquire_creator_measure__options_form_options_validate'),
+  );
+
+  $form['multiple_options'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Multiple selection'),
+      '#description' => t('Select this option if the users are allows to select multiple items when creating data.'),
+      '#default_value' => $multiple,
+  );
+
+  $form['widget'] = array(
+      '#type' => 'radios',
+      '#title' => t('Selection widget'),
+      '#description' => t('Choose between a pulldown menu and a radio/checkbox widget to present this measure when creating data. If the later widget type is selected, radio buttons will be used for single selection measures, and checkboxes for multiple selection.'),
+      '#default_value' => $widget,
+      '#options' => array('menu' => t('Pull-down menu'), 'buttons' => t('Radio/checkboxes')),
+      '#required' => FALSE,
+  );
+}
+
+function inquiry_basic_measures_nquire_creator_measure__options_form_validate($type, $form, $form_state) {
+  $list = _inquiry_basic_measures__options_list($form_state['values']['options']);
+  if (count($list) < 2) {
+    form_set_error('options', t('At least two different options are needed.'));
+  } else {
+    $c = array_count_values($list);
+    $f = function($v) {
+              return $v > 1;
+            };
+    $fc = array_filter($c, $f);
+
+    if (count($fc) > 0) {
+      $msg = count($fc) > 1 ? t('The following option values are duplicated: ') : t('The following option value is duplicated: ');
+      $msg .= implode(', ', array_keys($fc)) . t('.');
+      form_set_error('options', $msg);
+    }
+  }
+
+  return;
+}
+
+function _inquiry_basic_measures__options_list($text) {
+  $list = array();
+  foreach (explode("\n", $text) as $line) {
+    $l = trim($line);
+    if (strlen($l) > 0) {
+      $list[] = $l;
+    }
+  }
+  return $list;
+}
+
+function inquiry_basic_measures_nquire_creator_measure__options_form_process($measure, $form_values) {
+  $data = array();
+  $data['options'] = _inquiry_basic_measures__options_list($form_values['options']);
+  $data['multiple_options'] = $form_values['multiple_options'];
+  $data['widget'] = $form_values['widget'];
+
+  $new_data = json_encode($data);
+  if ($measure->data !== $new_data) {
+    $measure->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
 }

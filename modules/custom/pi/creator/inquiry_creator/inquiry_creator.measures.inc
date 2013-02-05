@@ -22,12 +22,22 @@ function theme_inquiry_creator_measure_list($list, $current_tool, $base_path) {
     $output .= '<ul>';
     $edit_path = $base_path . '/measure/';
 
-    foreach ($list as $i => $nid) {
+    foreach ($list as $nid) {
       $measure = node_load($nid);
       $edit_link = nquire_commons_form_submit_link(t('edit'), $edit_path . $measure->nid);
       $delete_link = nquire_commons_form_submit_link(t('delete'), $edit_path . $measure->nid . '/delete');
 
-      $output .= '<li>' . $measure->title . '<small>&nbsp;&nbsp;' . $edit_link . '&nbsp;&nbsp;' . $delete_link . '</small></li>';
+      $measure_type_name = inquiry_available_features_name('measure', $measure->measure_type);
+      $required_tool = inquiry_available_features_measure_required_tool($measure->measure_type);
+      if ($required_tool !== 'none' && $required_tool !== $current_tool) {
+        $measure_type_name = '<strike>' . $measure_type_name . '</strike>';
+      }
+
+      $output .= '<li>'
+              . '<b>' . $measure->title . '</b>'
+              . ' (' . $measure_type_name . ') '
+              . ' <small>&nbsp;&nbsp;' . $edit_link . '&nbsp;&nbsp;' . $delete_link . '</small>'
+              . '</li>';
     }
     $output .= '</ul>';
   }
@@ -65,7 +75,7 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
   $form = array();
 
   ahah_helper_register($form, $form_state);
-  
+
   nquire_commons_form_set_default_link_action($form, 'submit');
 
   module_load_include('inc', 'inquiry_creator', 'inquiry_creator.edit');
@@ -75,13 +85,13 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
   _inquiry_creator_create_measure_id_form_item($measure, $form);
 
   $activity_data = nquire_commons_decode_data($activity->data);
-  $data = nquire_commons_decode_data($measure ? $measure->data : NULL);
 
   $tool = nquire_commons_read_data_value($activity_data, 'tool.type', 'none');
 
   $title = nquire_commons_form_node_default_value($measure, 'title', $form_state, 'title', '');
   $description = nquire_commons_form_node_default_value($measure, 'body', $form_state, 'description', '');
   $type = nquire_commons_form_node_default_value($measure, 'measure_type', $form_state, 'measure_type', '');
+  $measure_or_type = $measure && $measure->measure_type == $type ? $measure : $type;
 
 
   $form['title'] = array(
@@ -121,33 +131,38 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
       '#default_value' => $type,
       '#required' => TRUE,
       '#options' => $options,
-            '#ahah' => array(
+      '#ahah' => array(
           'path' => ahah_helper_path(array('measure_data')),
           'wrapper' => 'inquiry-creator-measure-custom-form',
           'method' => 'replace',
           'effect' => 'fade',
       ),
   );
-  
+
   $form['measure_data'] = array();
   $form['measure_data']['wrapper_prefix'] = array(
       '#value' => '<div id="inquiry-creator-measure-custom-form">',
   );
   $form['measure_data']['help'] = array(
-      '#value' => '<p>' . check_plain(inquiry_available_features_invoke('measure', 'help', $type)) . '</p>',
+      '#value' => '<p><b>' . check_plain(inquiry_available_features_invoke('measure', 'description', $type)) . '</b></p>',
   );
-  
-  inquiry_available_features_invoke('measure', 'form', $measure, $form, $form_state);
-  
+
+  inquiry_available_features_invoke('measure', 'form', $measure_or_type, $form['measure_data'], $form_state);
+
   $form['measure_data']['wrapper_suffix'] = array(
       '#value' => '</div>',
   );
-  
-  
+
+
 
   inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_measure_form_submit', "creator/{$design->nid}/activity/{$activity->nid}/");
 
   return $form;
+}
+
+function inquiry_creator_measure_form_validate($form, $form_state) {
+  $type = $form_state['values']['measure_type'];
+  inquiry_available_features_invoke('measure', 'form_validate', $type, $form, $form_state);
 }
 
 function inquiry_creator_measure_form_submit($form, $form_state) {
@@ -162,30 +177,33 @@ function inquiry_creator_measure_form_submit($form, $form_state) {
   $description = $form_state['values']['description'];
   $type = $form_state['values']['measure_type'];
 
+  $save = FALSE;
+
   if ($new) {
     $node = new stdClass();
     $node->type = 'inquiry_measure';
     $node->uid = $user->uid;
+    $save = TRUE;
   } else {
     $node = node_load($measure_nid);
   }
 
 
-  $data_obj = array(
-      'type' => $type,
-  );
-
-  $data = json_encode($data_obj);
-
-  if ($new || $node->title !== $title || $node->measure_type !== $type || $node->body !== $description || $node->data !== $data) {
+  if ($node->title !== $title || $node->measure_type !== $type || $node->body !== $description) {
     $node->title = $title;
     $node->measure_type = $type;
     $node->body = $description;
-    $node->data = $data;
+    $save = TRUE;
+  }
+
+  if (inquiry_available_features_invoke('measure', 'form_process', $node, $form_state['values'])) {
+    $save = TRUE;
+  }
+
+  if ($save) {
     $node->revision = !$new;
     node_save($node);
   }
-
 
   if ($new) {
     $data = nquire_commons_decode_data($activity->data);
@@ -200,6 +218,7 @@ function inquiry_creator_measure_form_submit($form, $form_state) {
       node_save($activity);
     }
   }
+
   inquiry_creator_form_close($form, $form_state);
 }
 
@@ -267,7 +286,7 @@ function _inquiry_creator_measure_delete_node($nid) {
     node_delete($nid);
     return TRUE;
   }
-  
+
   return FALSE;
 }
 
