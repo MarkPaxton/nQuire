@@ -1,0 +1,76 @@
+<?php
+
+function inquiry_deployer_update_inquiry_node(&$design_node) {
+
+  _inquiry_deployer_create_update_ref_node($design_node, 'inquiry', 'pi_inquiry', array(
+      'layout' => 'list',
+      'hide_activity_link' => 'pi_key_questions,pi_measure_filter,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary',
+      'hide_activity_in_summary' => 'pi_key_questions,pi_measure_filter,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary',
+      'actor_gid' => 0,
+  ));
+}
+
+function inquiry_deployer_update_inquiry_phases(&$design_node) {
+  $data = nquire_commons_decode_data($design_node->structure);
+
+  foreach ($data as $i => $phase) {
+    $design_phase = node_load($phase['id']);
+    $ref_phase = _inquiry_deployer_create_update_ref_node($design_phase, 'phase', 'pi_phase', array(
+        'inquiry_nid' => $design_node->inquiry,
+        'phase_actor' => 0,
+    ));
+    $query = "UPDATE {pi_phase} SET weight=%d WHERE vid=%d";
+    db_query($query, $i, $ref_phase->vid);
+  }
+}
+
+function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $node_type, $node_attrs = NULL) {
+  $node = node_load($design_node->$ref_attr);
+
+  $save = FALSE;
+  $new = FALSE;
+
+  if (!$node) {
+    $node = new stdClass();
+    $node->type = $node_type;
+    $node->uid = $design_node->uid;
+    $node->title = $design_node->title;
+    $node->body = $design_node->body;
+
+    if (is_array($node_attrs)) {
+      foreach ($node_attrs as $key => $value) {
+        $node->$key = $value;
+      }
+    }
+
+    $save = TRUE;
+    $new = TRUE;
+  } else {
+    if ($design_node->title != $node->title || $design_node->body != $node->body) {
+      $save = TRUE;
+      $node->title = $design_node->title;
+      $node->body = $design_node->body;
+    }
+    if (is_array($node_attrs)) {
+      foreach ($node_attrs as $key => $value) {
+        if ($node->$key !== $value) {
+          $node->$key = $value;
+          $save = TRUE;
+        }
+      }
+    }
+  }
+
+  if ($save) {
+    $node->revision = !$new;
+    node_save($node);
+  }
+
+  if ($new) {
+    $design_node->$ref_attr = $node->nid;
+    $design_node->revision = TRUE;
+    node_save($design_node);
+  }
+
+  return $node;
+}

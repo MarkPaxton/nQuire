@@ -47,6 +47,63 @@ function inquiry_phase_access($op, $node, $account) {
 
 
 /**
+ * INSERT command for a new activity
+ */
+function inquiry_phase_insert($node) {
+  db_query("INSERT INTO {inquiry_phase} (nid, vid, phase, phase_type) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $node->phase, $node->phase_type);
+}
+
+/**
+ * UPDATE command for an existing inquiry
+ */
+function inquiry_phase_update($node) {
+  if ($node->revision) {
+    inquiry_phase_insert($node);
+  } else {
+    db_query("UPDATE {inquiry_phase} SET phase='%d', phase_type='%s', WHERE vid='%d'", $node->phase, $node->phase_type, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function inquiry_phase_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type === 'inquiry_phase') {
+    switch ($op) {
+      case 'delete revision':
+        // Notice that we're matching a single revision based on the node's vid.
+        db_query('DELETE FROM {inquiry_phase} WHERE vid = %d', $node->vid);
+        break;
+    }
+  }
+  return;
+}
+
+/**
+ * DELETE command for an inquiry
+ * @todo this should delete all the associated data with the inquiry too!
+ */
+function inquiry_phase_delete(&$node) {
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {inquiry_phase} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * node loader function for inquiry type called when noad_load() is called
+ */
+function inquiry_phase_load($node) {
+  $phase = db_fetch_object(db_query('SELECT * FROM {inquiry_phase} WHERE vid = %d', $node->vid));
+
+  return $phase;
+}
+
+
+
+/**
  * Builds the view for the phase
  * @todo Add a detailed inquiry view to be used in the whole system
  */

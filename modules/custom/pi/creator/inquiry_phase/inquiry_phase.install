@@ -6,6 +6,7 @@
  * Implementation of hook_install(): creates the database table for inquiry_phase
  */
 function inquiry_phase_install() {
+  drupal_install_schema('inquiry_phase');
   //Options are status, promote, sticky, revision
   variable_set("node_options_inquiry_phase", array('status'));
   //variable_set("comment_inquiry_phase", COMMENT_NODE_DISABLED);
@@ -16,9 +17,53 @@ function inquiry_phase_install() {
  * Implementation of hook_uninstall(): removes the inquiry_phase table
  */
 function inquiry_phase_uninstall() {
+  drupal_uninstall_schema('inquiry_phase');
   //Options are status, promote, sticky, revision
   variable_del("node_options_inquiry_phase");
   //variable_del("comment_inquiry_phase");
   variable_del('upload_inquiry_phase');
 }
 
+function inquiry_phase_schema() {
+
+  $schema = array();
+
+  $schema['inquiry_phase'] = array(
+      'description' => 'Inquiry Phase',
+      'fields' => array(
+          'nid' => array(
+              'description' => 'node id',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'vid' => array(
+              'description' => 'The current vid version identifier',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'phase' => array(
+              'description' => 'The actual phase linked to this design',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'phase_type' => array(
+              'description' => 'Phase type',
+              'type' => 'text',
+              'size' => 'small',
+              'not null' => TRUE,
+          ),
+      ),
+      'primary key' => array('nid', 'vid'),
+      'unique keys' => array('vid' => array('vid')),
+      'indexes' => array('nid' => array('nid'))
+  );
+
+
+  return $schema;
+}

@@ -257,6 +257,8 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
       $node->revision = TRUE;
       node_save($node);
     }
+    
+    inquiry_deployer_update_inquiry_phases($node);
   }
   inquiry_creator_form_close($form, $form_state);
 }
@@ -391,7 +393,7 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
       '#default_value' => $node->body,
       '#required' => TRUE
   );
-  
+
   inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', "creator/{$node->nid}/");
 
   return $form;
@@ -408,7 +410,10 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
       $node->revision = TRUE;
       node_save($node);
     }
+
+    inquiry_deployer_update_inquiry_node($node);
   }
+
   inquiry_creator_form_close($form, $form_state);
 }
 
