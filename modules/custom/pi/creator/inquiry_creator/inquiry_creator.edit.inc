@@ -4,7 +4,7 @@ function inquiry_creator_new() {
   include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 
   $output = '';
-  $output .= node_add('inquiry_design');
+  $output .= drupal_get_form('inquiry_creator_metadata_form', NULL);
 
   return $output;
 }
@@ -126,7 +126,7 @@ function theme_inquiry_creator_side_form($design, $item, $type, $form) {
 function _inquiry_creator_create_inquiry_id_form_item($node, &$form) {
   $form['inquiry_design'] = array(
       '#type' => 'hidden',
-      '#default_value' => $node->nid,
+      '#default_value' => $node ? $node->nid : 0,
       '#required' => TRUE,
   );
 }
@@ -257,7 +257,7 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
       $node->revision = TRUE;
       node_save($node);
     }
-    
+
     inquiry_deployer_update_inquiry_phases($node);
   }
   inquiry_creator_form_close($form, $form_state);
@@ -333,8 +333,18 @@ function inquiry_creator_stages_form(&$form_state, $node) {
 
   nquire_commons_form_set_default_link_action($form, 'submit');
 
+  $stages = array();
+  foreach (nquire_commons_decode_data($node->stages, '[]') as $nid) {
+    $stage = node_load($nid);
+    $stages[] = array(
+        'id' => $nid,
+        'title' => $stage->title,
+        'values' => nquire_commons_decode_data($stage->data),
+    );
+  }
+
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
-  inquiry_structure_stages_table_create_form_item($form, 'stages', $node->structure, $node->stages);
+  inquiry_structure_stages_table_create_form_item($form, 'stages', $node->structure, json_encode($stages));
   inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_stages_form_submit', "creator/{$node->nid}/");
 
   return $form;
@@ -345,26 +355,49 @@ function inquiry_creator_stages_form_submit($form, $form_state) {
   $node = node_load($form_state['values']['inquiry_design']);
   if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
     $stages = json_decode($form_state['values']['stages']);
-    $id = 0;
+    
+    $nids = array();
+
     foreach ($stages as $stage) {
+      $values = json_encode($stage->values);
+      
       if (is_numeric($stage->id)) {
-        $id = max($id, $stage->id);
+        $stage_node = node_load($stage->id);
+        if ($stage_node && $stage_node->type === 'inquiry_stage' && $stage_node->uid === $user->uid) {
+          if ($stage_node->title !== $stage->title || $stage_node->data !== $values) {
+            $stage_node->title = $stage->title;
+            $stage_node->data = $values;
+            $stage_node->revision = TRUE;
+            node_save($stage_node);
+          }
+        }
+      } else {
+        $stage_node = inquiry_creator_create_stage_stub($stage->title);
+        $stage_node->data = $values;
+        node_save($stage_node);
+      }
+      
+      $nids[] = $stage_node->nid;
+    }
+    
+    $old_nids = nquire_commons_decode_data($node->stages, '[]');
+    foreach($old_nids as $old_nid) {
+      if (!in_array($old_nid, $nids)) {
+        node_delete($old_nid);
       }
     }
 
-    foreach ($stages as $stage) {
-      if (!is_numeric($stage->id)) {
-        $stage->id = ++$id;
-      }
-    }
-
-    $new_stages = json_encode($stages);
+    $new_stages = json_encode($nids);
     if ($node->stages !== $new_stages) {
       $node->stages = $new_stages;
       $node->revision = TRUE;
       node_save($node);
     }
+    
+    inquiry_deployer_update_stages($node);
   }
+  
+  
   inquiry_creator_form_close($form, $form_state);
 }
 
@@ -375,45 +408,76 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
 
-  $type = node_get_types('type', $node);
 
   $form['title'] = array(
       '#type' => 'textfield',
-      '#title' => check_plain($type->title_label),
+      '#title' => t('Inquiry title'),
       '#description' => t('Write here the title for the inquiry.'),
       '#required' => TRUE,
-      '#default_value' => $node->title,
+      '#default_value' => nquire_commons_form_node_default_value($node, 'title', $form_state, 'title', ''),
   );
 
   //Show a simple textarea, no input selector required....
-  $form['body_filter']['body'] = array(
+  $form['body'] = array(
       '#type' => 'textarea',
-      '#title' => check_plain($type->body_label),
+      '#title' => t('Inquiry description'),
       '#description' => t('An introduction to the inquiry, e.g. about the goals of the inquiry, the scientific field etc.'),
-      '#default_value' => $node->body,
+      '#default_value' => nquire_commons_form_node_default_value($node, 'body', $form_state, 'body', ''),
       '#required' => TRUE
   );
 
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', "creator/{$node->nid}/");
+  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', "creator/");
 
   return $form;
 }
 
 function inquiry_creator_metadata_form_submit($form, $form_state) {
   global $user;
-  $node = node_load($form_state['values']['inquiry_design']);
-  if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+  $node_nid = $form_state['values']['inquiry_design'];
+  if ($node_nid == 0) {
 
-    if ($node->title !== $form_state['values']['title'] || $node->body !== $form_state['values']['body']) {
-      $node->title = $form_state['values']['title'];
-      $node->body = $form_state['values']['body'];
-      $node->revision = TRUE;
-      node_save($node);
-    }
+    $stage = inquiry_creator_create_stage_stub(t('Stage 1'));
+
+    $node = new stdClass();
+    $node->type = 'inquiry_design';
+    $node->uid = $user->uid;
+    $node->title = $form_state['values']['title'];
+    $node->body = $form_state['values']['body'];
+
+    $node->structure = json_encode(array());
+    $node->stages = json_encode(array($stage->nid));
+    $node->roles = json_encode(array());
+
+    node_save($node);
 
     inquiry_deployer_update_inquiry_node($node);
-  }
+    drupal_goto('creator/' . $node->nid);
+  } else {
+    $node = node_load($node_nid);
+    if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+      if ($node->title !== $form_state['values']['title'] || $node->body !== $form_state['values']['body']) {
+        $node->title = $form_state['values']['title'];
+        $node->body = $form_state['values']['body'];
+        $node->revision = TRUE;
+        node_save($node);
+      }
 
-  inquiry_creator_form_close($form, $form_state);
+      inquiry_deployer_update_inquiry_node($node);
+    }
+
+    inquiry_creator_form_close($form, $form_state);
+  }
 }
 
+function inquiry_creator_create_stage_stub($title) {
+  global $user;
+
+  $node = new stdClass();
+  $node->type = 'inquiry_stage';
+  $node->stage = 0;
+  $node->title = $title;
+  $node->uid = $user->uid;
+
+  node_save($node);
+  return $node;
+}

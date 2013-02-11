@@ -1,0 +1,68 @@
+<?php
+
+// $Id: nquire_group.install,v 0.1 $
+
+/**
+ * Implementation of hook_install(): creates the database table for nquire_group
+ */
+function nquire_group_install() {
+  // Create tables.
+  drupal_install_schema('nquire_group');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_nquire_group", array('status'));
+  //variable_set("comment_nquire_group", COMMENT_NODE_DISABLED);
+  variable_set('upload_nquire_group', 0);
+}
+
+/**
+ * Implementation of hook_uninstall(): removes the nquire_group table
+ */
+function nquire_group_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('nquire_group');
+  //Options are status, promote, sticky, revision
+  variable_del("node_options_nquire_group");
+  //variable_del("comment_nquire_group");
+  variable_del('upload_nquire_group');
+}
+
+/**
+ * Implementation of hook_schema(): Describes the nquire_group table
+ */
+function nquire_group_schema() {
+
+  $schema = array();
+
+  $schema['nquire_group'] = array(
+      'description' => 'nQuire Group',
+      'fields' => array(
+          'nid' => array(
+              'description' => 'node id',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'vid' => array(
+              'description' => 'The current vid version identifier',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'group_type' => array(
+              'description' => 'nQuire internal group type',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+      ),
+      'primary key' => array('nid', 'vid'),
+      'unique keys' => array('vid' => array('vid')),
+      'indexes' => array('nid' => array('nid'))
+  );
+
+
+  return $schema;
+}

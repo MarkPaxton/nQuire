@@ -6,7 +6,7 @@ function inquiry_deployer_update_inquiry_node(&$design_node) {
       'layout' => 'list',
       'hide_activity_link' => 'pi_key_questions,pi_measure_filter,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary',
       'hide_activity_in_summary' => 'pi_key_questions,pi_measure_filter,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary',
-      'actor_gid' => 0,
+      'actor_gid' => nquire_group_get_single_user_group_nid($design_node->uid),
   ));
 }
 
@@ -17,14 +17,159 @@ function inquiry_deployer_update_inquiry_phases(&$design_node) {
     $design_phase = node_load($phase['id']);
     $ref_phase = _inquiry_deployer_create_update_ref_node($design_phase, 'phase', 'pi_phase', array(
         'inquiry_nid' => $design_node->inquiry,
-        'phase_actor' => 0,
+        'phase_actor' => nquire_group_get_single_user_group_nid($design_node->uid),
     ));
     $query = "UPDATE {pi_phase} SET weight=%d WHERE vid=%d";
     db_query($query, $i, $ref_phase->vid);
+
+    foreach ($phase['activities'] as $j => $activity) {
+      $design_activity = node_load($activity['id']);
+      $ref_activity = inquiry_deployer_update_activity($design_node, $design_phase, $design_activity);
+      if ($ref_activity) {
+        $query = "UPDATE {pi_activity} SET weight=%d WHERE vid=%d";
+        db_query($query, $j, $ref_activity->vid);
+      }
+    }
+  }
+
+  inquiry_deployer_update_stages($design_node);
+}
+
+function inquiry_deployer_update_phase(&$design_node, &$design_phase) {
+  _inquiry_deployer_create_update_ref_node($design_phase, 'phase', 'pi_phase', array(
+      'inquiry_nid' => $design_node->inquiry,
+      'phase_actor' => nquire_group_get_single_user_group_nid($design_node->uid),
+  ));
+}
+
+function inquiry_deployer_update_activity(&$design_node, &$design_phase, &$design_activity) {
+  $inquiry_node = node_load($design_node->inquiry);
+
+  $activity_type = inquiry_available_features_invoke('activity', 'deployed_activity_type', $design_activity);
+  if ($activity_type) {
+    $stages = array();
+    $design_stage_nids = nquire_commons_decode_data($design_node->stages, '[]');
+    foreach ($design_stage_nids as $design_stage_nid) {
+      $design_stage = node_load($design_stage_nid, NULL, TRUE);
+      $stage_data = nquire_commons_decode_data($design_stage->data);
+      if (!isset($stage_data[$design_phase->nid]) || $stage_data[$design_phase->nid] === 'view') {
+        $stages[$design_stage->stage] = $design_stage->stage;
+      }
+    }
+
+    $base_attrs = array(
+        'inquiry_nid' => $design_node->inquiry,
+        'activity_phases_stages' => array(
+            'phase_nid' => $design_phase->phase,
+            'stages' => array('stage_select' => $stages),
+        ),
+        'destination_after' => 'phase',
+        'selects' => array(
+            'audience' => 'individual',
+            'gid' => $inquiry_node->actor_gid,
+        ),
+        'node_function' => 'add',
+        'visible_status' => 'start',
+        'existing_nid' => 'none',
+    );
+
+    $ref_activity_node = _inquiry_deployer_create_update_ref_node($design_activity, 'activity', 'pi_activity', array_merge($base_attrs, array(
+        'activity_type' => $activity_type,
+    )));
+    
+    $children = inquiry_available_features_invoke('activity', 'deployed_children_activities', $design_activity);
+    if (is_array($children)) {
+      foreach($children as $key => $child) {
+        _inquiry_deployer_create_update_child_activity($design_activity, $key, array_merge($base_attrs, $child['activity'], array(
+            'parent_activity' => $ref_activity_node->nid,
+        )), $child['node']);
+      }
+    }
+    
+    return $ref_activity_node;
+  }
+
+  return NULL;
+}
+
+function inquiry_deployer_update_stages($design_node) {
+  $inquiry_nid = $design_node->inquiry;
+  $inquiry_node = node_load($inquiry_nid);
+
+  if ($inquiry_node) {
+    $actor_gid = $inquiry_node->actor_gid;
+
+    $valid_stages = array();
+
+    $design_stage_nids = nquire_commons_decode_data($design_node->stages, '[]');
+    foreach ($design_stage_nids as $design_stage_nid) {
+      $design_stage = node_load($design_stage_nid, NULL, TRUE);
+      $phases = array();
+      foreach (nquire_commons_decode_data($design_stage->data) as $design_phase_nid => $status) {
+        $design_phase = node_load($design_phase_nid);
+        if ($design_phase->phase) {
+          $phases[$design_phase->phase] = $status === 'edit';
+        }
+      }
+      $stage_node = _inquiry_deployer_create_update_ref_node($design_stage, 'stage', 'pi_stage', array(
+          'inquiry_nid' => $inquiry_nid,
+          'stage_actor' => $actor_gid,
+          'stage_phases' => array('phases' => $phases),
+      ));
+
+      $valid_stages[] = $stage_node->nid;
+    }
   }
 }
 
-function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $node_type, $node_attrs = NULL) {
+function _inquiry_deployer_create_update_child_activity($design_activity, $child, $activity_attrs, $node_attrs = NULL) {
+  $design_activity_children = nquire_commons_decode_data($design_activity->children_activities);
+
+  $node = node_load($design_activity_children[$child]);
+
+  $save = FALSE;
+  $new = FALSE;
+
+  if (!$node) {
+    $node = new stdClass();
+    $node->type = 'pi_activity';
+    $node->uid = $design_activity->uid;
+
+    if (is_array($activity_attrs)) {
+      foreach ($activity_attrs as $key => $value) {
+        $node->$key = $value;
+      }
+    }
+
+    $save = TRUE;
+    $new = TRUE;
+  } else {
+    if (is_array($activity_attrs)) {
+      foreach ($activity_attrs as $key => $value) {
+        if ($node->$key !== $value) {
+          $node->$key = $value;
+          $save = TRUE;
+          $node->revision = TRUE;
+        }
+      }
+    }
+  }
+
+  if ($save) {
+    node_save($node);
+  }
+
+  if ($new) {
+    $design_activity_children[$child] = $node->nid;
+    $design_activity->children_activities = json_encode($design_activity_children);
+    $design_activity->revision = TRUE;
+    node_save($design_activity);
+  }
+
+  return $node;
+}
+
+function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $node_type, $node_attrs) {
   $node = node_load($design_node->$ref_attr);
 
   $save = FALSE;
@@ -35,7 +180,7 @@ function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $nod
     $node->type = $node_type;
     $node->uid = $design_node->uid;
     $node->title = $design_node->title;
-    $node->body = $design_node->body;
+    $node->body = $node->teaser = $design_node->body;
 
     if (is_array($node_attrs)) {
       foreach ($node_attrs as $key => $value) {
@@ -49,20 +194,21 @@ function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $nod
     if ($design_node->title != $node->title || $design_node->body != $node->body) {
       $save = TRUE;
       $node->title = $design_node->title;
-      $node->body = $design_node->body;
+      $node->body = $node->teaser = $design_node->body;
+      $node->revision = TRUE;
     }
     if (is_array($node_attrs)) {
       foreach ($node_attrs as $key => $value) {
         if ($node->$key !== $value) {
           $node->$key = $value;
           $save = TRUE;
+          $node->revision = TRUE;
         }
       }
     }
   }
 
   if ($save) {
-    $node->revision = !$new;
     node_save($node);
   }
 

@@ -191,41 +191,53 @@ function inquiry_design_set_item_title($node, $id, $title) {
 
 function inquiry_design_get_activities($node, $phase_nid) {
   $structure = nquire_commons_decode_data($node->structure);
-  foreach($structure as $phase_def) {
+  foreach ($structure as $phase_def) {
     if ($phase_def['id'] == $phase_nid) {
       return $phase_def['activities'];
     }
   }
-  
+
   return FALSE;
 }
 
 function inquiry_design_remove_structure_item(&$design, $item_nid) {
   $structure = nquire_commons_decode_data($design->structure, '[]');
   $found = FALSE;
-  
+
   if ($structure) {
-    foreach($structure as $i => $phase) {
+    foreach ($structure as $i => $phase) {
       if ($phase['id'] == $item_nid) {
         unset($structure[$i]);
         $found = TRUE;
         break;
       }
-      
-      foreach($phase['activities'] as $j => $activity) {
+
+      foreach ($phase['activities'] as $j => $activity) {
         if ($activity['id'] == $item_nid) {
           unset($structure[$i]['activities'][$j]);
           $found = TRUE;
           break 2;
         }
-      }      
+      }
     }
   }
-  
+
   if ($found) {
     $design->structure = json_encode($structure);
     return TRUE;
   }
-  
+
+  return FALSE;
+}
+
+function inquiry_design_load_phase_for_activity($node, $activity_nid) {
+  $structure = nquire_commons_decode_data($node->structure);
+  foreach ($structure as $phase_def) {
+    foreach ($phase_def['activities'] as $activity_def) {
+      if ($activity_def['id'] == $activity_nid) {
+        return node_load($phase_def['id']);
+      }
+    }
+  }
   return FALSE;
 }

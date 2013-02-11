@@ -1,24 +1,23 @@
 <?php
 
-// $Id: inquiry_activity.module,v 0.1 2010/03/17 MCP $
+// $Id: inquiry_stage.module,v 0.1 2010/03/17 MCP $
 
 /**
  * @file  This module provides the implementation of the Inquiry content type
  */
 
 /**
- * hook_node_info()Define the inquiry_activity node type
+ * hook_node_info()Define the inquiry_stage node type
  */
-function inquiry_activity_node_info() {
+function inquiry_stage_node_info() {
   return array(
-      'inquiry_activity' => array(
-          'name' => t('Inquiry Activity'), // Required.
-          'module' => 'inquiry_activity', // Required.
-          'description' => t('An nQuire Inquiry Activity'), // Required.
+      'inquiry_stage' => array(
+          'name' => t('Inquiry Stage'), // Required.
+          'module' => 'inquiry_stage', // Required.
+          'description' => t('An nQuire Inquiry Stage'), // Required.
           'has_title' => TRUE,
-          'title_label' => t('Activity Name'),
-          'has_body' => TRUE,
-          'body_label' => t('Activity Description'),
+          'title_label' => t('Stage Name'),
+          'has_body' => FALSE,
       )
   );
 }
@@ -26,7 +25,7 @@ function inquiry_activity_node_info() {
 /**
  * Work out if a user has permission to do something with an Inquiry
  */
-function inquiry_activity_access($op, $node, $account) {
+function inquiry_stage_access($op, $node, $account) {
   $is_author = $account->uid == $node->uid;
   switch ($op) {
     case 'create':
@@ -45,21 +44,22 @@ function inquiry_activity_access($op, $node, $account) {
   }
 }
 
+
 /**
  * INSERT command for a new activity
  */
-function inquiry_activity_insert($node) {
-  db_query("INSERT INTO {inquiry_activity} (nid, vid, activity, children_activities, activity_type, data) VALUES (%d, %d, %d, '%s', '%s', '%s')", $node->nid, $node->vid, $node->activity, $node->children_activities, $node->activity_type, $node->data);
+function inquiry_stage_insert($node) {
+  db_query("INSERT INTO {inquiry_stage} (nid, vid, stage, data) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $node->stage, $node->data);
 }
 
 /**
  * UPDATE command for an existing inquiry
  */
-function inquiry_activity_update($node) {
+function inquiry_stage_update($node) {
   if ($node->revision) {
-    inquiry_activity_insert($node);
+    inquiry_stage_insert($node);
   } else {
-    db_query("UPDATE {inquiry_activity} SET activity='%d', children_activities='%s', activity_type='%s', data='%s' WHERE vid='%d'", $node->activity, $node->children_activities, $node->activity_type, $node->data, $node->vid);
+    db_query("UPDATE {inquiry_stage} SET stage='%d', data='%s' WHERE vid='%d'", $node->stage, $node->data, $node->vid);
   }
 }
 
@@ -70,12 +70,12 @@ function inquiry_activity_update($node) {
  * from our table. The only way to handle revision deletion is by implementing
  * hook_nodeapi().
  */
-function inquiry_activity_nodeapi(&$node, $op, $teaser, $page) {
-  if ($node->type === 'inquiry_activity') {
+function inquiry_stage_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type === 'inquiry_stage') {
     switch ($op) {
       case 'delete revision':
         // Notice that we're matching a single revision based on the node's vid.
-        db_query('DELETE FROM {inquiry_activity} WHERE vid = %d', $node->vid);
+        db_query('DELETE FROM {inquiry_stage} WHERE vid = %d', $node->vid);
         break;
     }
   }
@@ -86,25 +86,27 @@ function inquiry_activity_nodeapi(&$node, $op, $teaser, $page) {
  * DELETE command for an inquiry
  * @todo this should delete all the associated data with the inquiry too!
  */
-function inquiry_activity_delete(&$node) {
+function inquiry_stage_delete(&$node) {
   // Delete the related information we were saving for this node.
-  db_query('DELETE FROM {inquiry_activity} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {inquiry_stage} WHERE nid = %d', $node->nid);
 }
 
 /**
  * node loader function for inquiry type called when noad_load() is called
  */
-function inquiry_activity_load($node) {
-  $design = db_fetch_object(db_query('SELECT * FROM {inquiry_activity} WHERE vid = %d', $node->vid));
+function inquiry_stage_load($node) {
+  $phase = db_fetch_object(db_query('SELECT * FROM {inquiry_stage} WHERE vid = %d', $node->vid));
 
-  return $design;
+  return $phase;
 }
 
+
+
 /**
- * Builds the view for the inquiry
+ * Builds the view for the phase
  * @todo Add a detailed inquiry view to be used in the whole system
  */
-function inquiry_activity_view($node, $teaser = FALSE, $page = FALSE) {
+function inquiry_stage_view($node, $teaser = FALSE, $page = FALSE) {
   // If $teaser is FALSE, the entire node is being displayed.
   if (!$teaser) {
     //Use Drupal's default node view.

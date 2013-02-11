@@ -623,6 +623,8 @@ function pi_get_all_group_nids() {
  * group type is indexed as 'group_type'
  */
 function pi_get_defined_group_nids() {
+  /* FIX (eloy) temporal */
+  
   $groups = array();
   $groups_seen = array();
 

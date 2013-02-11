@@ -1,24 +1,24 @@
 <?php
 
-// $Id: inquiry_activity.module,v 0.1 2010/03/17 MCP $
+// $Id: nquire_group.module,v 0.1 2010/03/17 MCP $
 
 /**
- * @file  This module provides the implementation of the Inquiry content type
+ * @file  This module provides the implementation of the nQuire Group content type
  */
 
 /**
- * hook_node_info()Define the inquiry_activity node type
+ * hook_node_info()Define the nquire_group node type
  */
-function inquiry_activity_node_info() {
+function nquire_group_node_info() {
   return array(
-      'inquiry_activity' => array(
-          'name' => t('Inquiry Activity'), // Required.
-          'module' => 'inquiry_activity', // Required.
-          'description' => t('An nQuire Inquiry Activity'), // Required.
+      'nquire_group' => array(
+          'name' => t('nQuire Group'), // Required.
+          'module' => 'nquire_group', // Required.
+          'description' => t('An nQuire Group'), // Required.
           'has_title' => TRUE,
-          'title_label' => t('Activity Name'),
+          'title_label' => t('Group name'),
           'has_body' => TRUE,
-          'body_label' => t('Activity Description'),
+          'body_label' => t('Group Description'),
       )
   );
 }
@@ -26,7 +26,7 @@ function inquiry_activity_node_info() {
 /**
  * Work out if a user has permission to do something with an Inquiry
  */
-function inquiry_activity_access($op, $node, $account) {
+function nquire_group_access($op, $node, $account) {
   $is_author = $account->uid == $node->uid;
   switch ($op) {
     case 'create':
@@ -48,18 +48,18 @@ function inquiry_activity_access($op, $node, $account) {
 /**
  * INSERT command for a new activity
  */
-function inquiry_activity_insert($node) {
-  db_query("INSERT INTO {inquiry_activity} (nid, vid, activity, children_activities, activity_type, data) VALUES (%d, %d, %d, '%s', '%s', '%s')", $node->nid, $node->vid, $node->activity, $node->children_activities, $node->activity_type, $node->data);
+function nquire_group_insert($node) {
+  db_query("INSERT INTO {nquire_group} (nid, vid, group_type) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->group_type);
 }
 
 /**
  * UPDATE command for an existing inquiry
  */
-function inquiry_activity_update($node) {
+function nquire_group_update($node) {
   if ($node->revision) {
-    inquiry_activity_insert($node);
+    nquire_group_insert($node);
   } else {
-    db_query("UPDATE {inquiry_activity} SET activity='%d', children_activities='%s', activity_type='%s', data='%s' WHERE vid='%d'", $node->activity, $node->children_activities, $node->activity_type, $node->data, $node->vid);
+    db_query("UPDATE {nquire_group} SET group_type='%s', data='%s' WHERE vid='%d'", $node->group_type, $node->vid);
   }
 }
 
@@ -70,12 +70,12 @@ function inquiry_activity_update($node) {
  * from our table. The only way to handle revision deletion is by implementing
  * hook_nodeapi().
  */
-function inquiry_activity_nodeapi(&$node, $op, $teaser, $page) {
-  if ($node->type === 'inquiry_activity') {
+function nquire_group_nodeapi(&$node, $op, $teaser, $page) {
+  if ($node->type === 'nquire_group') {
     switch ($op) {
       case 'delete revision':
         // Notice that we're matching a single revision based on the node's vid.
-        db_query('DELETE FROM {inquiry_activity} WHERE vid = %d', $node->vid);
+        db_query('DELETE FROM {nquire_group} WHERE vid = %d', $node->vid);
         break;
     }
   }
@@ -86,16 +86,16 @@ function inquiry_activity_nodeapi(&$node, $op, $teaser, $page) {
  * DELETE command for an inquiry
  * @todo this should delete all the associated data with the inquiry too!
  */
-function inquiry_activity_delete(&$node) {
+function nquire_group_delete(&$node) {
   // Delete the related information we were saving for this node.
-  db_query('DELETE FROM {inquiry_activity} WHERE nid = %d', $node->nid);
+  db_query('DELETE FROM {nquire_group} WHERE nid = %d', $node->nid);
 }
 
 /**
  * node loader function for inquiry type called when noad_load() is called
  */
-function inquiry_activity_load($node) {
-  $design = db_fetch_object(db_query('SELECT * FROM {inquiry_activity} WHERE vid = %d', $node->vid));
+function nquire_group_load($node) {
+  $design = db_fetch_object(db_query('SELECT * FROM {nquire_group} WHERE vid = %d', $node->vid));
 
   return $design;
 }
@@ -104,7 +104,7 @@ function inquiry_activity_load($node) {
  * Builds the view for the inquiry
  * @todo Add a detailed inquiry view to be used in the whole system
  */
-function inquiry_activity_view($node, $teaser = FALSE, $page = FALSE) {
+function nquire_group_view($node, $teaser = FALSE, $page = FALSE) {
   // If $teaser is FALSE, the entire node is being displayed.
   if (!$teaser) {
     //Use Drupal's default node view.
@@ -127,3 +127,29 @@ function inquiry_activity_view($node, $teaser = FALSE, $page = FALSE) {
   return $node;
 }
 
+function nquire_group_get_single_user_group_nid($uid) {
+
+  $query = "SELECT {node}.nid FROM {node} LEFT JOIN {nquire_group} ON {node}.vid={nquire_group}.vid WHERE {node}.uid=%d AND {nquire_group}.group_type=1";
+  $result = db_fetch_array(db_query($query, $uid));
+
+  if ($result && isset($result['nid'])) {
+    return $result['nid'];
+  } else {
+    $node = new stdClass();
+    $node->type = 'nquire_group';
+    $node->uid = $uid;
+    $node->title = t('Just me');
+    $node->body = t('Body');
+    $node->og_description = t('Just me');
+    $node->og_selective = OG_CLOSED;
+    $node->og_register = OG_REGISTRATION_NEVER;
+    $node->og_directory = OG_DIRECTORY_NEVER;
+    $node->og_private = TRUE;
+    
+    $node->group_type = 1;
+    
+    node_save($node);
+    og_save_subscription($node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1));
+    return $node->nid;
+  }
+}

@@ -39,10 +39,10 @@ function update_activity_when_activity_node_updated($node, $activity_title) {
 /**
  *
  * Add an activity node when an activity content item is created
- * @param node $parent_activity
+ * @param node $add_activity
  * @param node $content_node
  */
-function pi_activity_add_activity_node_for_activity_content_node($parent_activity, $content_node) {
+function pi_activity_add_activity_node_for_activity_content_node($add_activity, $content_node) {
   //This is the new activity node to be created
   $new_activity_node = new stdClass();
   //copy over current except for the activity_id
@@ -50,21 +50,22 @@ function pi_activity_add_activity_node_for_activity_content_node($parent_activit
   
   /* FIX (eloy) */
   $new_activity_node->type = 'pi_activity';
-  $new_activity_node->activity_phases_stages = $parent_activity->activity_phases_stages;
-  $new_activity_node->selects = $parent_activity->selects;
+  $new_activity_node->activity_phases_stages = $add_activity->activity_phases_stages;
+  $new_activity_node->selects = $add_activity->selects;
   $new_activity_node->uid = $content_node->uid;
   
   $new_activity_node->title = $content_node->title;
-  $new_activity_node->body = $parent_activity->description;
-  $new_activity_node->activity_type = $parent_activity->activity_type;
+  $new_activity_node->body = $add_activity->description;
+  $new_activity_node->activity_type = $add_activity->activity_type;
   $new_activity_node->node_type = $content_node->node_type;
-  $new_activity_node->parameters = $parent_activity->parameters;
-  $new_activity_node->destination_after = $parent_activity->destination_after;
-  $new_activity_node->audience = $parent_activity->audience;
-  $new_activity_node->actor = $parent_activity->actor;
-  $new_activity_node->weight = $parent_activity->weight;
+  $new_activity_node->parameters = $add_activity->parameters;
+  $new_activity_node->destination_after = $add_activity->destination_after;
+  $new_activity_node->audience = $add_activity->audience;
+  $new_activity_node->actor = $add_activity->actor;
+  $new_activity_node->weight = $add_activity->weight;
 
-
+  /* FIX (eloy) set parent activity */
+  $new_activity_node->parent_activity = $add_activity->parent_activity;
 
   node_save($new_activity_node);
   

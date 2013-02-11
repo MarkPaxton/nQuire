@@ -10,6 +10,10 @@ function inquiry_basic_activities_menu() {
   return $items;
 }
 
+function inquiry_basic_activities_nquire_creator_activity_notes_deployed_activity_type() {
+  return 'pi_wiki_notes';
+}
+
 /**
  * Implementation of nQuire Creator hook 'form' for 'hypothesis' activity.
  * 
@@ -56,6 +60,10 @@ function inquiry_basic_activities_nquire_creator_activity_hypothesis_form_proces
   }
 }
 
+function inquiry_basic_activities_nquire_creator_activity_hypothesis_deployed_activity_type() {
+  return 'pi_hypothesis';
+}
+
 function inquiry_basic_activities_nquire_creator_activity_keyquestions_form($activity, $design, &$form, &$form_state) {
   $data = nquire_commons_decode_data($activity->data);
 
@@ -89,6 +97,22 @@ function inquiry_basic_activities_nquire_creator_activity_keyquestions_form_proc
   }
 }
 
+function inquiry_basic_activities_nquire_creator_activity_keyquestions_deployed_activity_type() {
+  return 'pi_sort_key_questions';
+}
+
+function inquiry_basic_activities_nquire_creator_activity_keyquestions_deployed_children_activities($design_activity) {
+  return array(
+      'add' => array(
+          'activity' => array(
+              'activity_type' => 'pi_key_questions',
+              'title' => t('Add key question'),
+              'body' => $design_activity->body,
+          ),
+      ),
+  );
+}
+
 function inquiry_basic_activities_nquire_creator_activity_collectdata_form($activity, $design, &$form, &$form_state) {
   $data = nquire_commons_decode_data($activity->data);
 
@@ -108,9 +132,9 @@ function inquiry_basic_activities_nquire_creator_activity_collectdata_form_proce
 function inquiry_basic_activities_nquire_creator_activity_collectdata_delete(&$activity) {
   $data = nquire_commons_decode_data($activity->data);
   if (isset($data['measures'])) {
-    foreach($data['measures'] as $measure_nid) {
+    foreach ($data['measures'] as $measure_nid) {
       inquiry_creator_delete_measure_node($measure_nid);
-    } 
+    }
   }
 }
 

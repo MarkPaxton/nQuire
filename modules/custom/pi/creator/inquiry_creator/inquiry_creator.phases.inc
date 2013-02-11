@@ -87,6 +87,8 @@ function inquiry_creator_phase_form_submit($form, $form_state) {
       $phase->body = $form_state['values']['body'];
       $phase->revision = TRUE;
       node_save($phase);
+      
+      inquiry_deployer_update_phase($design, $phase);
     }
   }
 
