@@ -3,6 +3,11 @@
 var nQuireStructureWidget = {
   activityTypes: {
     activity: {
+      information: {
+        title: 'Information',
+        multiplicity: '*',
+        requires: []
+      },
       notes: {
         title: 'My notes',
         multiplicity: '*',

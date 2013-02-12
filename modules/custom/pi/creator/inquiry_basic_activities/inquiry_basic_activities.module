@@ -10,6 +10,48 @@ function inquiry_basic_activities_menu() {
   return $items;
 }
 
+function inquiry_basic_activities_nquire_creator_activity_information_form($activity, $design, &$form, &$form_state) {
+  $data = nquire_commons_decode_data($activity->data);
+
+  $form['data']['information']['activity-read-information'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Information'),
+      '#description' => t('Write here the content you would like participants to read.'),
+      '#default_value' => nquire_commons_form_data_default_value($data, 'information', $form_state, 'activity-read-information', ''),
+      '#required' => FALSE,
+  );
+  $form['data']['information']['format'] = filter_form(2);
+}
+
+function inquiry_basic_activities_nquire_creator_activity_information_form_process(&$activity, $design, $form_values) {
+  $data = array();
+  $data['information'] = $form_values['activity-read-information'];
+
+  $new_data = json_encode($data);
+  if ($activity->data !== $new_data) {
+    $activity->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+function inquiry_basic_activities_nquire_creator_activity_information_deployed_activity_type() {
+  return array(
+      'activity_type' => 'pi_read_information',
+      'node_function' => 'view',
+  );
+}
+
+function inquiry_basic_activities_nquire_creator_activity_information_deployed_activity_content($activity) {
+  $data = nquire_commons_decode_data($activity->data);
+  return array(
+      'type' => 'pi_read_information',
+      'title' => '',
+      'body' => $data['information'],
+  );
+}
+
 function inquiry_basic_activities_nquire_creator_activity_notes_deployed_activity_type() {
   return 'pi_wiki_notes';
 }
@@ -22,7 +64,7 @@ function inquiry_basic_activities_nquire_creator_activity_notes_deployed_activit
  * @param type $form
  */
 function inquiry_basic_activities_nquire_creator_activity_hypothesis_form($activity, $design, &$form, &$form_state) {
-  $data = $data = nquire_commons_decode_data($activity->data);
+  $data = nquire_commons_decode_data($activity->data);
 
   $form['data']['hypothesis'] = array(
       '#type' => 'textarea',
@@ -62,6 +104,10 @@ function inquiry_basic_activities_nquire_creator_activity_hypothesis_form_proces
 
 function inquiry_basic_activities_nquire_creator_activity_hypothesis_deployed_activity_type() {
   return 'pi_hypothesis';
+}
+
+function inquiry_basic_activities_nquire_creator_activity_hypothesisconclusion_deployed_activity_type() {
+  return 'pi_hypothesis_conclusion';
 }
 
 function inquiry_basic_activities_nquire_creator_activity_keyquestions_form($activity, $design, &$form, &$form_state) {
@@ -151,4 +197,20 @@ function inquiry_basic_activities_nquire_creator_activity_exploretool_form($acti
 function inquiry_basic_activities_nquire_creator_activity_exploretool_form_process(&$activity, $design, $form_values) {
   module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
   return _inquiry_basic_activities_tool_form_process($activity, $design, $form_values);
+}
+
+function inquiry_basic_activities_nquire_creator_activity_keyanswers_deployed_activity_type() {
+  return 'pi_sort_key_answers';
+}
+
+function inquiry_basic_activities_nquire_creator_activity_keyanswers_deployed_children_activities($design_activity) {
+  return array(
+      'add' => array(
+          'activity' => array(
+              'activity_type' => 'pi_key_answers',
+              'title' => t('Add key answer'),
+              'body' => $design_activity->body,
+          ),
+      ),
+  );
 }

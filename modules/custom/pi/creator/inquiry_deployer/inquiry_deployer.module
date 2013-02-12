@@ -73,19 +73,32 @@ function inquiry_deployer_update_activity(&$design_node, &$design_phase, &$desig
         'existing_nid' => 'none',
     );
 
-    $ref_activity_node = _inquiry_deployer_create_update_ref_node($design_activity, 'activity', 'pi_activity', array_merge($base_attrs, array(
-        'activity_type' => $activity_type,
-    )));
+    $main_activity_attrs = array_merge($base_attrs, is_array($activity_type) ?
+         $activity_type :
+         array(
+                'activity_type' => $activity_type,
+         )
+    );
     
+    
+    $ref_activity_node = _inquiry_deployer_create_update_ref_node($design_activity, 'activity', 'pi_activity', $main_activity_attrs);
+    $activity_content_def = inquiry_available_features_invoke('activity', 'deployed_activity_content', $design_activity);
+    if ($activity_content_def) {
+      _inquiry_deployer_create_update_activity_content($ref_activity_node, $activity_content_def);
+    }
+
     $children = inquiry_available_features_invoke('activity', 'deployed_children_activities', $design_activity);
     if (is_array($children)) {
-      foreach($children as $key => $child) {
+      foreach ($children as $key => $child) {
         _inquiry_deployer_create_update_child_activity($design_activity, $key, array_merge($base_attrs, $child['activity'], array(
             'parent_activity' => $ref_activity_node->nid,
-        )), $child['node']);
+                )), $child['node']);
       }
     }
-    
+
+    $query = "UPDATE {pi_activity} SET phase_nid=%d WHERE parent_activity=%d AND phase_nid != %d";
+    db_query($query, $design_phase->phase, $ref_activity_node->nid, $design_phase->phase);
+
     return $ref_activity_node;
   }
 
@@ -219,4 +232,42 @@ function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $nod
   }
 
   return $node;
+}
+
+function _inquiry_deployer_create_update_activity_content($ref_activity_node, $activity_content_def) {
+  
+  $content_node = node_load($ref_activity_node->referenced_node);
+  $new = FALSE;
+  $changed = FALSE;
+  
+  if ($content_node) {
+    if($content_node->type !== $activity_content_def['type']) {
+      node_delete($content_node->nid);
+      $content_node = NULL;
+    }
+  }
+  
+  if (!$content_node) {
+    $new = TRUE;
+    $changed = TRUE;
+    $content_node = new stdClass();
+    $content_node->type = $activity_content_def['type'];
+    $content_node->uid = $ref_activity_node->uid;
+  }
+  
+  foreach($activity_content_def as $key => $value) {
+    if ($content_node->$key != $value) {
+      $changed = TRUE;
+      $content_node->$key = $value;      
+    }
+  }
+  
+  if ($changed) {
+    $content_node->revision = !$new;
+    node_save($content_node);
+  }
+  
+  if ($new) {
+    db_query('UPDATE pi_activity SET referenced_node=%d WHERE vid=%d', $content_node->nid, $ref_activity_node->vid);
+  } 
 }

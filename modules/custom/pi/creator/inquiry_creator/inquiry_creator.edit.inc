@@ -29,7 +29,7 @@ function inquiry_creator_main($nid, $op = '', $item = '') {
   switch ($op) {
     case '':
 
-      $output .= '<p>' . t('Click on the edit link beside each activity or phase to edit their details.') . '</p>'
+/*      $output .= '<p>' . t('Click on the edit link beside each activity or phase to edit their details.') . '</p>'
               . theme('inquiry_structure_widget_view', $design, $item);
       break;
     case 'structure': /* activity structure is being edited */
@@ -77,8 +77,9 @@ function theme_inquiry_creator_edit_menu($node, $current_op) {
   nquire_commons_load_submit_form_links();
 
   $ops = array(
-      '' => t('Edit activities'),
-      'structure' => t('Edit structure'),
+      //'' => t('Edit activities'),
+      //'structure' => t('Edit structure'),
+      '' => t('Edit phases and activities'),
       'stages' => t('Edit temporal organization'),
       'groups' => t('Edit collaboration organization'),
       'roles' => t('Edit roles'),

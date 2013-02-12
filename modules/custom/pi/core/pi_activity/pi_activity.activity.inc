@@ -54,7 +54,8 @@ function pi_activity_content_view($activity, $arg_node_function)
 						{
 							include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 						}
-						$output .= node_view($loaded_node, FALSE, TRUE, TRUE);
+            $node_view = node_view($loaded_node, FALSE, TRUE, TRUE);
+						$output .= $node_view;
 					}
 				}
 				else

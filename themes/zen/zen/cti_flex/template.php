@@ -179,3 +179,7 @@ function cti_flex_preprocess_page(&$vars, $hook) {
 
 
 
+function phptemplate_filter_tips_more_info()
+{
+    return '';
+}

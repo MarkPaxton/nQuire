@@ -115,34 +115,51 @@
 
       var status = this.data('status')[itemId].status;
       var element = this.find('div[item-id="' + itemId + '"]');
+      var type = element.hasClass('inquiry-structure-phase-container') ? 'phase' : 'activity';
+      var inquiry = $('form[id^="inquiry-creator"]').find('input[name="inquiry_design"]').attr('value');
 
       element.find('.item-data').removeClass()
               .addClass('item-data item-' + status);
 
       var buttons = element.find('.inquiry-item-buttons');
       buttons.html('');
+      
+      var path = 'creator/' + inquiry + '/' + type + '/' + itemId;
+      var baseHref = window.location.pathname + (window.location.pathname.match(/\/$/) ? '' : '/') + type + '/' + itemId;
 
       buttons.append('&nbsp;&nbsp;');
-      if (status === 'deleted') {
-        buttons.append(this.inquiryStructureWidget('_createLink', 'undelete', 'do not delete'));
+
+      $('<a>').html('edit')
+              .attr('href', baseHref)
+              .attr('form_destination', path)
+              .click(function() {
+        return nQuireSubmitFormLinks.launch(this);
+      }).appendTo(buttons);
+
+      buttons.append('&nbsp;&nbsp;&nbsp;');
+
+      var deleteButton = $('<a>').html('delete');
+      if (status === 'new') {
+        deleteButton.attr('href', '#').click(function() {
+          self.inquiryStructureWidget('_itemAction', $(this), itemId, 'delete');
+          return false;
+        });
       } else {
-        if (status === 'new') {
-          //.append(this.inquiryStructureWidget('_createLink', 'rename', 'rename'))
-          //.append('&nbsp;&nbsp;')
-          buttons.append(this.inquiryStructureWidget('_createLink', 'delete', 'delete')).append('&nbsp;&nbsp;');
-        }
-
-        if (element.hasClass('inquiry-structure-phase-container')) {
-          buttons.append('&nbsp;&nbsp;&nbsp;');
-          buttons.append(this.inquiryStructureWidget('_createLink', 'addactivity', 'add activity'));
-        }
+        deleteButton.attr('href', baseHref + '/delete')
+                .attr('form_destination', path + '/delete')
+                .click(function() {
+          return nQuireSubmitFormLinks.launch(this);
+        });
       }
+      deleteButton.appendTo(buttons);
 
-      buttons.children().click(function(event) {
-        self.inquiryStructureWidget('_itemAction', $(this), itemId, $(this).attr('op'));
-        event.preventDefault();
-        event.stopPropagation();
-      });
+      if (type === 'phase') {
+        buttons.append('&nbsp;&nbsp;&nbsp;');
+        $('<a>').html('add activity').attr('href', '#').click(function() {
+          self.inquiryStructureWidget('_itemAction', $(this), itemId, 'addactivity');
+          return false;
+        }).appendTo(buttons);
+      }
 
       return this;
     },
@@ -186,7 +203,7 @@
       var n = this.data('nextNewId');
       this.data('nextNewId', n + 1);
 
-      var id = 'new' + n;
+      var id = 'new_' + n;
       var definition = this.data('availableTypes')[category][type];
 
       var item = {
@@ -243,7 +260,7 @@
           }
         });
       }
-      
+
       container.remove();
       this.inquiryStructureWidget('_dataModified');
     },

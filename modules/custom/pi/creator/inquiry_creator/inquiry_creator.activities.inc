@@ -51,7 +51,7 @@ function _inquiry_creator_activity_form(&$form_state, $design, $node) {
       '#title' => check_plain($type->title_label),
       '#description' => t('Write here the activity title.'),
       '#required' => TRUE,
-      '#default_value' => $node->title,
+      '#default_value' => nquire_commons_form_node_default_value($node, 'title', $form_state, 'title', ''),
   );
 
   //Show a simple textarea, no input selector required....
@@ -59,8 +59,8 @@ function _inquiry_creator_activity_form(&$form_state, $design, $node) {
       '#type' => 'textarea',
       '#title' => check_plain($type->body_label),
       '#description' => t('Write here the instructions for the inquiry participants. This should describe their tasks in this activity.'),
-      '#default_value' => $node->body,
-      '#required' => TRUE
+      '#default_value' => nquire_commons_form_node_default_value($node, 'body', $form_state, 'body', ''),
+      '#required' => FALSE,
   );
 
   inquiry_available_features_invoke('activity', 'form', $node, $design, $form, $form_state);
