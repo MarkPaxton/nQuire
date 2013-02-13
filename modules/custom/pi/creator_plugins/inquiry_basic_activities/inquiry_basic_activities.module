@@ -159,30 +159,7 @@ function inquiry_basic_activities_nquire_creator_activity_keyquestions_deployed_
   );
 }
 
-function inquiry_basic_activities_nquire_creator_activity_collectdata_form($activity, $design, &$form, &$form_state) {
-  $data = nquire_commons_decode_data($activity->data);
 
-  $title = t('Scientific instrument');
-  $description = t('Select a scientific instrument that the participants will use to collect data. ')
-          . '<br/>' . t('Alternatively, select \'No instrument\' if data will be manually entered by the users.');
-
-  module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
-  _inquiry_basic_activities_tool_form($form, $form_state, $data, $title, $description, TRUE, "creator/{$design->nid}/activity/{$activity->nid}");
-}
-
-function inquiry_basic_activities_nquire_creator_activity_collectdata_form_process(&$activity, $design, $form_values) {
-  module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
-  return _inquiry_basic_activities_tool_form_process($activity, $design, $form_values);
-}
-
-function inquiry_basic_activities_nquire_creator_activity_collectdata_delete(&$activity) {
-  $data = nquire_commons_decode_data($activity->data);
-  if (isset($data['measures'])) {
-    foreach ($data['measures'] as $measure_nid) {
-      inquiry_creator_delete_measure_node($measure_nid);
-    }
-  }
-}
 
 function inquiry_basic_activities_nquire_creator_activity_exploretool_form($activity, $design, &$form, &$form_state) {
   $data = nquire_commons_decode_data($activity->data);
@@ -214,3 +191,71 @@ function inquiry_basic_activities_nquire_creator_activity_keyanswers_deployed_ch
       ),
   );
 }
+
+
+/************************
+ ***** COLLECT DATA *****
+ ************************/
+
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_form($activity, $design, &$form, &$form_state) {
+  $data = nquire_commons_decode_data($activity->data);
+
+  $title = t('Scientific instrument');
+  $description = t('Select a scientific instrument that the participants will use to collect data. ')
+          . '<br/>' . t('Alternatively, select \'No instrument\' if data will be manually entered by the users.');
+
+  module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
+  _inquiry_basic_activities_tool_form($form, $form_state, $data, $title, $description, TRUE, "creator/{$design->nid}/activity/{$activity->nid}");
+}
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_form_process(&$activity, $design, $form_values) {
+  module_load_include('inc', 'inquiry_basic_activities', 'inquiry_basic_activities.tools');
+  return _inquiry_basic_activities_tool_form_process($activity, $design, $form_values);
+}
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_delete(&$activity) {
+  $data = nquire_commons_decode_data($activity->data);
+  if (isset($data['measures'])) {
+    foreach ($data['measures'] as $measure_nid) {
+      inquiry_creator_delete_measure_node($measure_nid);
+    }
+  }
+}
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_deployed_activity_type() {
+  return 'pi_sort_data';
+}
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_deployed_children_activities($design_activity) {
+  return array(
+      'add' => array(
+          'activity' => array(
+              'activity_type' => 'pi_data',
+              'title' => t('Add data'),
+              'body' => $design_activity->body,
+          ),
+      ),
+  );
+}
+
+
+function inquiry_basic_activities_nquire_creator_activity_collectdata_deployed_additional_content($design_activity) {
+  $result = array();
+  $data = nquire_commons_decode_data($design_activity->data);
+  if (isset($data['measures'])) {
+    foreach($data['measures'] as $design_measure_nid) {
+      $design_measure = node_load($design_measure_nid);
+      $result[$design_measure_nid] = array(
+          'type' => 'pi_available_measures',
+          'title' => $design_measure->title,
+          'measure_type' => $design_measure->measure_type,
+          'data' => $design_measure->data,
+          'activity_nid' => $design_activity->activity,
+      );
+    }
+  }
+  
+  return $result;
+}
+

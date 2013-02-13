@@ -1,4 +1,5 @@
 <?php
+
 // $Id: pi_available_measures.module,v 1.1 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
@@ -10,636 +11,564 @@
  * Implementation of pi_available_measures_node_info().
  */
 function pi_available_measures_node_info() {
-	return array(
-    'pi_available_measures' => array(
-      'name' => t('Inquiry available measures'), // Required.
-      'module' => 'pi_available_measures',  // Required.
-      'description' => t('What are you going to measure?'), // Required.
-      'has_title' => TRUE,
-      'title_label' => t('Name'),
-      'has_body' => TRUE,
-      'body_label' => t('Description'),
-      'min_word_count' => 2,
-      'locked' => TRUE
-	)
-	);
+  return array(
+      'pi_available_measures' => array(
+          'name' => t('Inquiry available measures'), // Required.
+          'module' => 'pi_available_measures', // Required.
+          'description' => t('What are you going to measure?'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Name'),
+          'has_body' => TRUE,
+          'body_label' => t('Description'),
+          'min_word_count' => 2,
+          'locked' => TRUE
+      )
+  );
 }
 
 /**
  * Implementation of pi_available_measures_perm().
  */
 function pi_available_measures_perm() {
+  
 }
 
 /**
  * Implementation of pi_available_measures_access().
  */
 function pi_available_measures_access($op, $node, $account) {
-	global $user;
-	$uid = $user->uid;
-	$details = get_inquiry_details_from_current_path();
+  global $user;
+  $uid = $user->uid;
 
-	if( is_numeric( $details->activity_id ) ){
+  /* FIX (eloy) allow delete if we are in Creator */
+  if (arg(0) == 'creator') {
+    return $uid == $node->uid;
+  } else {
+    $details = get_inquiry_details_from_current_path();
+    if (is_numeric($details->activity_id)) {
 
-		if ($op == 'create') {
-			return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
-		}
-		if ($op == 'update') {
-			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-		}
-		if ($op == 'delete') {
-			if (arg(0) == 'node' && arg(2) == 'delete') {
-				//get inquiry for session id and activity
-				$nid = arg(1);
-				$activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
-				$inquiry_id = pi_activity_get_inquiry_nid($activity_id);
-				if($inquiry_id && $activity_id) {
-					return pi_activity_check_node_function($activity_id, $uid, 'edit');
-				}
-				else {
-					return FALSE;
-				}
-			}
-			else {
-				return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-			}
-		}
-	}
+      if ($op == 'create') {
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
+      }
+      if ($op == 'update') {
+        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+      }
+      if ($op == 'delete') {
+        if (arg(0) == 'node' && arg(2) == 'delete') {
+          //get inquiry for session id and activity
+          $nid = arg(1);
+          $activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
+          $inquiry_id = pi_activity_get_inquiry_nid($activity_id);
+          if ($inquiry_id && $activity_id) {
+            return pi_activity_check_node_function($activity_id, $uid, 'edit');
+          } else {
+            return FALSE;
+          }
+        } else {
+          return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+        }
+      }
+    }
+  }
 }
-
 
 /**
  * Implementation of pi_available_measures_form().
  */
 function pi_available_measures_form(&$node) {
-	global $user;
-	$uid = $user->uid;
+  global $user;
+  $uid = $user->uid;
 
-	$details = get_inquiry_details_from_current_path();
+  $details = get_inquiry_details_from_current_path();
 
-	//if activity_id then set title to activity title otherise Add measure
-	if ($details->activity_id) {
-		$loaded_activity = node_load($details->activity_id);
-		drupal_set_title(t($loaded_activity->title));
-		$prefix = "<p>" . $loaded_activity->body . "</p>";
-	}
-	else {
-		drupal_set_title(t('Enter measurement'));
-		$prefix = "<p>Details of an available measure</p>";
-	}
+  //if activity_id then set title to activity title otherise Add measure
+  if ($details->activity_id) {
+    $loaded_activity = node_load($details->activity_id);
+    drupal_set_title(t($loaded_activity->title));
+    $prefix = "<p>" . $loaded_activity->body . "</p>";
+  } else {
+    drupal_set_title(t('Enter measurement'));
+    $prefix = "<p>Details of an available measure</p>";
+  }
 
-	$form['#attributes']['enctype'] = 'multipart/form-data';
+  $form['#attributes']['enctype'] = 'multipart/form-data';
 
-	//title
-	$type = node_get_types('type', $node);
-	$form['title'] = array(
-    '#type' => 'textfield',
-    '#title' => check_plain($type->title_label),
-    '#required' => TRUE,
-    '#default_value' => $node->title,
-    '#weight' => 0
-	);
+  //title
+  $type = node_get_types('type', $node);
+  $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => check_plain($type->title_label),
+      '#required' => TRUE,
+      '#default_value' => $node->title,
+      '#weight' => 0
+  );
 
-	//body text
-	$form['body_filter']['body'] = array(
-    '#type' => 'textarea',
-    '#title' => check_plain($type->body_label),
-    '#required' => TRUE,
-    '#default_value' => $node->body,
-    '#resizable' => FALSE,
-    '#rows' => 5,
-    '#weight' => 0.1
-	);
+  //body text
+  $form['body_filter']['body'] = array(
+      '#type' => 'textarea',
+      '#title' => check_plain($type->body_label),
+      '#required' => TRUE,
+      '#default_value' => $node->body,
+      '#resizable' => FALSE,
+      '#rows' => 5,
+      '#weight' => 0.1
+  );
 
-	//find filter properties for this inquiry
-	$filter_node = pi_measure_filter_get_measure_filter_for_inquiry($details->inquiry_id);
-	
-	$form['#prefix'] = $prefix;
+  //find filter properties for this inquiry
+  $filter_node = pi_measure_filter_get_measure_filter_for_inquiry($details->inquiry_id);
 
-	//symbol
-	if ($node->symbol) {
-		$default = $node->symbol;
-	}
-	else {
-		$default = $filter_node->symbol_value;
-	}
-	if ($filter_node->symbol_test) {
-		$form['symbol'] = array(
-   	 '#type' => 'textfield',
-   	 '#title' => t('Symbol / short-name'),
-   	 '#required' => FALSE,
-     '#default_value' => $default,
-   	 '#weight' => 0.2
-		);
-	}
-	else {
-		$form['symbol'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->symbol_value
-		);
-	}
+  $form['#prefix'] = $prefix;
 
-	//units
-	if ($node->units) {
-		$default = $node->units;
-	}
-	else {
-		$default = $filter_node->units_value;
-	}
-	if ($filter_node->units_test) {
-		$form['units'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Units'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#weight' => 0.3
-		);
-	}
-	else {
-		$form['units'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->units_value
-		);
-	}
+  //symbol
+  if ($node->symbol) {
+    $default = $node->symbol;
+  } else {
+    $default = $filter_node->symbol_value;
+  }
+  if ($filter_node->symbol_test) {
+    $form['symbol'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Symbol / short-name'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 0.2
+    );
+  } else {
+    $form['symbol'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->symbol_value
+    );
+  }
 
-	//units short
-	if ($node->units_short) {
-		$default = $node->units_short;
-	}
-	else {
-		$default = $filter_node->units_short_value;
-	}
+  //units
+  if ($node->units) {
+    $default = $node->units;
+  } else {
+    $default = $filter_node->units_value;
+  }
+  if ($filter_node->units_test) {
+    $form['units'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Units'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 0.3
+    );
+  } else {
+    $form['units'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->units_value
+    );
+  }
 
-	if ($filter_node->units_short_test) {
-		$form['units_short'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Units symbol / short name'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#weight' => 0.4
-		);
-	}
-	else {
-		$form['units_short'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->units_short
-		);
-	}
+  //units short
+  if ($node->units_short) {
+    $default = $node->units_short;
+  } else {
+    $default = $filter_node->units_short_value;
+  }
 
-	//field type
-	if ($node->field_type) {
-		$default = $node->field_type;
-	}
-	else {
-		$default = $filter_node->field_type_value;
-	}
-	if ($filter_node->field_type_test) {
-		$form['field_type'] = array(
-    '#type' => 'select',
-    '#title' => t('Select field type'),
-    '#required' => TRUE,
-    '#multiple' => FALSE,
-    '#default_value' => $default,
-    '#options' => pi_measure_filter_available_form_elements(),
-    '#description' => t('Select the type of form field you require. This will be used in the data collection interface.'),
-    '#weight' => 0.5
-		);
-	}
-	else {
-		$form['field_type'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->field_type_value
-		);
-	}
+  if ($filter_node->units_short_test) {
+    $form['units_short'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Units symbol / short name'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 0.4
+    );
+  } else {
+    $form['units_short'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->units_short
+    );
+  }
 
-	//data type
-	if ($node->data_type) {
-		$default = $node->data_type;
-	}
-	else {
-		$default = $filter_node->data_type_value;
-	}
-	if ($filter_node->data_type_test) {
-		$form['data_type'] = array(
-    '#type' => 'select',
-    '#title' => t('Select data type'),
-    '#required' => TRUE,
-    '#multiple' => FALSE,
-    '#default_value' => $default,
-    '#options' => array('numeric' => 'Numeric','text' => 'Text','menu' => 'Menu'),
-    '#description' => t('Select the type of data that should be entered. This will be used to validate the submitted form.'),
-    '#weight' => 0.6
-		);
-	}
-	else {
-		$form['data_type'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->data_type_value
-		);
-	}
+  //field type
+  if ($node->field_type) {
+    $default = $node->field_type;
+  } else {
+    $default = $filter_node->field_type_value;
+  }
+  if ($filter_node->field_type_test) {
+    $form['field_type'] = array(
+        '#type' => 'select',
+        '#title' => t('Select field type'),
+        '#required' => TRUE,
+        '#multiple' => FALSE,
+        '#default_value' => $default,
+        '#options' => pi_measure_filter_available_form_elements(),
+        '#description' => t('Select the type of form field you require. This will be used in the data collection interface.'),
+        '#weight' => 0.5
+    );
+  } else {
+    $form['field_type'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->field_type_value
+    );
+  }
 
-	//menu options
-	if ($node->list_options) {
-		$default = $node->list_options;
-	}
-	else {
-		$default = $filter_node->list_options_value;
-	}
+  //data type
+  if ($node->data_type) {
+    $default = $node->data_type;
+  } else {
+    $default = $filter_node->data_type_value;
+  }
+  if ($filter_node->data_type_test) {
+    $form['data_type'] = array(
+        '#type' => 'select',
+        '#title' => t('Select data type'),
+        '#required' => TRUE,
+        '#multiple' => FALSE,
+        '#default_value' => $default,
+        '#options' => array('numeric' => 'Numeric', 'text' => 'Text', 'menu' => 'Menu'),
+        '#description' => t('Select the type of data that should be entered. This will be used to validate the submitted form.'),
+        '#weight' => 0.6
+    );
+  } else {
+    $form['data_type'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->data_type_value
+    );
+  }
 
-	//list_options
-	if ($filter_node->list_options_test) {
-		$form['list_options'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Menu options list [for menus only]'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#description' => t('Enter the set of menu options (putting each option on a new line).'),
-    '#resizable' => FALSE,
-    '#rows' => 5,
-    '#weight' => 0.7
-		);
-	}
-	else {
-		$form['list_options'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->options_value
-		);
-	}
+  //menu options
+  if ($node->list_options) {
+    $default = $node->list_options;
+  } else {
+    $default = $filter_node->list_options_value;
+  }
 
-	//options content type
-	if ($node->content_options) {
-		$default = $node->content_options;
-	}
-	else {
-		$default = $filter_node->content_options_value;
-	}
-	$query = "SELECT {node_type}.type, {node_type}.name FROM {node_type}, {pi_available_content_types} WHERE {node_type}.type = {pi_available_content_types}.type";
-	$results = db_query($query);
-	$node_types = array();
-	$node_types[0] = "";
-	while($result = db_fetch_object($results)) {
-		$node_types[$result->type] = $result->name;
-	}
+  //list_options
+  if ($filter_node->list_options_test) {
+    $form['list_options'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Menu options list [for menus only]'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#description' => t('Enter the set of menu options (putting each option on a new line).'),
+        '#resizable' => FALSE,
+        '#rows' => 5,
+        '#weight' => 0.7
+    );
+  } else {
+    $form['list_options'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->options_value
+    );
+  }
 
-	if ($filter_node->content_options_test) {
-		$form['content_options'] = array(
-    '#type' => 'select',
-    '#title' => t('Menu options from content type [for menus only - used if menu options list is empty]'),
-    '#required' => FALSE,
-    '#description' => t('Alternatively, enter the content type from which the menu options will be taken.'),
-    '#default_value' => $default,
-		'#options' => $node_types,
-    '#weight' => 0.8
-		);
-	}
-	else {
-		$form['content_options'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->content_options_value
-		);
-	}
+  //options content type
+  if ($node->content_options) {
+    $default = $node->content_options;
+  } else {
+    $default = $filter_node->content_options_value;
+  }
+  $query = "SELECT {node_type}.type, {node_type}.name FROM {node_type}, {pi_available_content_types} WHERE {node_type}.type = {pi_available_content_types}.type";
+  $results = db_query($query);
+  $node_types = array();
+  $node_types[0] = "";
+  while ($result = db_fetch_object($results)) {
+    $node_types[$result->type] = $result->name;
+  }
 
-	//textfield size
-	if ($node->textfield_size) {
-		$default = $node->textfield_size;
-	}
-	else {
-		$default = $filter_node->textfield_size_value;
-	}
-	if ($filter_node->textfield_size_test) {
-		$form['textfield_size'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Textfield size'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#weight' => 0.9
-		);
-	}
-	else {
-		$form['textfield_size'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $default
-		);
-	}
+  if ($filter_node->content_options_test) {
+    $form['content_options'] = array(
+        '#type' => 'select',
+        '#title' => t('Menu options from content type [for menus only - used if menu options list is empty]'),
+        '#required' => FALSE,
+        '#description' => t('Alternatively, enter the content type from which the menu options will be taken.'),
+        '#default_value' => $default,
+        '#options' => $node_types,
+        '#weight' => 0.8
+    );
+  } else {
+    $form['content_options'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->content_options_value
+    );
+  }
 
-	//textarea columns
-	if ($node->textarea_cols) {
-		$default = $node->textarea_cols;
-	}
-	else {
-		$default = $filter_node->textarea_cols_value;
-	}
-	if ($filter_node->textarea_cols_test) {
-		$form['textarea_cols'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Textarea cols'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#weight' => 1.0
-		);
-	}
-	else {
-		$form['textarea_cols'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $default
-		);
-	}
+  //textfield size
+  if ($node->textfield_size) {
+    $default = $node->textfield_size;
+  } else {
+    $default = $filter_node->textfield_size_value;
+  }
+  if ($filter_node->textfield_size_test) {
+    $form['textfield_size'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Textfield size'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 0.9
+    );
+  } else {
+    $form['textfield_size'] = array(
+        '#type' => 'hidden',
+        '#value' => $default
+    );
+  }
 
-	//textarea rows
-	if ($node->textarea_rows) {
-		$default = $node->textarea_rows;
-	}
-	else {
-		$default = $filter_node->textarea_rows_value;
-	}
-	if ($filter_node->textarea_rows_test) {
-		$form['textarea_rows'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Textarea rows'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#weight' => 1.1
-		);
-	}
-	else {
-		$form['textarea_rows'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $default
-		);
-	}
+  //textarea columns
+  if ($node->textarea_cols) {
+    $default = $node->textarea_cols;
+  } else {
+    $default = $filter_node->textarea_cols_value;
+  }
+  if ($filter_node->textarea_cols_test) {
+    $form['textarea_cols'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Textarea cols'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 1.0
+    );
+  } else {
+    $form['textarea_cols'] = array(
+        '#type' => 'hidden',
+        '#value' => $default
+    );
+  }
+
+  //textarea rows
+  if ($node->textarea_rows) {
+    $default = $node->textarea_rows;
+  } else {
+    $default = $filter_node->textarea_rows_value;
+  }
+  if ($filter_node->textarea_rows_test) {
+    $form['textarea_rows'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Textarea rows'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 1.1
+    );
+  } else {
+    $form['textarea_rows'] = array(
+        '#type' => 'hidden',
+        '#value' => $default
+    );
+  }
 
 
-	//measurement device name
-	if ($node->measurement_device_name) {
-		$default = $node->measurement_device_name;
-	}
-	else {
-		$default = $filter_node->measurement_device_name_value;
-	}
-	if ($filter_node->measurement_device_name_test) {
-		$form['measurement_device_name'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Device name'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#weight' => 1.2
-		);
-	}
-	else {
-		$form['measurement_device_name'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->measurement_device_name_value
-		);
-	}
+  //measurement device name
+  if ($node->measurement_device_name) {
+    $default = $node->measurement_device_name;
+  } else {
+    $default = $filter_node->measurement_device_name_value;
+  }
+  if ($filter_node->measurement_device_name_test) {
+    $form['measurement_device_name'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Device name'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 1.2
+    );
+  } else {
+    $form['measurement_device_name'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->measurement_device_name_value
+    );
+  }
 
-	//measurement device description
-	if ($node->measurement_device_description) {
-		$default = $node->measurement_device_description;
-	}
-	else {
-		$default = $filter_node->measurement_device_description_value;
-	}
-	if ($filter_node->measurement_device_description_test) {
-		$form['measurement_device_description'] = array(
-    '#type' => 'textfield',
-    '#title' => t('Device description'),
-    '#required' => FALSE,
-    '#default_value' => $default,
-    '#weight' => 1.3
-		);
-	}
-	else {
-		$form['measurement_device_description'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->measurement_device_description_value
-		);
-	}
+  //measurement device description
+  if ($node->measurement_device_description) {
+    $default = $node->measurement_device_description;
+  } else {
+    $default = $filter_node->measurement_device_description_value;
+  }
+  if ($filter_node->measurement_device_description_test) {
+    $form['measurement_device_description'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Device description'),
+        '#required' => FALSE,
+        '#default_value' => $default,
+        '#weight' => 1.3
+    );
+  } else {
+    $form['measurement_device_description'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->measurement_device_description_value
+    );
+  }
 
 
-	if ($node->image_filename) {
-		$default = $node->image_filename;
-		$image = node_load($node->image_filename);
-		$current_text = '(current image = ' . $image->title . ')';
-	}
-	elseif ($default = $filter_node->image_filename_value) {
-		$default = $filter_node->image_filename_value;
-		$image = node_load($filter_node->image_filename_value);
-		$current_text = '(current image = ' . $image->title . ')';
-	}
-	else {
-		$current_text = '(no image currently selected)';
-	}
-	if ($filter_node->image_filename_test) {
-		$form['image_filename'] = array(
-    '#type' => 'file',
-    '#title' => t('Picture'),
-    '#size' => 48,
-    '#description' => t('Select an image to illustrate the measurement or measurement device ' . $current_text . '.'),
-    '#default_value' => $default,
-    '#weight' => 7
-		);
-	}
-	else {
-		$form['image_filename'] = array(
-   	 '#type' => 'hidden',
-     '#value' => $filter_node->image_filename_value
-		);
-	}
-	return $form;
+  if ($node->image_filename) {
+    $default = $node->image_filename;
+    $image = node_load($node->image_filename);
+    $current_text = '(current image = ' . $image->title . ')';
+  } elseif ($default = $filter_node->image_filename_value) {
+    $default = $filter_node->image_filename_value;
+    $image = node_load($filter_node->image_filename_value);
+    $current_text = '(current image = ' . $image->title . ')';
+  } else {
+    $current_text = '(no image currently selected)';
+  }
+  if ($filter_node->image_filename_test) {
+    $form['image_filename'] = array(
+        '#type' => 'file',
+        '#title' => t('Picture'),
+        '#size' => 48,
+        '#description' => t('Select an image to illustrate the measurement or measurement device ' . $current_text . '.'),
+        '#default_value' => $default,
+        '#weight' => 7
+    );
+  } else {
+    $form['image_filename'] = array(
+        '#type' => 'hidden',
+        '#value' => $filter_node->image_filename_value
+    );
+  }
+  return $form;
 }
 
 /**
  * Implementation of pi_available_measures_valiate().
  */
-
 function pi_available_measures_validate($node, &$form) {
-	//If field type is text line then data type must be numeric or text
-	if ($node->field_type == 'textfield' && !($node->data_type ==  'numeric' || $node->data_type ==  'text')) {
-		form_set_error('Single line text field', 'If the field type is a single text line then the data type must be numeric or text');
-	}
-	//If field type is textarea then data type must be text
-	if ($node->field_type == 'textarea' && $node->data_type !=  'text') {
-		form_set_error('Multi-line text field', 'If the field type is multi-line text then the data type must be text');
-	}
+  //If field type is text line then data type must be numeric or text
+  if ($node->field_type == 'textfield' && !($node->data_type == 'numeric' || $node->data_type == 'text')) {
+    form_set_error('Single line text field', 'If the field type is a single text line then the data type must be numeric or text');
+  }
+  //If field type is textarea then data type must be text
+  if ($node->field_type == 'textarea' && $node->data_type != 'text') {
+    form_set_error('Multi-line text field', 'If the field type is multi-line text then the data type must be text');
+  }
 
-	//If field type is pull down menu, radio buttons or checkboxes then data type must be menu
-	if ($node->data_type ==  'menu' && !($node->field_type ==  'select' || $node->field_type ==  'radios' || $node->field_type ==  'checkboxes')) {
-		form_set_error('Menu type fields', 'If the field type is pull down menu, radio buttons or checkboxes then the data type must be menu');
-	}
+  //If field type is pull down menu, radio buttons or checkboxes then data type must be menu
+  if ($node->data_type == 'menu' && !($node->field_type == 'select' || $node->field_type == 'radios' || $node->field_type == 'checkboxes')) {
+    form_set_error('Menu type fields', 'If the field type is pull down menu, radio buttons or checkboxes then the data type must be menu');
+  }
 
-	//If data type is menu then either menu options list or menu options content type must be set
-	if ($node->data_type ==  'menu' && !$node->list_options && !$node->content_options) {
-		form_set_error('Menu content', 'If the data type is menu then either menu options list or menu options content type must be set');
-	}
+  //If data type is menu then either menu options list or menu options content type must be set
+  if ($node->data_type == 'menu' && !$node->list_options && !$node->content_options) {
+    form_set_error('Menu content', 'If the data type is menu then either menu options list or menu options content type must be set');
+  }
 }
 
 /**
  * hook_insert() for available_measures: adds image node if needed
  */
 function pi_available_measures_insert($node) {
-	$validators = array(
-		'file_validate_is_image' => array(),
-	);
-
-	if($tdpic = file_save_upload('image_filename', $validators))
-	{
-		$pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
-		file_copy($tdpic,'images/'.$tdpic->filename);
-		$image_node = image_create_node_from($tdpic->filepath);
-		$pic_nid = $image_node->nid;
-		db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, list_options, content_options, textfield_size, textarea_cols, textarea_rows, measurement_device_name, measurement_device_description, image_id) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, '%s','%s', %d)",
-		$node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $pic_nid);
-	}
-	else
-	{
-		db_query("INSERT INTO {pi_available_measures} (nid, vid, symbol, units, units_short, field_type, data_type, list_options, content_options, textfield_size, textarea_cols, textarea_rows, measurement_device_name, measurement_device_description) VALUES (%d, %d, '%s', '%s', '%s', '%s', '%s', '%s', '%s', %d, %d, %d, '%s', '%s')",
-		$node->nid, $node->vid, $node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $textarea_rows, $node->measurement_device_name, $node->measurement_device_description);
-	};
+  db_query("INSERT INTO {pi_available_measures} (nid, vid, measure_type, data, activity_nid) VALUES (%d, %d, '%s', '%s', %d)", $node->nid, $node->vid, $node->measure_type, $node->data, $node->activity_nid);
 }
 
 /**
  * Implementation of pi_available_measures_update().
  */
 function pi_available_measures_update($node) {
-	if ($node->revision)
-	{
-		pi_available_measures_insert($node);
-	}
-	else
-	{
-		if($tdpic = file_save_upload('image_filename'))
-		{
-			$pic = $tdpic->filename; //this way you have the value of your posted file-field as you see in this line
-			file_copy($tdpic,'images/'.$tdpic->filename);
-			$image_node = image_create_node_from($tdpic->filepath);
-			$pic_nid = $image_node->nid;
-			db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', list_options = '%s', content_options = '%s', textfield_size = '%d', textarea_cols = '%d', textarea_rows = '%d', measurement_device_name = '%s', measurement_device_description = '%s', image_id = '%d' WHERE vid = %d",
-			$node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $node->textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $pic_nid, $node->vid);
-		}
-		else
-		{
-			db_query("UPDATE {pi_available_measures} SET symbol = '%s', units = '%s', units_short = '%s', field_type = '%s', data_type = '%s', list_options = '%s', content_options = '%s', textfield_size = '%d', textarea_cols = '%d', textarea_rows = '%d', measurement_device_name = '%s', measurement_device_description = '%s' WHERE vid = %d",
-			$node->symbol, $node->units, $node->units_short, $node->field_type, $node->data_type, $node->list_options, $node->content_options, $node->textfield_size, $node->textarea_cols, $node->textarea_rows, $node->measurement_device_name, $node->measurement_device_description, $node->vid);
-		};
-	}
+  if ($node->revision) {
+    pi_available_measures_insert($node);
+  } else {
+    db_query("UPDATE {pi_available_measures} SET measure_type = '%s', data = '%s', activity_nid = '%d' WHERE vid = %d", $node->measure_type, $node->data, $node->activity_nid, $node->vid);
+  }
 }
 
 /**
  * Implementation of pi_available_measures_delete().
  */
 function pi_available_measures_delete(&$node) {
-	// Delete the related information we were saving for this node.
-	db_query('DELETE FROM {pi_available_measures} WHERE nid = %d', $node->nid);
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_available_measures} WHERE nid = %d', $node->nid);
 }
 
 /**
  * Implementation of pi_available_measures_load().
  */
 function pi_available_measures_load($node) {
-	// drupal_add_js('misc/collapse.js');
-	return db_fetch_object(db_query('SELECT * FROM {pi_available_measures} WHERE vid = %d',
-	$node->vid));
+  // drupal_add_js('misc/collapse.js');
+  return db_fetch_object(db_query('SELECT * FROM {pi_available_measures} WHERE vid = %d', $node->vid));
 }
 
 /**
  * Implementation of hook_view().
  */
 function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
+  global $user;
+  $node_details = get_inquiry_details_from_current_path();
 
-	// Use Drupal's default node view.
-	$node = node_prepare($node, $teaser);
-	if(is_numeric($node_details->activity_id))
-	{
-		$current_activity = node_load($node_details->activity_id);
-		if ($current_activity->title)
-		{
-			drupal_set_title(check_plain($current_activity->title));
-		}
-	}
-	
-	$filter_node = pi_measure_filter_get_measure_filter_for_inquiry($node_details->inquiry_id);
+  // Use Drupal's default node view.
+  $node = node_prepare($node, $teaser);
+  if (is_numeric($node_details->activity_id)) {
+    $current_activity = node_load($node_details->activity_id);
+    if ($current_activity->title) {
+      drupal_set_title(check_plain($current_activity->title));
+    }
+  }
 
-	// Load the measure data into a list, to save time stick them in a master list:
-	// "switch" method", "value" method and text description
-	$measure_parameters_switch_values_and_description_list = array(
-	array('symbol_test', 'symbol', 'Symbol / short-name'),
-	array('units_test', 'units', 'Units'),
-	array('units_short_test', 'units_short', 'Units symbol / short name'),
-	array('data_type_test', 'data_type', 'Data type'),
-	array('list_options_test', 'list_options', 'Menu options'),
-	array('content_options_test', 'content_options', 'Content options'),
-	array('measurement_device_name_test', 'measurement_device_name', 'Device name'),
-	array('measurement_device_description_test', 'measurement_device_description', 'Device description'),
-	);
+  $filter_node = pi_measure_filter_get_measure_filter_for_inquiry($node_details->inquiry_id);
 
-	$measure_parameters_defined = array();
-	foreach($measure_parameters_switch_values_and_description_list as $parameter)
-	{
-		$switch = $parameter[0];
-		 
-		// See if the parameter is used
-		if($filter_node->$switch)
-		{
-			$value = $parameter[1];
-			if(strlen($node->$value)>0)
-			{
-				$description = $parameter[2];
-				// Handle the special types or default to a standard format
-				switch($value)
-				{
-					case 'data_type':
-						$processed_value = ucwords($node->$value);
-						break;
-					case 'list_options':
-						$raw_values = explode("\n", $node->$value);
-						$processed_value = array();
-						foreach($raw_values as $raw_value)
-						{
-							$processed_value[] = trim($raw_value);
-						}
-						break;
-					default:
-						$processed_value = $node->$value;
-				}
-				$measure_parameters_defined[$value] = array(
-		    		'title' => $description,
-	    			'value' => $processed_value
-				);
-			}
-		}
-	}
-	$measure_parameters_defined['field_type'] = array(
-		'title' => t('Field type'),
-	    'value' => $node->field_type
-	);
+  // Load the measure data into a list, to save time stick them in a master list:
+  // "switch" method", "value" method and text description
+  $measure_parameters_switch_values_and_description_list = array(
+      array('symbol_test', 'symbol', 'Symbol / short-name'),
+      array('units_test', 'units', 'Units'),
+      array('units_short_test', 'units_short', 'Units symbol / short name'),
+      array('data_type_test', 'data_type', 'Data type'),
+      array('list_options_test', 'list_options', 'Menu options'),
+      array('content_options_test', 'content_options', 'Content options'),
+      array('measurement_device_name_test', 'measurement_device_name', 'Device name'),
+      array('measurement_device_description_test', 'measurement_device_description', 'Device description'),
+  );
 
-	if($teaser)
-	{
-		$node->content['pi_available_measures_teaser'] = array(
-			'#value' => theme('pi_available_measures_teaser', $node, $measure_parameters_defined),
-			'#weight' => 0,
-			'#style' => 'margin-top:2px;'
-			);
-			$node->content['body']['#value'] = '';
-	}
-	else
-	{
-		if ($node->image_id)
-		{
-			$node->content['pi_available_measures_image'] = array(
-		      '#value' => theme('pi_available_measures_image', $node->image_id, $teaser),
-		      '#weight' => -1
-			);
-		}
-		$node->content['pi_available_measures'] = array(
-			'#value' => theme('pi_available_measures', $node, $measure_parameters_defined),
-			'#weight' => 1
-		);
-		 
-	}
-	return $node;
+  $measure_parameters_defined = array();
+  foreach ($measure_parameters_switch_values_and_description_list as $parameter) {
+    $switch = $parameter[0];
+
+    // See if the parameter is used
+    if ($filter_node->$switch) {
+      $value = $parameter[1];
+      if (strlen($node->$value) > 0) {
+        $description = $parameter[2];
+        // Handle the special types or default to a standard format
+        switch ($value) {
+          case 'data_type':
+            $processed_value = ucwords($node->$value);
+            break;
+          case 'list_options':
+            $raw_values = explode("\n", $node->$value);
+            $processed_value = array();
+            foreach ($raw_values as $raw_value) {
+              $processed_value[] = trim($raw_value);
+            }
+            break;
+          default:
+            $processed_value = $node->$value;
+        }
+        $measure_parameters_defined[$value] = array(
+            'title' => $description,
+            'value' => $processed_value
+        );
+      }
+    }
+  }
+  $measure_parameters_defined['field_type'] = array(
+      'title' => t('Field type'),
+      'value' => $node->field_type
+  );
+
+  if ($teaser) {
+    $node->content['pi_available_measures_teaser'] = array(
+        '#value' => theme('pi_available_measures_teaser', $node, $measure_parameters_defined),
+        '#weight' => 0,
+        '#style' => 'margin-top:2px;'
+    );
+    $node->content['body']['#value'] = '';
+  } else {
+    if ($node->image_id) {
+      $node->content['pi_available_measures_image'] = array(
+          '#value' => theme('pi_available_measures_image', $node->image_id, $teaser),
+          '#weight' => -1
+      );
+    }
+    $node->content['pi_available_measures'] = array(
+        '#value' => theme('pi_available_measures', $node, $measure_parameters_defined),
+        '#weight' => 1
+    );
+  }
+  return $node;
 }
 
 /**
@@ -647,19 +576,18 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
  * @return array of theme data as per drupal 6 api
  */
 function pi_available_measures_theme() {
-	return array(
-	    'pi_available_measures' => array(
-			'arguments' => array('node', 'measures_parameters'),
-	),
-	    'pi_available_measures_teaser' => array(
-			'arguments' => array('node', 'measures_parameters'),
-	),
-		'pi_available_measures_image' => array(
-			'arguments' => array('image_node_nid','teaser')
-	)
-	);
+  return array(
+      'pi_available_measures' => array(
+          'arguments' => array('node', 'measures_parameters'),
+      ),
+      'pi_available_measures_teaser' => array(
+          'arguments' => array('node', 'measures_parameters'),
+      ),
+      'pi_available_measures_image' => array(
+          'arguments' => array('image_node_nid', 'teaser')
+      )
+  );
 }
-
 
 /**
  * Theme function for pi_acailale_measures
@@ -670,32 +598,30 @@ function pi_available_measures_theme() {
  */
 function theme_pi_available_measures($node, $measures_parameters) {
 
-	$output = '';
+  $output = '';
 
-	unset($measures_parameters['field_type']);
-	// For the long list of parameters, iterate through them and process any exceptions here,
-	// otherwise use a standard format.
-	foreach($measures_parameters as $parameter_type => $parameter)
-	{
-		$print_title = $parameter['title'];
-		switch($parameter_type)
-		{
-			case 'data_type':
-				$print_value = check_plain(ucwords($parameter['value']));
-				break;
-			case 'list_options':
-				$print_value = theme('item_list', $parameter['value']);
-				break;
-			case 'content_options':
-				$print_value = theme('item_list', get_node_teasers_by_type($measures_parameters['content_options']['value']));
+  unset($measures_parameters['field_type']);
+  // For the long list of parameters, iterate through them and process any exceptions here,
+  // otherwise use a standard format.
+  foreach ($measures_parameters as $parameter_type => $parameter) {
+    $print_title = $parameter['title'];
+    switch ($parameter_type) {
+      case 'data_type':
+        $print_value = check_plain(ucwords($parameter['value']));
+        break;
+      case 'list_options':
+        $print_value = theme('item_list', $parameter['value']);
+        break;
+      case 'content_options':
+        $print_value = theme('item_list', get_node_teasers_by_type($measures_parameters['content_options']['value']));
 
-				break;
-			default:
-				$print_value = check_plain($parameter['value']);
-		}
-		$output .= "<p><span class='heading'>" . check_plain($print_title) . "</span>:&nbsp;" . $print_value . "</p>";
-	}
-	return $output;
+        break;
+      default:
+        $print_value = check_plain($parameter['value']);
+    }
+    $output .= "<p><span class='heading'>" . check_plain($print_title) . "</span>:&nbsp;" . $print_value . "</p>";
+  }
+  return $output;
 }
 
 /**
@@ -707,114 +633,103 @@ function theme_pi_available_measures($node, $measures_parameters) {
  */
 function theme_pi_available_measures_teaser($node, $measures_parameters) {
 
-	$output = '';
+  $output = '';
 
-	switch ($measures_parameters['field_type']['value'])
-	{
-		case 'upload-file':
-			$output .= t('Upload a file');
-			unset($measures_parameters['data_type']);
-			break;
-		case 'upload-image':
-			$output .= t('Upload an image');
-			unset($measures_parameters['data_type']);
-			break;
-	}
-	unset($measures_parameters['field_type']);
-	if(array_key_exists('data_type', $measures_parameters))
-	{
-		switch(strtolower($measures_parameters['data_type']['value']))
-		{
-			case 'text':
-				switch ($measures_parameters['field_type'])
-				{
-					case 'upload-file':
-					case 'upload-image':
-						$output .= t('Upload');
-						break;
-					default:
-						$output .= t('Text');
-				}
-				unset($measures_parameters['data_type']);
-				break;
-			case 'numeric':
-				$output .= t('A number');
-				unset($measures_parameters['data_type']);
-				break;
-			case 'menu':
-				$title = t('Choose from');
-				if($measures_parameters['list_options']['value']) {
-					$value = implode(', ', $measures_parameters['list_options']['value']);
-					$output .= $title . ":&nbsp;" . check_plain($value);
-				}
-				elseif($measures_parameters['content_options']['value']) {
-					$value = implode(', ', get_node_titles_by_type($measures_parameters['content_options']['value']));
-						
-					$output .= $title . ":&nbsp;" . check_plain($value);
-				}
-				unset($measures_parameters['data_type']);
-				unset($measures_parameters['list_options']);
-				break;
-		}
-	}
-	if(isset($measures_parameters['units']))
-	{
-		$title = t('measured in');
-		$value = $measures_parameters['units']['value'];
-		$output .= " " . $title . " " . check_plain($value);
-		unset($measures_parameters['units']);
-	}
+  switch ($measures_parameters['field_type']['value']) {
+    case 'upload-file':
+      $output .= t('Upload a file');
+      unset($measures_parameters['data_type']);
+      break;
+    case 'upload-image':
+      $output .= t('Upload an image');
+      unset($measures_parameters['data_type']);
+      break;
+  }
+  unset($measures_parameters['field_type']);
+  if (array_key_exists('data_type', $measures_parameters)) {
+    switch (strtolower($measures_parameters['data_type']['value'])) {
+      case 'text':
+        switch ($measures_parameters['field_type']) {
+          case 'upload-file':
+          case 'upload-image':
+            $output .= t('Upload');
+            break;
+          default:
+            $output .= t('Text');
+        }
+        unset($measures_parameters['data_type']);
+        break;
+      case 'numeric':
+        $output .= t('A number');
+        unset($measures_parameters['data_type']);
+        break;
+      case 'menu':
+        $title = t('Choose from');
+        if ($measures_parameters['list_options']['value']) {
+          $value = implode(', ', $measures_parameters['list_options']['value']);
+          $output .= $title . ":&nbsp;" . check_plain($value);
+        } elseif ($measures_parameters['content_options']['value']) {
+          $value = implode(', ', get_node_titles_by_type($measures_parameters['content_options']['value']));
 
-	if(isset($measures_parameters['units_short']))
-	{
-		$value = $measures_parameters['units_short']['value'];
-		$output .= " (" . check_plain($value) . ")";
-		unset($measures_parameters['units_short']);
-	}
+          $output .= $title . ":&nbsp;" . check_plain($value);
+        }
+        unset($measures_parameters['data_type']);
+        unset($measures_parameters['list_options']);
+        break;
+    }
+  }
+  if (isset($measures_parameters['units'])) {
+    $title = t('measured in');
+    $value = $measures_parameters['units']['value'];
+    $output .= " " . $title . " " . check_plain($value);
+    unset($measures_parameters['units']);
+  }
 
-	if(isset($measures_parameters['measurement_device_name']))
-	{
-		$title = t('using');
-		$value = $measures_parameters['measurement_device_name']['value'];
-		$output .= " " . $title . " the " . check_plain($value);
-		unset($measures_parameters['measurement_device_name']);
-	}
+  if (isset($measures_parameters['units_short'])) {
+    $value = $measures_parameters['units_short']['value'];
+    $output .= " (" . check_plain($value) . ")";
+    unset($measures_parameters['units_short']);
+  }
 
-	return $output . ".";
+  if (isset($measures_parameters['measurement_device_name'])) {
+    $title = t('using');
+    $value = $measures_parameters['measurement_device_name']['value'];
+    $output .= " " . $title . " the " . check_plain($value);
+    unset($measures_parameters['measurement_device_name']);
+  }
+
+  return $output . ".";
 }
 
 function get_node_nids_by_type($content_type) {
-	$nids = array();
-	$query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
-	$result = db_query($query, $content_type);
-	while($content_node = db_fetch_object($result))
-	{
-		$nids[] = $content_node->nid;
-	}
-	return $nids;
+  $nids = array();
+  $query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
+  $result = db_query($query, $content_type);
+  while ($content_node = db_fetch_object($result)) {
+    $nids[] = $content_node->nid;
+  }
+  return $nids;
 }
 
 function get_node_titles_by_type($content_type) {
-	$titles = array();
-	$query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
-	$result = db_query($query, $content_type);
-	while($content_node = db_fetch_object($result))
-	{
-		$titles[] = $content_node->title;
-	}
-	return $titles;
+  $titles = array();
+  $query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
+  $result = db_query($query, $content_type);
+  while ($content_node = db_fetch_object($result)) {
+    $titles[] = $content_node->title;
+  }
+  return $titles;
 }
 
 function get_node_teasers_by_type($content_type) {
-	$titles = array();
-	$query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
-	$result = db_query($query, $content_type);
-	while($content_node = db_fetch_object($result))
-	{
-		// $titles[] = t($content_node->title) . node_view(node_load($content_node->nid), TRUE, TRUE);
-		$titles[] = node_view(node_load($content_node->nid), TRUE, FALSE);
-	}
-	return $titles;
+  $titles = array();
+  $query = "SELECT nid, title FROM {node} WHERE type = '%s' ORDER BY nid ASC";
+  $result = db_query($query, $content_type);
+  while ($content_node = db_fetch_object($result)) {
+    // $titles[] = t($content_node->title) . node_view(node_load($content_node->nid), TRUE, TRUE);
+    $titles[] = node_view(node_load($content_node->nid), TRUE, FALSE);
+  }
+  return $titles;
 }
 
 /**
@@ -822,37 +737,59 @@ function get_node_teasers_by_type($content_type) {
  * @param unknown_type $image_node_nid
  * @param unknown_type $teaser
  */
-function theme_pi_available_measures_image($image_node_nid, $teaser)
-{
-	$output = '';
-	// If the measure had an image attached, deal with that here so it can float left at the top of the page
-	$image_node = node_load($image_node_nid);
-	$output .= '<div style="float: right; clear: right; padding: 10px 0 10px 10px;">';
-	if($image_node->type=='image')
-	{
-		$output .= theme('image_teaser', $image_node, NULL);
-	}
-	else
-	{
-		$output .= t("Image ") . check_plain($image_node_nid) . t(' not found.');
-	}
-	$output .= '</div>';
-	return $output;
+function theme_pi_available_measures_image($image_node_nid, $teaser) {
+  $output = '';
+  // If the measure had an image attached, deal with that here so it can float left at the top of the page
+  $image_node = node_load($image_node_nid);
+  $output .= '<div style="float: right; clear: right; padding: 10px 0 10px 10px;">';
+  if ($image_node->type == 'image') {
+    $output .= theme('image_teaser', $image_node, NULL);
+  } else {
+    $output .= t("Image ") . check_plain($image_node_nid) . t(' not found.');
+  }
+  $output .= '</div>';
+  return $output;
 }
 
+function pi_available_measures_get_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) {
+  $nids = array();
+
+  $query = "SELECT DISTINCT nid FROM {pi_available_measures} WHERE activity_nid=%d";
+  $result = db_query($query, $sort_data_activity_nid);
+  while ($row = db_fetch_array($result)) {
+    $nids[] = $row['nid'];
+  }
+
+  return $nids;
+}
+
+function pi_available_measures_get_measure_nids_for_data_activity($data_activity) {
+  return pi_available_measures_get_measure_nids_for_sort_data_activity_nid($data_activity->parent_activity);
+}
 
 function pi_available_measures_get_measure_nids_for_data($data_node_nid) {
   $data_activity_nid = pi_activity_get_activity_nid_for_content_nid($data_node_nid);
   $data_activity = node_load($data_activity_nid);
-  $sort_data_activity_nid = $data_activity->parent_activity;
   
-  $nids = array();
-  
-  $query = "SELECT nid FROM {pi_available_measures} WHERE activity_nid=%d";
-  $result = db_query($query, $sort_data_activity_nid);
-  while($row = db_fetch_array($result)) {
-    $nids[] = $row['nid'];
-  }
-  
-  return $nids;
+  return pi_available_measures_get_measure_nids_for_data_activity($data_activity);
+}
+
+
+/***********************
+ * DATA FORM FUNCTIONS *
+ ***********************/
+
+function pi_available_measures_add_form_item($measure_node, &$form, $value, $weight) {
+  $form[$measure_node->nid] = array(
+      '#type' => 'textfield',
+      '#default_value' => $value,
+      '#weight' => $weight,
+      '#title' => $measure_node->title,
+      '#description' => $measure_node->description,
+      '#prefix' => '<p>this is measure ' . $measure_node->nid . ' of type ' . $measure_node->measure_type . '</p>',
+  );  
+}
+
+function pi_available_measures_validate_form_value($measure, $value) {
+  return;
 }

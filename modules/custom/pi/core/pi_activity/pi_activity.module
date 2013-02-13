@@ -82,15 +82,18 @@ function pi_activity_menu() {
   $items['activity/%node/view'] = array(
       'title' => 'View',
       'type' => MENU_DEFAULT_LOCAL_TASK,
-      'weight' => 0
+      'weight' => 0,
+      'access callback' => 'pi_activity_tab_view_access_callback',
+      'access arguments' => array(1),
   );
 
   $items['activity/%node/edit'] = array(
       'title' => 'Edit',
       'file' => 'pi_activity.activity.inc',
       'page callback' => 'pi_activity_content_view',
-      'page arguments' => array(1, 'edit'),
-      'access arguments' => array('access content'),
+      'page arguments' => array(1, 2),
+      'access arguments' => array(1),
+      'access callback' => 'pi_activity_tab_edit_access_callback',
       'type' => MENU_LOCAL_TASK,
       'weight' => 1
   );
@@ -155,6 +158,28 @@ function pi_activity_menu() {
   );
 
   return $items;
+}
+
+function pi_activity_tab_view_access_callback($node) {
+  global $user;
+
+  switch ($node->activity_type) {
+    case 'pi_data':
+    case 'pi_key_questions':
+    case 'pi_key_answers':
+      return FALSE;
+    default:
+      return TRUE;
+  }
+}
+
+function pi_activity_tab_edit_access_callback($node) {
+  switch ($node->activity_type) {
+    case 'pi_read_information':
+      return FALSE;
+    default:
+      return TRUE;
+  }
 }
 
 /**
@@ -1595,8 +1620,12 @@ function pi_activity_get_link($activity_id, $uid) {
   }
 
   // set editable nodes to be viewed by default
+  /* FIX (eloy) final node_function depends on activity */
   if ($node_function == 'edit') {
-    $node_function = 'view';
+    $activity = node_load($activity_id);
+    if (pi_activity_tab_view_access_callback($activity)) {
+      $node_function = 'view';
+    }
   }
 
   $url['url'] = "activity/" . $activity_id . "/" . $node_function;

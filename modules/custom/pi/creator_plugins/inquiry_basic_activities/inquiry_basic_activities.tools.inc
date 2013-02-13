@@ -64,3 +64,4 @@ function _inquiry_basic_activities_tool_form_process(&$activity, $design, $form_
     return FALSE;
   }
 }
+

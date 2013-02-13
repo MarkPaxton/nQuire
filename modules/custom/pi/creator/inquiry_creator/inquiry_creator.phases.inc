@@ -56,7 +56,7 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
       '#title' => check_plain($type->body_label),
       '#description' => t('A brief description of the phase objectives. This will help the inquiry participants understand their tasks.'),
       '#default_value' => $node->body,
-      '#required' => TRUE
+      '#required' => FALSE,
   );
 
   inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_phase_form_submit', "creator/{$design->nid}/");

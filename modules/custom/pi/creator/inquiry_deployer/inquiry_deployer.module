@@ -1,7 +1,6 @@
 <?php
 
 function inquiry_deployer_update_inquiry_node(&$design_node) {
-
   _inquiry_deployer_create_update_ref_node($design_node, 'inquiry', 'pi_inquiry', array(
       'layout' => 'list',
       'hide_activity_link' => 'pi_key_questions,pi_measure_filter,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary',
@@ -73,14 +72,9 @@ function inquiry_deployer_update_activity(&$design_node, &$design_phase, &$desig
         'existing_nid' => 'none',
     );
 
-    $main_activity_attrs = array_merge($base_attrs, is_array($activity_type) ?
-         $activity_type :
-         array(
-                'activity_type' => $activity_type,
-         )
-    );
-    
-    
+    $main_activity_attrs = array_merge($base_attrs, is_array($activity_type) ? $activity_type : array('activity_type' => $activity_type));
+
+
     $ref_activity_node = _inquiry_deployer_create_update_ref_node($design_activity, 'activity', 'pi_activity', $main_activity_attrs);
     $activity_content_def = inquiry_available_features_invoke('activity', 'deployed_activity_content', $design_activity);
     if ($activity_content_def) {
@@ -94,6 +88,14 @@ function inquiry_deployer_update_activity(&$design_node, &$design_phase, &$desig
             'parent_activity' => $ref_activity_node->nid,
                 )), $child['node']);
       }
+    }
+
+    $additional_content = inquiry_available_features_invoke('activity', 'deployed_additional_content', $design_activity);
+    if (is_array($additional_content)) {
+      foreach ($additional_content as $key => $content) {
+        _inquiry_deployer_create_update_additional_activity_content($design_activity, $key, $content);
+      }
+      _inquiry_deployer_delete_unwanted_additional_activity_content($design_activity, $additional_content);
     }
 
     $query = "UPDATE {pi_activity} SET phase_nid=%d WHERE parent_activity=%d AND phase_nid != %d";
@@ -182,6 +184,66 @@ function _inquiry_deployer_create_update_child_activity($design_activity, $child
   return $node;
 }
 
+function _inquiry_deployer_create_update_additional_activity_content($design_activity, $content_key, $content_def) {
+  $additional_content = nquire_commons_decode_data($design_activity->additional_content);
+
+  $content_node = node_load($additional_content[$content_key]);
+  $new = FALSE;
+  $changed = FALSE;
+
+  if ($content_node) {
+    if ($content_node->type !== $content_def['type']) {
+      node_delete($content_node->nid);
+      $content_node = NULL;
+    }
+  }
+
+  if (!$content_node) {
+    $new = TRUE;
+    $changed = TRUE;
+    $content_node = new stdClass();
+    $content_node->type = $content_def['type'];
+    $content_node->uid = $design_activity->uid;
+  }
+
+  foreach ($content_def as $key => $value) {
+    if ($content_node->$key != $value) {
+      $changed = TRUE;
+      $content_node->$key = $value;
+    }
+  }
+
+  if ($changed) {
+    $content_node->revision = !$new;
+    node_save($content_node);
+  }
+
+  if ($new) {
+    $additional_content[$content_key] = $content_node->nid;
+    $design_activity->additional_content = json_encode($additional_content);
+    $design_activity->  revision = TRUE;
+    node_save($design_activity);
+  }
+}
+
+function _inquiry_deployer_delete_unwanted_additional_activity_content($design_activity, $additional_content) {
+  $existing_additional_content = nquire_commons_decode_data($design_activity->additional_content);
+  $changed = FALSE;
+
+  foreach ($existing_additional_content as $key => $nid) {
+    if (!isset($additional_content[$key])) {
+      node_delete($nid);
+      unset($existing_additional_content[$key]);
+    }
+  }
+
+  if ($changed) {
+    $design_activity->additional_content = json_encode($existing_additional_content);
+    $design_activity->revision = TRUE;
+    node_save($design_activity);
+  }
+}
+
 function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $node_type, $node_attrs) {
   $node = node_load($design_node->$ref_attr);
 
@@ -235,18 +297,18 @@ function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $nod
 }
 
 function _inquiry_deployer_create_update_activity_content($ref_activity_node, $activity_content_def) {
-  
+
   $content_node = node_load($ref_activity_node->referenced_node);
   $new = FALSE;
   $changed = FALSE;
-  
+
   if ($content_node) {
-    if($content_node->type !== $activity_content_def['type']) {
+    if ($content_node->type !== $activity_content_def['type']) {
       node_delete($content_node->nid);
       $content_node = NULL;
     }
   }
-  
+
   if (!$content_node) {
     $new = TRUE;
     $changed = TRUE;
@@ -254,20 +316,21 @@ function _inquiry_deployer_create_update_activity_content($ref_activity_node, $a
     $content_node->type = $activity_content_def['type'];
     $content_node->uid = $ref_activity_node->uid;
   }
-  
-  foreach($activity_content_def as $key => $value) {
+
+  foreach ($activity_content_def as $key => $value) {
     if ($content_node->$key != $value) {
       $changed = TRUE;
-      $content_node->$key = $value;      
+      $content_node->$key = $value;
     }
   }
-  
+
   if ($changed) {
     $content_node->revision = !$new;
     node_save($content_node);
   }
-  
+
   if ($new) {
     db_query('UPDATE pi_activity SET referenced_node=%d WHERE vid=%d', $content_node->nid, $ref_activity_node->vid);
-  } 
+  }
 }
+
