@@ -839,3 +839,20 @@ function theme_pi_available_measures_image($image_node_nid, $teaser)
 	$output .= '</div>';
 	return $output;
 }
+
+
+function pi_available_measures_get_measure_nids_for_data($data_node_nid) {
+  $data_activity_nid = pi_activity_get_activity_nid_for_content_nid($data_node_nid);
+  $data_activity = node_load($data_activity_nid);
+  $sort_data_activity_nid = $data_activity->parent_activity;
+  
+  $nids = array();
+  
+  $query = "SELECT nid FROM {pi_available_measures} WHERE activity_nid=%d";
+  $result = db_query($query, $sort_data_activity_nid);
+  while($row = db_fetch_array($result)) {
+    $nids[] = $row['nid'];
+  }
+  
+  return $nids;
+}
