@@ -1,6 +1,6 @@
 <?php
 
-function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data, $title, $description, $measures_form = FALSE, $base_path = NULL) {
+function _inquiry_basic_activities_designer_tool_form(&$form, $form_state, $activity_data, $title, $description, $measures_form = FALSE, $base_path = NULL) {
   $tool_value = nquire_commons_form_data_default_value($activity_data, 'tool.type', $form_state, 'tool_type', 'none');
   
   $options = array('none' => t('-- No instrument')) + inquiry_available_features_list('tool');
@@ -40,7 +40,7 @@ function _inquiry_basic_activities_tool_form(&$form, $form_state, $activity_data
   return $tool_value;
 }
 
-function _inquiry_basic_activities_tool_form_process(&$activity, $design, $form_values) {
+function _inquiry_basic_activities_designer_tool_form_process(&$activity, $design, $form_values) {
   $type = $form_values['tool_type'];
 
   $data = array();

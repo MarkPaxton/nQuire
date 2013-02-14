@@ -74,26 +74,27 @@ function pi_data_form(&$node) {
 
 // Build the form
   $form = array();
+
+  $form['#attributes'] = array('enctype' => "multipart/form-data");
+
   $form['title'] = array(
       '#type' => 'hidden',
       '#value' => t('Data'),
   );
 
+  $form['data_form'] = array(
+      '#tree' => TRUE,
+  );
+  
   $measure_nids = pi_available_measures_get_measure_nids_for_data_activity($current_activity);
 
   /* TODO (eloy) filter and sort according of methodology */
   $filtered_measure_nids = $measure_nids;
 
-  $form['data_form'] = array(
-      '#tree' => TRUE,
-  );
-
-  $data_form = &$form['data_form'];
-
   foreach ($filtered_measure_nids as $i => $measure_nid) {
     $value = $node->values[$measure_nid];
     $measure_node = node_load($measure_nid);
-    pi_available_measures_add_form_item($measure_node, $data_form, $value, $i);
+    pi_available_measures_add_form_item($measure_node, $form, $value, FALSE);
   }
 
   return $form;
@@ -103,11 +104,14 @@ function pi_data_form(&$node) {
  * Implementation of hook_validate().
  */
 function pi_data_validate($node) {
-  $values = isset($node->data_form) ? $node->data_form : $node->values;
-  
-  foreach($values as $measures_nid => $value) {
-    $measure = node_load($measures_nid);
-    pi_available_measures_validate_form_value($measure, $value);
+  foreach ($node as $key => $value) {
+    if (strpos($key, 'measure_') == 0) {
+      $measure_nid = substr($key, 8);
+      $measure = node_load($measure_nid);
+      if ($measure) {
+        pi_available_measures_validate_form_value($measure, $value);
+      }
+    }
   }
 }
 
@@ -116,8 +120,15 @@ function pi_data_validate($node) {
  * @param $node the node to be inserted
  */
 function pi_data_insert($node) {
-  if (isset($node->data_form)) {
-    $node->values = $node->data_form;
+  foreach ($node as $key => $value) {
+    if (strpos($key, 'measure_') == 0) {
+      $measure_nid = substr($key, 8);
+      $measure = node_load($measure_nid);
+      if ($measure) {
+        pi_available_measures_process_form_value($measure, $value, $node->values[$measure_nid]);
+        $node->values[$measure_nid] = $value;
+      }
+    }
   }
   db_query("INSERT INTO {pi_collected_data} (nid, vid, key_question_nid) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->key_question_nid);
   foreach ($node->values as $measure_nid => $value) {
@@ -258,11 +269,11 @@ function theme_pi_data_node_form($form) {
     $output .= '<p>' . check_plain($activity->body) . '</p>';
   }
 
-  if (count($form['data_form']) > 0) {
-    $output .= drupal_render($form);
-  } else {
+//  if (count($form['data_form']) > 0) {
+  $output .= drupal_render($form);
+  /* } else {
     $output .= "<p>No measures are available.</p>";
-  }
+    } */
   return $output;
 }
 

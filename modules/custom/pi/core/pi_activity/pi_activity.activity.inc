@@ -35,6 +35,10 @@ function pi_activity_content_view($activity, $arg_node_function)
 		//   node function in the database for this inquiry and user
 		//$node_function = pi_activity_get_node_function($activity->nid, $user->uid);
 		// this is now handled with the access callback pi_activity_item_access
+    
+    /* FIX (eloy) */
+    $output .= '<p>' . check_plain($activity->body) . '</p>';
+    
 		switch($arg_node_function)
 		{
 			case 'view':

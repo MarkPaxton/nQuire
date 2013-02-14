@@ -1,14 +1,14 @@
 <?php
 
-function inquiry_basic_measures_nquire_creator_measure__number_name() {
+function inquiry_basic_measures_designer_nquire_creator_measure__number_name() {
   return t('Number');
 }
 
-function inquiry_basic_measures_nquire_creator_measure__number_description() {
+function inquiry_basic_measures_designer_nquire_creator_measure__number_description() {
   return t('A numeric value entered by the user. This measure will be presented as a textfield. nQuire will check that the value is a valid number.');
 }
 
-function inquiry_basic_measures_nquire_creator_measure__number_form($measure, &$form, $form_state) {
+function inquiry_basic_measures_designer_nquire_creator_measure__number_form($measure, &$form, $form_state) {
 
   $data = nquire_commons_decode_data($measure->data);
 
@@ -24,7 +24,7 @@ function inquiry_basic_measures_nquire_creator_measure__number_form($measure, &$
 }
 
 
-function inquiry_basic_measures_nquire_creator_measure__number_form_process($measure, $form_values) {
+function inquiry_basic_measures_designer_nquire_creator_measure__number_form_process($measure, $form_values) {
   $data = array();
   $data['units'] = trim($form_values['units']);
 
@@ -44,23 +44,54 @@ function inquiry_basic_measures_nquire_creator_measure__number_form_process($mea
 
 
 
-function inquiry_basic_measures_nquire_creator_measure__text_name() {
+function inquiry_basic_measures_designer_nquire_creator_measure__text_name() {
   return t('Text');
 }
 
-function inquiry_basic_measures_nquire_creator_measure__text_description() {
+function inquiry_basic_measures_designer_nquire_creator_measure__text_description() {
   return t('A free text value entered by the user. This measure will be presented as a textfield, or a textarea with the selected number of rows.');
 }
 
-function inquiry_basic_measures_nquire_creator_measure__options_name() {
+function inquiry_basic_measures_designer_nquire_creator_measure__text_form($measure, &$form, $form_state) {
+
+  $data = nquire_commons_decode_data($measure->data);
+
+  $rows = nquire_commons_form_data_default_value($data, 'rows', $form_state, 'rows', '1');
+
+  $form['rows'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Number of rows'),
+      '#description' => t('Write here the number of rows of the text field.'),
+      '#default_value' => $rows,
+      '#required' => TRUE,
+  );
+}
+
+function inquiry_basic_measures_designer_nquire_creator_measure__text_form_process($measure, $form_values) {
+  $data = array();
+  $data['rows'] = trim($form_values['rows']);
+
+  $new_data = json_encode($data);
+  if ($measure->data !== $new_data) {
+    $measure->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+
+
+
+function inquiry_basic_measures_designer_nquire_creator_measure__options_name() {
   return t('Option selection');
 }
 
-function inquiry_basic_measures_nquire_creator_measure__options_description() {
+function inquiry_basic_measures_designer_nquire_creator_measure__options_description() {
   return t('A menu selection, that lets the user choose one or several items. You can create below the items that will be offered to the user when creating data.');
 }
 
-function inquiry_basic_measures_nquire_creator_measure__options_form($measure, &$form, $form_state) {
+function inquiry_basic_measures_designer_nquire_creator_measure__options_form($measure, &$form, $form_state) {
 
   $data = nquire_commons_decode_data($measure->data);
 
@@ -78,7 +109,7 @@ function inquiry_basic_measures_nquire_creator_measure__options_form($measure, &
       '#description' => t('Write here the options that will be offered to the users when creating data. Please enter each option in a different line.'),
       '#default_value' => $options,
       '#required' => TRUE,
-      '#validate' => array('inquiry_basic_measures_nquire_creator_measure__options_form_options_validate'),
+      '#validate' => array('inquiry_basic_measures_designer_nquire_creator_measure__options_form_options_validate'),
   );
 
   $form['multiple_options'] = array(
@@ -98,8 +129,8 @@ function inquiry_basic_measures_nquire_creator_measure__options_form($measure, &
   );
 }
 
-function inquiry_basic_measures_nquire_creator_measure__options_form_validate($type, $form, $form_state) {
-  $list = _inquiry_basic_measures__options_list($form_state['values']['options']);
+function inquiry_basic_measures_designer_nquire_creator_measure__options_form_validate($type, $form, $form_state) {
+  $list = _inquiry_basic_measures_designer__options_list($form_state['values']['options']);
   if (count($list) < 2) {
     form_set_error('options', t('At least two different options are needed.'));
   } else {
@@ -119,7 +150,7 @@ function inquiry_basic_measures_nquire_creator_measure__options_form_validate($t
   return;
 }
 
-function _inquiry_basic_measures__options_list($text) {
+function _inquiry_basic_measures_designer__options_list($text) {
   $list = array();
   foreach (explode("\n", $text) as $line) {
     $l = trim($line);
@@ -130,9 +161,9 @@ function _inquiry_basic_measures__options_list($text) {
   return $list;
 }
 
-function inquiry_basic_measures_nquire_creator_measure__options_form_process($measure, $form_values) {
+function inquiry_basic_measures_designer_nquire_creator_measure__options_form_process($measure, $form_values) {
   $data = array();
-  $data['options'] = _inquiry_basic_measures__options_list($form_values['options']);
+  $data['options'] = _inquiry_basic_measures_designer__options_list($form_values['options']);
   $data['multiple_options'] = $form_values['multiple_options'];
   $data['widget'] = $form_values['widget'];
 
@@ -152,10 +183,10 @@ function inquiry_basic_measures_nquire_creator_measure__options_form_process($me
 
 
 
-function inquiry_basic_measures_nquire_creator_measure__image_name() {
+function inquiry_basic_measures_designer_nquire_creator_measure__image_name() {
   return t('Image upload');
 }
 
-function inquiry_basic_measures_nquire_creator_measure__image_description() {
+function inquiry_basic_measures_designer_nquire_creator_measure__image_description() {
   return t('This will allow participants to upload images to their data.');
 }

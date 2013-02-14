@@ -77,7 +77,8 @@ function pi_inquiry_phase_view($phase)
         $activity_desc = "";
         $activity_desc .= pi_activity_teaser($activity_content_node, $activity, $link_node_function);
 
-        $list[] = array('data' => $activity_link . $activity_desc, 'class' => 'activity');
+        //$list[] = array('data' => $activity_link . $activity_desc, 'class' => 'activity');
+        $list[] = array('data' => array($activity_link, $activity_desc), 'class' => 'activity');
       }
       else
         drupal_set_message( t( 'Activity %type is set to be hidden', array( '%type' => $activity->type ) ) );
@@ -87,7 +88,9 @@ function pi_inquiry_phase_view($phase)
     $type = 'ul';
     $attributes = array('class' => 'activity');
 
-    $output .= theme_item_list($list, $title, $type, $attributes);
+//    $output .= theme_item_list($list, $title, $type, $attributes);
+    $header = array(t('Activity'), t('Description'));
+    $output .= theme_table($header, $list, $attributes);
 
     if ($active_activity_flag == 0)
     {

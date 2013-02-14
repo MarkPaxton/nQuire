@@ -780,16 +780,58 @@ function pi_available_measures_get_measure_nids_for_data($data_node_nid) {
  ***********************/
 
 function pi_available_measures_add_form_item($measure_node, &$form, $value, $weight) {
-  $form[$measure_node->nid] = array(
-      '#type' => 'textfield',
-      '#default_value' => $value,
-      '#weight' => $weight,
-      '#title' => $measure_node->title,
-      '#description' => $measure_node->description,
-      '#prefix' => '<p>this is measure ' . $measure_node->nid . ' of type ' . $measure_node->measure_type . '</p>',
-  );  
+  _pi_available_measures_plugins_invoke('create_form_item', $measure_node, $form, $value, $weight, FALSE);
 }
 
-function pi_available_measures_validate_form_value($measure, $value) {
-  return;
+function pi_available_measures_validate_form_value($measure_node, $value) {
+  _pi_available_measures_plugins_invoke('validate_form_value', $measure_node, $value);
+}
+
+function pi_available_measures_process_form_value($measure_node, &$value, $old_value) {
+  _pi_available_measures_plugins_invoke('process_form_value', $measure_node, $value, $old_value);
+}
+
+function pi_available_measures_format_table_value($measure_node, $value) {
+  $formatted = _pi_available_measures_plugins_invoke('format_table_value', $measure_node, $value);
+  return $formatted === FALSE ? check_plain($value) : $formatted;
+}
+
+/*****************************
+ * PLUGIN REGISTER FUNCTIONS *
+ *****************************/
+
+function pi_available_measures_plugins_register_measure_type($type, $module) {
+  $modules = _pi_available_measures_plugins_get_modules();
+  $modules[$type] = $module;
+  _pi_available_measures_plugins_set_modules($modules);
+}
+
+function pi_available_measures_plugins_forget_measure_type($type) {
+  $modules = _pi_available_measures_plugins_get_modules();
+  unset($modules[$type]);
+  _pi_available_measures_plugins_set_modules($modules);
+}
+
+function _pi_available_measures_plugins_get_modules() {
+  return variable_get("pi_available_measures_plugins", array());
+}
+
+function _pi_available_measures_plugins_set_modules($modules) {
+  return variable_set("pi_available_measures_plugins", $modules);
+}
+
+function _pi_available_measures_plugins_get_module($type) {
+  $modules = _pi_available_measures_plugins_get_modules();
+  return isset($modules[$type]) ? $modules[$type] : FALSE;
+}
+
+function _pi_available_measures_plugins_invoke($hook, $measure_node, &$a = NULL, &$b = NULL, $c = NULL, $d = NULL) {
+  $module = _pi_available_measures_plugins_get_module($measure_node->measure_type);
+  if ($module) {
+    $fname = "{$module}_pi_measure_{$measure_node->measure_type}_{$hook}";
+    if (function_exists($fname)) {
+      return $fname($measure_node, $a, $b, $c, $d);
+    }
+  }
+  return FALSE;
 }

@@ -52,24 +52,24 @@ function inquiry_deployer_update_activity(&$design_node, &$design_phase, &$desig
       $design_stage = node_load($design_stage_nid, NULL, TRUE);
       $stage_data = nquire_commons_decode_data($design_stage->data);
       if (!isset($stage_data[$design_phase->nid]) || $stage_data[$design_phase->nid] === 'view') {
-        $stages[$design_stage->stage] = $design_stage->stage;
+        $stages[$design_stage->stage] = 'visible';
       }
     }
 
     $base_attrs = array(
-        'inquiry_nid' => $design_node->inquiry,
+        'inquiry_id' => $design_node->inquiry,
         'activity_phases_stages' => array(
             'phase_nid' => $design_phase->phase,
-            'stages' => array('stage_select' => $stages),
+            //'stages' => array('stage_select' => $stages),
+            'stages' => $stages,
         ),
         'destination_after' => 'phase',
         'selects' => array(
             'audience' => 'individual',
             'gid' => $inquiry_node->actor_gid,
         ),
-        'node_function' => 'add',
+        'node_function' => 'edit',
         'visible_status' => 'start',
-        'existing_nid' => 'none',
     );
 
     $main_activity_attrs = array_merge($base_attrs, is_array($activity_type) ? $activity_type : array('activity_type' => $activity_type));
@@ -161,7 +161,8 @@ function _inquiry_deployer_create_update_child_activity($design_activity, $child
   } else {
     if (is_array($activity_attrs)) {
       foreach ($activity_attrs as $key => $value) {
-        if ($node->$key !== $value) {
+       
+        if ($node->$key != $value) {
           $node->$key = $value;
           $save = TRUE;
           $node->revision = TRUE;
@@ -274,7 +275,8 @@ function _inquiry_deployer_create_update_ref_node(&$design_node, $ref_attr, $nod
     }
     if (is_array($node_attrs)) {
       foreach ($node_attrs as $key => $value) {
-        if ($node->$key !== $value) {
+        $equal = _inquiry_deployer_equal_values($value, $node->$key);
+        if (!$equal) {
           $node->$key = $value;
           $save = TRUE;
           $node->revision = TRUE;
@@ -334,3 +336,20 @@ function _inquiry_deployer_create_update_activity_content($ref_activity_node, $a
   }
 }
 
+
+function _inquiry_deployer_equal_values($a, $b) {
+  if (is_array($a) && is_array($b)) {
+    if (count($a) != count($b)) {
+      return FALSE;
+    }
+    
+    foreach($a as $k => $v) {
+      if (!isset($b[$k]) || !_inquiry_deployer_equal_values($v, $b[$k])) {
+        return FALSE;
+      }
+    }
+    return TRUE;
+  } else {
+    return $a == $b;
+  }  
+}

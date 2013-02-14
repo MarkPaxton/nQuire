@@ -1,0 +1,144 @@
+<?php
+
+function inquiry_basic_measures_pi_measure__text_create_form_item($measure_node, &$form, $value, $required) {
+  $item = array(
+      '#title' => check_plain($measure_node->title),
+      '#description' => check_plain($measure_node->body),
+      '#default_value' => $value,
+      '#required' => $required,
+  );
+
+  $data = nquire_commons_decode_data($measure_node->data);
+  $rows = max(1, (int) $data['rows']);
+
+  if ($rows === 1) {
+    $item['#type'] = 'textfield';
+  } else {
+    $item['#type'] = 'textarea';
+    $item['#rows'] = $rows;
+  }
+
+  $form["measure_" . $measure_node->nid] = $item;
+}
+
+function inquiry_basic_measures_pi_measure__text_format_table_value($measure_node, $value) {
+  return nl2br(check_plain($value));
+}
+
+/* * *****************
+ * Number measure *
+ * **************** */
+
+function inquiry_basic_measures_pi_measure__number_create_form_item($measure_node, &$form, $value, $required) {
+  $data = nquire_commons_decode_data($measure_node->data);
+
+  $title = check_plain($measure_node->title);
+  if ($data['units']) {
+    $title .= ' (' . $data['units'] . ')';
+  }
+
+  $form["measure_" . $measure_node->nid] = array(
+      '#type' => 'textfield',
+      '#title' => $title,
+      '#description' => check_plain($measure_node->body),
+      '#default_value' => $value,
+      '#required' => $required,
+  );
+}
+
+function inquiry_basic_measures_pi_measure__number_validate_form_value($measure_node, $value) {
+  if (strlen($value) > 0) {
+    if (!is_numeric($value)) {
+      form_set_error("measure_{$measure_node->nid}", t("The value of <i>@name</i> must be a number!", array('@name' => $measure_node->title)));
+    }
+  }
+}
+
+function inquiry_basic_measures_pi_measure__number_format_table_value($measure_node, $value) {
+  $data = nquire_commons_decode_data($measure_node->data);
+  $output = $value;
+  if ($value && strlen($value) > 0 && $data['units']) {
+    $output .= ' ' . $data['units'];
+  }
+  return check_plain($output);
+}
+
+/* * ****************
+ * Options measure *
+ * **************** */
+
+function inquiry_basic_measures_pi_measure__options_create_form_item($measure_node, &$form, $value, $required) {
+  $data = nquire_commons_decode_data($measure_node->data);
+
+
+  $type = NULL;
+  $multiple = $data['multiple_options'];
+
+  if ($data['widget'] === 'menu') {
+    $type = 'select';
+  } else if ($data['widget'] === 'buttons') {
+    $type = $multiple ? 'checkboxes' : 'radios';
+  }
+
+  $form["measure_" . $measure_node->nid] = array(
+      '#type' => $type,
+      '#title' => check_plain($measure_node->title),
+      '#description' => check_plain($measure_node->body),
+      '#multiple' => $multiple,
+      '#default_value' => $value,
+      '#required' => $required,
+      '#options' => $data['options'],
+  );
+}
+
+function inquiry_basic_measures_pi_measure__options_format_table_value($measure_node, $value) {
+  $data = nquire_commons_decode_data($measure_node->data);
+  return check_plain(isset($data['options'][$value]) ? $data['options'][$value] : $value);
+}
+
+/* * *****************
+ * Number measure *
+ * **************** */
+
+function inquiry_basic_measures_pi_measure__image_create_form_item($measure_node, &$form, $value) {
+  $form["measure_" . $measure_node->nid] = array(
+      '#type' => 'file',
+      '#title' => check_plain($measure_node->title),
+      '#description' => check_plain($measure_node->body),
+      '#default_value' => $value,
+      '#required' => FALSE,
+  );
+}
+
+
+function inquiry_basic_measures_pi_measure__image_process_form_value($measure_node, &$value, $old_value) {
+  $id = 'measure_' . $measure_node->nid;
+  $extensions = 'jpeg jpg gif tiff';
+  $size_limit = file_upload_max_size();
+  $validators = array(
+     /* 'my_file_validate_extensions' => array($extensions),
+      'my_file_validate_size' => array($size_limit),*/
+  );
+  $dest = file_directory_path() . '/pi_measures_image/';
+  file_check_directory($dest, TRUE);
+  $file = file_save_upload($id, $validators, $dest);
+  if ($file) {
+    file_set_status($file, FILE_STATUS_PERMANENT);
+    
+    if ($old_value && strlen($old_value) > 0) {
+      file_delete($old_value);
+    }
+    
+    $value = $file->filepath;
+  }
+}
+
+function _inquiry_basic_measures_pi_measure__image_format_table_value($measure_node, $value) {
+  $data = nquire_commons_decode_data($measure_node->data);
+  $output = $value;
+  if ($value && strlen($value) > 0 && $data['units']) {
+    $output .= ' ' . $data['units'];
+  }
+  return check_plain($output);
+}
+

@@ -178,77 +178,7 @@ function pi_sort_data_load($node) {
   return $result;
 }
 
-function pi_get_titles_of_nodes_of_type($type) {
-  $result = db_query("SELECT title FROM node WHERE type = '%s'", $type);
-  $count = 0;
-  $result_list = array();
-  while ($object = db_fetch_object($result)) {
-    $result_list[$object->title] = $count++;
-  }
-  return $result_list;
-}
 
-function pi_get_measure_value_list($measure_node) {
-  if ($measure_node->list_options) {
-    $explode = explode("\n", $measure_node->list_options);
-    $measure_values = array();
-    foreach ($explode as $key => $value) {
-      $measure_values[rtrim($value)] = $key;
-    }
-  } elseif ($measure_node->content_options) {
-    $measure_values = pi_get_titles_of_nodes_of_type($measure_node->content_options);
-  }
-  return $measure_values;
-}
-
-function pi_sort_data_items_around_key_measures($sorted_data_items, $key_measures, $selected_measure_nid) {
-  $key_measure_value_array = array();
-  if ($key_measures) {
-    foreach ($key_measures as $key => $key_measure) {
-      $measure_node = node_load($key);
-      if ($measure_node->list_options || $measure_node->content_options) {
-        $key_measure_value_array[$key] = pi_get_measure_value_list($measure_node);
-      } else {
-        return $sorted_data_items;
-      }
-    }
-  }
-
-  $key_measure_data_keys = array();
-  $count = 0;
-  if ($key_measures) {
-    foreach ($key_measures as $key => $key_measure) {
-      $key_measure_data_keys[$key] = $selected_measure_nid . '-' . $key;
-      $testnode = node_load($key);
-    }
-  }
-
-  $km_values = array();
-  foreach ($sorted_data_items as $data_key => $info) {
-    $data_node = node_load($data_key);
-    //$km_values[$data_key] = array();
-    $km_values['nid'][] = $data_key;
-    foreach ($key_measure_data_keys as $key_measure => $key_measure_data_key) {
-      $value = $data_node->categories[$key_measure_data_key]["#value"];
-      //$km_values[$data_key][$key_measure] = $key_measure_value_array[$key_measure][$value];
-      $km_values[$key_measure][] = $key_measure_value_array[$key_measure][$value];
-    }
-  }
-  $eval_string = 'array_multisort(';
-  foreach ($key_measures as $key => $value) {
-    $eval_string .= '$km_values[' . $key . '],SORT_ASC,';
-  }
-  $eval_string .= '$km_values[\'nid\'],SORT_ASC);';
-  eval($eval_string);
-
-  $count = 0;
-  foreach ($km_values['nid'] as $km_nid) {
-    $sorted_data_items[$km_nid]["#weight"] = $count++;
-  }
-
-  uasort($sorted_data_items, pi_util_weight_compare);
-  return $sorted_data_items;
-}
 
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
 
@@ -258,14 +188,6 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
   //print_r( $node );
 
   $node = node_prepare($node, $teaser);
-
-  if (is_numeric($node_details->activity_id)) {
-    $current_activity = node_load($node_details->activity_id);
-    if ($current_activity->title) {
-      drupal_set_title(check_plain($current_activity->title));
-    }
-  }
-
 
   $activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
@@ -296,13 +218,14 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
             . l(t('delete'), 'node/' . $nid . '/delete', array('query' => 'destination=phase/' . $node_details->phase_id));
 
     foreach ($measures as $measure) {
-      $row[] = $data_item_node->values[$measure->nid];
+      $row[] = pi_available_measures_format_table_value($measure, $data_item_node->values[$measure->nid]);
     }
     $data_rows[] = $row;
   }
 
 
   $link_output = make_add_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $activity_id_for_this_node, $user->uid);
+  
   $node->content['pi_sort_data_add_link'] = array(
       '#value' => $link_output,
       '#weight' => -3
@@ -416,7 +339,7 @@ function pi_sort_data_get_choice($node) {
 function pi_sort_data_get_item_nids($sort_data_activity_nid) {
   global $user;
   $details = get_inquiry_details_from_current_path();
-  
+
   $all_nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_data');
   $nids = array();
   foreach ($all_nids as $nid) {
