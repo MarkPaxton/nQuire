@@ -126,7 +126,7 @@ function pi_activity_content_view($activity, $arg_node_function)
 				  $loaded_node = new stdClass;
 				  $loaded_node->uid = $user->uid; 
 				  $loaded_node->name = (isset($user->name) ? $user->name : ''); 
-			      $loaded_node->type = $activity->node_type;
+			    $loaded_node->type = $activity->node_type;
 				  $loaded_node->language = '';
 				  $output .= node_page_edit($loaded_node);
 				}

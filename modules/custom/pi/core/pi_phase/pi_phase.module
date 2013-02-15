@@ -267,7 +267,10 @@ function pi_phase_load($node) {
  * @return array of nids referring to pi_phase nodes in the given inquiry
  */
 function pi_phase_load_nids($inquiry_nid) {
-  $query = "SELECT nid FROM {pi_phase} WHERE inquiry_nid = %d ORDER BY weight";
+  $query = "SELECT {node}.`nid` FROM {node} "
+          . "LEFT JOIN {pi_phase} ON node.`vid`= pi_phase.`vid` "
+          . "WHERE inquiry_nid = %d ORDER BY weight";
+
   $result = db_query($query, $inquiry_nid);
   $phase_nodes = array();
   while ($nid = db_result($result)) {

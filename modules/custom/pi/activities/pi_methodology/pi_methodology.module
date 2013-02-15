@@ -1,0 +1,622 @@
+<?php
+
+// $Id: pi_methodology.module,v 1.2 2010/02/15 09:17:48 ou_pm Exp $
+
+/**
+ * hook_node_info()
+ * @return array of node data as per hook_node api 
+ */
+function pi_methodology_node_info() {
+  return array(
+      'pi_methodology' => array(
+          'name' => t('Inquiry methodology'), // Required.
+          'module' => 'pi_methodology', // Required.
+          'description' => t('Inquiry methodology.'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Methodology'),
+          'has_body' => TRUE,
+          'body_label' => t('Methodology description'),
+          'locked' => TRUE,
+          'add_node_type' => 'pi_available_measures')
+  );
+}
+
+/**
+ * Hook node_perm()
+ * @return unknown_type
+ */
+function pi_methodology_perm() {
+  
+}
+
+/*
+ * hook_access()
+ * @return unknown
+ */
+
+function pi_methodology_access($op, $node) {
+  global $user;
+  $details = get_inquiry_details_from_current_path();
+
+  if ($op == 'create') {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
+  }
+  if ($op == 'update') {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+  }
+}
+
+/**
+ * Implementation of hook_theme()
+ * @return unknown_type
+ */
+function pi_methodology_theme() {
+  return array(
+      'pi_methodology_node_form' => array(
+          'arguments' => array('form'),
+      ),
+      'pi_methodology' => array(
+          'arguments' => array('node', 'teaser'),
+      )
+  );
+}
+
+/**
+ * Admin page to change measure weights
+ * @param $node
+ * @return unknown_type
+ */
+function pi_methodology_form(&$node) {
+  global $user;
+  $node_details = get_inquiry_details_from_current_path();
+
+  $current_activity = NULL;
+  if (is_numeric($node_details->activity_id)) {
+    $current_activity = node_load($node_details->activity_id);
+  }
+  /* if ($current_activity->title) {
+    $users_group = get_group_of_type($user->uid, $current_activity->audience, $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+    if ($users_group != false) {
+    $group = node_load($users_group);
+    $sort_for = $group->title;
+    } else {
+    $sort_for = $user->title;
+    }
+    $node_title = check_plain(t('Selected measures for ') . $sort_for);
+    } else { */
+  $type = node_get_types('type', $node);
+  $node_title = $type->name;
+  // }
+  // Build the form
+  $form = array();
+  if ($current_activity->description) {
+    $form['#prefix'] = $current_activity->description;
+  }
+
+
+  $form['title'] = array(
+      '#type' => 'hidden',
+      '#value' => $node_title,
+  );
+
+  if (is_array($node->measures)) {
+    $activity_measures = $node->measures;
+  } else {
+    $activity_measures = _pi_methodology_load_default_measures();
+  }
+
+  foreach ($activity_measures as $activity_nid => $measures) {
+    $form_item_id = _pi_methodology_format_activity_measure_form_attribute($activity_nid);
+
+    $form[$form_item_id] = array(
+        '#tree' => TRUE,
+    );
+
+    $tree = &$form[$form_item_id];
+
+    $regions = array('key', 'dependent', 'unselected');
+
+    foreach ($regions as $region) {
+      foreach ($measures[$region] as $weight => $measure_nid) {
+        $measure = node_load($measure_nid);
+        $tree[$region][$measure_nid] = array(
+            'title' => array(
+                '#value' => check_plain($measure->title),
+            ),
+            'description' => array(
+                '#value' => check_plain($measure->body),
+            ),
+            'weight' => array(
+                '#type' => 'weight',
+                '#delta' => 100,
+                '#default_value' => $weight,
+            ),
+            'status' => array(
+                '#type' => 'select',
+                '#default_value' => $region,
+                '#options' => array('unselected' => 'unselected', 'key' => 'key', 'dependent' => 'dependent'),
+            ),
+        );
+      }
+    }
+  }
+
+  return $form;
+}
+
+/**
+ * hook_insert()
+ * @param node object $node new draggable_measures node to insert
+ * @return null
+ */
+function pi_methodology_insert($node) {
+
+
+  $form_measures = _pi_methodology_find_activity_measure_form_attributes($node);
+  if (count($form_measures) > 0) {
+    $node->measures = array();
+    foreach ($form_measures as $table_key) {
+      $activity_nid = _pi_methodology_decode_activity_measure_form_attribute($table_key);
+      $node->measures[$activity_nid] = array(
+          'key' => array(),
+          'dependent' => array(),
+          'unselected' => array()
+      );
+      foreach ($node->$table_key as $list) {
+        foreach ($list as $measure_nid => $data) {
+          $node->measures[$activity_nid][$data['status']][$data['weight']] = $measure_nid;
+        }
+      }
+
+      ksort($node->measures[$activity_nid]['key']);
+      ksort($node->measures[$activity_nid]['dependent']);
+      ksort($node->measures[$activity_nid]['unselected']);
+    }
+  }
+
+  if (isset($node->measures)) {
+    foreach ($node->measures as $activity_measures) {
+      foreach ($activity_measures as $region => $list) {
+        foreach ($list as $weight => $measure_nid) {
+          $query = "INSERT INTO {pi_methodology_measures} (nid, vid, measure_nid, status, weight) VALUES (%d, %d, %d, '%s', %d)";
+          db_query($query, $node->nid, $node->vid, $measure_nid, $region, $weight);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * hook_update()
+ * @param $node
+ * @return unknown_type
+ */
+function pi_methodology_update($node) {
+// if this is a new node or we're adding a new revision,
+  if ($node->revision) {
+    pi_methodology_insert($node);
+  } else {
+    db_query("DELETE FROM {pi_methodology} WHERE vid = %d", $node->vid);
+    pi_methodology_insert($node);
+  }
+}
+
+/**
+ * hook_delete()
+ * @param $node
+ * @return unknown_type
+ */
+function pi_methodology_delete(&$node) {
+  db_query("DELETE FROM pi_methodology WHERE nid = %d", $node->nid);
+}
+
+/**
+ * hook_load() for pi_methodology
+ * @param object $node
+ * @return object
+ */
+function pi_methodology_load($node) {
+  $details = get_inquiry_details_from_current_path();
+
+  $output = new stdClass;
+  $output->measures = array();
+
+  $data_activities = pi_sort_data_get_activities($details->inquiry_id);
+  $all_measures = array();
+  foreach ($data_activities as $activity_nid) {
+    $output->measures[$activity_nid] = array(
+        'key' => array(),
+        'dependent' => array(),
+        'unselected' => array(),
+    );
+
+    $measures_for_activity = pi_available_measures_get_measure_nids_for_sort_data_activity_nid($activity_nid);
+    foreach ($measures_for_activity as $measure_nid) {
+      $all_measures[$measure_nid] = $activity_nid;
+    }
+  }
+
+  $query = "SELECT measure_nid, status FROM {pi_methodology_measures} WHERE vid=%d ORDER BY weight ASC";
+  $result = db_query($query, $node->vid);
+  while ($row = db_fetch_array($result)) {
+    $nid = $row['measure_nid'];
+    if (isset($all_measures[$nid])) {
+      $activity_nid = $all_measures[$nid];
+      unset($all_measures[$nid]);
+      $output->measures[$activity_nid][$row['status']][] = $nid;
+    }
+  }
+
+  foreach ($all_measures as $measure_nid => $activity_nid) {
+    $output->measures[$activity_nid]['unselected'][] = $measure_nid;
+  }
+
+
+  return $output;
+}
+
+function _pi_methodology_load_default_measures() {
+  $details = get_inquiry_details_from_current_path();
+  $data_activities = pi_sort_data_get_activities($details->inquiry_id);
+  $output = array();
+  foreach ($data_activities as $activity_nid) {
+    $output[$activity_nid] = array(
+        'key' => array(),
+        'dependent' => array(),
+        'unselected' => array(),
+    );
+
+    foreach (pi_available_measures_get_measure_nids_for_sort_data_activity_nid($activity_nid) as $measure_nid) {
+      $output[$activity_nid]['unselected'][] = $measure_nid;
+    }
+  }
+  return $output;
+}
+
+/**
+ * hook_view()
+ * @param unknown_type $node
+ * @param unknown_type $teaser
+ * @param unknown_type $page
+ * @return unknown_type
+ */
+function pi_methodology_view($node, $teaser, $page = FALSE) {
+  $node = node_prepare($node, $teaser);
+
+  $node->content['pi_methodology'] = array(
+      '#value' => theme('pi_methodology', $node, $teaser),
+      '#weight' => 2
+  );
+
+  return $node;
+}
+
+/**
+ * Theme function
+ * @param unknown_type $node
+ * @return unknown_type
+ */
+function theme_pi_methodology($node, $teaser) {
+  $output = '';
+
+  if (is_array($node->measures)) {
+    foreach ($node->measures as $activity_nid => $activity_measures) {
+      $activity_node = node_load($activity_nid);
+      $output .= '<p>' . t('Selected measures for activity ') . '<b>' . check_plain($activity_node->title) . '</b>:</p>'
+              . '<div style="padding: 0 10px 0 10px; margin-left: 10px; border: 1px solid lightgray; border-radius: 3px;">';
+
+      $regions_list = array();
+      foreach ($activity_measures as $region => $list) {
+        $region_title = pi_methodology_get_region_label($region);
+        $region_description = pi_methodology_get_region_description($region);
+
+        $region_section = array(
+            'data' => '<b>' . check_plain($region_title) . '</b> - ' . check_plain($region_description),
+            'style' => 'padding-top: 10px;',
+            'children' => array(),
+        );
+
+        if (count($list) > 0) {
+          foreach ($list as $measure_nid) {
+            $measure_node = node_load($measure_nid);
+            $region_section['children'][] = array(
+                'data' => '<b>' . check_plain($measure_node->title) . '</b>: ' . check_plain($measure_node->body),
+            );
+          }
+        } else {
+          $region_section['children'][] = array(
+              'data' => '<i><small>' . pi_methodology_get_empty_region_label($region) . '</small></i>',
+              'style' => 'list-style-type: none;',
+          );
+        }
+        $regions_list[] = $region_section;
+      }
+      $output .= theme('item_list', $regions_list, NULL, 'ul');
+
+      $output .= '</div>';
+    }
+  }
+
+  return $output;
+  /*
+    $regions = array('key', 'selected', 'none');
+    foreach ($regions as $region) {
+    $regions_list = array();
+
+    $region_title = pi_methodology_get_region_label($region);
+    $region_description = pi_methodology_get_region_description($region);
+    $regions_list[0] = array('data' => '<span class="heading">' . t($region_title) . '</span> - ' . t($region_description), 'class' => 'activity');
+
+    foreach ($node->measures_list as $nid => $measure) {
+    $measure_activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
+    if ($measure_activity_id && ($measure['#status'] == $region)) {
+    $loaded_node = node_load($nid);
+    $regions_list[0]['children'][] = array('data' => pi_activity_build_link($measure_activity_id, $user->uid, 'heading') . node_view($loaded_node, TRUE, TRUE), 'class' => 'activity');
+    }
+    }
+
+    $region_empty = pi_methodology_get_empty_region_label($region);
+
+    if (!$node->measures_list) {
+    $regions_list[0]['children'][] = array('data' => $region_empty, 'class' => 'activity');
+    }
+
+    $output .= theme('item_list', $regions_list, NULL, 'ul', array('class' => 'region'));
+    }
+    }
+    return $output; */
+}
+
+/**
+ * Returns the label of a given measure region (key, selected, none)
+ * @param string $region key, selected, none
+ * @return string Translated string using t()
+ */
+function pi_methodology_get_region_label($region) {
+  $labels = array(
+      'key' => t('Key measures'),
+      'dependent' => t('Dependent measures'),
+      'unselected' => t('Not used')
+  );
+  return $labels[$region];
+}
+
+/**
+ * Returns the description of a given measure region (key, selected, none)
+ * @param string $region key, selected, none
+ * @return string Translated string using t()
+ */
+function pi_methodology_get_region_description($region) {
+  $region_descriptions = array(
+      'key' => t('Key measures are how you organise the data you collect.'),
+      'dependent' => t('Dependent measures are collected with key measures.'),
+      'unselected' => t('These measurements will not be collected.'));
+  return $region_descriptions[$region];
+}
+
+/**
+ * Returns the 'empty' description of a given measure region (key, selected, none)
+ * @param string $region key, selected, none
+ * @return string Translated string using t()
+ */
+function pi_methodology_get_empty_region_label($region) {
+
+  $labels = array(
+      'key' => t('No key measures have been chosen'),
+      'dependent' => t('No measures have been selected'),
+      'unselected' => t('All available measures are being used')
+  );
+  return $labels[$region];
+}
+
+/**
+ * Theme admin settings form
+ * @param unknown_type $form
+ * @return unknown_type
+ */
+function theme_pi_methodology_node_form($form) {
+  $output = '';
+  /*
+    $regions = array('none', 'key', 'selected');
+    foreach ($regions as $region) {
+    drupal_add_tabledrag('measures_list', 'order', 'sibling', 'measures_list-element', 'measures_list-element-' . $region);
+    };
+   */
+
+  // Header
+  $header = array(array('theading' => t('Measure'), 'class' => ''),
+      array('theading' => t('Description'), 'class' => ''),
+      array('theading' => t('Status'), 'class' => 'measures_theading_status'),
+      array('theading' => t('Weight'), 'class' => 'measures_theading_weight')
+  );
+
+  drupal_add_js('misc/tableheader.js');
+  drupal_add_js(drupal_get_path('module', 'pi_methodology') . '/js/pi_methodology.js');
+
+  // Rows for the tabledrag
+  $regions = array('key', 'dependent', 'unselected');
+
+  $table_form_items = _pi_methodology_find_activity_measure_form_attributes($form);
+
+  foreach ($table_form_items as $table_key) {
+    $activity_nid = _pi_methodology_decode_activity_measure_form_attribute($table_key);
+    $data_activity = node_load($activity_nid);
+
+    $output .= '<p>' . t('Select measures for activity: ') . '<b>' . check_plain($data_activity->title) . '</b></p>';
+
+    $tree = &$form[$table_key];
+    $rows = array();
+
+    foreach ($regions as $region) {
+      foreach (element_children($tree[$region]) as $key) {
+        $tree[$region][$key]['weight']['#attributes']['class'] = 'measures_list-weight measures_list-weight-' . $region;
+        $tree[$region][$key]['status']['#attributes']['class'] = 'measures_list-region-select measures_list-region-' . $region;
+
+        $rows[$region][$key]['title'] = drupal_render($tree[$region][$key]['title']);
+        $rows[$region][$key]['description'] = drupal_render($tree[$region][$key]['description']);
+        $rows[$region][$key]['status'] = drupal_render($tree[$region][$key]['status']);
+        $rows[$region][$key]['weight'] = drupal_render($tree[$region][$key]['weight']);
+      }
+    }
+    $output .= pi_methodology_display_table($header, $rows, array('id' => $table_key));
+  }
+  $output .= drupal_render($form);
+
+  return $output;
+
+  // Build the output
+  $activity = node_load($details->activity_id);
+  if ($activity->description) {
+    $output .= '<p>' . $activity->description . '</p>';
+  } else {
+    $output .= '<p>' . t('Choose which measures you will use.') . '</p>';
+  }
+
+  if (count($rows) == 0) {
+    if (arg(2) == 'add') {
+      $output .= '<p> Press <strong>Save</strong> to start adding your measures.</p>';
+    } else {
+      $output .= "No measures available";
+    }
+  } else {
+    // $output .= theme('table', $header, $rows, array('id' => 'measures_list'));
+  }
+  return $output;
+}
+
+function pi_methodology_display_table($header, $rows, $attributes) {
+  $regions = array('key', 'dependent', 'unselected');
+
+  foreach ($regions as $region) {
+    //drupal_add_tabledrag('measures_list', 'match', 'sibling', 'measures_list-element', 'measures_list-region-' . $region, NULL, FALSE);
+    drupal_add_tabledrag($attributes['id'], 'match', 'sibling', 'measures_list-region-select', 'measures_list-region-' . $region, NULL, FALSE);
+    drupal_add_tabledrag($attributes['id'], 'order', 'sibling', 'measures_list-weight', 'measures_list-weight-' . $region, NULL, FALSE);
+  };
+
+  $output = '<div style="padding: 0 10px 0 10px; margin-left: 10px; border: 1px solid lightgray; border-radius: 3px;">';
+  $output .= '<table id="' . $attributes['id'] . '" class="sticky-enabled measures_sort_table">';
+  $output .= '<tbody>';
+  foreach ($regions as $region) {
+    $output .= '<tr class="region region-' . $region . '">';
+    $output .= '<td class="region" colspan="4"><span style="font-weight:bold;margin-right:15px;">' . pi_methodology_get_region_label($region) . '</span>';
+    $output .= '<span style="font-size:90%;font-weight:normal">' . pi_methodology_get_region_description($region) . '</span></td>';
+    $output .= '</tr>';
+
+    $region_style = empty($rows[$region]) ? 'region-empty' : 'region-populated';
+    $output .= '<tr class="region-message region-' . $region . '-message ' . $region_style . '">';
+    $output .= '<td colspan="4"><em>' . t(pi_methodology_get_empty_region_label($region)) . '</em></td>';
+    $output .= '</tr>';
+
+    $row = 0;
+
+    if (is_array($rows[$region])) {
+      foreach ($rows[$region] as $data) {
+        $modified_description = str_replace(
+                array('<div', '</div', 'class="submitted"'), array('<span', '</span', 'class="submitted" style="display:none"'), $data['description']);
+        $style = $row % 2 == 0 ? 'odd' : 'even';
+        $row_class = $data->row_class ? ' ' . $data->row_class : '';
+        $output .= '<tr class="draggable ' . $style . $row_class . '">';
+        $output .= '<td class="measures_title"><span style="font-weight:bold;">' . $data['title'] . '</td>';
+        $output .= '<td class="measures_title">' . $modified_description . '</td>';
+        $output .= '<td class="measures_status">' . $data['status'] . '</td>';
+        $output .= '<td class="measures_weight">' . $data['weight'] . '</td>';
+        $output .= '</tr>';
+        $row++;
+      }
+    }
+  }
+  $output .= '</tbody>';
+  $output .= '</table>';
+  $output .= '</div>';
+
+
+  return $output;
+}
+
+/**
+ * Load the selected measures indexed by status and nid, ordered by weight
+ * @param unknown_type $node
+ * @return unknown_type
+ */
+function pi_methodology_get_choice($node) {
+  $query = "SELECT * FROM {pi_methodology} WHERE {pi_methodology}.nid = %d AND {pi_methodology}.vid = %d ORDER BY status ASC, weight ASC";
+  $result = db_query($query, $node->nid, $node->vid);
+
+  $measures = array();
+  while ($row = db_fetch_object($result)) {
+    $loaded_node = node_load($row->available_measure, NULL, TRUE);
+    if ($loaded_node) {
+      $status = $row->status;
+      if (!array_key_exists($status, $measures)) {
+        $measures[$status] = array();
+      }
+      $measures[$status][$row->available_measure] = array(
+          '#weight' => count($measures[$status]),
+          '#title' => $loaded_node->title,
+          '#status' => $status
+      );
+    }
+  }
+
+  $group_order = array('key', 'selected', 'node');
+  $sorted_measures = pi_sort_grouped_item_list($group_order, $measures, '#weight');
+  return $sorted_measures;
+}
+
+/**
+ * Get all available measures for the inquiry (derived from current path).
+ * @return array of db_fetch_objects() for the measures available in db 
+ */
+function pi_methodology_get_options() {
+  global $user;
+  $details = get_inquiry_details_from_current_path();
+
+  $nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_available_measures');
+  $items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
+  foreach (array_keys($items) as $nid) {
+    $items[$nid]['#status'] = 'none';
+    $items[$nid]['#weight'] = 0;
+  }
+  return $items;
+}
+
+function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id) {
+
+  $query = "SELECT {pi_methodology}.`nid` FROM {pi_methodology} " .
+          "LEFT JOIN {node_access} ON {node_access}.`nid` = {pi_methodology}.`nid` " .
+          "LEFT JOIN {node} ON {node}.`nid` = {pi_methodology}.`nid` " .
+          "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {pi_methodology}.`nid` " .
+          "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
+          "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " .
+          "ORDER BY {pi_methodology}.`nid` DESC ";
+  $result = db_result(db_query($query, $uid, $uid));
+
+  return $result;
+}
+
+function find_selected_measures_nid_for_uid($uid) {
+  $query = "SELECT {pi_methodology}.nid FROM {pi_methodology}, {node_access}, {og_uid} "
+          . "WHERE {pi_methodology}.nid = {node_access}.nid "
+          . "AND {node_access}.gid = {og_uid}.nid AND {og_uid}.uid = %d ORDER BY nid DESC";
+  $result = db_result(db_query($query, $uid));
+
+  return $result;
+}
+
+function _pi_methodology_find_activity_measure_form_attributes($container) {
+  $table_form_items = array();
+  foreach ($container as $table_key => $_) {
+    if (strpos($table_key, 'activity_measures_') === 0) {
+      $table_form_items[] = $table_key;
+    }
+  }
+  return $table_form_items;
+}
+
+function _pi_methodology_format_activity_measure_form_attribute($activity_nid) {
+  return "activity_measures_{$activity_nid}";
+}
+
+function _pi_methodology_decode_activity_measure_form_attribute($value) {
+  return substr($value, 18);
+}

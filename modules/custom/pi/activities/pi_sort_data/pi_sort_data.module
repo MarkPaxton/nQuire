@@ -305,6 +305,7 @@ function theme_pi_sort_data_node_form($form) {
 /**
  * Load the user edit form and grab all of the fieldsets
  */
+
 function pi_sort_data_get_choice($node) {
   $query = "SELECT * FROM {pi_sort_data} AS pi_sort_data "
           . "WHERE pi_sort_data.nid = %d "
@@ -352,3 +353,19 @@ function pi_sort_data_get_item_nids($sort_data_activity_nid) {
   return $nids;
 }
 
+
+function pi_sort_data_get_activities($inquiry_id) {
+  $phases = pi_phase_load_nids($inquiry_id);
+  $query = "SELECT {node}.`nid`, {pi_activity}.`phase_nid` FROM {node} "
+          . "LEFT JOIN {pi_activity} ON {node}.`vid` = {pi_activity}.`vid` "
+          . "WHERE {pi_activity}.`activity_type`='pi_sort_data'";
+  
+  $result = db_query($query);
+  $nids = array();
+  while($row = db_fetch_array($result)) {
+    if (in_array($row['phase_nid'], $phases)) {
+      $nids[] = $row['nid'];
+    }
+  }
+  return $nids;
+}
