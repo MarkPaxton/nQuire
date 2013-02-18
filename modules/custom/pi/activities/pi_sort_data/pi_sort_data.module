@@ -195,10 +195,26 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 
   $measure_nids = pi_available_measures_get_measure_nids_for_sort_data_activity_nid($activity_id_for_this_node);
 
+  $methodology = pi_methodology_find_user_content($user->uid, $node_details->inquiry_id);
+  if ($methodology && isset($methodology->measures[$activity_id_for_this_node])) {
+    $filtered_measure_nids = array();
+    $regions = array('key', 'dependent');
+    foreach ($regions as $region) {
+      foreach ($methodology->measures[$activity_id_for_this_node][$region] as $measure_nid) {
+        if (in_array($measure_nid, $measure_nids)) {
+          $filtered_measure_nids[] = $measure_nid;
+        }
+      }
+    }
+  } else {
+    $filtered_measure_nids = $measure_nids;
+  }
+  
+
   $header = array();
   $header[] = t('Created:');
   $measures = array();
-  foreach ($measure_nids as $nid) {
+  foreach ($filtered_measure_nids as $nid) {
     $measure = node_load($nid);
     $header[] = check_plain($measure->title) . t(':');
     $measures[] = $measure;
@@ -230,7 +246,7 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
       '#value' => $link_output,
       '#weight' => -3
   );
-
+  
   $node->content['pi_sort_data'] = array(
       '#value' => theme('pi_sort_data', $header, $data_rows),
       '#weight' => 2

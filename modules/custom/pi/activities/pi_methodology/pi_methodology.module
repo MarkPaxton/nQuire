@@ -196,7 +196,7 @@ function pi_methodology_update($node) {
   if ($node->revision) {
     pi_methodology_insert($node);
   } else {
-    db_query("DELETE FROM {pi_methodology} WHERE vid = %d", $node->vid);
+    db_query("DELETE FROM {pi_methodology_measures} WHERE vid = %d", $node->vid);
     pi_methodology_insert($node);
   }
 }
@@ -207,7 +207,7 @@ function pi_methodology_update($node) {
  * @return unknown_type
  */
 function pi_methodology_delete(&$node) {
-  db_query("DELETE FROM pi_methodology WHERE nid = %d", $node->nid);
+  db_query("DELETE FROM pi_methodology_measures WHERE nid = %d", $node->nid);
 }
 
 /**
@@ -497,7 +497,7 @@ function pi_methodology_display_table($header, $rows, $attributes) {
   $output .= '<table id="' . $attributes['id'] . '" class="sticky-enabled measures_sort_table">';
   $output .= '<tbody>';
   foreach ($regions as $region) {
-    $output .= '<tr class="region region-' . $region . '">';
+    $output .= '<tr class="region region-' . $region . '" measure_region="' . $region . '">';
     $output .= '<td class="region" colspan="4"><span style="font-weight:bold;margin-right:15px;">' . pi_methodology_get_region_label($region) . '</span>';
     $output .= '<span style="font-size:90%;font-weight:normal">' . pi_methodology_get_region_description($region) . '</span></td>';
     $output .= '</tr>';
@@ -558,7 +558,7 @@ function pi_methodology_get_choice($node) {
     }
   }
 
-  $group_order = array('key', 'selected', 'node');
+  $group_order = array('key', 'selected', 'unselected');
   $sorted_measures = pi_sort_grouped_item_list($group_order, $measures, '#weight');
   return $sorted_measures;
 }
@@ -580,28 +580,16 @@ function pi_methodology_get_options() {
   return $items;
 }
 
-function find_selected_measures_nid_for_uid_and_inquiry($uid, $inquiry_id) {
 
-  $query = "SELECT {pi_methodology}.`nid` FROM {pi_methodology} " .
-          "LEFT JOIN {node_access} ON {node_access}.`nid` = {pi_methodology}.`nid` " .
-          "LEFT JOIN {node} ON {node}.`nid` = {pi_methodology}.`nid` " .
-          "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {pi_methodology}.`nid` " .
-          "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
-          "WHERE ( {og_uid}.uid = %d OR {node}.uid = %d ) " .
-          "ORDER BY {pi_methodology}.`nid` DESC ";
-  $result = db_result(db_query($query, $uid, $uid));
-
-  return $result;
+function pi_methodology_find_user_content($uid, $inquiry_id) {
+  $nids = pi_activity_get_available_nids_of_type($uid, $inquiry_id, 'pi_methodology');
+  if (count($nids) === 1) {
+    return node_load($nids[0]);
+  } else {
+    return NULL;
+  }
 }
 
-function find_selected_measures_nid_for_uid($uid) {
-  $query = "SELECT {pi_methodology}.nid FROM {pi_methodology}, {node_access}, {og_uid} "
-          . "WHERE {pi_methodology}.nid = {node_access}.nid "
-          . "AND {node_access}.gid = {og_uid}.nid AND {og_uid}.uid = %d ORDER BY nid DESC";
-  $result = db_result(db_query($query, $uid));
-
-  return $result;
-}
 
 function _pi_methodology_find_activity_measure_form_attributes($container) {
   $table_form_items = array();

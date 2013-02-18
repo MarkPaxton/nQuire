@@ -15,7 +15,7 @@ Drupal.behaviors.blockDrag = function(context) {
 
     // Add a handler for when a row is swapped, update empty regions.
     tableDrag.row.prototype.onSwap = function() {
-      checkEmptyRegions();
+      checkRegions();
     };
 
     // A custom message for the blocks page specifically.
@@ -80,7 +80,7 @@ Drupal.behaviors.blockDrag = function(context) {
     });
   });
 
-  var checkEmptyRegions = function() {
+  var checkRegions = function() {
     var tables = $('table.measures_sort_table');
     tables.each(function() {
       var table = $(this);
@@ -111,6 +111,13 @@ Drupal.behaviors.blockDrag = function(context) {
         } else if (tr.hasClass('region-message')) {
           messageTr = tr;
         } else if (tr.hasClass('draggable')) {
+          /* FIX (eloy) for some reason couldn't move measures to lower regions */ 
+          if (regionTr) {
+            var regionName = regionTr.attr('measure_region');
+            var regionSelect = tr.find('select.measures_list-region-select');
+            
+            regionSelect.val(regionName);
+          }
           empty = false;
         }
       });

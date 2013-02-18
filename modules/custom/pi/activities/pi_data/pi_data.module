@@ -66,6 +66,7 @@ function pi_data_access($op, $node, $account) {
  * hook_form() for pi_data - dynamically generates the add data form based on selected, available measures and their weights
  */
 function pi_data_form(&$node) {
+  global $user;
   $node_details = get_inquiry_details_from_current_path();
 
   if (is_numeric($node_details->activity_id)) {
@@ -85,16 +86,30 @@ function pi_data_form(&$node) {
   $form['data_form'] = array(
       '#tree' => TRUE,
   );
-  
+
   $measure_nids = pi_available_measures_get_measure_nids_for_data_activity($current_activity);
 
-  /* TODO (eloy) filter and sort according of methodology */
-  $filtered_measure_nids = $measure_nids;
+  $methodology = pi_methodology_find_user_content($user->uid, $node_details->inquiry_id);
+  if ($methodology && isset($methodology->measures[$current_activity->parent_activity])) {
+    $filtered_measures = array();
+    $regions = array('key', 'dependent');
+    foreach ($regions as $region) {
+      foreach ($methodology->measures[$current_activity->parent_activity][$region] as $measure_nid) {
+        if (in_array($measure_nid, $measure_nids)) {
+          $filtered_measures[] = array('nid' => $measure_nid, 'required' => $region === 'key');
+        }
+      }
+    }
+  } else {
+    $filtered_measures = array_map(function($nid) {
+              return array('nid' => $nid, 'required' => FALSE);
+            }, $measure_nids);
+  }
 
-  foreach ($filtered_measure_nids as $i => $measure_nid) {
-    $value = $node->values[$measure_nid];
-    $measure_node = node_load($measure_nid);
-    pi_available_measures_add_form_item($measure_node, $form, $value, FALSE);
+  foreach ($filtered_measures as $measure) {
+    $value = $node->values[$measure['nid']];
+    $measure_node = node_load($measure['nid']);
+    pi_available_measures_add_form_item($measure_node, $form, $value, $measure['required']);
   }
 
   return $form;
