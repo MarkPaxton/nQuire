@@ -235,18 +235,23 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
 
   global $user;
   $node = node_load($form_state['values']['inquiry_design']);
+  
+  $new_ids = array('phase' => array(), 'activity' => array());
+  
   if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
     $phases = json_decode($form_state['values']['structure']);
 
     foreach ($phases as $phase) {
       if (!is_numeric($phase->id)) {
         $phase_node = inquiry_creator_create_phase_stub($phase->title);
+        $new_ids['phase'][$phase->id] = $phase_node->nid;
         $phase->id = $phase_node->nid;
       }
 
       foreach ($phase->activities as $activity) {
         if (!is_numeric($activity->id)) {
           $activity_node = inquiry_creator_create_activity_stub($activity->type, $activity->title);
+          $new_ids['activity'][$activity->id] = $activity_node->nid;
           $activity->id = $activity_node->nid;
         }
       }
@@ -261,6 +266,13 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
 
     inquiry_deployer_update_inquiry_phases($node);
   }
+  
+  $destination_parts = explode('/', $form_state['values']['form_destination']);
+  if (count($destination_parts) >= 4 && isset($new_ids[$destination_parts[2]][$destination_parts[3]])) {
+    $destination_parts[3] = $new_ids[$destination_parts[2]][$destination_parts[3]];
+    $form_state['values']['form_destination'] = implode('/', $destination_parts);
+  }
+  
   inquiry_creator_form_close($form, $form_state);
 }
 

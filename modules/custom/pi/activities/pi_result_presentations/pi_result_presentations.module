@@ -159,13 +159,21 @@ function pi_result_presentations_form(&$node, $form_status) {
     $presentation_measures = array();
     foreach ($filtered_measure_nids as $nid) {
       $measure = node_load($nid);
-      $submeasures = pi_available_measures_get_submeasures($measure);
-      if ($submeasures) {
-        $presentation_measures += $submeasures;
+      $submeasures = pi_available_measures_get_submeasure_keys($measure);
+      if (is_array($submeasures)) {
+        foreach ($submeasures as $key) {
+          $presentation_measures[] = array(
+              'key' => $key,
+              'title' => pi_available_measures_submeasure_get_title($key),
+              'status' => 'unselected',
+              'weight' => 0,
+              'node' => $measure,
+          );
+        }
       } else {
         $presentation_measures[] = array(
             'key' => $nid,
-            'title' => check_plain($measure->title),
+            'title' => pi_available_measures_submeasure_get_title($nid),
             'status' => 'unselected',
             'weight' => 0,
             'node' => $measure,
@@ -173,10 +181,22 @@ function pi_result_presentations_form(&$node, $form_status) {
       }
     }
 
+    $weight_set = FALSE;
+    $max_weight = 0;
     foreach ($presentation_measures as &$measure_status) {
       if (isset($node->measure_selection[$measure_status['key']])) {
+        $weight = (int) $node->measure_selection[$measure_status['key']]['weight'];
+        $max_weight = $weight_set ? max($max_weight, $weight) : $weight;
+        $weight_set = TRUE;
+
         $measure_status['status'] = $node->measure_selection[$measure_status['key']]['status'];
-        $measure_status['weight'] = $node->measure_selection[$measure_status['key']]['weight'];
+        $measure_status['weight'] = $weight;
+      }
+    }
+    foreach ($presentation_measures as &$measure_status) {
+      if (!isset($node->measure_selection[$measure_status['key']])) {
+        $measure_status['status'] = $node->measure_selection[$measure_status['key']]['status'];
+        $measure_status['weight'] = ++$max_weight;
       }
     }
 
@@ -234,55 +254,63 @@ function pi_result_presentations_form(&$node, $form_status) {
  * @param $form_state
  */
 function pi_result_presentations_validate(&$form, &$form_state) {
-  global $user;
-  $details = get_inquiry_details_from_current_path();
-
-  $is_y_scale_numeric = TRUE;
-  $is_numeric = TRUE;
-  $selectedMeasure = 0;
-  $measure_id = -1;
-
   $categories = $form->onepageprofile_categories;
 
+
   if (is_array($categories)) {
+
+    uasort($categories, function($a, $b) {
+              $diff = $a['weight'] - $b['weight'];
+              $output = $diff > 0 ? 1 : ($diff < 0 ? -1 : 0);
+              return $output;
+            }
+    );
+
+    $x_key = NULL;
+    $y_keys = array();
+    $y_non_numeric = array();
+    $y_keys_count = 0;
+
     foreach ($categories as $measure_id => $category) {
       if ($category['status'] === 'selected') {
-        $selectedMeasure++;
-        $weights[$selectedMeasure] = $category['weight'];
-
-        $x_axis_labels = get_data_for_inquiry_measure_and_user($details->inquiry_id, $measure_id, $user->uid);
-
-        $is_numeric = TRUE;
-
-        foreach ($x_axis_labels as $x_axis_label) {
-
-          if (!empty($x_axis_label) && !is_numeric($x_axis_label)) {
-            $is_numeric = FALSE;
+        if ($x_key === NULL) {
+          $x_key = $measure_id;
+        } else {
+          $y_keys_count++;
+          $is_numeric = pi_available_measures_submeasure_is_numeric($measure_id);
+          if ($is_numeric) {
+            $y_keys[] = $measure_id;
+          } else {
+            $y_non_numeric[] = $measure_id;
           }
-        }
-
-        if ($is_numeric == FALSE) {
-          $non_numeric[] = intval($category['weight']);
-          $is_y_scale_numeric = FALSE;
         }
       }
     }
   }
 
-  if (count($non_numeric) == 1) {
-    //Check if the non numeric selected measure is the first one (x axis)
-    //In case it is, the selection is OK.
-    if ($non_numeric[0] <= min($weights)) {
-      $is_y_scale_numeric = TRUE;
+  if ($x_key === NULL) {
+    form_set_error('Selected Measure', t('No measures have been selected.'));
+  } else if ($y_keys_count === 0) {
+    form_set_error('Selected Measure', t('At least two measures have to be selected.'));
+  } else {
+    $error = '';
+    if (count($y_keys) === 0) {
+      $error .= t('There are no numeric measures selected for the Y axis.');
     }
-  }
+    if (count($y_non_numeric) > 0) {
+      $titles = array_map(function($key) {
+                return pi_available_measures_submeasure_get_title($key);
+              }, $y_non_numeric);
 
-  if ($is_y_scale_numeric == FALSE) {
-    form_set_error('Selected Measure', t('One or more measues can not be displayed because they are not numeric. Only the first selection can be non numeric.'));
-  }
+      if (strlen($error) > 0) {
+        $error .= '<br/>';
+      }
+      $error .= t('The following measures are not numeric, and cannot be selected for the Y axis: ') . implode(', ', $titles);
+    }
 
-  if ($selectedMeasure < 2) {
-    form_set_error('Selected Measure', t('At least two measures have to be selected'));
+    if (strlen($error) > 0) {
+      form_set_error('Selected Measure', $error);
+    }
   }
 }
 
@@ -330,7 +358,11 @@ function pi_result_presentations_delete(&$node) {
 function pi_result_presentations_load($node) {
   $output = new stdClass;
 
-  $output->key_question_id = db_result(db_query('SELECT key_question_id FROM {pi_result_presentations} WHERE vid = %d', $node->vid));
+  $row = db_fetch_array(db_query('SELECT * FROM {pi_result_presentations} WHERE vid = %d', $node->vid));
+  if ($row) {
+    $output->key_question_id = $row['key_question_id'];
+    $output->data_set_activity_nid = $row['data_set_activity_nid'];
+  }
 
   $query = "SELECT * FROM {pi_result_presentations_measures} WHERE vid = %d ORDER BY status DESC, weight ASC";
   $result = db_query($query, $node->vid);
@@ -393,50 +425,50 @@ function theme_pi_result_presentations($node, $teaser) {
 
   $output = '';
 
-  if (!$teaser) {
+  /* if (!$teaser) {
     if (isset($node->key_question_id) AND ($node->key_question_id > 0)) {
-      $loaded_key_question = node_load($node->key_question_id);
-      $output .= "<p><strong>Key question:</strong> " . check_plain($loaded_key_question->title) . "</p>";
+    $loaded_key_question = node_load($node->key_question_id);
+    $output .= "<p><strong>Key question:</strong> " . check_plain($loaded_key_question->title) . "</p>";
     }
-  }
+    }
 
-  $selected_measures = "";
-  $delim = "";
+    $selected_measures = "";
+    $delim = "";
 
-  $query = "SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
-  $measures = db_query($query, $node->nid, $node->vid);
-  while ($measure = db_fetch_object($measures)) {
+    $query = "SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
+    $measures = db_query($query, $node->nid, $node->vid);
+    while ($measure = db_fetch_object($measures)) {
     $selected_measures .= $delim . $measure->available_measure;
     if ($delim == "") {
-      $delim = ",";
-      $first_measure = $measure->available_measure;
+    $delim = ",";
+    $first_measure = $measure->available_measure;
     }
-  }
-  $header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
-  $rows = get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+    }
+    $header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+    $rows = get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
 
-  if (!$teaser) {
+    if (!$teaser) {
     $table_output .= theme('table', $header, $rows);
-  }
-
+    }
+   */
 
   //if (function_exists('pi_chart_show_chart_as_png')) {
-  $output .= "<p><img class='chart_image' src='?q=activity/" . $chart_activity_id . "/chart.png'></p>";
+  $output .= "<p><img class='chart_image' src='" . check_url(url("activity/" . $chart_activity_id . "/chart.png")) . "'></p>";
   //}
 
-  if (!$teaser) {
+  /* if (!$teaser) {
     $output .= $table_output;
-  }
+    }
 
-  if (!$teaser) {
+    if (!$teaser) {
     $output .= '<p>' . l('Download (csv) data file', 'export/' . $details->activity_id . '/csv') . '</p>';
 
     $first_measure_node = node_load($first_measure);
     if (($first_measure_node->content_options == 'pi_location_lat_long') || ($first_measure_node->content_options == 'pi_location_lat_long_2')) {
-      $output .= '<p>' . l('Download (kml) data file', 'export/' . $details->activity_id . '/kml') . '</p>';
+    $output .= '<p>' . l('Download (kml) data file', 'export/' . $details->activity_id . '/kml') . '</p>';
     }
-  }
-
+    }
+   */
   return $output;
 }
 
@@ -456,6 +488,16 @@ function theme_pi_result_presentations_node_form($form) {
   // Rows for the tabledrag
   $rows = array();
   $tree = &$form['onepageprofile_categories'];
+  uasort($tree, function($a, $b) {
+            if (isset($a['weight']) && isset($b['weight'])) {
+              $diff = $a['weight']['#value'] - $b['weight']['#value'];
+              $output = $diff > 0 ? 1 : ($diff < 0 ? -1 : 0);
+              return $output;
+            } else {
+              return 0;
+            }
+          }
+  );
   foreach (element_children($tree) as $key) {
     $tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
 
@@ -481,24 +523,6 @@ function theme_pi_result_presentations_node_form($form) {
   }
   return $output;
 }
-
-/**
- * Load the user edit form and grab all of the fieldsets
- */
-/* function pi_result_presentations_get_choice($node) {
-  $query = "SELECT * FROM {pi_result_presentations} WHERE nid = %d AND vid = %d ORDER BY status DESC, weight ASC";
-  $result = db_query($query, $node->nid, $node->vid);
-
-  $categories = array();
-  while ($row = db_fetch_object($result)) {
-  $loaded_node = node_load($row->available_measure);
-  $categories[$row->available_measure] = array('#weight' => count($categories),
-  '#title' => t($loaded_node->title),
-  '#status' => $row->status
-  );
-  }
-  return $categories;
-  } */
 
 /**
  * Load the user edit form and grab all of the fieldsets

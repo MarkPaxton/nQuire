@@ -770,14 +770,13 @@ function pi_available_measures_get_measure_nids_for_data_activity($data_activity
 function pi_available_measures_get_measure_nids_for_data($data_node_nid) {
   $data_activity_nid = pi_activity_get_activity_nid_for_content_nid($data_node_nid);
   $data_activity = node_load($data_activity_nid);
-  
+
   return pi_available_measures_get_measure_nids_for_data_activity($data_activity);
 }
 
-
-/***********************
+/* * *********************
  * DATA FORM FUNCTIONS *
- ***********************/
+ * ********************* */
 
 function pi_available_measures_add_form_item($measure_node, &$form, $value, $weight) {
   _pi_available_measures_plugins_invoke('create_form_item', $measure_node, $form, $value, $weight, FALSE);
@@ -796,13 +795,57 @@ function pi_available_measures_format_table_value($measure_node, $value) {
   return $formatted === FALSE ? check_plain($value) : $formatted;
 }
 
-function pi_available_measures_get_submeasures($measure_node) {
-  return _pi_available_measures_plugins_invoke('get_submeasures', $measure_node);
+function pi_available_measures_get_submeasure_keys($measure_node) {
+  return _pi_available_measures_plugins_invoke('get_submeasure_keys', $measure_node);
 }
 
-/*****************************
+function pi_available_measures_submeasure_is_numeric($submeasure_key) {
+  return _pi_available_measures_submeasure_feature('is_numeric', $submeasure_key);
+}
+
+function pi_available_measures_submeasure_get_title($submeasure_key) {
+  return _pi_available_measures_submeasure_feature('get_title', $submeasure_key);
+}
+
+function pi_available_measures_submeasure_get_title_for_chart($submeasure_key) {
+  return _pi_available_measures_submeasure_feature('get_title_for_chart', $submeasure_key);
+}
+
+function pi_available_measures_submeasure_get_value_for_chart($submeasure_key, &$value) {
+  return _pi_available_measures_submeasure_feature('get_value_for_chart', $submeasure_key, $value);
+}
+
+function pi_available_measures_resolve_submeasure($key) {
+  $parts = explode(':', $key, 2);
+  if (count($parts) === 0) {
+    return FALSE;
+  } else {
+    $measure_node = node_load($parts[0]);
+    if (!$measure_node || $measure_node->type !== 'pi_available_measures') {
+      return FALSE;
+    }
+
+    return array(
+        'nid' => $parts[0],
+        'key' => (count($parts) > 1 && strlen($parts[1]) > 0) ? $parts[1] : FALSE,
+        'node' => $measure_node,
+    );
+  }
+}
+
+function _pi_available_measures_submeasure_feature($hook, $submeasure_key, &$a = NULL) {
+  if (is_string($submeasure_key)) {
+    $submeasure = pi_available_measures_resolve_submeasure($submeasure_key);
+  } else {
+    $submeasure = $submeasure_key;
+  }
+  
+  return _pi_available_measures_plugins_invoke("submeasure_$hook", $submeasure['node'], $submeasure['key'], $a);
+}
+
+/* * ***************************
  * PLUGIN REGISTER FUNCTIONS *
- *****************************/
+ * *************************** */
 
 function pi_available_measures_plugins_register_measure_type($type, $module) {
   $modules = _pi_available_measures_plugins_get_modules();
@@ -834,7 +877,8 @@ function _pi_available_measures_plugins_invoke($hook, $measure_node, &$a = NULL,
   if ($module) {
     $fname = "{$module}_pi_measure_{$measure_node->measure_type}_{$hook}";
     if (function_exists($fname)) {
-      return $fname($measure_node, $a, $b, $c, $d);
+      $value = $fname($measure_node, $a, $b, $c, $d);
+      return $value;
     }
   }
   return FALSE;

@@ -1,5 +1,9 @@
 <?php
 
+/* * ****************
+ * Text measure *
+ * **************** */
+
 function inquiry_basic_measures_pi_measure__text_create_form_item($measure_node, &$form, $value, $required) {
   $item = array(
       '#title' => check_plain($measure_node->title),
@@ -23,6 +27,14 @@ function inquiry_basic_measures_pi_measure__text_create_form_item($measure_node,
 
 function inquiry_basic_measures_pi_measure__text_format_table_value($measure_node, $value) {
   return nl2br(check_plain($value));
+}
+
+function inquiry_basic_measures_pi_measure__text_submeasure_get_title($measure_node) {
+  return check_plain($measure_node->title) . t(' (text)');
+}
+
+function inquiry_basic_measures_pi_measure__text_get_submeasure_keys() {
+  return array();
 }
 
 /* * *****************
@@ -62,6 +74,18 @@ function inquiry_basic_measures_pi_measure__number_format_table_value($measure_n
   }
   return check_plain($output);
 }
+         
+function inquiry_basic_measures_pi_measure__number_submeasure_get_title($measure_node) {
+  return check_plain($measure_node->title) . t(' (number)');
+}
+
+function inquiry_basic_measures_pi_measure__number_submeasure_get_title_for_chart($measure_node) {
+  return check_plain($measure_node->title);
+}
+
+function inquiry_basic_measures_pi_measure__number_submeasure_is_numeric() {
+  return TRUE;
+}
 
 /* * ****************
  * Options measure *
@@ -96,8 +120,33 @@ function inquiry_basic_measures_pi_measure__options_format_table_value($measure_
   return check_plain(isset($data['options'][$value]) ? $data['options'][$value] : $value);
 }
 
+function inquiry_basic_measures_pi_measure__options_submeasure_is_numeric($measure_node) {
+  $data = nquire_commons_decode_data($measure_node->data);
+  foreach($data['options'] as $value) {
+    if (!is_numeric($value)) {
+      return FALSE;
+    }
+  }
+  return TRUE;
+}
+function inquiry_basic_measures_pi_measure__options_submeasure_get_title($measure_node) {
+  return check_plain($measure_node->title) . t(' (selection)');
+}
+
+function inquiry_basic_measures_pi_measure__options_submeasure_get_title_for_chart($measure_node) {
+  return check_plain($measure_node->title);
+}
+
+function inquiry_basic_measures_pi_measure__options_submeasure_get_value_for_chart($measure_node, $key, &$value) {
+  $data = nquire_commons_decode_data($measure_node->data);
+  if (isset($data['options'][$value])) {
+    $value = $data['options'][$value];
+  }
+}
+
+
 /* * *****************
- * Number measure *
+ * Image measure *
  * **************** */
 
 function inquiry_basic_measures_pi_measure__image_create_form_item($measure_node, &$form, $value) {
@@ -110,35 +159,36 @@ function inquiry_basic_measures_pi_measure__image_create_form_item($measure_node
   );
 }
 
-
 function inquiry_basic_measures_pi_measure__image_process_form_value($measure_node, &$value, $old_value) {
   $id = 'measure_' . $measure_node->nid;
   $extensions = 'jpeg jpg gif tiff';
   $size_limit = file_upload_max_size();
   $validators = array(
-     /* 'my_file_validate_extensions' => array($extensions),
-      'my_file_validate_size' => array($size_limit),*/
+          /* 'my_file_validate_extensions' => array($extensions),
+            'my_file_validate_size' => array($size_limit), */
   );
   $dest = file_directory_path() . '/pi_measures_image/';
   file_check_directory($dest, TRUE);
   $file = file_save_upload($id, $validators, $dest);
   if ($file) {
     file_set_status($file, FILE_STATUS_PERMANENT);
-    
+
     if ($old_value && strlen($old_value) > 0) {
       file_delete($old_value);
     }
-    
+
     $value = $file->filepath;
   }
 }
 
-function _inquiry_basic_measures_pi_measure__image_format_table_value($measure_node, $value) {
-  $data = nquire_commons_decode_data($measure_node->data);
-  $output = $value;
-  if ($value && strlen($value) > 0 && $data['units']) {
-    $output .= ' ' . $data['units'];
+function inquiry_basic_measures_pi_measure__image_format_table_value($measure_node, $value) {
+  if ($value && strlen($value) > 0) {
+    return '<img style="height: 150px;" src="' . file_create_url($value) . '"></img>';
+  } else {
+    return '';
   }
-  return check_plain($output);
 }
 
+function inquiry_basic_measures_pi_measure__image_get_submeasure_keys() {
+  return array();
+}

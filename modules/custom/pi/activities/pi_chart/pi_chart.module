@@ -25,27 +25,17 @@ function pi_chart_show_chart_as_png($activity, $arg_node_function)
 
 	$nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity_id, $uid);
 	$node = node_load($nid);
-
-	$selected_measures = "";
-	$delim = "";
-
-	$SQL = "SELECT {available_measure} FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC";
-
-	$measures = db_query($SQL, $node->nid , $node->vid);
-
-	while ($measure = db_fetch_object($measures))
-	{
-		$selected_measures .= $delim . $measure->available_measure;
-		if ($delim == "")
-		{
-			$delim = ", ";
-		};
+  
+  $measures = array();
+  
+	$query = "SELECT {measure_key} FROM {pi_result_presentations_measures} WHERE vid = %d AND status = 'selected' ORDER BY weight ASC";
+	$query_result = db_query($query, $node->vid);
+	while ($row = db_fetch_array($query_result)) 	{
+    $measures[] = pi_available_measures_resolve_submeasure($row['measure_key']);
 	}
 
-	$header = get_selected_measures_headings_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
-	$rows = get_selected_measures_data_for_inquiry_and_user ($details->inquiry_id, $selected_measures, $user->uid);
-
-	$data = spin_array($rows);
+	$header = _pi_chart_get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $measures, $user->uid);
+	$data = _pi_chart_get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $node->data_set_activity_nid, $measures, $user->uid);
 
 	$x_axis_labels_heading = array_shift($header);
 	$x_axis_labels = array_shift($data);
@@ -262,4 +252,29 @@ function _pi_chart_drwa_datapoint_label($graph, $data_set, $serie_names)
 	}
 }
 
-?>
+
+
+function _pi_chart_get_selected_measures_headings_for_inquiry_and_user($inquiry_id, $selected_measures, $uid) {
+  $headings = array();
+  foreach($selected_measures as $measure_key) {
+    $headings[] = pi_available_measures_submeasure_get_title_for_chart($measure_key);
+  }
+  return $headings;
+}
+
+function _pi_chart_get_selected_measures_data_for_inquiry_and_user($inquiry_id, $sort_data_activity_nid, $selected_measures, $uid) {
+  
+  $data_nids = pi_sort_data_get_item_nids($sort_data_activity_nid);
+  
+  $result = array();
+  foreach($data_nids as $i => $nid) {
+    $data_node = node_load($nid);
+    foreach($selected_measures as $j => $measure_key) {
+      $value = $data_node->values[$measure_key['nid']];
+      pi_available_measures_submeasure_get_value_for_chart($measure_key, $value);
+      $result[$j][$i] = $value;
+    }
+  }
+
+  return $result;
+}
