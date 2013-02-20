@@ -1,16 +1,53 @@
 <?php
 
+function google_maps_measure_theme() {
+  return array(
+      'google_maps_measure_form_item' => array(
+          'arguments' => array('form' => NULL),
+      ),
+  );
+}
+
+function theme_google_maps_measure_form_item($form) {
+  nquire_commons_load_nquire_dynamic_measure_support();
+  drupal_add_js(drupal_get_path('module', 'google_maps_measure') . '/js/GoogleMapMeasure.js');
+  //$key = file_get_contents(drupal_get_path('module', 'google_maps_measure') . '/data/google_maps_api_key');
+  
+  
+
+  $script = '<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=true"></script>';
+  drupal_set_html_head($script);
+
+  $data = nquire_commons_decode_data($form['#widget_data']);
+  $size = explode('x', $data['size']);
+  $output = '<div id="' . $form['#widget_id'] . '" measureType="measure_widget__googlemap" inputElementId="' . $form['#widget_input_id'] . '">'
+          . '<div class="map_canvas" style="width:' . $size[0] . 'px;height:' . $size[1] . 'px;"></div>'
+          . '<div>'
+          . '<a class="add_marker" href="#">' . t('Mark centre') . '</a>&nbsp;&nbsp;&nbsp;&nbsp;'
+          . '<a class="forget_marker" href="#">' . t('Forget marker') . '</a>'
+          . '</div>';
+  
+  return $output;
+}
 
 function google_maps_measure_pi_measure__googlemap_create_form_item($measure_node, &$form, $value) {
-  $item = array(
-      '#type' => 'textfield',
+  $input_element_id = "measure_{$measure_node->nid}";
+  $widget_element_id = "{$input_element_id}_widget";
+  
+  $form[$input_element_id] = array(
+      '#type' => 'hidden',
       '#title' => check_plain($measure_node->title),
       '#description' => check_plain($measure_node->body),
       '#default_value' => $value,
       '#required' => FALSE,
   );
 
-  $form["measure_" . $measure_node->nid] = $item;
+  $form[$widget_element_id] = array(
+      '#theme' => 'google_maps_measure_form_item',
+      '#widget_data' => $measure_node->data,
+      '#widget_id' => $widget_element_id,
+      '#widget_input_id' => $input_element_id,
+  );
 }
 
 function google_maps_measure_pi_measure__googlemap_format_table_value($measure_node, $value) {
@@ -24,7 +61,7 @@ function google_maps_measure_pi_measure__googlemap_submeasure_get_title($measure
 function google_maps_measure_pi_measure__googlemap_get_submeasure_keys($measure_node) {
   $data = nquire_commons_decode_data($measure_node->data);
   $result = array();
-  foreach(array('latitude', 'longitude', 'altitude') as $variable) {
+  foreach (array('latitude', 'longitude', 'altitude') as $variable) {
     if ($data[$variable]) {
       $result[] = "{$measure_node->nid}:{$variable}";
     }
@@ -33,7 +70,7 @@ function google_maps_measure_pi_measure__googlemap_get_submeasure_keys($measure_
 }
 
 function google_maps_measure_pi_measure__googlemap_submeasure_get_title_for_chart($measure_node, $key) {
-  switch($key) {
+  switch ($key) {
     case 'latitude':
       return t('Latitude');
     case 'longitude':
@@ -49,12 +86,11 @@ function google_maps_measure_pi_measure__googlemap_submeasure_is_numeric() {
   return TRUE;
 }
 
-
 function google_maps_measure_pi_measure__googlemap_submeasure_get_value_for_chart($measure_node, $key, &$value) {
   return 0;
 }
 
-
 function google_maps_measure_pi_measure__googlemap_process_form_value($measure_node, &$value, $old_value) {
-
+  
 }
+

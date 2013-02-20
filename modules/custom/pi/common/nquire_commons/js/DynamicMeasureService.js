@@ -1,4 +1,5 @@
 
+/*global nQuireJsSupport*/
 
 $(function() {
   var DynamicMeasureServiceDelegate = function(service, elementId) {
@@ -20,13 +21,14 @@ $(function() {
     },
     registerMeasure: function(elementId, handler) {
       this._measureHandlers[elementId] = handler;
-      return new DynamicMeasureServiceDelegate(this, elementId);
+      handler.setServiceDelegate(new DynamicMeasureServiceDelegate(this, elementId));
+      handler.initMeasureValue(this._getData(elementId));
     },
     _saveData: function(elementId, data) {
 
     },
     _getData: function(elementId) {
-      return 'hi';
+      return $('input#' + elementId).val();
     }
   });
 });
