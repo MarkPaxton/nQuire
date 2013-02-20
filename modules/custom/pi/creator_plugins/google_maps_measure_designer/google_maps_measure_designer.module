@@ -1,0 +1,73 @@
+<?php
+
+function google_maps_measure_designer_nquire_creator_measure__googlemap_form($measure, &$form, $form_state) {
+
+  $data = nquire_commons_decode_data($measure->data);
+
+  $form['size'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Map size'),
+      '#description' => t('Write here the size of the map, in pixels. E.g.: 320x240'),
+      '#default_value' => nquire_commons_form_data_default_value($data, 'size', $form_state, 'size', '320x240'),
+      '#required' => TRUE,
+  );
+
+  $form['selection_explanation'] = array(
+      '#value' => t('Select the variables that will be available for data analysis:'),
+  );
+
+  $variables = array(
+      'latitude' => t('Latitude'),
+      'longitude' => t('Longitude'),
+      'altitude' => t('Altitude'),
+  );
+
+  foreach ($variables as $key => $title) {
+    $form[$key] = array(
+        '#type' => 'checkbox',
+        '#title' => $title,
+        '#default_value' => nquire_commons_form_data_default_value($data, $key, $form_state, $key, FALSE),
+        '#required' => TRUE,
+    );
+  }
+}
+
+function google_maps_measure_designer_nquire_creator_measure__googlemap_form_process($measure, $form_values) {
+  $data = array();
+  $data['size'] = trim($form_values['size']);
+  $data['longitude'] = $form_values['longitude'];
+  $data['latitude'] = $form_values['latitude'];
+  $data['altitude'] = $form_values['altitude'];
+
+  $new_data = json_encode($data);
+  if ($measure->data !== $new_data) {
+    $measure->data = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
+}
+
+function google_maps_measure_designer_nquire_creator_measure__googlemap_form_validate($type, $form, $form_state) {
+  $size = trim($form_state['values']['size']);
+  $parts = explode('x', $size);
+  if (count($parts) === 2) {
+    if (!is_numeric($parts[0]) || !is_numeric($parts[1])) {
+      $error = TRUE;
+    }
+  } else {
+   $error = TRUE; 
+  }
+  
+  if ($error) {
+    form_set_error('size', t('The size must by in the following format: \'width\'x\'height\' (e.g., 320x240)'));
+  }
+}
+
+function google_maps_measure_designer_nquire_creator_measure__googlemap_name() {
+  return t('Google Maps position');
+}
+
+function google_maps_measure_designer_nquire_creator_measure__googlemap_description() {
+  return t('This will allow participants to select a position on a map.');
+}
