@@ -52,6 +52,11 @@ var nQuireStructureWidget = {
         title: 'Analyse my data',
         multiplicity: '*',
         requires: []
+      },
+      spreadsheet: {
+        title: 'Data spreadsheet analysis',
+        multiplicity: '*',
+        requires: []
       }
     },
     phase: {

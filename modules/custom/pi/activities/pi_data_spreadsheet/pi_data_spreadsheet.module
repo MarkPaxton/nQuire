@@ -1,0 +1,127 @@
+<?php
+
+// $Id: pi_data_spreadsheet.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_data_spreadsheet" node type
+ */
+
+/**
+ * Implementation of hook_node_info().
+ */
+function pi_data_spreadsheet_node_info() {
+
+  return array(
+      'pi_data_spreadsheet' => array(
+          'name' => t('Inquiry data spreadsheet'), // Required.
+          'module' => 'pi_data_spreadsheet', // Required.
+          'description' => t('Analyse data using a spreadsheet'), // Required.
+          'has_title' => FALSE,
+          'has_body' => TRUE,
+          'body_label' => t('Group notes'),
+          'locked' => TRUE)
+  );
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function pi_data_spreadsheet_perm() {
+  
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_data_spreadsheet_access($op, $node, $account) {
+  global $user;
+  $details = get_inquiry_details_from_current_path();
+
+  if ($op == 'create') {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+  }
+  if ($op == 'update' || $op == 'delete') {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+  }
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function pi_data_spreadsheet_form(&$node) {
+
+  $form['body'] = array(
+      '#type' => 'hidden',
+      '#default_value' => $node->body,
+  );
+
+  $form['body_widget'] = array(
+      '#theme' => 'pi_data_spreadsheet_grid_edit',
+  );
+
+  return $form;
+}
+
+function pi_data_spreadsheet_link_alter(&$links, $node) {
+// remove attachment links from upload.module
+  unset($links['upload_attachments']);
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_data_spreadsheet_view($node, $teaser = FALSE, $page = FALSE) {
+  $output = '';
+  if (!$teaser) {
+    $output .= theme('pi_data_spreadsheet_grid_view', $node);
+  } $node = node_prepare($node, $teaser);
+
+  $node->content['body'] = array(
+      '#value' => $output,
+      '#weight' => 0
+  );
+
+  return $node;
+}
+
+/**
+ * MISSING
+ * 
+ * @return multitype:multitype:multitype:string   
+ */
+function pi_data_spreadsheet_theme() {
+  return array(
+      'pi_data_spreadsheet_grid_view' => array(
+          'arguments' => array('node'),
+      ),
+      'pi_data_spreadsheet_grid_edit' => array(
+          'arguments' => array('form'),
+      ),
+      'pi_data_spreadsheet_grid' => array(
+          'arguments' => array(),
+      ),
+  );
+}
+
+function theme_pi_data_spreadsheet_grid_view($node) {
+  return "<p>hi view</p>" . theme('pi_data_spreadsheet_grid');
+}
+
+function theme_pi_data_spreadsheet_grid_edit($form) {
+  return "<p>hi edit</p>" . theme('pi_data_spreadsheet_grid');
+}
+
+function theme_pi_data_spreadsheet_grid() {
+  nquire_commons_load_nquire_javascript_support();
+  drupal_add_js(drupal_get_path('module', 'pi_data_spreadsheet') . '/js/pi_data_spreadsheet_grid.js');
+
+  $externalScripts = '<link rel = "stylesheet" type = "text/css" media = "screen" href = "http://www.editgrid.com/static/style/default.css"/>'
+          . '<link rel = "stylesheet" type = "text/css" href = "http://www.editgrid.com/static/style/grid/default.css" />'
+          . '<script type = "text/javascript" src = "http://www.editgrid.com/js/grid.js" ></script>';
+
+  drupal_set_html_head($externalScripts);
+  
+  $output = '<div id="pi_data_spreadsheet_grid_container" style="height: 400px; width: 100%;" ></div>';
+  return $output;
+}

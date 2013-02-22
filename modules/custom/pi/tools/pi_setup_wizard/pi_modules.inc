@@ -17,12 +17,6 @@ function get_required_pi_modules()
 	$pi_modules[] = 'pi_breadcrumb';
 	$pi_modules[] = 'pi_chart';
 	$pi_modules[] = 'pi_data';
-	$pi_modules[] = 'pi_datalogger';
-	//$pi_modules[] = 'pi_fooddiary';
-	//$pi_modules[] = 'pi_fooddiary_analysis';
-	//$pi_modules[] = 'pi_fooddiary_data';
-	//$pi_modules[] = 'pi_fooddiary_measures';
-	//$pi_modules[] = 'pi_foodinfo';
 	$pi_modules[] = 'pi_header';
 	$pi_modules[] = 'pi_hypothesis';
 	$pi_modules[] = 'pi_hypothesis_conclusion';
@@ -33,7 +27,6 @@ function get_required_pi_modules()
 	$pi_modules[] = 'pi_key_answers';
 	$pi_modules[] = 'pi_key_questions';
 	$pi_modules[] = 'pi_manage_focus';
-	$pi_modules[] = 'pi_measure_filter';
 	$pi_modules[] = 'pi_phase';
 	$pi_modules[] = 'pi_previous_next';
 	$pi_modules[] = 'pi_result_presentations';
