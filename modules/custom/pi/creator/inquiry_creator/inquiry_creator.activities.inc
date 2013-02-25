@@ -149,6 +149,7 @@ function inquiry_creator_activity_delete_form_submit($form, $form_state) {
     $design = node_load($form_state['values']['inquiry_design']);
     if ($design && $design->type === 'inquiry_design' && $design->uid == $user->uid) {
       if (inquiry_design_remove_structure_item($design, $activity_nid)) {
+        $design->revision = TRUE;
         node_save($design);
       }
     }

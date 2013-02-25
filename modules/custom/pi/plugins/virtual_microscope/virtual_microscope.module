@@ -12,16 +12,34 @@ function virtual_microscope_pi_tool_vm_use_ajax_form() {
 function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_form) {
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeDataBrowser.js');
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
-  
-  $tree = array();
-  
+
+
+
+  $data_block = nquire_commons_create_ajax_false_data_block($rendered_form);
+
+
+  $tree = array(
+      'direction' => 'horizontal',
+      'children' => array(
+          array('content' => '!!!'),
+          array(
+              'direction' => 'vertical',
+              'size' => 200,
+              'children' => array(
+                  array('content' => $data_block['title'], 'size' => 'auto'),
+                  array('content' => $data_block['middle']),
+                  array('content' => $data_block['bottom'], 'size' => 'auto'),
+              ),
+          ),
+      ),
+  );
+
   return nquire_commons_create_layout($tree);
 }
 
-
-/**********************
+/* * ********************
  * VM Snapshot measure
- **********************/
+ * ******************** */
 
 function virtual_microscope_pi_measure_vm_snapshot_create_form_item($measure_node, &$form, $value, $required) {
   $form["measure_" . $measure_node->nid] = array(

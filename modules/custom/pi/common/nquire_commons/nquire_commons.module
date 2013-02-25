@@ -149,7 +149,6 @@ function nquire_commons_decode_data($data, $default = '{}') {
   return json_decode($data && strlen(data) > 0 ? $data : $default, TRUE);
 }
 
-
 /* * ********
  * LAYOUT *
  * ******** */
@@ -157,6 +156,7 @@ function nquire_commons_decode_data($data, $default = '{}') {
 function nquire_commons_create_layout($tree, $root = TRUE) {
   nquire_commons_load_javascript_support();
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/LayoutManager.js');
+  drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/LayoutManager.css');
 
   $class = "nquire-layout";
   if ($root) {
@@ -166,10 +166,10 @@ function nquire_commons_create_layout($tree, $root = TRUE) {
   if (isset($tree['children'])) {
     $content = '';
     foreach ($tree['children'] as $child) {
-      $content .= nquire_commons_create_layout($child);
+      $content .= nquire_commons_create_layout($child, FALSE);
     }
     $direction = "nquire-layout-direction='{$tree['direction']}' ";
-    $class = " nquire-layout-{$tree['direction']}";
+    $class .= " nquire-layout-{$tree['direction']}";
   } else {
     $content = isset($tree['content']) ? $tree['content'] : '';
     $direction = '';
@@ -180,7 +180,7 @@ function nquire_commons_create_layout($tree, $root = TRUE) {
 
   if (isset($tree['size']) && is_numeric($tree['size'])) {
     $flex = 0;
-    $size = "size='{$tree['size']}px ";
+    $size = "size='{$tree['size']}px' ";
   } else if ($tree['size'] === 'auto') {
     $flex = 0;
     $size = "";
@@ -196,4 +196,38 @@ function nquire_commons_create_layout($tree, $root = TRUE) {
 function nquire_commons_create_tabs_panel($tabs) {
   nquire_commons_load_javascript_support();
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/TabsManager.js');
+}
+
+function nquire_commons_create_false_block($title, $content, $bottom, $id = NULL) {
+  drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/falseblock.css');
+
+
+  $output = array(
+      'title' => '<div class="nquire-block-title">' . $title . '</div>',
+      'middle' => '<div class="nquire-block-middle-content">' . $content . '</div>',
+      'bottom' => '<div class="nquire-block-bottom-content">' . $bottom . '</div>',
+  );
+  return $output;
+}
+
+function nquire_commons_create_ajax_false_data_block($rendered_form, $id = NULL) {
+  $data_block_title = '<div id="nquire-data-input-header-new">' . t('Add new data') . '</div>'
+          . '<div id="nquire-data-input-header-edit">' . t('Edit data') . '</div>';
+
+  $data_block_bottom = '<div class="nquire-data-input-button-menu">'
+          . '  <div class="nquire-data-input-button-row">'
+          . '    <button class="nquire-data-input-hidden" id="nquire-data-input-button-savenew">' . t('Save new data') . '</button> '
+          . '    <button class="nquire-data-input-hidden" id="nquire-data-input-button-savechanges">' . t('Save changes') . '</button> '
+          . '    <div class="nquire-data-input-message nquire-data-input-hidden" id="nquire-data-input-button-saving">' . t('Saving data... ') . '</div> '
+          . '    <div class="nquire-data-input-message nquire-data-input-hidden" id="nquire-data-input-button-saved">' . t('All changes saved ') . '</div> '
+          . '    <div class="nquire-data-input-icon nquire-data-input-hidden" id="nquire-data-input-button-undo"></div> '
+          . '    <div class="nquire-data-input-icon nquire-data-input-hidden" id="nquire-data-input-button-redo"></div>'
+          . '  </div>'
+          . '  <div class="nquire-data-input-button-row">'
+          . '    <button class="nquire-data-input-hidden" id="nquire-data-input-button-createdata">' . t('New data') . '</button>'
+          . '    <button class="nquire-data-input-hidden" id="nquire-data-input-button-deletedata">' . t('Delete data') . '</button>'
+          . '  </div>'
+          . '</div>';
+
+  return nquire_commons_create_false_block($data_block_title, $rendered_form, $data_block_bottom, $id);
 }
