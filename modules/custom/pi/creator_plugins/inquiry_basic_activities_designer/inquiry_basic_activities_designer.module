@@ -159,8 +159,6 @@ function inquiry_basic_activities_designer_nquire_creator_activity_keyquestions_
   );
 }
 
-
-
 function inquiry_basic_activities_designer_nquire_creator_activity_exploretool_form($activity, $design, &$form, &$form_state) {
   $data = nquire_commons_decode_data($activity->data);
 
@@ -192,11 +190,9 @@ function inquiry_basic_activities_designer_nquire_creator_activity_keyanswers_de
   );
 }
 
-
-/************************
- ***** COLLECT DATA *****
- ************************/
-
+/* * **********************
+ * **** COLLECT DATA *****
+ * ********************** */
 
 function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_form($activity, $design, &$form, &$form_state) {
   $data = nquire_commons_decode_data($activity->data);
@@ -223,8 +219,11 @@ function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_d
   }
 }
 
-function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_deployed_activity_type() {
-  return 'pi_sort_data';
+function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_deployed_activity_type($design_activity) {
+  return array(
+      'activity_type' => 'pi_sort_data',
+      'parameters' => $design_activity->data,
+  );
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_deployed_children_activities($design_activity) {
@@ -239,12 +238,26 @@ function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_d
   );
 }
 
-
 function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_deployed_additional_content($design_activity) {
   $result = array();
   $data = nquire_commons_decode_data($design_activity->data);
+  if (isset($data['tool'])) {
+    $mandatory_measures = inquiry_available_features_invoke('tool', 'mandatory_measures', $data['tool']['type'], $data['tool']);
+    foreach ($mandatory_measures as $key => $measure_data) {
+      $result[$key] = array(
+          'type' => 'pi_available_measures',
+          'title' => $measure_data['title'],
+          'body' => $measure_data['description'],
+          'measure_type' => $measure_data['type'],
+          'data' => $measure_data['data'],
+          'activity_nid' => $design_activity->activity,
+          'mandatory' => TRUE,
+      );
+    }
+  }
+
   if (isset($data['measures'])) {
-    foreach($data['measures'] as $design_measure_nid) {
+    foreach ($data['measures'] as $design_measure_nid) {
       $design_measure = node_load($design_measure_nid);
       $result[$design_measure_nid] = array(
           'type' => 'pi_available_measures',
@@ -253,21 +266,17 @@ function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_d
           'measure_type' => $design_measure->measure_type,
           'data' => $design_measure->data,
           'activity_nid' => $design_activity->activity,
+          'mandatory' => FALSE,
       );
     }
   }
-  
+
   return $result;
 }
-
-
 
 function inquiry_basic_activities_designer_nquire_creator_activity_methodology_deployed_activity_type() {
   return 'pi_methodology';
 }
-
-
-
 
 function inquiry_basic_activities_designer_nquire_creator_activity_analysedata_deployed_activity_type() {
   return 'pi_sort_result_presentations';
@@ -285,13 +294,11 @@ function inquiry_basic_activities_designer_nquire_creator_activity_analysedata_d
   );
 }
 
-
-
-/*************************
+/* * ***********************
  * Spreadsheet activity
- *************************/
-
+ * *********************** */
 
 function inquiry_basic_activities_designer_nquire_creator_activity_spreadsheet_deployed_activity_type() {
   return 'pi_data_spreadsheet';
 }
+

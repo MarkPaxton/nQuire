@@ -67,7 +67,7 @@ function pi_methodology_theme() {
  * @return unknown_type
  */
 function pi_methodology_form(&$node) {
-  global $user;
+  //global $user;
   $node_details = get_inquiry_details_from_current_path();
 
   $current_activity = NULL;
@@ -136,6 +136,7 @@ function pi_methodology_form(&$node) {
                 '#default_value' => $region,
                 '#options' => array('unselected' => 'unselected', 'key' => 'key', 'dependent' => 'dependent'),
             ),
+            '#mandatory_key' => $measure->mandatory,
         );
       }
     }
@@ -248,7 +249,9 @@ function pi_methodology_load($node) {
   }
 
   foreach ($all_measures as $measure_nid => $activity_nid) {
-    $output->measures[$activity_nid]['unselected'][] = $measure_nid;
+    $measure = node_load($measure_nid);
+    $region = $measure->mandatory ? 'key' : 'unselected';
+    $output->measures[$activity_nid][$region][] = $measure_nid;
   }
 
 
@@ -267,7 +270,9 @@ function _pi_methodology_load_default_measures() {
     );
 
     foreach (pi_available_measures_get_measure_nids_for_sort_data_activity_nid($activity_nid) as $measure_nid) {
-      $output[$activity_nid]['unselected'][] = $measure_nid;
+      $measure = node_load($measure_nid);
+      $region = $measure->mandatory ? 'key' : 'unselected';
+      $output[$activity_nid][$region][] = $measure_nid;
     }
   }
   return $output;
@@ -456,6 +461,7 @@ function theme_pi_methodology_node_form($form) {
         $rows[$region][$key]['description'] = drupal_render($tree[$region][$key]['description']);
         $rows[$region][$key]['status'] = drupal_render($tree[$region][$key]['status']);
         $rows[$region][$key]['weight'] = drupal_render($tree[$region][$key]['weight']);
+        $rows[$region][$key]['#mandatory_key'] = $tree[$region][$key]['#mandatory_key'];
       }
     }
     $output .= pi_methodology_display_table($header, $rows, array('id' => $table_key));
@@ -515,8 +521,15 @@ function pi_methodology_display_table($header, $rows, $attributes) {
                 array('<div', '</div', 'class="submitted"'), array('<span', '</span', 'class="submitted" style="display:none"'), $data['description']);
         $style = $row % 2 == 0 ? 'odd' : 'even';
         $row_class = $data->row_class ? ' ' . $data->row_class : '';
-        $output .= '<tr class="draggable ' . $style . $row_class . '">';
-        $output .= '<td class="measures_title"><span style="font-weight:bold;">' . $data['title'] . '</td>';
+
+        $draggable_class = $data['#mandatory_key'] ? '' : 'draggable ';
+        $title =  $data['title'];
+        if ($data['#mandatory_key']) {
+          $title .= '<br/><small style="color:grey;">' . t('This must be key measure.') . '</small>';
+        }
+
+        $output .= '<tr class="' . $draggable_class . $style . $row_class . '">';
+        $output .= '<td class="measures_title"><span style="font-weight:bold;">' . $title . '</td>';
         $output .= '<td class="measures_title">' . $modified_description . '</td>';
         $output .= '<td class="measures_status">' . $data['status'] . '</td>';
         $output .= '<td class="measures_weight">' . $data['weight'] . '</td>';
@@ -580,7 +593,6 @@ function pi_methodology_get_options() {
   return $items;
 }
 
-
 function pi_methodology_find_user_content($uid, $inquiry_id) {
   $nids = pi_activity_get_available_nids_of_type($uid, $inquiry_id, 'pi_methodology');
   if (count($nids) === 1) {
@@ -589,7 +601,6 @@ function pi_methodology_find_user_content($uid, $inquiry_id) {
     return NULL;
   }
 }
-
 
 function _pi_methodology_find_activity_measure_form_attributes($container) {
   $table_form_items = array();

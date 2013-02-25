@@ -452,7 +452,7 @@ function pi_available_measures_validate($node, &$form) {
  * hook_insert() for available_measures: adds image node if needed
  */
 function pi_available_measures_insert($node) {
-  db_query("INSERT INTO {pi_available_measures} (nid, vid, measure_type, data, activity_nid) VALUES (%d, %d, '%s', '%s', %d)", $node->nid, $node->vid, $node->measure_type, $node->data, $node->activity_nid);
+  db_query("INSERT INTO {pi_available_measures} (nid, vid, mandatory, measure_type, data, activity_nid) VALUES (%d, %d, %d, '%s', '%s', %d)", $node->nid, $node->vid, $node->mandatory ? 1 : 0, $node->measure_type, $node->data, $node->activity_nid);
 }
 
 /**
@@ -462,7 +462,7 @@ function pi_available_measures_update($node) {
   if ($node->revision) {
     pi_available_measures_insert($node);
   } else {
-    db_query("UPDATE {pi_available_measures} SET measure_type = '%s', data = '%s', activity_nid = '%d' WHERE vid = %d", $node->measure_type, $node->data, $node->activity_nid, $node->vid);
+    db_query("UPDATE {pi_available_measures} SET mandatory = '%d', measure_type = '%s', data = '%s', activity_nid = '%d' WHERE vid = %d", $node->mandatory ? 1 : 0, $node->measure_type, $node->data, $node->activity_nid, $node->vid);
   }
 }
 
@@ -774,113 +774,3 @@ function pi_available_measures_get_measure_nids_for_data($data_node_nid) {
   return pi_available_measures_get_measure_nids_for_data_activity($data_activity);
 }
 
-/* * *********************
- * DATA FORM FUNCTIONS *
- * ********************* */
-
-function pi_available_measures_add_form_item($measure_node, &$form, $value, $weight) {
-  _pi_available_measures_plugins_invoke('create_form_item', $measure_node, $form, $value, $weight, FALSE);
-}
-
-function pi_available_measures_validate_form_value($measure_node, $value) {
-  _pi_available_measures_plugins_invoke('validate_form_value', $measure_node, $value);
-}
-
-function pi_available_measures_process_form_value($measure_node, &$value, $old_value) {
-  _pi_available_measures_plugins_invoke('process_form_value', $measure_node, $value, $old_value);
-}
-
-function pi_available_measures_format_table_value($measure_node, $value) {
-  $formatted = _pi_available_measures_plugins_invoke('format_table_value', $measure_node, $value);
-  return $formatted === FALSE ? check_plain($value) : $formatted;
-}
-
-function pi_available_measures_get_submeasure_keys($measure_node) {
-  return _pi_available_measures_plugins_invoke('get_submeasure_keys', $measure_node);
-}
-
-function pi_available_measures_submeasure_is_numeric($submeasure_key) {
-  return _pi_available_measures_submeasure_feature('is_numeric', $submeasure_key);
-}
-
-function pi_available_measures_submeasure_get_title($submeasure_key) {
-  return _pi_available_measures_submeasure_feature('get_title', $submeasure_key);
-}
-
-function pi_available_measures_submeasure_get_title_for_chart($submeasure_key) {
-  return _pi_available_measures_submeasure_feature('get_title_for_chart', $submeasure_key);
-}
-
-function pi_available_measures_submeasure_get_value_for_chart($submeasure_key, &$value) {
-  $result = _pi_available_measures_submeasure_feature('get_value_for_chart', $submeasure_key, $value);
-  return $result;
-}
-
-function pi_available_measures_resolve_submeasure($key) {
-  $parts = explode(':', $key, 2);
-  if (count($parts) === 0) {
-    return FALSE;
-  } else {
-    $measure_node = node_load($parts[0]);
-    if (!$measure_node || $measure_node->type !== 'pi_available_measures') {
-      return FALSE;
-    }
-
-    return array(
-        'nid' => $parts[0],
-        'key' => (count($parts) > 1 && strlen($parts[1]) > 0) ? $parts[1] : FALSE,
-        'node' => $measure_node,
-    );
-  }
-}
-
-function _pi_available_measures_submeasure_feature($hook, $submeasure_key, &$a = NULL) {
-  if (is_string($submeasure_key)) {
-    $submeasure = pi_available_measures_resolve_submeasure($submeasure_key);
-  } else {
-    $submeasure = $submeasure_key;
-  }
-  
-  return _pi_available_measures_plugins_invoke("submeasure_$hook", $submeasure['node'], $submeasure['key'], $a);
-}
-
-/* * ***************************
- * PLUGIN REGISTER FUNCTIONS *
- * *************************** */
-
-function pi_available_measures_plugins_register_measure_type($type, $module) {
-  $modules = _pi_available_measures_plugins_get_modules();
-  $modules[$type] = $module;
-  _pi_available_measures_plugins_set_modules($modules);
-}
-
-function pi_available_measures_plugins_forget_measure_type($type) {
-  $modules = _pi_available_measures_plugins_get_modules();
-  unset($modules[$type]);
-  _pi_available_measures_plugins_set_modules($modules);
-}
-
-function _pi_available_measures_plugins_get_modules() {
-  return variable_get("pi_available_measures_plugins", array());
-}
-
-function _pi_available_measures_plugins_set_modules($modules) {
-  return variable_set("pi_available_measures_plugins", $modules);
-}
-
-function _pi_available_measures_plugins_get_module($type) {
-  $modules = _pi_available_measures_plugins_get_modules();
-  return isset($modules[$type]) ? $modules[$type] : FALSE;
-}
-
-function _pi_available_measures_plugins_invoke($hook, $measure_node, &$a = NULL, &$b = NULL, $c = NULL, $d = NULL) {
-  $module = _pi_available_measures_plugins_get_module($measure_node->measure_type);
-  if ($module) {
-    $fname = "{$module}_pi_measure_{$measure_node->measure_type}_{$hook}";
-    if (function_exists($fname)) {
-      $value = $fname($measure_node, $a, $b, $c, $d);
-      return $value;
-    }
-  }
-  return FALSE;
-}

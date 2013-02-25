@@ -31,7 +31,7 @@ function pi_chart_show_chart_as_png($activity, $arg_node_function)
 	$query = "SELECT {measure_key} FROM {pi_result_presentations_measures} WHERE vid = %d AND status = 'selected' ORDER BY weight ASC";
 	$query_result = db_query($query, $node->vid);
 	while ($row = db_fetch_array($query_result)) 	{
-    $measures[] = pi_available_measures_resolve_submeasure($row['measure_key']);
+    $measures[] = pi_data_tools_measure_plugins_resolve_submeasure($row['measure_key']);
 	}
 
 	$header = _pi_chart_get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $measures, $user->uid);
@@ -257,7 +257,7 @@ function _pi_chart_drwa_datapoint_label($graph, $data_set, $serie_names)
 function _pi_chart_get_selected_measures_headings_for_inquiry_and_user($inquiry_id, $selected_measures, $uid) {
   $headings = array();
   foreach($selected_measures as $measure_key) {
-    $headings[] = pi_available_measures_submeasure_get_title_for_chart($measure_key);
+    $headings[] = pi_data_tools_measure_plugin_submeasure_get_title_for_chart($measure_key);
   }
   return $headings;
 }
@@ -271,7 +271,7 @@ function _pi_chart_get_selected_measures_data_for_inquiry_and_user($inquiry_id, 
     $data_node = node_load($nid);
     foreach($selected_measures as $j => $measure_key) {
       $value = $data_node->values[$measure_key['nid']];
-      pi_available_measures_submeasure_get_value_for_chart($measure_key, $value);
+      pi_data_tools_measure_plugin_submeasure_get_value_for_chart($measure_key, $value);
       $result[$j][$i] = $value;
     }
   }

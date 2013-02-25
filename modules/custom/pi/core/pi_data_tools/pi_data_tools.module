@@ -1,0 +1,171 @@
+<?php
+
+/* * ***************************
+ * MEASURES PLUGINS FUNCTIONS *
+ * *************************** */
+
+function pi_data_tools_measure_plugins_register_type($type, $module) {
+  $modules = _pi_data_tools_measure_plugins_get_modules();
+  $modules[$type] = $module;
+  _pi_data_tools_measure_plugins_set_module($modules);
+}
+
+function pi_data_tools_measure_plugins_forget_type($type) {
+  $modules = _pi_data_tools_measure_plugins_get_modules();
+  unset($modules[$type]);
+  _pi_data_tools_measure_plugins_set_module($modules);
+}
+
+function _pi_data_tools_measure_plugins_get_modules() {
+  return variable_get("pi_available_measures_plugins", array());
+}
+
+function _pi_data_tools_measure_plugins_set_module($modules) {
+  return variable_set("pi_available_measures_plugins", $modules);
+}
+
+function _pi_data_tools_measure_plugins_get_module($type) {
+  $modules = _pi_data_tools_measure_plugins_get_modules();
+  return isset($modules[$type]) ? $modules[$type] : FALSE;
+}
+
+function _pi_data_tools_measure_plugin_invoke($hook, $measure_node, &$a = NULL, &$b = NULL, $c = NULL, $d = NULL) {
+  $module = _pi_data_tools_measure_plugins_get_module($measure_node->measure_type);
+  if ($module) {
+    $fname = "{$module}_pi_measure_{$measure_node->measure_type}_{$hook}";
+    if (function_exists($fname)) {
+      $value = $fname($measure_node, $a, $b, $c, $d);
+      return $value;
+    }
+  }
+  return FALSE;
+}
+
+/* * *********************
+ * MEAURE DATA FORM/TABLE/CHART FUNCTIONS *
+ * ********************* */
+
+function pi_data_tools_measure_plugin_add_form_item($measure_node, &$form, $value, $weight) {
+  _pi_data_tools_measure_plugin_invoke('create_form_item', $measure_node, $form, $value, $weight, FALSE);
+}
+
+function pi_data_tools_measure_plugin_validate_form_value($measure_node, $value) {
+  _pi_data_tools_measure_plugin_invoke('validate_form_value', $measure_node, $value);
+}
+
+function pi_data_tools_measure_plugin_process_form_value($measure_node, &$value, $old_value) {
+  _pi_data_tools_measure_plugin_invoke('process_form_value', $measure_node, $value, $old_value);
+}
+
+function pi_data_tools_measure_plugin_format_table_value($measure_node, $value) {
+  $formatted = _pi_data_tools_measure_plugin_invoke('format_table_value', $measure_node, $value);
+  return $formatted === FALSE ? check_plain($value) : $formatted;
+}
+
+function pi_data_tools_measure_plugin_get_submeasure_keys($measure_node) {
+  return _pi_data_tools_measure_plugin_invoke('get_submeasure_keys', $measure_node);
+}
+
+function pi_data_tools_measure_plugin_submeasure_is_numeric($submeasure_key) {
+  return pi_data_tools_measure_plugins_invoke_submeasure_feature('is_numeric', $submeasure_key);
+}
+
+function pi_data_tools_measure_plugin_submeasure_get_title($submeasure_key) {
+  return pi_data_tools_measure_plugins_invoke_submeasure_feature('get_title', $submeasure_key);
+}
+
+function pi_data_tools_measure_plugin_submeasure_get_title_for_chart($submeasure_key) {
+  return pi_data_tools_measure_plugins_invoke_submeasure_feature('get_title_for_chart', $submeasure_key);
+}
+
+function pi_data_tools_measure_plugin_submeasure_get_value_for_chart($submeasure_key, &$value) {
+  $result = pi_data_tools_measure_plugins_invoke_submeasure_feature('get_value_for_chart', $submeasure_key, $value);
+  return $result;
+}
+
+function pi_data_tools_measure_plugins_resolve_submeasure($key) {
+  $parts = explode(':', $key, 2);
+  if (count($parts) === 0) {
+    return FALSE;
+  } else {
+    $measure_node = node_load($parts[0]);
+    if (!$measure_node || $measure_node->type !== 'pi_available_measures') {
+      return FALSE;
+    }
+
+    return array(
+        'nid' => $parts[0],
+        'key' => (count($parts) > 1 && strlen($parts[1]) > 0) ? $parts[1] : FALSE,
+        'node' => $measure_node,
+    );
+  }
+}
+
+function pi_data_tools_measure_plugins_invoke_submeasure_feature($hook, $submeasure_key, &$a = NULL) {
+  if (is_string($submeasure_key)) {
+    $submeasure = pi_data_tools_measure_plugins_resolve_submeasure($submeasure_key);
+  } else {
+    $submeasure = $submeasure_key;
+  }
+
+  return _pi_data_tools_measure_plugin_invoke("submeasure_$hook", $submeasure['node'], $submeasure['key'], $a);
+}
+
+/* * **********************************************************************************
+  TOOLS
+ * *********************************************************************************** */
+
+function pi_data_tools_plugins_register_type($type, $module) {
+  $modules = _pi_data_tools_plugins_get_modules();
+  $modules[$type] = $module;
+  _pi_data_tools_plugins_set_module($modules);
+}
+
+function pi_data_tools_plugins_forget_type($type) {
+  $modules = _pi_data_tools_plugins_get_modules();
+  unset($modules[$type]);
+  _pi_data_tools_plugins_set_module($modules);
+}
+
+function _pi_data_tools_plugins_get_modules() {
+  return variable_get("pi_available_tools_plugins", array());
+}
+
+function _pi_data_tools_plugins_set_module($modules) {
+  return variable_set("pi_available_tools_plugins", $modules);
+}
+
+function _pi_data_tools_plugins_get_module($type) {
+  $modules = _pi_data_tools_plugins_get_modules();
+  return isset($modules[$type]) ? $modules[$type] : FALSE;
+}
+
+function _pi_data_tools_plugin_invoke($hook, $tool_data, &$a = NULL, &$b = NULL, $c = NULL, $d = NULL) {
+  $tool_type = NULL;
+  if (is_string($tool_data)) {
+    $tool_type = $tool_data;
+  } else if (is_array($tool_data) && isset($tool_data['type'])) {
+    $tool_type = $tool_data['type'];
+  }
+
+  if ($tool_type) {
+    $module = _pi_data_tools_plugins_get_module($tool_type);
+    if ($module) {
+      $fname = "{$module}_pi_tool_{$tool_type}_{$hook}";
+      if (function_exists($fname)) {
+        $value = $fname($tool_data, $a, $b, $c, $d);
+        return $value;
+      }
+    }
+  }
+  return FALSE;
+}
+
+function pi_data_tools_plugin_format_form_page($tool_data, $rendered_form) {
+  return _pi_data_tools_plugin_invoke('format_form_page', $tool_data, $rendered_form);
+}
+
+function pi_data_tools_plugin_use_ajax_form($tool_data) {
+  return _pi_data_tools_plugin_invoke('use_ajax_form', $tool_data);
+}
+

@@ -36,19 +36,15 @@ function nquire_commons_nodes2table($nodes, $fields) {
   return $rows;
 }
 
-function nquire_commons_load_nquire_javascript_support() {
+function nquire_commons_load_javascript_support() {
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/nQuireJsSupport.js');
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/jquery.cookie.js');
 }
 
 function nquire_commons_load_nquire_dynamic_measure_support() {
-  nquire_commons_load_nquire_javascript_support();
+  nquire_commons_load_javascript_support();
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/DynamicMeasureService.js');
   drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/DynamicMeasureService.css');
-}
-
-function nquire_commons_load_javascript_module_support() {
-  drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/modules.js');
 }
 
 function nquire_commons_load_ahah_fix() {
@@ -75,7 +71,7 @@ function nquire_commons_form_submit_link($text, $path) {
           'class' => 'automatic-form-submit',
           'form_destination' => $path,
           'onclick' => 'return nQuireSubmitFormLinks.launch(this);',
-          )));
+  )));
 }
 
 function nquire_commons_form_set_default_link_action(&$form, $action) {
@@ -151,4 +147,53 @@ function nquire_commons_read_data_value($data, $path, $default) {
 
 function nquire_commons_decode_data($data, $default = '{}') {
   return json_decode($data && strlen(data) > 0 ? $data : $default, TRUE);
+}
+
+
+/* * ********
+ * LAYOUT *
+ * ******** */
+
+function nquire_commons_create_layout($tree, $root = TRUE) {
+  nquire_commons_load_javascript_support();
+  drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/LayoutManager.js');
+
+  $class = "nquire-layout";
+  if ($root) {
+    $class .= " nquire-layout-root";
+  }
+
+  if (isset($tree['children'])) {
+    $content = '';
+    foreach ($tree['children'] as $child) {
+      $content .= nquire_commons_create_layout($child);
+    }
+    $direction = "nquire-layout-direction='{$tree['direction']}' ";
+    $class = " nquire-layout-{$tree['direction']}";
+  } else {
+    $content = isset($tree['content']) ? $tree['content'] : '';
+    $direction = '';
+    $class .= " nquire-layout-leaf";
+  }
+
+  $id = isset($tree['id']) ? "id='{$tree['id']}' " : "";
+
+  if (isset($tree['size']) && is_numeric($tree['size'])) {
+    $flex = 0;
+    $size = "size='{$tree['size']}px ";
+  } else if ($tree['size'] === 'auto') {
+    $flex = 0;
+    $size = "";
+  } else {
+    $flex = 1;
+    $size = "";
+  }
+
+  $output = "<div {$id}class='$class' nquire-layout-flex='$flex' {$direction}{$size}>$content</div>";
+  return $output;
+}
+
+function nquire_commons_create_tabs_panel($tabs) {
+  nquire_commons_load_javascript_support();
+  drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/TabsManager.js');
 }

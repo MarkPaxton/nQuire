@@ -109,7 +109,7 @@ function pi_data_form(&$node) {
   foreach ($filtered_measures as $measure) {
     $value = $node->values[$measure['nid']];
     $measure_node = node_load($measure['nid']);
-    pi_available_measures_add_form_item($measure_node, $form, $value, $measure['required']);
+    pi_data_tools_measure_plugin_add_form_item($measure_node, $form, $value, $measure['required']);
   }
 
   return $form;
@@ -124,7 +124,7 @@ function pi_data_validate($node) {
       $measure_nid = substr($key, 8);
       $measure = node_load($measure_nid);
       if ($measure) {
-        pi_available_measures_validate_form_value($measure, $value);
+        pi_data_tools_measure_plugin_validate_form_value($measure, $value);
       }
     }
   }
@@ -140,7 +140,7 @@ function pi_data_insert($node) {
       $measure_nid = substr($key, 8);
       $measure = node_load($measure_nid);
       if ($measure) {
-        pi_available_measures_process_form_value($measure, $value, $node->values[$measure_nid]);
+        pi_data_tools_measure_plugin_process_form_value($measure, $value, $node->values[$measure_nid]);
         $node->values[$measure_nid] = $value;
       }
     }
@@ -283,16 +283,28 @@ function theme_pi_data_node_form($form) {
   if ($activity->body) {
     $output .= '<p>' . check_plain($activity->body) . '</p>';
   }
-
-//  if (count($form['data_form']) > 0) {
-  $output .= drupal_render($form);
-  /* } else {
-    $output .= "<p>No measures are available.</p>";
-    } */
+  
+  $rendered_form = drupal_render($form);
+  
+  $parent_activity = node_load($activity->parent_activity);
+  $data = nquire_commons_decode_data($parent_activity->parameters);
+  if (isset($data['tool'])) {
+    $page = pi_data_tools_plugin_format_form_page($data['tool'], $rendered_form);
+    $output .= $page ? $page : $rendered_form;
+    
+    if (pi_data_tools_plugin_use_ajax_form($data['tool'])) {
+      drupal_add_js(drupal_get_path('module', 'pi_data') . '/js/AjaxDataService.js');
+    }
+  }
+  
   return $output;
 }
 
 function theme_pi_data($node, $teaser) {
   $output = '';
   return $output;
+}
+
+function _pi_data_load_ajax_data_service() {
+  
 }

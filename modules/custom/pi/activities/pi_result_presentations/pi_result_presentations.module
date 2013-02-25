@@ -159,12 +159,12 @@ function pi_result_presentations_form(&$node, $form_status) {
     $presentation_measures = array();
     foreach ($filtered_measure_nids as $nid) {
       $measure = node_load($nid);
-      $submeasures = pi_available_measures_get_submeasure_keys($measure);
+      $submeasures = pi_data_tools_measure_plugin_get_submeasure_keys($measure);
       if (is_array($submeasures)) {
         foreach ($submeasures as $key) {
           $presentation_measures[] = array(
               'key' => $key,
-              'title' => pi_available_measures_submeasure_get_title($key),
+              'title' => pi_data_tools_measure_plugin_submeasure_get_title($key),
               'status' => 'unselected',
               'weight' => 0,
               'node' => $measure,
@@ -173,7 +173,7 @@ function pi_result_presentations_form(&$node, $form_status) {
       } else {
         $presentation_measures[] = array(
             'key' => $nid,
-            'title' => pi_available_measures_submeasure_get_title($nid),
+            'title' => pi_data_tools_measure_plugin_submeasure_get_title($nid),
             'status' => 'unselected',
             'weight' => 0,
             'node' => $measure,
@@ -276,7 +276,7 @@ function pi_result_presentations_validate(&$form, &$form_state) {
           $x_key = $measure_id;
         } else {
           $y_keys_count++;
-          $is_numeric = pi_available_measures_submeasure_is_numeric($measure_id);
+          $is_numeric = pi_data_tools_measure_plugin_submeasure_is_numeric($measure_id);
           if ($is_numeric) {
             $y_keys[] = $measure_id;
           } else {
@@ -298,7 +298,7 @@ function pi_result_presentations_validate(&$form, &$form_state) {
     }
     if (count($y_non_numeric) > 0) {
       $titles = array_map(function($key) {
-                return pi_available_measures_submeasure_get_title($key);
+                return pi_data_tools_measure_plugin_submeasure_get_title($key);
               }, $y_non_numeric);
 
       if (strlen($error) > 0) {
