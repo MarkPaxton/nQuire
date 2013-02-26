@@ -14,28 +14,85 @@ $(function() {
   DynamicMeasureServiceDelegate.prototype.getData = function() {
     return this._service._getData(this._elementId);
   };
-  
-  DynamicMeasureServiceDelegate.prototype.startRandomDelayProcess = function() {
+
+  DynamicMeasureServiceDelegate.prototype.randomDelayProcessStarted = function() {
   };
 
-  DynamicMeasureServiceDelegate.prototype.stopRandomDelayProcess = function() {
+  DynamicMeasureServiceDelegate.prototype.randomDelayProcessStopped = function() {
   };
+
+  DynamicMeasureServiceDelegate.prototype.userDelayProcessStarted = function() {
+  };
+
+  DynamicMeasureServiceDelegate.prototype.userDelayProcessStopped = function() {
+  };
+
 
 
   nQuireJsSupport.register('DynamicMeasureService', {
-    _measureHandlers: {},
+    _measureHandlers: null,
+    _ongoingRandomDelayProcesses: null,
+    _ongoingUserDelayProcesses: null,
+    _endDataInputCallback: null,
     init: function() {
+      this._measureHandlers = {};
+      this._ongoingRandomDelayProcesses = {};
+      this._ongoingUserDelayProcesses = {};
     },
     registerMeasure: function(elementId, handler) {
       this._measureHandlers[elementId] = handler;
       handler.setServiceDelegate(new DynamicMeasureServiceDelegate(this, elementId));
       handler.initMeasureValue(this._getData(elementId));
     },
+    endDataInput: function(endDataInputCallback) {
+      this._endDataInputCallback = endDataInputCallback;
+      this.stopUserInputProcesses();
+      this._checkEndOfDataInput();
+    },
+    stopUserInputProcesses: function() {
+      for (var elementId in this._ongoingUserDelayProcesses) {
+        if (this._ongoingUserDelayProcesses[elementId]) {
+          var handler = this._measureHandlers[elementId];
+          handler.stopUserDelayProcess();
+          this._ongoingUserDelayProcesses[elementId] = false;
+        }
+      }
+    },
+    _checkEndOfDataInput: function() {
+      if (this._endDataInputCallback) {
+        var ended = true;
+        for (var elementId in this._ongoingRandomDelayProcesses) {
+          if (this._ongoingRandomDelayProcesses[elementId]) {
+            ended = false;
+            break;
+          }
+        }
+
+        if (ended) {
+          var f = this._endDataInputCallback;
+          this._endDataInputCallback = null;
+          f();
+        }
+      }
+    },
     _saveData: function(elementId, data) {
       $('input[name="' + elementId + '"]').val(data);
     },
     _getData: function(elementId) {
       return $('input[name="' + elementId + '"]').val();
+    },
+    _randomDelayProcessStarted: function(elementId) {
+      this._ongoingRandomDelayProcesses[elementId] = true;
+    },
+    _randomDelayProcessStopped: function(elementId) {
+      this._ongoingRandomDelayProcesses[elementId] = false;
+      this._checkEndOfDataInput();
+    },
+    _userDelayProcessStarted: function(elementId) {
+      this._ongoingUserDelayProcesses[elementId] = true;
+    },
+    _userDelayProcessStopped: function(elementId) {
+      this._ongoingUserDelayProcesses[elementId] = false;
     }
   });
 });

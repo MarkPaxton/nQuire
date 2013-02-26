@@ -56,10 +56,6 @@ function pi_data_spreadsheet_form(&$node) {
       '#default_value' => $node->body,
   );
 
-  $form['body_widget'] = array(
-      '#theme' => 'pi_data_spreadsheet_grid_edit',
-  );
-
   return $form;
 }
 
@@ -74,7 +70,8 @@ function pi_data_spreadsheet_link_alter(&$links, $node) {
 function pi_data_spreadsheet_view($node, $teaser = FALSE, $page = FALSE) {
   $output = '';
   if (!$teaser) {
-    $output .= theme('pi_data_spreadsheet_grid_view', $node);
+    $spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node);
+    $output .= theme('pi_data_spreadsheet_grid', $spreadsheet);
   } $node = node_prepare($node, $teaser);
 
   $node->content['body'] = array(
@@ -92,54 +89,49 @@ function pi_data_spreadsheet_view($node, $teaser = FALSE, $page = FALSE) {
  */
 function pi_data_spreadsheet_theme() {
   return array(
-      'pi_data_spreadsheet_grid_view' => array(
-          'arguments' => array('node'),
-      ),
-      'pi_data_spreadsheet_grid_edit' => array(
-          'arguments' => array('form'),
-      ),
       'pi_data_spreadsheet_grid' => array(
-          'arguments' => array(),
+          'arguments' => array('spreadsheet' => NULL),
       ),
   );
 }
 
-function theme_pi_data_spreadsheet_grid_view($node) {
-  return theme('pi_data_spreadsheet_grid', $node->nid);
-}
+function theme_pi_data_spreadsheet_grid($spreadsheet) {
 
-function theme_pi_data_spreadsheet_grid_edit($form) {
-  return theme('pi_data_spreadsheet_grid');
-}
+  _pi_data_spreadsheet_generate_spreadsheet_data_javascript($spreadsheet['sessionKey'], $spreadsheet['bookName']);
 
-function theme_pi_data_spreadsheet_grid($activity_nid) {
+  nquire_commons_load_javascript_support();
+  drupal_add_js(drupal_get_path('module', 'pi_data_spreadsheet') . '/js/pi_data_spreadsheet_grid.js');
+  drupal_add_css(drupal_get_path('module', 'pi_data_spreadsheet') . '/css/pi_data_spreadsheet_grid.css');
 
-  $key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/editgrid_api_app_key'));
-  if (_pi_data_spreadsheet_set_spreadsheet($key, $activity_nid)) {
-    _pi_data_spreadsheet_generate_session_key($key, $activity_nid);
+  $externalScripts = '<link rel = "stylesheet" type = "text/css" media = "screen" href = "http://www.editgrid.com/static/style/default.css"/>'
+          . '<link rel = "stylesheet" type = "text/css" href = "http://www.editgrid.com/static/style/grid/default.css" />'
+          . '<script type = "text/javascript" src = "http://www.editgrid.com/js/grid.js" ></script>';
+  drupal_set_html_head($externalScripts);
 
+  $output = '<div id="pi_data_spreadsheet_grid_container" style="height: 600px; width: 100%;" ></div>';
 
-    nquire_commons_load_javascript_support();
-    drupal_add_js(drupal_get_path('module', 'pi_data_spreadsheet') . '/js/pi_data_spreadsheet_grid.js');
-
-    $externalScripts = '<link rel = "stylesheet" type = "text/css" media = "screen" href = "http://www.editgrid.com/static/style/default.css"/>'
-            . '<link rel = "stylesheet" type = "text/css" href = "http://www.editgrid.com/static/style/grid/default.css" />'
-            . '<script type = "text/javascript" src = "http://www.editgrid.com/js/grid.js" ></script>';
-    drupal_set_html_head($externalScripts);
-
-    $output = '<div id="pi_data_spreadsheet_grid_container" style="height: 600px; width: 100%;" ></div>';
-  } else {
-    return "bad!";
-  }
   return $output;
 }
 
-function _pi_data_spreadsheet_generate_session_key($sessionKey, $book_id) {
+function _pi_data_spreadsheet_get_spreadsheet(&$node) {
+  $key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/editgrid_api_app_key'));
+  if (_pi_data_spreadsheet_create_spreadsheet($node, $key)) {
+    $result = array();
+    $result['sessionKey'] = $key;
+    $result['bookName'] = $node->body;
+
+    return $result;
+  }
+
+  return FALSE;
+}
+
+function _pi_data_spreadsheet_generate_spreadsheet_data_javascript($session_key, $book_name) {
   $script = "$(function() {"
           . "  nQuireJsSupport.register('PiDataSpreadsheetSessionKey', {"
           . "    init: function() {"
-          . "      this.sessionKey = '{$sessionKey}';"
-          . "      this.bookId = '{$book_id}';"
+          . "      this.sessionKey = '{$session_key}';"
+          . "      this.bookId = '{$book_name}';"
           . "    }"
           . "  });"
           . "});";
@@ -147,44 +139,59 @@ function _pi_data_spreadsheet_generate_session_key($sessionKey, $book_id) {
   drupal_add_js($script, 'inline');
 }
 
-function _pi_data_spreadsheet_set_spreadsheet($key, $book_name) {
+function _pi_data_spreadsheet_create_spreadsheet(&$node, $key) {
 
   include_once 'editgrid/editgrid.php';
-  /*session_start();
-  
-  unset($_SESSION['sessionKey']);
-  unset($_SESSION['authToken']);*/
-  
+  /* session_start();
+
+    unset($_SESSION['sessionKey']);
+    unset($_SESSION['authToken']); */
+
 
   $client = new EditGrid(NULL);
-  /*$result1 = $client->call('auth.createToken', array('appKey' => $key));
-  if ($result1->hasError()) {
+  /* $result1 = $client->call('auth.createToken', array('appKey' => $key));
+    if ($result1->hasError()) {
     trigger_error($result1->getError()->toString(), E_USER_ERROR);
     return FALSE;
-  }
-  
-  
-  $authToken = $result1->getValue();
+    }
 
-  $result2 = $client->call('auth.getSessionKey', array('appKey' => $key, 'token' => $authToken));
-  if ($result2->hasError()) {
+
+    $authToken = $result1->getValue();
+
+    $result2 = $client->call('auth.getSessionKey', array('appKey' => $key, 'token' => $authToken));
+    if ($result2->hasError()) {
     trigger_error($result2->getError()->toString(), E_USER_ERROR);
     return FALSE;
+    }
+
+    $_SESSION['sessionKey'] = $result2->getValue(); */
+
+  $client->setSessionKey($key);
+
+
+
+  if (!$node->body || strlen($node->body) === 0) {
+    $new_book = TRUE;
+    $book_name = $node->nid . '-' . substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyz"), 0, 20);
+  } else {
+    $new_book = FALSE;
+    $book_name = $node->body;
   }
 
-  $_SESSION['sessionKey'] = $result2->getValue();*/
-  
-  $client->setSessionKey($key);
-  
   $workbook_xml = "<workbook><name>{$book_name}</name></workbook>";
   $result3 = $client->call("workbook.create", array(workspace => "//mine"), $workbook_xml);
-  if ($result3->hasError()) {
-    $code = $result3->getError()->getCode();
-    if ($code === 23) {
-      return TRUE;
-    }
+  if (!$result3) {
+    trigger_error('no result from editgrid call', E_USER_ERROR);
+    return FALSE;
+  } else if ($result3->hasError() && $result3->getError()->getCode() != 23) {
     trigger_error($result3->getError()->toString(), E_USER_ERROR);
     return FALSE;
+  }
+
+  if ($new_book) {
+    $node->body = $book_name;
+    $node->revision = true;
+    node_save($node);
   }
 
   return TRUE;

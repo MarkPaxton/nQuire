@@ -146,7 +146,7 @@ $(function() {
       };
 
 
-      this._serviceDelegate.startRandomDelayProcess();
+      this._serviceDelegate.randomDelayProcessStarted();
       this._elevator.getElevationForLocations(positionalRequest, function(results, status) {
 
         if (status === google.maps.ElevationStatus.OK && results.length === 1) {
@@ -155,7 +155,7 @@ $(function() {
 
         var value = JSON.stringify(pos);
         self._serviceDelegate.saveData(value);
-        self._serviceDelegate.stopRandomDelayProcess();
+        self._serviceDelegate.randomDelayProcessStopped();
       });
     } else {
       this._serviceDelegate.saveData('');
