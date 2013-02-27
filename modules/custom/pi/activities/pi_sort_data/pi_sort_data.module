@@ -178,7 +178,25 @@ function pi_sort_data_load($node) {
   return $result;
 }
 
+function pi_sort_data_measures_for_activity($uid, $inquiry_id, $activty_nid) {
+  $measure_nids = pi_available_measures_get_measure_nids_for_sort_data_activity_nid($activty_nid);
 
+  $methodology = pi_methodology_find_user_content($uid, $inquiry_id);
+  if ($methodology && isset($methodology->measures[$activty_nid])) {
+    $filtered_measure_nids = array();
+    $regions = array('key', 'dependent');
+    foreach ($regions as $region) {
+      foreach ($methodology->measures[$activty_nid][$region] as $measure_nid) {
+        if (in_array($measure_nid, $measure_nids)) {
+          $filtered_measure_nids[] = $measure_nid;
+        }
+      }
+    }
+  } else {
+    $filtered_measure_nids = $measure_nids;
+  }
+  return $filtered_measure_nids;
+}
 
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
 
@@ -192,24 +210,7 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
   $activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
   $data_nids = pi_sort_data_get_item_nids($activity_id_for_this_node);
-
-  $measure_nids = pi_available_measures_get_measure_nids_for_sort_data_activity_nid($activity_id_for_this_node);
-
-  $methodology = pi_methodology_find_user_content($user->uid, $node_details->inquiry_id);
-  if ($methodology && isset($methodology->measures[$activity_id_for_this_node])) {
-    $filtered_measure_nids = array();
-    $regions = array('key', 'dependent');
-    foreach ($regions as $region) {
-      foreach ($methodology->measures[$activity_id_for_this_node][$region] as $measure_nid) {
-        if (in_array($measure_nid, $measure_nids)) {
-          $filtered_measure_nids[] = $measure_nid;
-        }
-      }
-    }
-  } else {
-    $filtered_measure_nids = $measure_nids;
-  }
-  
+  $filtered_measure_nids = pi_sort_data_measures_for_activity($user->uid, $node_details->inquiry_id, $activity_id_for_this_node);
 
   $header = array();
   $header[] = t('Created:');
