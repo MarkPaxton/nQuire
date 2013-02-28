@@ -130,16 +130,14 @@ function _pi_data_spreadsheet_get_spreadsheet(&$node) {
 }
 
 function _pi_data_spreadsheet_generate_spreadsheet_data_javascript($session_key, $book_name) {
-  $script = "$(function() {"
-          . "  nQuireJsSupport.register('PiDataSpreadsheetSessionKey', {"
-          . "    init: function() {"
-          . "      this.sessionKey = '{$session_key}';"
-          . "      this.bookId = '{$book_name}';"
-          . "    }"
-          . "  });"
-          . "});";
+  $module = "{"
+          . "  init: function() {"
+          . "    this.sessionKey = '{$session_key}';"
+          . "    this.bookId = '{$book_name}';"
+          . "  }"
+          . "}";
 
-  drupal_add_js($script, 'inline');
+  nquire_commons_inject_inline_javascript_module('PiDataSpreadsheetSessionKey', $module);
 }
 
 function _pi_data_spreadsheet_create_spreadsheet(&$node, $key) {
@@ -264,15 +262,9 @@ function _pi_data_spreadsheet_update_data($session_key, $book_name) {
       }
     }
 
-    foreach ($all_submeasures as $i => $submeasure_key) {
-      
-    }
-
-
-
     $call_data = $cells->callData();
     $range = "$worksheet_name!{$call_data['range']}";
-    $result_data = $client->call("cell.set", array('workbook' => "user/evilfer/$book_name", 'range' => $range, 'returnRange' => $range), $call_data['cells']);
+    $client->call("cell.set", array('workbook' => "user/evilfer/$book_name", 'range' => $range, 'returnRange' => $range), $call_data['cells']);
   }
   return;
 }

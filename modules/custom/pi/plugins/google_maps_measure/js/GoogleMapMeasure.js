@@ -3,9 +3,8 @@
 
 $(function() {
 
-  var GoogleMapMeasureManager = function(element, measureService) {
+  var GoogleMapMeasureManager = function(element) {
     var self = this;
-    this._measureService = measureService;
     this._element = $(element);
     this._mapElement = this._element.find('div.map_canvas');
 
@@ -94,6 +93,10 @@ $(function() {
     this._markButton.nQuireDynamicMeasureLink('enable');
   };
 
+  GoogleMapMeasureManager.prototype.clearValue = function() {
+    this.forgetMarker();
+    this.updateData();
+  };
   GoogleMapMeasureManager.prototype.setMarker = function(pos) {
     var self = this;
 

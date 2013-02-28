@@ -10,19 +10,13 @@ function virtual_microscope_pi_tool_vm_use_ajax_form() {
 }
 
 function _virtual_microscope_load_vm_path_javascript() {
-  static $firstTime = true;
-  if ($firstTime) {
-    $script = "$(function() {"
-            . "  nQuireJsSupport.register('VirtualMicroscopePath', {"
-            . "    init: function() {"
-            . "      this.path = 'http://localhost/~edvf2/vm/HTML5VM/';"
-            . "    }"
-            . "  });"
-            . "});";
+  $module = "{"
+          . "  init: function() {"
+          . "    this.path = 'http://localhost/~edvf2/vm/HTML5VM/';"
+          . "  }"
+          . "}";
 
-    drupal_add_js($script, 'inline');
-    $firstTime = FALSE;
-  }
+  nquire_commons_inject_inline_javascript_module('VirtualMicroscopePath', $module);
 }
 
 function _virtual_microscope_create_selected_samples_tabs($tool_data) {
@@ -62,6 +56,7 @@ function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_fo
       'children' => array(
           array('id' => 'virtual_microscope_container'),
           array(
+              'id' => 'data_form_container',
               'direction' => 'vertical',
               'size' => 200,
               'children' => array(
@@ -81,17 +76,86 @@ function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_fo
   return $output;
 }
 
+function virtual_microscope_pi_tool_vm_format_explore_page($tool_data) {
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopePageManager.js');
+
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope.css');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
+
+  _virtual_microscope_load_vm_path_javascript();
+
+  $output = '';
+
+  $output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
+
+  $output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . t('Home!')
+          . '</div>';
+
+
+  $tree = array(
+      'direction' => 'horizontal',
+      'children' => array(
+          array('id' => 'virtual_microscope_container'),
+      ),
+  );
+
+  $output .= '<div id="virtual-microscope-sample" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . nquire_commons_create_layout($tree)
+          . '</div>';
+
+
+  return $output;
+}
+
+
+function virtual_microscope_theme() {
+  return array(
+      'virtual_microscope_snapshot_measure_widget' => array(
+          'arguments' => array('form' => NULL),
+      ),
+  );
+}
+
 /* * ********************
  * VM Snapshot measure
  * ******************** */
 
 function virtual_microscope_pi_measure_vm_snapshot_create_form_item($measure_node, &$form, $value, $required) {
-  $form["measure_" . $measure_node->nid] = array(
-      '#type' => 'textfield',
-      '#title' => check_plain($measure_node->title),
-      '#description' => check_plain($measure_node->body),
+  
+  $input_element_id = "measure_{$measure_node->nid}";
+  $widget_element_id = "{$input_element_id}_widget";
+
+  $form[$input_element_id] = array(
+      '#type' => 'hidden',
       '#default_value' => $value,
       '#required' => $required,
   );
+
+  $form[$widget_element_id] = array(
+      '#theme' => 'virtual_microscope_snapshot_measure_widget',
+      '#widget_data' => $measure_node->data,
+      '#widget_id' => $widget_element_id,
+      '#widget_input_id' => $input_element_id,
+      '#widget_measure_nid' => $measure_node->nid,
+  );
+  
+}
+
+function theme_virtual_microscope_snapshot_measure_widget($form) {
+  $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_snapshot" input_element_id="' . $form['#widget_input_id'] . '" style="display:none;"></div>';
+  
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeSnapshotMeasure.js');
+  
+  $module = "{"
+          . "  init: function() {"
+          . "    this.measure = '{$form['#widget_measure_nid']}';"
+          . "  }"
+          . "}";
+          
+  nquire_commons_inject_inline_javascript_module('VirtualMicroscopeDataBrowserSnapshotMeasureNid', $module);
+  
+  return $output;
 }
 

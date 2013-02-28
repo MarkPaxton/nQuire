@@ -44,6 +44,7 @@ $(function() {
       this._ongoingUserDelayProcesses = {};
     },
     registerMeasure: function(elementId, handler) {
+      console.log('init measure: ' + elementId);
       this._measureHandlers[elementId] = handler;
       handler.setServiceDelegate(new DynamicMeasureServiceDelegate(this, elementId));
       handler.initMeasureValue(this._getData(elementId));
@@ -61,6 +62,9 @@ $(function() {
           this._ongoingUserDelayProcesses[elementId] = false;
         }
       }
+    },
+    getMeasureHandler: function(elementId) {
+      return this._measureHandlers[elementId];
     },
     _checkEndOfDataInput: function() {
       if (this._endDataInputCallback) {

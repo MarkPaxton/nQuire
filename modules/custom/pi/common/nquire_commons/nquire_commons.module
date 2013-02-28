@@ -150,19 +150,13 @@ function nquire_commons_decode_data($data, $default = '{}') {
 }
 
 function nquire_commons_inject_files_path_javascript() {
-  static $firstTime = true;
-  if ($firstTime) {
-    $script = "$(function() {"
-            . "  nQuireJsSupport.register('nQuireFilesPath', {"
-            . "    init: function() {"
-            . "      this.filesPath = '" . file_create_url(file_directory_path()) . "';"
-            . "    }"
-            . "  });"
-            . "});";
+  $module = "{"
+          . "  init: function() {"
+          . "    this.filesPath = '" . file_create_url(file_directory_path()) . "';"
+          . "  }"
+          . "}";
 
-    drupal_add_js($script, 'inline');
-    $firstTime = FALSE;
-  }
+  nquire_commons_inject_inline_javascript_module('nQuireFilesPath', $module);
 }
 
 /* * ********
@@ -255,4 +249,14 @@ function nquire_commons_create_ajax_false_data_block($rendered_form, $id = NULL)
           . '</div>';
 
   return nquire_commons_create_false_block($data_block_title, $rendered_form, $data_block_bottom, $id);
+}
+
+function nquire_commons_inject_inline_javascript_module($id, $object, $dependencies = null) {
+  static $modules = array();
+  if (!$modules[$id]) {
+    $dependencies_str = $dependencies ? (', ["' . implode('", "', $dependencies) . '"]') : '';
+    $script = "$(function() {nQuireJsSupport.register('$id', {$object}{$dependencies_str});});";
+    drupal_add_js($script, 'inline');
+    $modules[$id] = TRUE;
+  }
 }

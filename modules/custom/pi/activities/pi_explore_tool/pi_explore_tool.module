@@ -1,26 +1,26 @@
 <?php
 
-// $Id: pi_read_information.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+// $Id: pi_explore_tool.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
  * @file
- * Module for creating "pi_read_information" node type
+ * Module for creating "pi_explore_tool" node type
  */
 
 /**
  * Implementation of hook_node_info().
  */
-function pi_read_information_node_info() {
+function pi_explore_tool_node_info() {
 
   return array(
-      'pi_read_information' => array(
-          'name' => t('Inquiry information'), // Required.
-          'module' => 'pi_read_information', // Required.
-          'description' => t('Read information about a topic'), // Required.
+      'pi_explore_tool' => array(
+          'name' => t('Inquiry explore tool'), // Required.
+          'module' => 'pi_explore_tool', // Required.
+          'description' => t('Explore a scientific instrument'), // Required.
           'has_title' => TRUE,
-          'title_label' => t('Information'),
+          'title_label' => t('Explore tool'),
           'has_body' => TRUE,
-          'body_label' => t('Information'),
+          'body_label' => t('Explore tool'),
           'locked' => TRUE)
   );
 }
@@ -28,14 +28,14 @@ function pi_read_information_node_info() {
 /**
  * Implementation of hook_perm().
  */
-function pi_read_information_perm() {
+function pi_explore_tool_perm() {
   
 }
 
 /**
  * Implementation of hook_access().
  */
-function pi_read_information_access($op, $node, $account) {
+function pi_explore_tool_access($op, $node, $account) {
   return FALSE;
   /*    global $user;
     $details = get_inquiry_details_from_current_path();
@@ -51,13 +51,12 @@ function pi_read_information_access($op, $node, $account) {
 /**
  * Implementation of hook_form().
  */
-function pi_read_information_form(&$node) {
+function pi_explore_tool_form(&$node) {
 
   // Get metadata for this node type
   // (we use it for labeling title and body fields).
-  // We defined this in pi_read_information_node_info().
+  // We defined this in pi_explore_tool_node_info().
   $type = node_get_types('type', $node);
-  global $user;
 
   $node_details = get_inquiry_details_from_current_path();
   if (is_numeric($node_details->activity_id)) {
@@ -69,7 +68,7 @@ function pi_read_information_form(&$node) {
   }
 
   $form['title'] = array(
-      '#type' => 'hidden',
+      '#type' => 'textfield',
       '#title' => check_plain($type->title_label),
       '#required' => FALSE,
       '#default_value' => $type->title_label,
@@ -78,27 +77,32 @@ function pi_read_information_form(&$node) {
 
   $form['body_filter']['body'] = array(
       '#type' => 'textarea',
-      '#title' => t('Notes'),
+      '#title' => t('Body'),
       '#required' => TRUE,
       '#default_value' => $node->body,
-      '#description' => t('Type your group notes into the above box and click on the Save button when you are finished'),
+      '#description' => t('Body'),
       '#resizable' => TRUE,
       '#rows' => 8,
       '#cols' => 40,
       '#weight' => -2
   );
 
-  $prefix = "";
-  if ($current_activity->description) {
-    $prefix .= "<p>" . check_plain($current_activity->description) . "</p>";
-  }
-
-  $form['#prefix'] = $prefix;
+  $form['body_filter']['data'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Data'),
+      '#required' => TRUE,
+      '#default_value' => $node->data,
+      '#description' => t('Data'),
+      '#resizable' => TRUE,
+      '#rows' => 8,
+      '#cols' => 40,
+      '#weight' => -2
+  );
 
   return $form;
 }
 
-function pi_read_information_link_alter(&$links, $node) {
+function pi_explore_tool_link_alter(&$links, $node) {
   // remove attachment links from upload.module
   unset($links['upload_attachments']);
 }
@@ -106,11 +110,10 @@ function pi_read_information_link_alter(&$links, $node) {
 /**
  * Implementation of hook_view().
  */
-function pi_read_information_view($node, $teaser = FALSE, $page = FALSE) {
-  // Use Drupal's default node view.
-  
+function pi_explore_tool_view($node, $teaser = FALSE, $page = FALSE) {
+
   $node->content['body'] = array(
-      '#value' => theme('pi_read_information', $node, $teaser),
+      '#value' => theme('pi_explore_tool', $node, $teaser),
       '#weight' => 2
   );
 
@@ -122,9 +125,9 @@ function pi_read_information_view($node, $teaser = FALSE, $page = FALSE) {
  * 
  * @return multitype:multitype:multitype:string   
  */
-function pi_read_information_theme() {
+function pi_explore_tool_theme() {
   return array(
-      'pi_read_information' => array(
+      'pi_explore_tool' => array(
           'arguments' => array('node', 'teaser'),
       ),
   );
@@ -136,27 +139,42 @@ function pi_read_information_theme() {
  * @param unknown_type $node
  * @return string
  */
-function theme_pi_read_information($node, $teaser) {
-  $node_details = get_inquiry_details_from_current_path();
-  if (is_numeric($node_details->activity_id)) {
-    $current_activity = node_load($node_details->activity_id);
-  }
-
-  if ($current_activity->title) {
-    drupal_set_title(t($current_activity->title));
-  }
-
+function theme_pi_explore_tool($node, $teaser) {
   if ($teaser) {
-    $break_position = strpos($node->body, '<!--break-->');
-    if ($break_position) {
-      $output = substr($node->body, 0, $break_position);
-    } else {
-      $output = $node->body;
-    }
+    return '';
   } else {
-    $output = $node->body;
+    $data = nquire_commons_decode_data($node->data);
+    if (isset($data['tool'])) {
+      $page = pi_data_tools_plugin_format_explore_page($data['tool']);
+      return $page;
+    } else {
+      return "no tool!";
+    }
   }
-
-  return $output;
 }
 
+function pi_explore_tool_insert($node) {
+  db_query("INSERT INTO {pi_explore_tool} (nid, vid, data) VALUES ('%d', '%d', '%s')", $node->nid, $node->vid, $node->data);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function pi_explore_tool_update($node) {
+  if ($node->revision) {
+    pi_explore_tool_insert($node);
+  } else {
+    db_query("UPDATE {pi_explore_tool} SET data = '%s' WHERE vid = %d", $node->data, $node->vid);
+  }
+}
+
+function pi_explore_tool_delete(&$node) {
+  db_query('DELETE FROM {pi_explore_tool} WHERE nid = %d', $node->nid);
+}
+
+/**
+ * Implementation of hook_load().
+ */
+function pi_explore_tool_load($node) {
+  return db_fetch_object(db_query('SELECT * FROM {pi_explore_tool} WHERE vid = %d', $node->vid));
+}

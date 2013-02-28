@@ -72,7 +72,7 @@ $(function() {
             console.log('vm ready!');
           }, true);
           var schedule = function() {
-            setTimeout(probe, 100);
+            setTimeout(probe, 10);
           };
           var probe = function() {
             if (probing) {
@@ -82,8 +82,10 @@ $(function() {
             }
           };
           schedule();
+          return false;
         }
       }
+      return true;
     },
     _fireStatusChanged: function(status) {
       this._status = status;

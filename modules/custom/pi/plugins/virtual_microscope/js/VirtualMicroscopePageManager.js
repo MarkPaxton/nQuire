@@ -39,8 +39,9 @@ $(function() {
         this._vmManager.setSample(null);
       } else {
         this._tabsManager.setEnabled(false);
-        this._layoutManager.resizeRoots();
         this._vmManager.setSample(page);
+        this._layoutManager.resizeRoots();
+        this._layoutManager.resizeRoots();
       }
     }
   }, ['LayoutManager', 'TabsManager', 'VirtualMicroscopeManager']);
