@@ -16,19 +16,19 @@ $(function() {
   };
 
   DynamicMeasureServiceDelegate.prototype.randomDelayProcessStarted = function() {
-    this._service.randomDelayProcessStarted(this._elementId);
+    this._service._randomDelayProcessStarted(this._elementId);
   };
 
   DynamicMeasureServiceDelegate.prototype.randomDelayProcessStopped = function() {
-    this._service.randomDelayProcessStopped(this._elementId);
+    this._service._randomDelayProcessStopped(this._elementId);
   };
 
   DynamicMeasureServiceDelegate.prototype.userDelayProcessStarted = function() {
-    this._service.userDelayProcessStarted(this._elementId);
+    this._service._userDelayProcessStarted(this._elementId);
   };
 
   DynamicMeasureServiceDelegate.prototype.userDelayProcessStopped = function() {
-    this._service.userDelayProcessStopped(this._elementId);
+    this._service._userDelayProcessStopped(this._elementId);
   };
 
 

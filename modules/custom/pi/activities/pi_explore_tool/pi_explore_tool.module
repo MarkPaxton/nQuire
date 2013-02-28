@@ -1,0 +1,162 @@
+<?php
+
+// $Id: pi_read_information.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_read_information" node type
+ */
+
+/**
+ * Implementation of hook_node_info().
+ */
+function pi_read_information_node_info() {
+
+  return array(
+      'pi_read_information' => array(
+          'name' => t('Inquiry information'), // Required.
+          'module' => 'pi_read_information', // Required.
+          'description' => t('Read information about a topic'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Information'),
+          'has_body' => TRUE,
+          'body_label' => t('Information'),
+          'locked' => TRUE)
+  );
+}
+
+/**
+ * Implementation of hook_perm().
+ */
+function pi_read_information_perm() {
+  
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_read_information_access($op, $node, $account) {
+  return FALSE;
+  /*    global $user;
+    $details = get_inquiry_details_from_current_path();
+
+    if ($op == 'create') {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+    }
+    if ($op == 'update' || $op == 'delete') {
+    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+    } */
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function pi_read_information_form(&$node) {
+
+  // Get metadata for this node type
+  // (we use it for labeling title and body fields).
+  // We defined this in pi_read_information_node_info().
+  $type = node_get_types('type', $node);
+  global $user;
+
+  $node_details = get_inquiry_details_from_current_path();
+  if (is_numeric($node_details->activity_id)) {
+    $current_activity = node_load($node_details->activity_id);
+  }
+
+  if ($current_activity->name) {
+    drupal_set_title(t($current_activity->name));
+  }
+
+  $form['title'] = array(
+      '#type' => 'hidden',
+      '#title' => check_plain($type->title_label),
+      '#required' => FALSE,
+      '#default_value' => $type->title_label,
+      '#weight' => -5
+  );
+
+  $form['body_filter']['body'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Notes'),
+      '#required' => TRUE,
+      '#default_value' => $node->body,
+      '#description' => t('Type your group notes into the above box and click on the Save button when you are finished'),
+      '#resizable' => TRUE,
+      '#rows' => 8,
+      '#cols' => 40,
+      '#weight' => -2
+  );
+
+  $prefix = "";
+  if ($current_activity->description) {
+    $prefix .= "<p>" . check_plain($current_activity->description) . "</p>";
+  }
+
+  $form['#prefix'] = $prefix;
+
+  return $form;
+}
+
+function pi_read_information_link_alter(&$links, $node) {
+  // remove attachment links from upload.module
+  unset($links['upload_attachments']);
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_read_information_view($node, $teaser = FALSE, $page = FALSE) {
+  // Use Drupal's default node view.
+  
+  $node->content['body'] = array(
+      '#value' => theme('pi_read_information', $node, $teaser),
+      '#weight' => 2
+  );
+
+  return $node;
+}
+
+/**
+ * MISSING
+ * 
+ * @return multitype:multitype:multitype:string   
+ */
+function pi_read_information_theme() {
+  return array(
+      'pi_read_information' => array(
+          'arguments' => array('node', 'teaser'),
+      ),
+  );
+}
+
+/**
+ * MISSING
+ * 
+ * @param unknown_type $node
+ * @return string
+ */
+function theme_pi_read_information($node, $teaser) {
+  $node_details = get_inquiry_details_from_current_path();
+  if (is_numeric($node_details->activity_id)) {
+    $current_activity = node_load($node_details->activity_id);
+  }
+
+  if ($current_activity->title) {
+    drupal_set_title(t($current_activity->title));
+  }
+
+  if ($teaser) {
+    $break_position = strpos($node->body, '<!--break-->');
+    if ($break_position) {
+      $output = substr($node->body, 0, $break_position);
+    } else {
+      $output = $node->body;
+    }
+  } else {
+    $output = $node->body;
+  }
+
+  return $output;
+}
+

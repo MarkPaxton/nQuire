@@ -5,14 +5,27 @@ $(function() {
     _status: null,
     _statusListeners: null,
     _messageListeners: null,
-    init: function() {
+    _sample: null,
+    _divContainer: null,
+    _iframe: null,
+    _samplesPath: null,
+    init: function(dependencies) {
       this._status = false;
       this._statusListeners = [];
       this._messageListeners = {};
+
+
+      this._samplesPath = dependencies.VirtualMicroscopePath.path;
+      this._divContainer = $('#virtual_microscope_container');
+
+      var self = this;
+      window.addEventListener("message", function(event) {
+        self._receiveMessage(event);
+      }, false);
     },
-    addStatusListener: function(listener) {
-      this._statusListeners.push(listener);
-      listener.vmReadyStatus(this._status);
+    addStatusListener: function(callback) {
+      this._statusListeners.push(callback);
+      callback(this._status);
     },
     captureMessages: function(message, listenerId, callback, greedy) {
       if (!this._messageListeners[message]) {
@@ -37,40 +50,52 @@ $(function() {
       }
     },
     setSample: function(sample) {
-      this._fireStatusChange(false);
-      /* TODO load microscope */
+      if (sample !== this._sample) {
+        this._fireStatusChanged(false);
+        this._sample = sample;
+        /* TODO load microscope */
 
-      if (sample) {
-        var probing = true;
-        var self = this;
-        this.captureMessages('list', 'probe', function() {
-          probing = false;
-          self._fireStatusChange(true);
-        }, true);
-        var schedule = function() {
-          setTimeout(probe, 10);
-        };
-        var probe = function() {
-          if (probing) {
-            self._post('list');
-            schedule();
-          }
-        };
-        schedule();
+        if (this._iframe) {
+          this._iframe.remove();
+          this._iframe = null;
+        }
+
+        if (sample) {
+          this._iframe = $('<iframe>').addClass('virtual_microscope_iframe').appendTo(this._divContainer);
+          this._iframe.attr('src', this._samplesPath + sample);
+
+          var probing = true;
+          var self = this;
+          this.captureMessages('list', 'probe', function() {
+            probing = false;
+            self._fireStatusChanged(true);
+            console.log('vm ready!');
+          }, true);
+          var schedule = function() {
+            setTimeout(probe, 100);
+          };
+          var probe = function() {
+            if (probing) {
+              console.log('probing...');
+              self._post('list');
+              schedule();
+            }
+          };
+          schedule();
+        }
       }
-
     },
     _fireStatusChanged: function(status) {
       this._status = status;
       for (var i = 0; i < this._statusListeners.length; i++) {
-        this._statusListeners[i].vmReadyStatus(status);
+        this._statusListeners[i](status);
       }
     },
     /* VM communication functions */
 
     _post: function(action, param, value) {
       try {
-        var iframe = $('#moonrock-vm-iframe')[0].contentWindow;
+        var iframe = this._iframe[0].contentWindow;
         if (!iframe.onerror) {
           iframe.onerror = function(error) {
             console.log('iframe error: ' + error);
@@ -111,5 +136,5 @@ $(function() {
         }
       }
     }
-  }, ['LayoutManager']);
+  }, ['VirtualMicroscopePath']);
 });

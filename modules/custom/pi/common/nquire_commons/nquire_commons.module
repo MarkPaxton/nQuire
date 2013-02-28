@@ -149,6 +149,22 @@ function nquire_commons_decode_data($data, $default = '{}') {
   return json_decode($data && strlen(data) > 0 ? $data : $default, TRUE);
 }
 
+function nquire_commons_inject_files_path_javascript() {
+  static $firstTime = true;
+  if ($firstTime) {
+    $script = "$(function() {"
+            . "  nQuireJsSupport.register('nQuireFilesPath', {"
+            . "    init: function() {"
+            . "      this.filesPath = '" . file_create_url(file_directory_path()) . "';"
+            . "    }"
+            . "  });"
+            . "});";
+
+    drupal_add_js($script, 'inline');
+    $firstTime = FALSE;
+  }
+}
+
 /* * ********
  * LAYOUT *
  * ******** */
@@ -196,6 +212,15 @@ function nquire_commons_create_layout($tree, $root = TRUE) {
 function nquire_commons_create_tabs_panel($tabs) {
   nquire_commons_load_javascript_support();
   drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/TabsManager.js');
+  drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/TabsManager.css');
+
+  $output = '<div class="nquire-tabs-container">';
+  foreach ($tabs as $tab) {
+    $output .= '<div tab="' . $tab['id'] . '" class="nquire-tabs-tab">' . $tab['title'] . '</div>';
+  }
+
+  $output .= '</div>';
+  return $output;
 }
 
 function nquire_commons_create_false_block($title, $content, $bottom, $id = NULL) {

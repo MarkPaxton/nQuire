@@ -1,0 +1,72 @@
+<?php
+
+// $Id: pi_explore_tool.install,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Install....
+ */
+
+/**
+ * Implementation of pi_explore_tool_install().
+ *
+ * @return unknown_type
+ */
+function pi_explore_tool_install() {
+drupal_install_schema('pi_explore_tool');
+  variable_set("og_content_type_usage_pi_explore_tool", 'group_post');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_pi_explore_tool", array('status', 'revision'));
+  variable_set("comment_pi_explore_tool", COMMENT_NODE_DISABLED);
+  variable_set("upload_pi_explore_tool", 0);
+
+  //$activities = variable_get('pi_activities', array() );
+  //$activities['pi_explore_tool'] = 'Wiki notes';
+  //variable_set('pi_activities', $activities);
+}
+
+/**
+ * Implementation of pi_explore_tool_uninstall().
+ */
+function pi_explore_tool_uninstall() {
+  // Remove tables.
+  drupal_install_schema('pi_explore_tool');
+  
+  variable_del('pi_explore_tool');
+
+  variable_del("og_content_type_usage_pi_explore_tool");
+  variable_del("node_options_pi_explore_tool");
+  variable_del("comment_pi_explore_tool");
+  variable_del("upload_pi_explore_tool");
+
+  //$activities = variable_get('pi_activities', array() );
+  //unset( $activities['pi_explore_tool'] );
+  //variable_set('pi_activities', $activities);
+}
+
+function pi_explore_tool_schema() {
+  $schema['pi_explore_tool'] = array(
+      'description' => 'PI explore tool.',
+      'fields' => array(
+          'nid' => array(
+              'description' => 'The primary identifier for a node.',
+              'type' => 'serial',
+              'unsigned' => TRUE,
+              'not null' => TRUE),
+          'vid' => array(
+              'description' => 'The current {node_revisions}.vid version identifier.',
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'data' => array(
+              'description' => 'Tool data.',
+              'type' => 'text',
+              'size' => 'normal'),
+      ),
+      'primary key' => array('nid', 'vid'),
+      'unique keys' => array('vid' => array('vid')),
+      'indexes' => array('nid' => array('nid'))
+  );
+  return $schema;
+}

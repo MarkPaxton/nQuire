@@ -9,19 +9,58 @@ function virtual_microscope_pi_tool_vm_use_ajax_form() {
   return TRUE;
 }
 
+function _virtual_microscope_load_vm_path_javascript() {
+  static $firstTime = true;
+  if ($firstTime) {
+    $script = "$(function() {"
+            . "  nQuireJsSupport.register('VirtualMicroscopePath', {"
+            . "    init: function() {"
+            . "      this.path = 'http://localhost/~edvf2/vm/HTML5VM/';"
+            . "    }"
+            . "  });"
+            . "});";
+
+    drupal_add_js($script, 'inline');
+    $firstTime = FALSE;
+  }
+}
+
+function _virtual_microscope_create_selected_samples_tabs($tool_data) {
+  $selected_samples = array('14053', '14310', '74220');
+
+  $tabs = array_map(function($sample) {
+            return array('id' => $sample, 'title' => t('Sample @sample', array('@sample' => $sample)));
+          }, $selected_samples);
+
+  array_unshift($tabs, array('id' => 'home', 'title' => t('Samples')));
+
+  return nquire_commons_create_tabs_panel($tabs);
+}
+
 function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_form) {
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeDataBrowser.js');
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopePageManager.js');
 
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope.css');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
+
+  _virtual_microscope_load_vm_path_javascript();
+
+  $output = '';
+
+  $output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
+
+  $output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . t('Home!')
+          . '</div>';
 
 
   $data_block = nquire_commons_create_ajax_false_data_block($rendered_form);
-
-
   $tree = array(
       'direction' => 'horizontal',
       'children' => array(
-          array('content' => '!!!'),
+          array('id' => 'virtual_microscope_container'),
           array(
               'direction' => 'vertical',
               'size' => 200,
@@ -34,7 +73,12 @@ function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_fo
       ),
   );
 
-  return nquire_commons_create_layout($tree);
+  $output .= '<div id="virtual-microscope-sample" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . nquire_commons_create_layout($tree)
+          . '</div>';
+
+
+  return $output;
 }
 
 /* * ********************
@@ -50,3 +94,4 @@ function virtual_microscope_pi_measure_vm_snapshot_create_form_item($measure_nod
       '#required' => $required,
   );
 }
+
