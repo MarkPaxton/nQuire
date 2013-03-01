@@ -9,25 +9,20 @@ $(function() {
       var self = this;
       this._ajaxService = dependencies.AjaxDataService;
       this._vmManager = dependencies.VirtualMicroscopeManager;
-      
+
       this._snapshotMeasure = dependencies.VirtualMicroscopeDataBrowserSnapshotMeasureNid.measure;
-      
+
       this._vmManager.addStatusListener(function(ready) {
         self.vmReadyStatus(ready);
       });
-      
-      
+
+
       /*var handler = this._ajaxService.getMeasureHandler(this._snapshotMeasure);
        * TODO react when form is initialized
        */
     },
     vmReadyStatus: function(ready) {
-      this._ajaxService.clearData();
-      if (ready) {
-        this._ajaxService.enableDataInput();
-      } else {
-        this._ajaxService.disableDataInput();
-      }
+      this._ajaxService.clearData(ready);
     }
 
   }, ['AjaxDataService', 'VirtualMicroscopeManager', 'VirtualMicroscopeSnapshotMeasure', 'VirtualMicroscopeDataBrowserSnapshotMeasureNid']);

@@ -1,6 +1,7 @@
 
 $(function() {
   nQuireJsSupport.register('AjaxDataService', {
+    _buttonMode: null,
     _measuresService: null,
     _data: null,
     _container: null,
@@ -15,6 +16,25 @@ $(function() {
       this._overlay = $('<div>').addClass('nquire-data-input-overlay').css({
         display: 'none'
       }).appendTo(this._container);
+
+      var self = this;
+      $('#nquire-data-input-button-savenew').click(function() {
+        self._submitData();
+        return false;
+      });
+
+      var change = function() {
+        self._dataChanged();
+      };
+      this._measuresService.addUserChangeListener(change);
+      $('[name^="measure_"]').each(function() {
+        var element = $(this);
+        if ((element.is('input') && element.attr('type') === 'text') || element.is('textarea')) {
+          element.keydown(change);
+        } else if (element.is('select') || element.is('radio') || element.is('checkbox')) {
+          element.change(change);
+        }
+      });
     },
     getCurrentData: function() {
       return this._data.current ? this._data.all[this._data.current] : null;
@@ -27,64 +47,124 @@ $(function() {
     getMeasureHandler: function(measure) {
       return this._measuresService.getMeasureHandler('measure_' + measure);
     },
-    clearData: function() {
+    clearData: function(enabledAtEnd) {
       var self = this;
       this._setButtonsMode('new');
-      $('[name="data_id"]').val('');
-      $('[name^="measure_"]').each(function() {
-        var element = $(this);
-        var handler = self._measuresService.getMeasureHandler(element.attr('name'));
-        if (handler) {
-          console.log('clear ' + element.attr('name') + ' through handler');
-          handler.clearValue();
-        } else {
-          console.log('clear ' + element.attr('name') + ' w/o handler');
-          element.val('');
+
+      var clear = function() {
+        $('[name="data_id"]').val('');
+        $('[name^="measure_"]').each(function() {
+          var element = $(this);
+          var handler = self._measuresService.getMeasureHandler(element.attr('name'));
+          if (handler) {
+            console.log('clear ' + element.attr('name') + ' through handler');
+            handler.clearValue();
+          } else {
+            console.log('clear ' + element.attr('name') + ' w/o handler');
+            element.val('');
+          }
+        });
+        if (enabledAtEnd) {
+          self._enableDataInput();
         }
-      });
+      };
+
+      if (!this._measuresService.endDataInput(clear) || !enabledAtEnd) {
+        this._disableDataInput();
+      }
     },
-    saveData: function() {
-      var self = this;
-      this._measuresService.endDataInput(function() {
-        self._submitData();
-      });
-    },
-    enableDataInput: function() {
+    _enableDataInput: function() {
       this._overlay.css('display', 'none');
     },
-    disableDataInput: function() {
+    _disableDataInput: function() {
       this._measuresService.stopUserInputProcesses();
       this._overlay.css('display', 'block');
     },
+    _dataChanged: function() {
+if (this._sample) {
+  
+}
+    },
     _submitData: function() {
+      var self = this;
 
+      var processResponse = function(success, data) {
+        if (success) {
+          var id = data.id;
+          self._data.current = id;
+          self._data.all[id] = data;
+        } else {
+          console.log(data);
+        }
+        self._enableDataInput();
+      };
+      var submit = function() {
+        self._ajaxCall('submit', $('form').serialize(), processResponse);
+      };
+      this._disableDataInput();
+      this._measuresService.endDataInput(submit);
+    },
+    _ajaxCall: function(op, data, callback) {
+      var url = location.origin + location.pathname + '/data/' + op;
+      $.ajax({
+        url: url,
+        type: "POST",
+        dataType: 'json',
+        data: data,
+        success: function(data) {
+          if (data.status) {
+            callback(true, data.data);
+          } else {
+            callback(false, data.error);
+          }
+        },
+        error: function(jqXHR, textStatus) {
+          callback(false, 'ajax call error: ' + textStatus);
+        }
+      });
     },
     setData: function(dataId) {
-      this.disableDataInput();
-      this.clearData();
-
+      var data = null;
       if (this._data.all[dataId]) {
         this._data.current = dataId;
-        $('[name="data_id"]').val(dataId);
-        var data = this._data.all[dataId];
-        for (var measure in data) {
-          var element = $('[name="' + measure + '"]');
-          var handler = self._measuresService.getMeasureHandler(measure);
-          if (handler) {
-            console.log('set ' + measure + ' through handler');
-            handler.initMeasureValue(data[measure]);
-          } else {
-            console.log('set ' + measure + ' w/o handler');
-            element.val(data[measure]);
-          }
-        }
+        data = this._data.all[dataId];
         this._setButtonsMode('saved');
       } else {
         this._data.current = null;
+        data = {};
         this._setButtonsMode('new');
       }
-      
-      this.enableDataInput();
+
+      var self = this;
+      var set = function() {
+        $('[name="data_id"]').val(typeof data['id'] !== 'undefined' ? data['id'] : '');
+        $('[name^="measure_"]').each(function() {
+          var element = $(this);
+          var measure = element.attr('name');
+          var hasValue = typeof data[measure] !== 'undefined';
+          var handler = self._measuresService.getMeasureHandler(measure);
+          if (handler) {
+            console.log('set ' + element.attr('name') + ' through handler');
+            if (hasValue) {
+              handler.initMeasureValue(data[measure]);
+            } else {
+              handler.clearValue();
+            }
+          } else {
+            console.log('set ' + element.attr('name') + ' w/o handler');
+            if (hasValue) {
+              element.val(data[measure]);
+            } else {
+              element.val('');
+            }
+          }
+        });
+        self._enableDataInput();
+      };
+
+      if (!this._measuresService.endDataInput(set)) {
+        this.disableDataInput();
+      }
     },
     _setButtonsMode: function(mode) {
       var s = {};

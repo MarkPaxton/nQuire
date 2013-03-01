@@ -29,14 +29,14 @@ function pi_data_node_info() {
 function pi_data_menu() {
   $items = array();
 
-  $items['activity/%/data/submit'] = array(
+  $items['activity/%/edit/data/submit'] = array(
       'page callback' => 'pi_data_ajax_submit',
       'type' => MENU_CALLBACK,
       'access_callback' => TRUE,
       'access arguments' => array('access inquiry_creator content'),
   );
 
-  $items['activity/%/data/delete'] = array(
+  $items['activity/%/edit/data/delete'] = array(
       'page callback' => 'pi_data_ajax_delete',
       'type' => MENU_CALLBACK,
       'access_callback' => TRUE,
@@ -347,4 +347,49 @@ function _pi_data_load_ajax_form_support() {
 function theme_pi_data($node, $teaser) {
   $output = '';
   return $output;
+}
+
+/* AJAX form functions */
+
+function pi_data_ajax_submit() {
+  global $user;
+  /* TODO check permissions! */
+  
+  $item = array();
+  $node = _pi_data_ajax_get_form_data_node();
+  if ($node) {
+    $node->revision = TRUE;
+  } else {
+    $node = new stdClass();
+    $node->uid = $user->uid;
+    $node->type = 'pi_data';
+    $node->values = array();
+  }
+
+  foreach ($_REQUEST as $key => $value) {
+    if (strpos($key, "measure_") === 0 && strlen($key) > 8) {
+      $node->values[substr($key, 9)] = $value;
+      $item[$key] = $value;
+    }
+  }
+
+  node_save($node);
+  $item['data_id'] = $node->nid;
+  
+  $result = array(
+      'status' => TRUE,
+      'data' => $item,
+  );
+  
+  drupal_json($result);
+}
+
+function _pi_data_ajax_get_form_data_node() {
+  if (isset($_REQUEST['data_id']) && strlen($_REQUEST['data_id'])) {
+    $node = node_load($_REQUEST['data_id']);
+    if ($node && $node->type === 'pi_data') {
+      return $node;
+    }
+  }
+  return NULL;
 }

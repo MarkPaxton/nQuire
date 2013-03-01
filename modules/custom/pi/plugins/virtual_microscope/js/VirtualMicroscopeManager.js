@@ -2,18 +2,25 @@
 
 $(function() {
   nQuireJsSupport.register('VirtualMicroscopeManager', {
+    _messageCallbacks: null,
     _status: null,
     _statusListeners: null,
-    _messageListeners: null,
+    _position: null,
+    _positionListeners: null,
+    _lengthMeasure: null,
+    _lengthMeasureListeners: null,
     _sample: null,
     _divContainer: null,
     _iframe: null,
     _samplesPath: null,
     init: function(dependencies) {
-      this._status = false;
-      this._statusListeners = [];
       this._messageListeners = {};
 
+      this._status = false;
+      this._statusListeners = [];
+
+      this._position = null;
+      this._positionListeners = [];
 
       this._samplesPath = dependencies.VirtualMicroscopePath.path;
       this._divContainer = $('#virtual_microscope_container');
@@ -22,30 +29,46 @@ $(function() {
       window.addEventListener("message", function(event) {
         self._receiveMessage(event);
       }, false);
+
+      this._captureMessages('monitor', function(msg) {
+        self._monitorMessageReceived(msg);
+      });
     },
     addStatusListener: function(callback) {
       this._statusListeners.push(callback);
       callback(this._status);
     },
-    captureMessages: function(message, listenerId, callback, greedy) {
-      if (!this._messageListeners[message]) {
-        this._messageListeners[message] = {
-          greedy: null,
-          listeners: {}
-        };
-      }
-
-      this._messageListeners[message].listeners[listenerId] = callback;
-      if (greedy) {
-        this._messageListeners[message].greedy = listenerId;
-      }
-      ;
+    addPositionListener: function(callback) {
+      this._positionListeners.push(callback);
+      callback(this._position);
     },
-    stopCapturingMessage: function(message, listenerId) {
+    _captureMessages: function(message, callback, justOne) {
+      this._messageListeners[message] = {
+        callback: callback,
+        justOne: justOne
+      };
+    },
+    _stopCapturingMessage: function(message) {
       if (this._messageListeners[message]) {
-        delete this._messageListeners[message].listeners[listenerId];
-        if (this._messageListeners[message].greedy === listenerId) {
-          this._messageListeners[message].greedy = null;
+        delete this._messageListeners[message];
+      }
+    },
+    _monitorMessageReceived: function(msg) {
+      if (msg.param === 'PositionPixels') {
+        if (msg.content) {
+          if (!this._position || this._position.sample !== this._sample ||
+                  this._position.position.x !== msg.content.x || this._position.position.y !== msg.content.y ||
+                  this._position.position.zoom !== msg.content.zoom) {
+
+            this._position = {
+              sample: this._sample,
+              position: msg.content
+            };
+            for (var i in this._positionListeners) {
+              this._positionListeners[i](this._position);
+            }
+            console.log(this._position);
+          }
         }
       }
     },
@@ -53,7 +76,6 @@ $(function() {
       if (sample !== this._sample) {
         this._fireStatusChanged(false);
         this._sample = sample;
-        /* TODO load microscope */
 
         if (this._iframe) {
           this._iframe.remove();
@@ -66,7 +88,7 @@ $(function() {
 
           var probing = true;
           var self = this;
-          this.captureMessages('list', 'probe', function() {
+          this._captureMessages('list', function() {
             probing = false;
             self._fireStatusChanged(true);
             console.log('vm ready!');
@@ -89,6 +111,14 @@ $(function() {
     },
     _fireStatusChanged: function(status) {
       this._status = status;
+
+      if (status) {
+        this._post('monitor', 'MeasureMM');
+        this._post('monitor', 'PositionPixels');
+      } else {
+        this._position = this._lengthMeasure = null;
+      }
+
       for (var i = 0; i < this._statusListeners.length; i++) {
         this._statusListeners[i](status);
       }
@@ -128,13 +158,14 @@ $(function() {
     },
     _receiveMessage: function(event) {
       var msg = event.data;
-      var listeners = this._messageListeners[msg.action];
-      if (listeners) {
-        if (listeners.greedy) {
-          var lid = listeners.greedy;
-          var l = listeners.listeners[lid];
-          this.stopCapturingMessage(msg.action, lid);
-          l(msg);
+      var listener = this._messageListeners[msg.action];
+      if (listener) {
+        if (listener.justOne) {
+          var c = listener.callback;
+          this._stopCapturingMessage(msg.action);
+          c(msg);
+        } else {
+          listener.callback(msg);
         }
       }
     }

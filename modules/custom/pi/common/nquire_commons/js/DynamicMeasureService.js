@@ -38,10 +38,12 @@ $(function() {
     _ongoingRandomDelayProcesses: null,
     _ongoingUserDelayProcesses: null,
     _endDataInputCallback: null,
+    _changeListeners: null,
     init: function() {
       this._measureHandlers = {};
       this._ongoingRandomDelayProcesses = {};
       this._ongoingUserDelayProcesses = {};
+      this._changeListeners = [];
     },
     registerMeasure: function(elementId, handler) {
       console.log('init measure: ' + elementId);
@@ -49,10 +51,24 @@ $(function() {
       handler.setServiceDelegate(new DynamicMeasureServiceDelegate(this, elementId));
       handler.initMeasureValue(this._getData(elementId));
     },
+    addUserChangeListener: function(callback) {
+      this._changeListeners.push(callback);
+    },
+    /**
+     * 
+     * @param {type} endDataInputCallback
+     * @returns {bool} Whether the callback was called immediately
+     */
     endDataInput: function(endDataInputCallback) {
-      this._endDataInputCallback = endDataInputCallback;
       this.stopUserInputProcesses();
-      this._checkEndOfDataInput();
+      if (this._randomDelayProcessesActive()) {
+        this._endDataInputCallback = endDataInputCallback;
+        this._checkEndOfDataInput();
+        return false;
+      } else {
+        endDataInputCallback();
+        return true;
+      }
     },
     stopUserInputProcesses: function() {
       for (var elementId in this._ongoingUserDelayProcesses) {
@@ -66,17 +82,19 @@ $(function() {
     getMeasureHandler: function(elementId) {
       return this._measureHandlers[elementId];
     },
+    _randomDelayProcessesActive: function() {
+      var active = false;
+      for (var elementId in this._ongoingRandomDelayProcesses) {
+        if (this._ongoingRandomDelayProcesses[elementId]) {
+          active = true;
+          break;
+        }
+      }
+      return active;
+    },
     _checkEndOfDataInput: function() {
       if (this._endDataInputCallback) {
-        var ended = true;
-        for (var elementId in this._ongoingRandomDelayProcesses) {
-          if (this._ongoingRandomDelayProcesses[elementId]) {
-            ended = false;
-            break;
-          }
-        }
-
-        if (ended) {
+        if (!this._randomDelayProcessesActive()) {
           var f = this._endDataInputCallback;
           this._endDataInputCallback = null;
           f();
@@ -84,7 +102,13 @@ $(function() {
       }
     },
     _saveData: function(elementId, data) {
-      $('input[name="' + elementId + '"]').val(data);
+      var element = $('input[name="' + elementId + '"]');
+      if (element && element.val() !== data) {
+        element.val(data);
+        for(var i in this._changeListeners) {
+          this._changeListeners[i]();
+        }
+      }
     },
     _getData: function(elementId) {
       return $('input[name="' + elementId + '"]').val();
