@@ -311,11 +311,11 @@ function theme_pi_data_node_form($form) {
 
 
   $parent_activity = node_load($activity->parent_activity);
+
   $data = nquire_commons_decode_data($parent_activity->parameters);
   if (isset($data['tool'])) {
-
     if (pi_data_tools_plugin_use_ajax_form($data['tool'])) {
-      _pi_data_load_ajax_form_support();
+      _pi_data_load_ajax_form_support($parent_activity, $form);
       unset($form['buttons']);
     }
 
@@ -330,11 +330,26 @@ function theme_pi_data_node_form($form) {
   return $output;
 }
 
-function _pi_data_load_ajax_form_support() {
+function _pi_data_load_ajax_form_support($sort_data_activity, $form) {
+
+  $data_id = $form['#node']->nid;
+  $data_id_str = $data_id ? "'$data_id'" : 'null';
+
+  $data_nids = pi_sort_data_get_item_nids($sort_data_activity->nid);
+  $data_strs = array_map(function($nid) {
+            $data_node = node_load($nid);
+            $output = "$nid: {id:  '$nid'";
+            foreach ($data_node->values as $measure_nid => $value) {
+              $output .= ",measure_{$measure_nid}: '{$value}'";
+            }
+            $output .= '}';
+            return $output;
+          }, $data_nids);
+  $all_data_str = implode(',', $data_strs);
   $module = "{"
           . "  init: function() {"
-          . "    this.current = null;"
-          . "    this.all = {};"
+          . "    this.current = $data_id_str;"
+          . "    this.all = {{$all_data_str}};"
           . "  }"
           . "}";
   nquire_commons_inject_inline_javascript_module('AjaxDataServiceInitialData', $module);
@@ -354,7 +369,7 @@ function theme_pi_data($node, $teaser) {
 function pi_data_ajax_submit() {
   global $user;
   /* TODO check permissions! */
-  
+
   $item = array();
   $node = _pi_data_ajax_get_form_data_node();
   if ($node) {
@@ -368,19 +383,19 @@ function pi_data_ajax_submit() {
 
   foreach ($_REQUEST as $key => $value) {
     if (strpos($key, "measure_") === 0 && strlen($key) > 8) {
-      $node->values[substr($key, 9)] = $value;
+      $node->values[substr($key, 8)] = $value;
       $item[$key] = $value;
     }
   }
 
   node_save($node);
   $item['data_id'] = $node->nid;
-  
+
   $result = array(
       'status' => TRUE,
       'data' => $item,
   );
-  
+
   drupal_json($result);
 }
 

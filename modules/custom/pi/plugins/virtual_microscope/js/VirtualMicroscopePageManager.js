@@ -30,7 +30,11 @@ $(function() {
       this._tabsManager.setEnabled(true);
       this._openPage('home');
     },
-    _openPage: function(page) {
+    openSampleView: function(view) {
+      this._openPage(view.sample, view);
+      this._tabsManager.selectTab(view.sample);
+    },
+    _openPage: function(page, view) {
       var pages = page === 'home' ? [this._homePage, this._vmPage] : [this._vmPage, this._homePage];
       pages[1].addClass('virtual-microscope-page-hidden');
       pages[0].removeClass('virtual-microscope-page-hidden');
@@ -39,7 +43,7 @@ $(function() {
         this._vmManager.setSample(null);
       } else {
         this._tabsManager.setEnabled(false);
-        this._vmManager.setSample(page);
+        this._vmManager.setSample(view ? view : page);
         this._layoutManager.resizeRoots();
         this._layoutManager.resizeRoots();
       }

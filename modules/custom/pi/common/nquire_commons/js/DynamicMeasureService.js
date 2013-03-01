@@ -15,6 +15,10 @@ $(function() {
     return this._service._getData(this._elementId);
   };
 
+  DynamicMeasureServiceDelegate.prototype.dataChanged = function() {
+    this._service._dataChanged();
+  };
+
   DynamicMeasureServiceDelegate.prototype.randomDelayProcessStarted = function() {
     this._service._randomDelayProcessStarted(this._elementId);
   };
@@ -56,17 +60,32 @@ $(function() {
     },
     /**
      * 
-     * @param {type} endDataInputCallback
+     * @param {callback} callback
      * @returns {bool} Whether the callback was called immediately
      */
-    endDataInput: function(endDataInputCallback) {
+    prepareToSave: function(callback) {
+      for (var i in this._measureHandlers) {
+        var mh = this._measureHandlers[i];
+        if (mh.prepareToSave) {
+          mh.prepareToSave();
+        }
+      }
+
+      return this.endDataInput(callback);
+    },
+    /**
+     * 
+     * @param {callback} callback
+     * @returns {bool} Whether the callback was called immediately
+     */
+    endDataInput: function(callback) {
       this.stopUserInputProcesses();
       if (this._randomDelayProcessesActive()) {
-        this._endDataInputCallback = endDataInputCallback;
+        this._endDataInputCallback = callback;
         this._checkEndOfDataInput();
         return false;
       } else {
-        endDataInputCallback();
+        callback();
         return true;
       }
     },
@@ -105,9 +124,14 @@ $(function() {
       var element = $('input[name="' + elementId + '"]');
       if (element && element.val() !== data) {
         element.val(data);
-        for(var i in this._changeListeners) {
+        for (var i in this._changeListeners) {
           this._changeListeners[i]();
         }
+      }
+    },
+    _dataChanged: function() {
+      for (var i in this._changeListeners) {
+        this._changeListeners[i]();
       }
     },
     _getData: function(elementId) {

@@ -9,6 +9,7 @@ $(function() {
     _positionListeners: null,
     _lengthMeasure: null,
     _lengthMeasureListeners: null,
+    _getViewUrlListeners: null,
     _sample: null,
     _divContainer: null,
     _iframe: null,
@@ -22,6 +23,8 @@ $(function() {
       this._position = null;
       this._positionListeners = [];
 
+      this._getViewUrlListeners = [];
+
       this._samplesPath = dependencies.VirtualMicroscopePath.path;
       this._divContainer = $('#virtual_microscope_container');
 
@@ -33,6 +36,9 @@ $(function() {
       this._captureMessages('monitor', function(msg) {
         self._monitorMessageReceived(msg);
       });
+      this._captureMessages('get', function(msg) {
+        self._getMessageReceived(msg);
+      });
     },
     addStatusListener: function(callback) {
       this._statusListeners.push(callback);
@@ -41,6 +47,10 @@ $(function() {
     addPositionListener: function(callback) {
       this._positionListeners.push(callback);
       callback(this._position);
+    },
+    getUrlView: function(callback) {
+      this._getViewUrlListeners.push(callback);
+      this._post('get', 'viewURL');
     },
     _captureMessages: function(message, callback, justOne) {
       this._messageListeners[message] = {
@@ -67,12 +77,30 @@ $(function() {
             for (var i in this._positionListeners) {
               this._positionListeners[i](this._position);
             }
-            console.log(this._position);
           }
         }
       }
     },
-    setSample: function(sample) {
+    _getMessageReceived: function(msg) {
+      if (msg.param === 'viewURL') {
+        if (msg.content) {
+          var list = this._getViewUrlListeners;
+          this._getViewUrlListeners = [];
+          for (var i in list) {
+            list[i](msg.content);
+          }
+        }
+      }
+    },
+    setSample: function(sampleView) {
+      var sample = null, query = null;
+      if (sampleView && typeof sampleView === 'object') {
+        sample = sampleView.sample;
+        query = sampleView.viewQuery;
+      } else {
+        sample = sampleView;
+      }
+
       if (sample !== this._sample) {
         this._fireStatusChanged(false);
         this._sample = sample;
@@ -84,7 +112,11 @@ $(function() {
 
         if (sample) {
           this._iframe = $('<iframe>').addClass('virtual_microscope_iframe').appendTo(this._divContainer);
-          this._iframe.attr('src', this._samplesPath + sample);
+          var src = this._samplesPath + sample;
+          if (query) {
+            src += "?" + query;
+          }
+          this._iframe.attr('src', src);
 
           var probing = true;
           var self = this;

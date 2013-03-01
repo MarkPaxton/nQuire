@@ -74,7 +74,7 @@ function inquiry_basic_measures_pi_measure__number_format_table_value($measure_n
   }
   return check_plain($output);
 }
-         
+
 function inquiry_basic_measures_pi_measure__number_submeasure_get_title($measure_node) {
   return check_plain($measure_node->title) . t(' (number)');
 }
@@ -94,14 +94,20 @@ function inquiry_basic_measures_pi_measure__number_submeasure_is_numeric() {
 function inquiry_basic_measures_pi_measure__options_create_form_item($measure_node, &$form, $value, $required) {
   $data = nquire_commons_decode_data($measure_node->data);
 
-
   $type = NULL;
   $multiple = $data['multiple_options'];
 
   if ($data['widget'] === 'menu') {
     $type = 'select';
   } else if ($data['widget'] === 'buttons') {
-    $type = $multiple ? 'checkboxes' : 'radios';
+    if ($multiple) {
+      $type = 'checkboxes';
+      if (!$value) {
+        $value = array();
+      }
+    } else {
+      $type = 'radios';
+    }
   }
 
   $form["measure_" . $measure_node->nid] = array(
@@ -122,13 +128,14 @@ function inquiry_basic_measures_pi_measure__options_format_table_value($measure_
 
 function inquiry_basic_measures_pi_measure__options_submeasure_is_numeric($measure_node) {
   $data = nquire_commons_decode_data($measure_node->data);
-  foreach($data['options'] as $value) {
+  foreach ($data['options'] as $value) {
     if (!is_numeric($value)) {
       return FALSE;
     }
   }
   return TRUE;
 }
+
 function inquiry_basic_measures_pi_measure__options_submeasure_get_title($measure_node) {
   return check_plain($measure_node->title) . t(' (selection)');
 }
@@ -144,6 +151,9 @@ function inquiry_basic_measures_pi_measure__options_submeasure_get_value_for_cha
   }
 }
 
+function inquiry_basic_measures_pi_measure__options_process_form_value($measure_node, &$value, $old_value) {
+  return;
+}
 
 /* * *****************
  * Image measure *

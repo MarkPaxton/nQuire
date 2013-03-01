@@ -81,9 +81,9 @@ $(function() {
       this._overlay.css('display', 'block');
     },
     _dataChanged: function() {
-if (this._sample) {
-  
-}
+      if (this._buttonMode === 'saved') {
+        this._setButtonsMode('modified');
+      }
     },
     _submitData: function() {
       var self = this;
@@ -101,8 +101,9 @@ if (this._sample) {
       var submit = function() {
         self._ajaxCall('submit', $('form').serialize(), processResponse);
       };
+      
       this._disableDataInput();
-      this._measuresService.endDataInput(submit);
+      this._measuresService.prepareToSave(submit);
     },
     _ajaxCall: function(op, data, callback) {
       var url = location.origin + location.pathname + '/data/' + op;
@@ -123,16 +124,17 @@ if (this._sample) {
         }
       });
     },
-    setData: function(dataId) {
+    setData: function(dataId, callbackWhenDone) {
       var data = null;
+      var nextButtonsMode = null;
       if (this._data.all[dataId]) {
         this._data.current = dataId;
         data = this._data.all[dataId];
-        this._setButtonsMode('saved');
+        nextButtonsMode = 'saved';
       } else {
         this._data.current = null;
         data = {};
-        this._setButtonsMode('new');
+        nextButtonsMode = 'new';
       }
 
       var self = this;
@@ -144,8 +146,9 @@ if (this._sample) {
           var hasValue = typeof data[measure] !== 'undefined';
           var handler = self._measuresService.getMeasureHandler(measure);
           if (handler) {
-            console.log('set ' + element.attr('name') + ' through handler');
+            console.log('set ' + element.attr('name') + ' through handler: ' + data[measure]);
             if (hasValue) {
+              element.val(data[measure]);
               handler.initMeasureValue(data[measure]);
             } else {
               handler.clearValue();
@@ -159,7 +162,11 @@ if (this._sample) {
             }
           }
         });
+        self._setButtonsMode(nextButtonsMode);
         self._enableDataInput();
+        if (callbackWhenDone) {
+          callbackWhenDone();
+        }
       };
 
       if (!this._measuresService.endDataInput(set)) {
@@ -167,27 +174,28 @@ if (this._sample) {
       }
     },
     _setButtonsMode: function(mode) {
+      this._buttonMode = mode;
       var s = {};
       switch (mode) {
         case 'new':
           s['savenew'] = 'enabled';
-          s['savechanges'] = s['saving'] = s['saved'] = s['newdata'] = s['deletedata'] = 'hidden';
+          s['savechanges'] = s['saving'] = s['saved'] = s['createdata'] = s['deletedata'] = 'hidden';
           break;
         case 'saved':
           s['savenew'] = s['saving'] = 'hidden';
           s['savechanges'] = 'disabled';
-          s['saved'] = s['newdata'] = s['deletedata'] = 'enabled';
+          s['saved'] = s['createdata'] = s['deletedata'] = 'enabled';
           break;
         case 'modified':
           s['savenew'] = s['saved'] = s['saving'] = 'hidden';
           s['savechanges'] = 'enabled';
-          s['newdata'] = s['deletedata'] = 'enabled';
+          s['createdata'] = s['deletedata'] = 'enabled';
           break;
         case 'saving':
           s['saving'] = 'enabled';
           s['savenew'] = s['saved'] = 'hidden';
           s['savechanges'] = 'hidden';
-          s['newdata'] = s['deletedata'] = 'disabledIfShown';
+          s['createdata'] = s['deletedata'] = 'disabledIfShown';
           break;
       }
       for (var id in s) {
