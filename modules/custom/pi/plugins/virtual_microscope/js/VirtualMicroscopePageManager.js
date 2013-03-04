@@ -26,6 +26,12 @@ $(function() {
         self._openPage(tab);
       });
 
+      $('.virtual-microscope-open').click(function() {
+        var sampleId = $(this).parents('.virtual-microscope-sample').attr('item-id');
+        self._openPage(sampleId);
+        self._tabsManager.selectTab(sampleId);
+      });
+
       this._tabsManager.selectTab('home');
       this._tabsManager.setEnabled(true);
       this._openPage('home');
@@ -35,9 +41,9 @@ $(function() {
       this._tabsManager.selectTab(view.sample);
     },
     _openPage: function(page, view) {
-      var pages = page === 'home' ? [this._homePage, this._vmPage] : [this._vmPage, this._homePage];
-      pages[1].addClass('virtual-microscope-page-hidden');
-      pages[0].removeClass('virtual-microscope-page-hidden');
+      var pages = page === 'home' ? [this._vmPage, this._homePage] : [this._homePage, this._vmPage];
+      pages[0].addClass('virtual-microscope-page-hidden');
+      pages[1].removeClass('virtual-microscope-page-hidden');
 
       if (page === 'home') {
         this._vmManager.setSample(null);

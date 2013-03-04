@@ -20,7 +20,7 @@ function _virtual_microscope_load_vm_path_javascript() {
 }
 
 function _virtual_microscope_create_selected_samples_tabs($tool_data) {
-  $selected_samples = array('14053', '14310', '74220');
+  $selected_samples = $tool_data['vm_selected'] ? $tool_data['vm_selected'] : array();
 
   $tabs = array_map(function($sample) {
             return array('id' => $sample, 'title' => t('Sample @sample', array('@sample' => $sample)));
@@ -46,7 +46,7 @@ function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_fo
   $output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
 
   $output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
-          . t('Home!')
+          . _virtual_microscope_create_home_page($tool_data)
           . '</div>';
 
 
@@ -90,7 +90,7 @@ function virtual_microscope_pi_tool_vm_format_explore_page($tool_data) {
   $output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
 
   $output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
-          . t('Home!')
+          . _virtual_microscope_create_home_page($tool_data)
           . '</div>';
 
 
@@ -109,6 +109,50 @@ function virtual_microscope_pi_tool_vm_format_explore_page($tool_data) {
   return $output;
 }
 
+function _virtual_microscope_create_home_page($tool_data) {
+  nquire_commons_load_external_link_format();
+  
+  $set = $tool_data['vm_set'];
+  $samples = $tool_data['vm_selected'];
+  $path = file_directory_path() . '/vm_data/' . $set . '/';
+  $url = file_create_url($path . 'vm_data.txt');
+  $str = trim(file_get_contents($url));
+  $sample_data = nquire_commons_decode_data($str);
+  
+  $output = '<div class="virtual-microscope-sample-list">';
+
+  $metadata_titles = array(
+      'location' => t('Location:'),
+      'source' => t('Source:'),
+      'info' => t('Further information:'),
+  );
+
+  foreach ($samples as $sample_id) {
+    $output .= '<div class="virtual-microscope-sample-container">';
+
+    $output .= '<div class="virtual-microscope-sample" item-id="' . $sample_id . '">'
+            . '<div class="virtual-microscope-image-container">'
+            . '<img class="virtual-microscope-image" src="' . file_create_url($path . 'pics/sample_' . $sample_id . '.jpg') . '" />'
+            . '<div class = "virtual-microscope-open"></div>'
+            . '</div>'
+            . '</div>';
+
+    $output .= '<div class="virtual-microscope-sample-title">' . t('Sample @sample', array('@sample' => $sample_id)) . '</div>';
+    $output .= '<div class="virtual-microscope-sample-metadata">';
+    foreach ($sample_data[$sample_id] as $key => $value) {
+      $output .= '<div class="virtual-microscope-sample-metadata-row">'
+              . '<div class="virtual-microscope-sample-metadata-cell virtual-microscope-sample-metadata-key virtual-microscope-sample-metadata-key-' . $key . '">' . $metadata_titles[$key] . '</div>'
+              . '<div class="virtual-microscope-sample-metadata-cell virtual-microscope-sample-metadata-value virtual-microscope-sample-metadata-value-' . $key . '">' . $value . '</div>'
+              . '</div>';
+    }
+    $output .= '</div>';
+
+    $output .= '</div>';
+  }
+  $output .= '</div>';
+  
+  return $output;
+}
 
 function virtual_microscope_theme() {
   return array(
@@ -123,7 +167,7 @@ function virtual_microscope_theme() {
  * ******************** */
 
 function virtual_microscope_pi_measure_vm_snapshot_create_form_item($measure_node, &$form, $value, $required) {
-  
+
   $input_element_id = "measure_{$measure_node->nid}";
   $widget_element_id = "{$input_element_id}_widget";
 
@@ -140,14 +184,13 @@ function virtual_microscope_pi_measure_vm_snapshot_create_form_item($measure_nod
       '#widget_input_id' => $input_element_id,
       '#widget_measure_nid' => $measure_node->nid,
   );
-  
 }
 
 function theme_virtual_microscope_snapshot_measure_widget($form) {
   $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_snapshot" input_element_id="' . $form['#widget_input_id'] . '" style="display:none;"></div>';
-  
+
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeSnapshotMeasure.js');
-  
+
   return $output;
 }
 

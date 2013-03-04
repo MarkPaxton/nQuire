@@ -179,11 +179,19 @@ function inquiry_basic_activities_designer_nquire_creator_activity_exploretool_d
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_exploretool_deployed_activity_content($activity) {
+  $data = nquire_commons_decode_data($activity->data);
+  if (isset($data['tool'])) {
+    inquiry_available_features_invoke('tool', 'process_deployed_activity_data', $data['tool']['type'], $data['tool']);
+    $data_str = json_encode($data);
+  } else {
+    $data_str = $activity->data;
+  }
+
   return array(
       'type' => 'pi_explore_tool',
       'title' => '',
       'body' => '',
-      'data' => $activity->data,
+      'data' => $data_str,
   );
 }
 
@@ -233,9 +241,17 @@ function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_d
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_collectdata_deployed_activity_type($design_activity) {
+  $data = nquire_commons_decode_data($design_activity->data);
+  if (isset($data['tool'])) {
+    inquiry_available_features_invoke('tool', 'process_deployed_activity_data', $data['tool']['type'], $data['tool']);
+    $data_str = json_encode($data);
+  } else {
+    $data_str = $design_activity->data;
+  }
+
   return array(
       'activity_type' => 'pi_sort_data',
-      'parameters' => $design_activity->data,
+      'parameters' => $data_str,
   );
 }
 
