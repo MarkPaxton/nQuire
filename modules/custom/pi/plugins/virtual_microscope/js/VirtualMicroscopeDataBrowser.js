@@ -23,14 +23,11 @@ $(function() {
 
       var data = this._ajaxService.getCurrentData(this._snapshotMeasure);
       var viewValue = handler.parseViewFromData(data);
-      console.log('load data: ');
-      console.log(viewValue);
 
       if (viewValue) {
         this._loadingData = data.id;
         this._pageManager.openSampleView(viewValue);
       }
-
     },
     vmReadyStatus: function(ready) {
       if (this._loadingData && ready) {
@@ -41,5 +38,5 @@ $(function() {
       }
     }
 
-  }, ['AjaxDataService', 'VirtualMicroscopeManager', 'VirtualMicroscopePageManager']);
+  }, ['AjaxDataService', 'VirtualMicroscopeManager', 'VirtualMicroscopePageManager', 'VirtualMicroscopeWhiteboard']);
 });
