@@ -141,6 +141,9 @@ $(function() {
       }
       return true;
     },
+    getCurrentSample: function() {
+      return this._sample;
+    },
     _fireStatusChanged: function(status) {
       this._status = status;
 

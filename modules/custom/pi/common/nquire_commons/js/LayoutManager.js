@@ -2,7 +2,9 @@
 
 $(function() {
   nQuireJsSupport.register('LayoutManager', {
+    _resizeListeners: null,
     init: function() {
+      this._resizeListeners = [];
       var self = this;
 
       $(window).resize(function() {
@@ -11,11 +13,18 @@ $(function() {
 
       self.resizeRoots();
     },
+    addResizeListener: function(callback) {
+      this._resizeListeners.push(callback);
+    },
     resizeRoots: function() {
       var self = this;
       $('div.nquire-layout-root').each(function() {
         self.resizeRoot($(this));
       });
+
+      for (var i in this._resizeListeners) {
+        this._resizeListeners[i]();
+      }
     },
     resizeRoot: function(element) {
       var offset = element.offset();

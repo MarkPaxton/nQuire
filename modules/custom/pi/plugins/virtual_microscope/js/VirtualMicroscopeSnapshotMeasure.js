@@ -35,9 +35,9 @@ $(function() {
 
   SnapshotMeasureManager.prototype.prepareToSave = function() {
     if (this._currentPos) {
-      var self = this;
-
       this._serviceDelegate.randomDelayProcessStarted();
+      
+      var self = this;
 
       var prepare = function(viewUrl) {
         var k = viewUrl.indexOf('?');

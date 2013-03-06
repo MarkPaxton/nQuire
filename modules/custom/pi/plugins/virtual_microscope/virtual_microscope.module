@@ -32,6 +32,9 @@ function _virtual_microscope_create_selected_samples_tabs($tool_data) {
 }
 
 function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_form) {
+  nquire_commons_load_javascript_custom_mouse_input();
+  nquire_commons_load_jquery_svg();
+
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopePageManager.js');
   drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
 
@@ -40,10 +43,10 @@ function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_fo
   
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeDataBrowser.js');
   
+  _virtual_microscope_create_slide_size_javascript();
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeWhiteboard.js');
   drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_whiteboard.css');
   
-
   _virtual_microscope_load_vm_path_javascript();
 
   $output = '';
@@ -112,6 +115,17 @@ function virtual_microscope_pi_tool_vm_format_explore_page($tool_data) {
 
 
   return $output;
+}
+
+function _virtual_microscope_create_slide_size_javascript() {
+  $data = file_get_contents("http://localhost/~edvf2/vm/sizedata.txt");
+  $module = "{"
+          . "  init: function() {"
+          . "    this.data = $data;"
+          . "  }"
+          . "}";
+
+  nquire_commons_inject_inline_javascript_module('VirtualMicroscopeSizeData', $module);
 }
 
 function _virtual_microscope_create_home_page($tool_data) {

@@ -36,6 +36,9 @@ $(function() {
         }
       });
     },
+    getData: function() {
+      return this._data.all;
+    },
     getCurrentData: function() {
       return this._data.current ? this._data.all[this._data.current] : null;
     },
@@ -101,7 +104,7 @@ $(function() {
       var submit = function() {
         self._ajaxCall('submit', $('form').serialize(), processResponse);
       };
-      
+
       this._disableDataInput();
       this._measuresService.prepareToSave(submit);
     },
@@ -182,19 +185,16 @@ $(function() {
           s['savechanges'] = s['saving'] = s['saved'] = s['createdata'] = s['deletedata'] = 'hidden';
           break;
         case 'saved':
-          s['savenew'] = s['saving'] = 'hidden';
-          s['savechanges'] = 'disabled';
+          s['savechanges'] = s['savenew'] = s['saving'] = 'hidden';
           s['saved'] = s['createdata'] = s['deletedata'] = 'enabled';
           break;
         case 'modified':
           s['savenew'] = s['saved'] = s['saving'] = 'hidden';
-          s['savechanges'] = 'enabled';
-          s['createdata'] = s['deletedata'] = 'enabled';
+          s['savechanges'] = s['createdata'] = s['deletedata'] = 'enabled';
           break;
         case 'saving':
           s['saving'] = 'enabled';
-          s['savenew'] = s['saved'] = 'hidden';
-          s['savechanges'] = 'hidden';
+          s['savechanges'] = s['savenew'] = s['saved'] = 'hidden';
           s['createdata'] = s['deletedata'] = 'disabledIfShown';
           break;
       }
@@ -202,16 +202,16 @@ $(function() {
         var element = $('#nquire-data-input-button-' + id);
         switch (s[id]) {
           case 'enabled':
-            element.show().removeAttr('disabled');
+            element.removeClass('nquire-data-input-hidden').removeAttr('disabled');
             break;
           case 'disabled':
-            element.show().attr('disabled', 'disabled');
+            element.removeClass('nquire-data-input-hidden').attr('disabled', 'disabled');
             break;
           case 'disabledIfShown':
             element.attr('disabled', 'disabled');
             break;
           case 'hidden':
-            element.hide();
+            element.addClass('nquire-data-input-hidden');
             break;
         }
       }
