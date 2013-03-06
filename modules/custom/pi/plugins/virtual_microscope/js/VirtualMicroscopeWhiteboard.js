@@ -9,11 +9,13 @@ $(function() {
     _iframe: null,
     _shapes: null,
     _readyListeners: null,
+    _resizeListeners: null,
     init: function(dependencies) {
       this._parent = $('#virtual_microscope_container');
       this._sizes = dependencies.VirtualMicroscopeSizeData.data;
       this._vmManager = dependencies.VirtualMicroscopeManager;
       this._readyListeners = [];
+      this._resizeListeners = [];
 
       var self = this;
 
@@ -81,9 +83,17 @@ $(function() {
     addWhiteboardReadyListener: function(callback) {
       this._readyListeners.push(callback);
     },
+    addResizeListener: function(callback) {
+      this._resizeListeners.push(callback);
+    },
     _fireWhiteboardReadyEvent: function(ready) {
       for (var i in this._readyListeners) {
         this._readyListeners[i](ready);
+      }
+    },
+    _fireResizeEvent: function() {
+      for (var i in this._resizeListeners) {
+        this._resizeListeners[i]();
       }
     },
     vmReady: function(ready) {
@@ -146,13 +156,14 @@ $(function() {
         this._elementResized();
         if (this._transform.viewPos) {
           this._updateTransform();
+          this._fireResizeEvent(true);
         }
       }
     },
     vmPosChanged: function(pos) {
       this._transform.viewPos = pos;
       this._transform.centerRelPos = {
-        dx: pos.x,// - .5 * this._transform.sectionSize.width,
+        dx: pos.x, // - .5 * this._transform.sectionSize.width,
         dy: pos.y// - .5 * this._transform.sectionSize.height
       };
 
@@ -202,6 +213,20 @@ $(function() {
           }
         }
       }
+    },
+    getViewWindow: function(pos) {
+      var vm2canvas = pos.zoom + this._transform.zeroZoomScale * (1 - pos.zoom);
+      var canvas2vm = 1.0 / vm2canvas;
+
+      var halfViewWidth = .5 * this._transform.frameSize.width * canvas2vm;
+      var halfViewHeight = .5 * this._transform.frameSize.height * canvas2vm;
+
+      return {
+        x0: pos.x - halfViewWidth,
+        y0: pos.y - halfViewHeight,
+        x1: pos.x + halfViewWidth,
+        y1: pos.y + halfViewHeight
+      };
     }
   }, ['VirtualMicroscopeManager', 'VirtualMicroscopeSizeData', 'LayoutManager']);
 });
