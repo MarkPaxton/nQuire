@@ -36,11 +36,11 @@ $(function() {
   SnapshotMeasureManager.prototype.prepareToSave = function() {
     if (this._currentPos) {
       this._serviceDelegate.randomDelayProcessStarted();
-      
+
       var self = this;
 
       var prepare = function(viewUrl) {
-        var k = viewUrl.indexOf('?');
+        var k = viewUrl.lastIndexOf('?');
         self._currentPos.viewQuery = viewUrl.substr(k + 1);
         self._serviceDelegate.saveData(JSON.stringify(self._currentPos));
         self._serviceDelegate.randomDelayProcessStopped();
@@ -50,9 +50,21 @@ $(function() {
     }
   };
 
+
+
+  SnapshotMeasureManager.prototype.parseSampleFromData = function(data) {
+    var view = this.parseViewFromData(data);
+    return view ? view.sample : null;
+  };
+
+  SnapshotMeasureManager.prototype.parsePositionFromData = function(data) {
+    var view = this.parseViewFromData(data);
+    return view ? view.position : null;
+  };
+  
   SnapshotMeasureManager.prototype.parseViewFromData = function(data) {
     try {
-      value = data[this._measureId];
+      var value = data[this._measureId];
       var obj = JSON.parse(value);
       return obj;
     } catch (e) {

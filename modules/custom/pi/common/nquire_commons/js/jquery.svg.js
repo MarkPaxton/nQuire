@@ -166,7 +166,7 @@ $.extend(SVGManager.prototype, {
 			}
 		}
 		catch (e) {
-			console.log(e);
+			console.log(e.stack());
       alert(e);
 		}
 	},

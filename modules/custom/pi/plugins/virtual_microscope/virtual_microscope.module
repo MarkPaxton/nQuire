@@ -40,13 +40,13 @@ function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_fo
 
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
   drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope.css');
-  
+
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeDataBrowser.js');
-  
+
   _virtual_microscope_create_slide_size_javascript();
   drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeWhiteboard.js');
   drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_whiteboard.css');
-  
+
   _virtual_microscope_load_vm_path_javascript();
 
   $output = '';
@@ -59,10 +59,28 @@ function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_fo
 
 
   $data_block = nquire_commons_create_ajax_false_data_block($rendered_form);
+
+
+  $data_menu = '<div class="virtual_microscope_view_menu_popup_container">'
+          . '<label><input type="checkbox" name="browser_data" id="virtual_microscope_view_menu_data" checked />' . t('Show data') . '</label>'
+          . '<div class="virtual_microscope_view_menu_popup"></div>'
+          . '</div>';
+
   $tree = array(
       'direction' => 'horizontal',
       'children' => array(
-          array('id' => 'virtual_microscope_container'),
+          array(
+              'direction' => 'vertical',
+              'children' => array(
+                  array(
+                      'id' => 'virtual_microscope_view_menu',
+                      'class' => 'virtual_microscope_view_menu',
+                      'content' => $data_menu,
+                      'size' => 'auto',
+                  ),
+                  array('id' => 'virtual_microscope_container'),
+              ),
+          ),
           array(
               'id' => 'data_form_container',
               'direction' => 'vertical',
@@ -130,15 +148,15 @@ function _virtual_microscope_create_slide_size_javascript() {
 
 function _virtual_microscope_create_home_page($tool_data) {
   nquire_commons_load_external_link_format();
-  
+
   $set = $tool_data['vm_set'];
   $samples = $tool_data['vm_selected'];
   $path = file_directory_path() . '/vm_data/' . $set . '/';
-  
+
   $url = file_create_url($path . 'vm_data.txt');
   $str = trim(file_get_contents($url));
   $sample_data = nquire_commons_decode_data($str);
-  
+
   $output = '<div class="virtual-microscope-sample-list">';
 
   $metadata_titles = array(
@@ -170,7 +188,7 @@ function _virtual_microscope_create_home_page($tool_data) {
     $output .= '</div>';
   }
   $output .= '</div>';
-  
+
   return $output;
 }
 

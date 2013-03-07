@@ -141,6 +141,14 @@ $(function() {
       }
       return true;
     },
+    setPosition: function(pos) {
+      var content = {
+        x: pos.x,
+        y: pos.y,
+        zoom: Math.max(0.00001, pos.zoom)
+      };
+      this._post('set', 'PositionPixels', content);
+    },
     getCurrentSample: function() {
       return this._sample;
     },

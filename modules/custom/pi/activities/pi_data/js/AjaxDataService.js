@@ -6,9 +6,11 @@ $(function() {
     _data: null,
     _container: null,
     _overlay: null,
+    _dataListeners: null,
     init: function(dependencies) {
       this._measuresService = dependencies.DynamicMeasureService;
       this._data = dependencies.AjaxDataServiceInitialData;
+      this._dataListeners = [];
 
       this._setButtonsMode(this._data.current ? 'saved' : 'new');
 
@@ -18,13 +20,20 @@ $(function() {
       }).appendTo(this._container);
 
       var self = this;
-      $('#nquire-data-input-button-savenew').click(function() {
+      $('#nquire-data-input-button-savenew, #nquire-data-input-button-savechanges').click(function() {
         self._submitData();
         return false;
       });
 
+      $('#nquire-data-input-button-createdata').click(function() {
+        self.setData(null, function() {
+          self._fireDataChangeEvent('unselected', null);
+        });
+        return false;
+      });
+
       var change = function() {
-        self._dataChanged();
+        self._userInputChanged();
       };
       this._measuresService.addUserChangeListener(change);
       $('[name^="measure_"]').each(function() {
@@ -36,8 +45,22 @@ $(function() {
         }
       });
     },
-    getData: function() {
+    addDataListener: function(callback) {
+      this._dataListeners.push(callback);
+    },
+    _fireDataChangeEvent: function(event, data) {
+      for (var i in this._dataListeners) {
+        this._dataListeners[i](event, data);
+      }
+    },
+    getDataList: function() {
       return this._data.all;
+    },
+    getData: function(id) {
+      return this._data.all[id];
+    },
+    getCurrentDataId: function() {
+      return this._data.current;
     },
     getCurrentData: function() {
       return this._data.current ? this._data.all[this._data.current] : null;
@@ -83,23 +106,23 @@ $(function() {
       this._measuresService.stopUserInputProcesses();
       this._overlay.css('display', 'block');
     },
-    _dataChanged: function() {
+    _userInputChanged: function() {
       if (this._buttonMode === 'saved') {
         this._setButtonsMode('modified');
       }
     },
     _submitData: function() {
       var self = this;
-
       var processResponse = function(success, data) {
         if (success) {
           var id = data.id;
-          self._data.current = id;
           self._data.all[id] = data;
+          self.setData(id, function() {
+            self._fireDataChangeEvent('modified', data);
+          });
         } else {
           console.log(data);
         }
-        self._enableDataInput();
       };
       var submit = function() {
         self._ajaxCall('submit', $('form').serialize(), processResponse);
@@ -109,7 +132,9 @@ $(function() {
       this._measuresService.prepareToSave(submit);
     },
     _ajaxCall: function(op, data, callback) {
-      var url = location.origin + location.pathname + '/data/' + op;
+      var urlEnd = location.href.indexOf('?');
+      var url = urlEnd ? location.href.substr(0, urlEnd) : location.href;
+      url += '/data/' + op;
       $.ajax({
         url: url,
         type: "POST",
@@ -181,10 +206,16 @@ $(function() {
       var s = {};
       switch (mode) {
         case 'new':
+          $('#nquire-data-input-header-edit').addClass('nquire-data-input-hidden');
+          $('#nquire-data-input-header-new').removeClass('nquire-data-input-hidden');
+
           s['savenew'] = 'enabled';
           s['savechanges'] = s['saving'] = s['saved'] = s['createdata'] = s['deletedata'] = 'hidden';
           break;
         case 'saved':
+          $('#nquire-data-input-header-edit').removeClass('nquire-data-input-hidden');
+          $('#nquire-data-input-header-new').addClass('nquire-data-input-hidden');
+
           s['savechanges'] = s['savenew'] = s['saving'] = 'hidden';
           s['saved'] = s['createdata'] = s['deletedata'] = 'enabled';
           break;

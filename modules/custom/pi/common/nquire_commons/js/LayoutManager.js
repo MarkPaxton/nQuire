@@ -42,21 +42,25 @@ $(function() {
       var self = this;
 
       var direction = parent.attr('nquire-layout-direction');
-      var dirSizeAttr, crossSizeAttr, dirSize, crossSize, dirPosAttr, crossPosAttr;
+      var dirSizeAttr, crossSizeAttr, dirSizeGetAttr, crossSizeGetAttr, dirSize, crossSize, dirPosAttr, crossPosAttr;
       if (direction === 'vertical') {
+        dirSizeGetAttr = 'outerHeight';
         dirSizeAttr = 'height';
+        crossSizeGetAttr = 'outerWidth';
         crossSizeAttr = 'width';
         dirPosAttr = 'top';
         crossPosAttr = 'left';
       } else {
+        dirSizeGetAttr = 'outerWidth';
         dirSizeAttr = 'width';
+        crossSizeGetAttr = 'outerHeight';
         crossSizeAttr = 'height';
         dirPosAttr = 'left';
         crossPosAttr = 'top';
       }
 
-      dirSize = parent[dirSizeAttr]();
-      crossSize = parent[crossSizeAttr]();
+      dirSize = parent[dirSizeGetAttr]();
+      crossSize = parent[crossSizeGetAttr]();
 
       var requiredSize = 0;
       var flexChildrenCount = 0;
@@ -68,7 +72,7 @@ $(function() {
           if (child.attr('size')) {
             child.css(dirSizeAttr, child.attr('size'));
           }
-          requiredSize += child[dirSizeAttr]();
+          requiredSize += child[dirSizeGetAttr]();
         }
       });
 
@@ -83,7 +87,7 @@ $(function() {
         }
 
         child.css(dirPosAttr, currentDirPos);
-        currentDirPos += child[dirSizeAttr]();
+        currentDirPos += child[dirSizeGetAttr]();
 
         if (!child.hasClass('nquire-layout-leaf')) {
           self.resizeChildren(child);
