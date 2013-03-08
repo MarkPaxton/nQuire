@@ -29,54 +29,68 @@ $(function() {
     },
     /* drawing functions */
 
-    _drawCreateSvgParent: function(layer, x, y) {
-      var parent = this._svg.group(this._svgLayers[layer]);
-      $(parent).attr('transform', 'translate(' + x + ' ' + y + ')');
-      return parent;
-    },
-    draw: function(name, shape, settings, layer, dontScale, callbacks) {
-      var _layer = typeof layer === 'undefined' ? 1 : layer;
-      var _dontScale = dontScale ? true : false;
-
-      var shapeObj = null, parent = null;
-
-
+    _createSvgElement: function(parent, shape, name) {
+      var obj = null;
       switch (shape.type) {
         case 'circle':
-          parent = this._drawCreateSvgParent(_layer, shape.cx, shape.cy);
-          shapeObj = this._svg.circle(parent, 0, 0, shape.r, settings);
+          obj = this._svg.circle(parent, 0, 0, shape.r, shape.settings);
           break;
         case 'rect':
           var hw = .5 * shape.w, hh = .5 * shape.h;
-          parent = this._drawCreateSvgParent(_layer, shape.x + hw, shape.y + hh);
-          shapeObj = this._svg.rect(parent, -hw, -hh, shape.w, shape.h, 0, 0, settings);
+          obj = this._svg.rect(parent, -hw, -hh, shape.w, shape.h, 0, 0, shape.settings);
+          break;
+        default:
           break;
       }
 
+      if (obj && shape.callbacks) {
+        var element = $(obj);
+        element.addClass('whiteboard-active-element');
 
-      this.remove(name);
-
-      if (shapeObj) {
-        this._shapes[name] = {group: parent, dontScale: _dontScale, object: shapeObj};
-        if (_dontScale) {
-          $(shapeObj).attr('transform', this._transform.labelTransform);
+        if (shape.callbacks.hover) {
+          element.customMouseInput('hover', function(inside) {
+            shape.callbacks.hover(name, inside);
+          });
         }
 
-        if (callbacks) {
-          var element = $(shapeObj);
-          element.addClass('whiteboard-active-element');
+        if (shape.callbacks.click) {
+          element.customMouseInput('click', function() {
+            shape.callbacks.click(name);
+          });
+        }
+      }
 
-          if (callbacks.hover) {
-            element.customMouseInput('hover', function(inside) {
-              callbacks.hover(name, inside);
-            });
-          }
+      return obj;
+    },
+    draw: function(name, layer, paint) {
+      this.remove(name);
+      if (paint) {
+        var _dontScale = paint.dontScale ? true : false;
 
-          if (callbacks.click) {
-            element.customMouseInput('click', function() {
-              callbacks.click(name);
-            });
+        var group = this._svg.group(this._svgLayers[layer]);
+        $(group).attr('transform', 'translate(' + paint.pos.x + ' ' + paint.pos.y + ')');
+
+        var parent, inverseScaleElement = null;
+        if (_dontScale && paint.shapes) {
+          inverseScaleElement = parent = this._svg.group(group);
+        } else {
+          parent = group;
+        }
+
+        if (paint.shapes) {
+          for (var i in paint.shapes) {
+            this._createSvgElement(parent, paint.shapes[i], name);
           }
+        } else if (paint.shape) {
+          inverseScaleElement = this._createSvgElement(parent, paint.shape, name);
+        }
+
+        this._shapes[name] = _dontScale ?
+                {group: parent, dontScale: true, object: inverseScaleElement} :
+                {group: parent, dontScale: false};
+
+        if (_dontScale) {
+          $(inverseScaleElement).attr('transform', this._transform.labelTransform);
         }
       }
     },
@@ -91,12 +105,14 @@ $(function() {
     },
     clear: function() {
       for (var name in this._shapes) {
-        this._svg.remove(this._shapes[name].group);
+        if (this._shapes[name]) {
+          this._svg.remove(this._shapes[name].group);
+        }
       }
       this._shapes = {};
     },
     /* paint input functions */
-    capturePath: function(callback) {
+    captureUserInputPath: function(callback) {
 
     },
     stopPathCapture: function() {
@@ -248,8 +264,8 @@ $(function() {
       var viewHeight = (this._transform.frameSize.height - 40) * canvas2vm;
 
       return {
-        x: pos.x - .5 * viewWidth,
-        y: pos.y - .5 * viewHeight,
+        cx: pos.x,
+        cy: pos.y,
         w: viewWidth,
         h: viewHeight
       };

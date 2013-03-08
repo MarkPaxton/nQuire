@@ -12,18 +12,20 @@ $(function() {
     } else {
       var position = this._viewMeasureHandler.parsePositionFromData(data);
       var shape = {
+        pos: {
+          x: position.x,
+          y: position.y
+        },
         shape: {
           type: 'circle',
-          cx: position.x,
-          cy: position.y,
-          r: 12
+          r: 12,
+          settings: options.mode === 'hover' ?
+                  {fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 2} :
+                  {fill: '#FDD017', stroke: '#AF7817', strokeWidth: 2},
+          callbacks: this._actionCallbacks
         },
-        settings: options.mode === 'hover' ?
-                {fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 2} :
-                {fill: '#FDD017', stroke: '#AF7817', strokeWidth: 2},
         dontScale: true,
-        position: 'front',
-        callbacks: this._actionCallbacks
+        position: 'front'
       };
       return shape;
     }
@@ -43,14 +45,16 @@ $(function() {
     var w = this._whiteboard.getViewWindow(position);
 
     return {
+      pos: {
+        x: w.cx,
+        y: w.cy
+      },
       shape: {
         type: 'rect',
-        x: w.x,
-        y: w.y,
         w: w.w,
-        h: w.h
+        h: w.h,
+        settings: this._settings[options.mode]
       },
-      settings: this._settings[options.mode],
       position: 'back'
     };
   };
@@ -70,7 +74,7 @@ $(function() {
       this._vmManager = dependencies.VirtualMicroscopeManager;
       this._pageManager = dependencies.VirtualMicroscopePageManager;
       this._whiteboard = dependencies.VirtualMicroscopeWhiteboard;
-      this._paintFeatures = {};
+      this._paintFeatures = [];
 
       this._ajaxService = dependencies.AjaxDataService;
       this._ajaxService.addDataListener(function(event, data) {
@@ -94,15 +98,16 @@ $(function() {
         }
       });
     },
-    _addDrawableFeature: function(feature, title, handler) {
-      this._paintFeatures[feature] = {
+    _addDrawableFeature: function(feature, title, handler, first) {
+      this._paintFeatures.push({
+        feature: feature,
         enabled: true,
         handler: handler
-      };
+      });
 
       var self = this;
 
-      $('<label>').appendTo($('<div>').appendTo($('.virtual_microscope_view_menu_popup')))
+      $('<label>').appendTo($('<div>')[first ? 'prependTo' : 'appendTo']($('.virtual_microscope_view_menu_popup')))
               .append($('<input>').attr('type', 'checkbox').attr('name', 'feature_' + feature).attr('checked', true)).append(title)
               .change(function() {
         if (self._ready) {
@@ -130,8 +135,8 @@ $(function() {
         }
       };
 
-      this._addDrawableFeature('label', 'Labels', new LabelPainter(handler, actionCallbacks));
-      this._addDrawableFeature('shadow', 'Shadows', new ShadowPainter(handler, this._whiteboard));
+      this._addDrawableFeature('shadow', 'Shadows', new ShadowPainter(handler, this._whiteboard), true);
+      this._addDrawableFeature('label', 'Labels', new LabelPainter(handler, actionCallbacks), true);
 
       var data = this._ajaxService.getCurrentData(this._snapshotMeasure);
       var viewValue = handler.parseViewFromData(data);
@@ -139,6 +144,12 @@ $(function() {
       if (viewValue) {
         this._loadingData = data.id;
         this._pageManager.openSampleView(viewValue);
+      }
+    },
+    registerPaintFeature: function(name, title, handler) {
+      this._addDrawableFeature(name, title, handler);
+      if (this._ready) {
+        this._updatePaint();
       }
     },
     whiteboardReadyStatus: function(ready) {
@@ -178,11 +189,11 @@ $(function() {
     _updateDataPaint: function(data, state) {
       var _state = state ? state : (data.id === this._ajaxService.getCurrentDataId() ? 'selected' : 'normal');
 
-      for (var feature in this._paintFeatures) {
-        var fid = data.id + '-' + feature;
+      for (var i in this._paintFeatures) {
+        var fh = this._paintFeatures[i];
+        var fid = data.id + '-' + fh.feature;
         var remove = true;
-        if ($('#virtual_microscope_view_menu').find('.virtual_microscope_view_menu_popup').find('input[name="feature_' + feature + '"]').attr('checked')) {
-          var fh = this._paintFeatures[feature];
+        if ($('#virtual_microscope_view_menu').find('.virtual_microscope_view_menu_popup').find('input[name="feature_' + fh.feature + '"]').attr('checked')) {
           if (fh.enabled) {
             var shape = fh.handler.createPaintShape(data, {mode: _state});
             if (shape) {
@@ -198,7 +209,7 @@ $(function() {
                   layer = 1;
                   break;
               }
-              this._whiteboard.draw(fid, shape.shape, shape.settings, layer, shape.dontScale, shape.callbacks);
+              this._whiteboard.draw(fid, layer, shape);
               remove = false;
             }
           }

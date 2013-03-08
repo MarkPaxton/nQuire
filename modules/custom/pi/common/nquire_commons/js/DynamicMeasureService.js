@@ -145,6 +145,7 @@ $(function() {
       this._checkEndOfDataInput();
     },
     _userDelayProcessStarted: function(elementId) {
+      this.stopUserInputProcesses();
       this._ongoingUserDelayProcesses[elementId] = true;
     },
     _userDelayProcessStopped: function(elementId) {

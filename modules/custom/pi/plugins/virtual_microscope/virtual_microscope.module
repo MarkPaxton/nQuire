@@ -197,6 +197,9 @@ function virtual_microscope_theme() {
       'virtual_microscope_snapshot_measure_widget' => array(
           'arguments' => array('form' => NULL),
       ),
+      'virtual_microscope_annotation_measure_widget' => array(
+          'arguments' => array('form' => NULL),
+      ),
   );
 }
 
@@ -232,3 +235,37 @@ function theme_virtual_microscope_snapshot_measure_widget($form) {
   return $output;
 }
 
+/* * ********************
+ * VM Annotation measure
+ * ******************** */
+
+function virtual_microscope_pi_measure_vm_annotation_create_form_item($measure_node, &$form, $value, $required) {
+
+  $input_element_id = "measure_{$measure_node->nid}";
+  $widget_element_id = "{$input_element_id}_widget";
+
+  $form[$input_element_id] = array(
+      '#type' => 'hidden',
+      '#default_value' => $value,
+      '#required' => $required,
+  );
+
+  $form[$widget_element_id] = array(
+      '#theme' => 'virtual_microscope_annotation_measure_widget',
+      '#widget_data' => $measure_node->data,
+      '#widget_id' => $widget_element_id,
+      '#widget_input_id' => $input_element_id,
+      '#widget_measure_nid' => $measure_node->nid,
+  );
+}
+
+function theme_virtual_microscope_annotation_measure_widget($form) {
+  $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_annotation" input_element_id="' . $form['#widget_input_id'] . '">'
+          . '<button onclick="return false;">' . t('Annotate view') . '</button>'
+          . '</div>';
+
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeAnnotationMeasure.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_annotation_measure.css');
+
+  return $output;
+}
