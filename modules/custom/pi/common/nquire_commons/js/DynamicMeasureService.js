@@ -7,8 +7,8 @@ $(function() {
     this._elementId = elementId;
   };
 
-  DynamicMeasureServiceDelegate.prototype.saveData = function(data) {
-    this._service._saveData(this._elementId, data);
+  DynamicMeasureServiceDelegate.prototype.saveData = function(data, automaticSave) {
+    this._service._saveData(this._elementId, data, automaticSave);
   };
 
   DynamicMeasureServiceDelegate.prototype.getData = function() {
@@ -120,18 +120,18 @@ $(function() {
         }
       }
     },
-    _saveData: function(elementId, data) {
+    _saveData: function(elementId, data, automaticSave) {
       var element = $('input[name="' + elementId + '"]');
       if (element && element.val() !== data) {
         element.val(data);
         for (var i in this._changeListeners) {
-          this._changeListeners[i]();
+          this._changeListeners[i](automaticSave);
         }
       }
     },
     _dataChanged: function() {
       for (var i in this._changeListeners) {
-        this._changeListeners[i]();
+        this._changeListeners[i](false);
       }
     },
     _getData: function(elementId) {

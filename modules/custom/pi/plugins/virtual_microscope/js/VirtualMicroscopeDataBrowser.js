@@ -67,14 +67,14 @@ $(function() {
     _whiteboard: null,
     _loadingData: null,
     _ready: null,
-    _paintFeatures: null,
+    _paintFeatureHandlers: null,
     init: function(dependencies) {
       var self = this;
       this._ready = false;
       this._vmManager = dependencies.VirtualMicroscopeManager;
       this._pageManager = dependencies.VirtualMicroscopePageManager;
       this._whiteboard = dependencies.VirtualMicroscopeWhiteboard;
-      this._paintFeatures = [];
+      this._paintFeatureHandlers = {};
 
       this._ajaxService = dependencies.AjaxDataService;
       this._ajaxService.addDataListener(function(event, data) {
@@ -99,11 +99,7 @@ $(function() {
       });
     },
     _addDrawableFeature: function(feature, title, handler, first) {
-      this._paintFeatures.push({
-        feature: feature,
-        enabled: true,
-        handler: handler
-      });
+      this._paintFeatureHandlers[feature] = handler;
 
       var self = this;
 
@@ -123,7 +119,7 @@ $(function() {
         hover: function(featureName, inside) {
           var id = "" + parseInt(featureName);
           var data = self._ajaxService.getData(id);
-          self._updateDataPaint(data, inside ? 'hover' : null);
+          self._updateDataPaint(data, inside ? 'hover' : null, true);
         },
         click: function(featureName) {
           var id = "" + parseInt(featureName);
@@ -169,54 +165,56 @@ $(function() {
     _dataModified: function(event, data) {
       this._updatePaint();
     },
+    updateCurrentDataFeaturePaint: function(feature) {
+      var data = this._ajaxService.getCurrentData();
+      this._updateDataFeaturePaint(data, feature, 'selected');
+    },
     _updatePaint: function() {
       //var currentData = this._ajaxService.getCurrentData();
       var sample = this._vmManager.getCurrentSample();
       if (sample) {
-        if ($('#virtual_microscope_view_menu_data').attr('checked')) {
-          var dataList = this._ajaxService.getDataList();
-          for (var id in dataList) {
-            var data = dataList[id];
-            if (this._vmViewMeasureHandler.parseSampleFromData(data) === sample) {
-              this._updateDataPaint(data);
-            }
+        var all = $('#virtual_microscope_view_menu_data').attr('checked');
+        var dataList = this._ajaxService.getDataList();
+        for (var id in dataList) {
+          var data = dataList[id];
+          if (this._vmViewMeasureHandler.parseSampleFromData(data) === sample) {
+            this._updateDataPaint(data, null, all);
           }
-        } else {
-          this._whiteboard.clear();
         }
       }
     },
-    _updateDataPaint: function(data, state) {
+    _updateDataPaint: function(data, state, all) {
       var _state = state ? state : (data.id === this._ajaxService.getCurrentDataId() ? 'selected' : 'normal');
 
-      for (var i in this._paintFeatures) {
-        var fh = this._paintFeatures[i];
-        var fid = data.id + '-' + fh.feature;
-        var remove = true;
-        if ($('#virtual_microscope_view_menu').find('.virtual_microscope_view_menu_popup').find('input[name="feature_' + fh.feature + '"]').attr('checked')) {
-          if (fh.enabled) {
-            var shape = fh.handler.createPaintShape(data, {mode: _state});
-            if (shape) {
-              var layer;
-              switch (shape.position) {
-                case 'front':
-                  layer = 2;
-                  break;
-                case 'back':
-                  layer = 0;
-                  break;
-                default:
-                  layer = 1;
-                  break;
-              }
-              this._whiteboard.draw(fid, layer, shape);
-              remove = false;
-            }
+      for (var feature in this._paintFeatureHandlers) {
+        this._updateDataFeaturePaint(data, feature, _state, all);
+      }
+    },
+    _updateDataFeaturePaint: function(data, feature, status, all) {
+      var fh = this._paintFeatureHandlers[feature];
+      var fid = data ? data.id + '-' + feature : 'temp';
+      var remove = true;
+      if (status === 'selected' || (all && $('#virtual_microscope_view_menu').find('.virtual_microscope_view_menu_popup').find('input[name="feature_' + feature + '"]').attr('checked'))) {
+        var shape = fh.createPaintShape(data, {mode: status});
+        if (shape) {
+          var layer;
+          switch (shape.position) {
+            case 'front':
+              layer = 2;
+              break;
+            case 'back':
+              layer = 0;
+              break;
+            default:
+              layer = 1;
+              break;
           }
+          remove = false;
+          this._whiteboard.draw(fid, layer, shape);
         }
-        if (remove) {
-          this._whiteboard.remove(fid);
-        }
+      }
+      if (remove) {
+        this._whiteboard.remove(fid);
       }
     }
   }, ['AjaxDataService', 'VirtualMicroscopeManager', 'VirtualMicroscopePageManager', 'VirtualMicroscopeWhiteboard']);

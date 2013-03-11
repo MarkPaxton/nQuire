@@ -38,7 +38,6 @@ $(function() {
 
   GoogleMapMeasureManager.prototype.initMeasureValue = function(value) {
     var self = this;
-    console.log('value: ' + value);
 
     var data = null;
     var markerSet = false;

@@ -10,6 +10,7 @@ $(function() {
     _shapes: null,
     _readyListeners: null,
     _resizeListeners: null,
+    _pathCaptureCallback: null,
     init: function(dependencies) {
       this._parent = $('#virtual_microscope_container');
       this._sizes = dependencies.VirtualMicroscopeSizeData.data;
@@ -38,6 +39,9 @@ $(function() {
         case 'rect':
           var hw = .5 * shape.w, hh = .5 * shape.h;
           obj = this._svg.rect(parent, -hw, -hh, shape.w, shape.h, 0, 0, shape.settings);
+          break;
+        case 'polyline':
+          obj = this._svg.polyline(parent, shape.points, shape.settings);
           break;
         default:
           break;
@@ -111,12 +115,17 @@ $(function() {
       }
       this._shapes = {};
     },
+    clearTempShapes: function() {
+      this.remove('temp');
+    },
     /* paint input functions */
     captureUserInputPath: function(callback) {
-
+      this._pathCaptureCallback = callback;
+      this._svgElement.removeClass('whiteboard-inactive');
     },
     stopPathCapture: function() {
-
+      this._svgElement.addClass('whiteboard-inactive');
+      this._pathCaptureCallback = null;
     },
     /* svg creation */
 
@@ -152,22 +161,15 @@ $(function() {
             ];
 
             self._svgElement.customMouseInput('rawdrag', function(action, point) {
-              /*
-               if (self._enabled) {
-               switch (action) {
-               case 'dragstart':
-               console.log('wb start');
-               console.log(point);
-               self.startDrag(point);
-               break;
-               case 'drag':
-               self.drag(point);
-               break;
-               case 'dragend':
-               self.endDrag();
-               break;
-               }
-               }*/
+              if (self._pathCaptureCallback) {
+                if (point) {
+                  var offset = self._svgElement.offset();
+                  point.x -= offset.left;
+                  point.y -= offset.top;
+                  point = self._view2vmPoint(point);
+                }
+                self._pathCaptureCallback(action, point);
+              }
             });
 
             self._shapes = {};
@@ -269,6 +271,13 @@ $(function() {
         w: viewWidth,
         h: viewHeight
       };
+    },
+    _view2vmPoint: function(point) {
+      var p = {
+        x: (point.x - this._transform.frameCenter.x) * this._transform.canvas2vm + this._transform.centerRelPos.dx,
+        y: (point.y - this._transform.frameCenter.y) * this._transform.canvas2vm + this._transform.centerRelPos.dy
+      };
+      return p;
     }
   }, ['VirtualMicroscopeManager', 'VirtualMicroscopeSizeData', 'LayoutManager']);
 });

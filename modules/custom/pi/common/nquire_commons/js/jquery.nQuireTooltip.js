@@ -67,7 +67,6 @@
           tPos += eSize + margin;
         }
 
-        console.log(posParam + ' ' + tPos);
         tooltip.css(posParam, tPos + 'px');
       }
       return this;

@@ -172,8 +172,7 @@ $(function() {
       try {
         var iframe = this._iframe[0].contentWindow;
         if (!iframe.onerror) {
-          iframe.onerror = function(error) {
-            console.log('iframe error: ' + error);
+          iframe.onerror = function() {
             return true;
           };
         }

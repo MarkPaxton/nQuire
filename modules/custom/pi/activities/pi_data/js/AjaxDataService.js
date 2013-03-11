@@ -32,16 +32,21 @@ $(function() {
         return false;
       });
 
-      var change = function() {
-        self._userInputChanged();
-      };
-      this._measuresService.addUserChangeListener(change);
+      this._measuresService.addUserChangeListener(function(automaticSave) {
+        self._userInputChanged(automaticSave);
+      });
       $('[name^="measure_"]').each(function() {
         var element = $(this);
         if ((element.is('input') && element.attr('type') === 'text') || element.is('textarea')) {
-          element.keydown(change);
+          element.keypress(function(e) {
+            var enter = e.which === 13;
+            self._userInputChanged(enter);
+            return !enter;
+          });
         } else if (element.is('select') || element.is('radio') || element.is('checkbox')) {
-          element.change(change);
+          element.change(function() {
+            self._userInputChanged(false);
+          });
         }
       });
     },
@@ -83,10 +88,8 @@ $(function() {
           var element = $(this);
           var handler = self._measuresService.getMeasureHandler(element.attr('name'));
           if (handler) {
-            console.log('clear ' + element.attr('name') + ' through handler');
             handler.clearValue();
           } else {
-            console.log('clear ' + element.attr('name') + ' w/o handler');
             element.val('');
           }
         });
@@ -106,9 +109,13 @@ $(function() {
       this._measuresService.stopUserInputProcesses();
       this._overlay.css('display', 'block');
     },
-    _userInputChanged: function() {
+    _userInputChanged: function(automaticSave) {
       if (this._buttonMode === 'saved') {
         this._setButtonsMode('modified');
+      }
+
+      if (automaticSave) {
+        this._submitData();
       }
     },
     _submitData: function() {
@@ -133,7 +140,7 @@ $(function() {
     },
     _ajaxCall: function(op, data, callback) {
       var urlEnd = location.href.indexOf('?');
-      var url = urlEnd ? location.href.substr(0, urlEnd) : location.href;
+      var url = urlEnd >= 0 ? location.href.substr(0, urlEnd) : location.href;
       url += '/data/' + op;
       $.ajax({
         url: url,
@@ -174,7 +181,6 @@ $(function() {
           var hasValue = typeof data[measure] !== 'undefined';
           var handler = self._measuresService.getMeasureHandler(measure);
           if (handler) {
-            console.log('set ' + element.attr('name') + ' through handler: ' + data[measure]);
             if (hasValue) {
               element.val(data[measure]);
               handler.initMeasureValue(data[measure]);
@@ -182,7 +188,6 @@ $(function() {
               handler.clearValue();
             }
           } else {
-            console.log('set ' + element.attr('name') + ' w/o handler');
             if (hasValue) {
               element.val(data[measure]);
             } else {
