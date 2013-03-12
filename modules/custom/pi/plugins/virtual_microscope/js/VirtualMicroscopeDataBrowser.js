@@ -183,6 +183,7 @@ $(function() {
             this._updateDataPaint(data, null, all);
           }
         }
+        this._whiteboard.clearTempShapes();
       }
     },
     _updateDataPaint: function(data, state, all) {
@@ -224,11 +225,18 @@ $(function() {
       svg.removeClass('virtual-microscope-whiteboard').removeClass('whiteboard-inactive');
 
       var self = this;
+
+      var filter = this._ajaxService.getCurrentDataId() ? function(shapeName) {
+        var keys = shapeName.split('-');
+        return keys.length !== 2 || keys[0] !== self._ajaxService.getCurrentDataId() || keys[1] === 'label' || keys[1] === 'shadow';
+      } : function(shapeName) {
+        shapeName !== 'temp';
+      };
+
       svg.find('g[shape-name]').each(function() {
         var shapeGroup = $(this);
         var shapeName = shapeGroup.attr('shape-name');
-        var keys = shapeName.split('-');
-        if (keys.length !== 2 || keys[0] !== self._ajaxService.getCurrentDataId() || keys[1] === 'label' || keys[1] === 'shadow') {
+        if (filter(shapeName)) {
           shapeGroup.remove();
         }
       });

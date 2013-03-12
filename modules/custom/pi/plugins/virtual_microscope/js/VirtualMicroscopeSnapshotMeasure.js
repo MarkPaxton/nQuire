@@ -39,7 +39,7 @@ $(function() {
 
   SnapshotMeasureManager.prototype._getSnaptshotCanvas = function() {
     if (!this._snapshotCanvas) {
-      var element = $('<canvas>').css({'position': 'absolute', 'top': '0px', 'left': '0px', 'z-index': 10000}).appendTo($('body'));
+      var element = $('<canvas>').css({'display': 'none'}).appendTo($('body'));
       this._snapshotCanvas = element[0];
     }
     return this._snapshotCanvas;

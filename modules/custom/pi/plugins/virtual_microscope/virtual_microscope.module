@@ -235,6 +235,42 @@ function theme_virtual_microscope_snapshot_measure_widget($form) {
   return $output;
 }
 
+function virtual_microscope_pi_measure_vm_snapshot_format_table_value($measure_node, $value) {
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_snapshot_in_table.css');
+
+  $data = nquire_commons_decode_data($value);
+  $path = file_directory_path() . '/pi_measures_vm_snapshot/' . $data['image'];
+  $output = '<div class="virtual-microscope-snapshot">'
+          . '<img src="' . file_create_url($path . '.png') . '" />'
+          . '<img class="virtual-microscope-snapshot-data-image" src="' . file_create_url($path . '.svg') . '" />'
+          . '</div>';
+
+  return $output;
+}
+
+function virtual_microscope_pi_measure_vm_snapshot_process_form_value($measure_node, &$value, $old_value, $node) {
+  $dest = file_directory_path() . '/pi_measures_vm_snapshot/';
+  file_check_directory($dest, TRUE);
+
+  $old_value_obj = nquire_commons_decode_data($old_value);
+  $img = isset($old_value_obj['image']) ? $old_value_obj['image'] : $node->nid . '_' . nquire_commons_random_string(8);
+
+  $new_value_obj = nquire_commons_decode_data($value);
+
+  $vmImgData = base64_decode(str_replace(' ', '+', substr($new_value_obj['vmImage'], strpos($new_value_obj['vmImage'], ',') + 1)));
+  file_save_data($vmImgData, "$dest/$img.png", FILE_EXISTS_REPLACE);
+
+  $dataImgData = substr($new_value_obj['dataImage'], strpos($new_value_obj['dataImage'], ',') + 1);
+  file_save_data($dataImgData, "$dest/$img.svg", FILE_EXISTS_REPLACE);
+
+  unset($new_value_obj['vmImage']);
+  unset($new_value_obj['dataImage']);
+  $new_value_obj['image'] = $img;
+
+  $value = json_encode($new_value_obj);
+  return;
+}
+
 /* * ********************
  * VM Annotation measure
  * ******************** */
@@ -259,7 +295,7 @@ function virtual_microscope_pi_measure_vm_annotation_create_form_item($measure_n
   );
 }
 
-function virtual_microscope_pi_measure_vm_annotation_hide_in_table( ) {
+function virtual_microscope_pi_measure_vm_annotation_hide_in_table() {
   return TRUE;
 }
 

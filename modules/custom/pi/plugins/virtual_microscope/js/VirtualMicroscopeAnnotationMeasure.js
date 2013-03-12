@@ -87,7 +87,6 @@ $(function() {
     this._editingInfo = null;
     this._whiteboard.stopPathCapture();
     this._menuManager.closeMenu();
-    this._whiteboard.clearTempShapes();
     this._serviceDelegate.userDelayProcessStopped();
     this._startButton.removeAttr('disabled');
   };
