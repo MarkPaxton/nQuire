@@ -72,7 +72,7 @@ $(function() {
         var _dontScale = paint.dontScale ? true : false;
 
         var group = this._svg.group(this._svgLayers[layer]);
-        $(group).attr('transform', 'translate(' + paint.pos.x + ' ' + paint.pos.y + ')');
+        $(group).attr('transform', 'translate(' + paint.pos.x + ' ' + paint.pos.y + ')').attr('shape-name', name);
 
         var parent, inverseScaleElement = null;
         if (_dontScale && paint.shapes) {
@@ -90,8 +90,8 @@ $(function() {
         }
 
         this._shapes[name] = _dontScale ?
-                {group: parent, dontScale: true, object: inverseScaleElement} :
-                {group: parent, dontScale: false};
+                {group: group, dontScale: true, object: inverseScaleElement} :
+                {group: group, dontScale: false};
 
         if (_dontScale) {
           $(inverseScaleElement).attr('transform', this._transform.labelTransform);
@@ -278,6 +278,9 @@ $(function() {
         y: (point.y - this._transform.frameCenter.y) * this._transform.canvas2vm + this._transform.centerRelPos.dy
       };
       return p;
+    },
+    getCurrentSvg: function() {
+      return this._svg.toSVG();
     }
   }, ['VirtualMicroscopeManager', 'VirtualMicroscopeSizeData', 'LayoutManager']);
 });

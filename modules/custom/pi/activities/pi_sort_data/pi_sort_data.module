@@ -217,8 +217,10 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
   $measures = array();
   foreach ($filtered_measure_nids as $nid) {
     $measure = node_load($nid);
-    $header[] = check_plain($measure->title) . t(':');
-    $measures[] = $measure;
+    if (pi_data_tools_measure_plugin_show_in_table($measure)) {
+      $header[] = check_plain($measure->title) . t(':');
+      $measures[] = $measure;
+    }
   }
 
 
@@ -242,12 +244,12 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 
 
   $link_output = make_add_activity_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $activity_id_for_this_node, $user->uid);
-  
+
   $node->content['pi_sort_data_add_link'] = array(
       '#value' => $link_output,
       '#weight' => -3
   );
-  
+
   $node->content['pi_sort_data'] = array(
       '#value' => theme('pi_sort_data', $header, $data_rows),
       '#weight' => 2
@@ -322,7 +324,6 @@ function theme_pi_sort_data_node_form($form) {
 /**
  * Load the user edit form and grab all of the fieldsets
  */
-
 function pi_sort_data_get_choice($node) {
   $query = "SELECT * FROM {pi_sort_data} AS pi_sort_data "
           . "WHERE pi_sort_data.nid = %d "
@@ -370,16 +371,15 @@ function pi_sort_data_get_item_nids($sort_data_activity_nid) {
   return $nids;
 }
 
-
 function pi_sort_data_get_activities($inquiry_id) {
   $phases = pi_phase_load_nids($inquiry_id);
   $query = "SELECT {node}.`nid`, {pi_activity}.`phase_nid` FROM {node} "
           . "LEFT JOIN {pi_activity} ON {node}.`vid` = {pi_activity}.`vid` "
           . "WHERE {pi_activity}.`activity_type`='pi_sort_data'";
-  
+
   $result = db_query($query);
   $nids = array();
-  while($row = db_fetch_array($result)) {
+  while ($row = db_fetch_array($result)) {
     if (in_array($row['phase_nid'], $phases)) {
       $nids[] = $row['nid'];
     }

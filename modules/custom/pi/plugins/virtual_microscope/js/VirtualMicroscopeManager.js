@@ -10,6 +10,7 @@ $(function() {
     _lengthMeasure: null,
     _lengthMeasureListeners: null,
     _getViewUrlListeners: null,
+    _getSnapshotListeners: null,
     _sample: null,
     _divContainer: null,
     _iframe: null,
@@ -24,6 +25,7 @@ $(function() {
       this._positionListeners = [];
 
       this._getViewUrlListeners = [];
+      this._getSnapshotListeners = [];
 
       this._samplesPath = dependencies.VirtualMicroscopePath.path;
       this._divContainer = $('#virtual_microscope_container');
@@ -51,6 +53,10 @@ $(function() {
     getUrlView: function(callback) {
       this._getViewUrlListeners.push(callback);
       this._post('get', 'viewURL');
+    },
+    getSnapshot: function(callback) {
+      this._getSnapshotListeners.push(callback);
+      this._post('get', 'Snapshot', {});
     },
     _captureMessages: function(message, callback, justOne) {
       this._messageListeners[message] = {
@@ -86,6 +92,14 @@ $(function() {
         if (msg.content) {
           var list = this._getViewUrlListeners;
           this._getViewUrlListeners = [];
+          for (var i in list) {
+            list[i](msg.content);
+          }
+        }
+      } else if (msg.param === 'Snapshot') {
+        if (msg.content) {
+          var list = this._getSnapshotListeners;
+          this._getSnapshotListeners = [];
           for (var i in list) {
             list[i](msg.content);
           }

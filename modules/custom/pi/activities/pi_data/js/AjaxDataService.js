@@ -20,7 +20,9 @@ $(function() {
       }).appendTo(this._container);
 
       var self = this;
-      $('#nquire-data-input-button-savenew, #nquire-data-input-button-savechanges').click(function() {
+      $('#nquire-data-input-button-savenew, #nquire-data-input-button-savechanges').click(function(event) {
+        event.stopPropagation();
+        event.preventDefault();
         self._submitData();
         return false;
       });

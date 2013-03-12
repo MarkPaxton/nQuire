@@ -169,8 +169,10 @@ $(function() {
       var data = this._ajaxService.getCurrentData();
       this._updateDataFeaturePaint(data, feature, 'selected');
     },
+    paintCurrentDataInSvg: function(svg) {
+
+    },
     _updatePaint: function() {
-      //var currentData = this._ajaxService.getCurrentData();
       var sample = this._vmManager.getCurrentSample();
       if (sample) {
         var all = $('#virtual_microscope_view_menu_data').attr('checked');
@@ -216,6 +218,22 @@ $(function() {
       if (remove) {
         this._whiteboard.remove(fid);
       }
+    },
+    getCurrentDataSvg: function() {
+      var svg = $(this._whiteboard.getCurrentSvg());
+      svg.removeClass('virtual-microscope-whiteboard').removeClass('whiteboard-inactive');
+
+      var self = this;
+      svg.find('g[shape-name]').each(function() {
+        var shapeGroup = $(this);
+        var shapeName = shapeGroup.attr('shape-name');
+        var keys = shapeName.split('-');
+        if (keys.length !== 2 || keys[0] !== self._ajaxService.getCurrentDataId() || keys[1] === 'label' || keys[1] === 'shadow') {
+          shapeGroup.remove();
+        }
+      });
+
+      return svg;
     }
   }, ['AjaxDataService', 'VirtualMicroscopeManager', 'VirtualMicroscopePageManager', 'VirtualMicroscopeWhiteboard']);
 });
