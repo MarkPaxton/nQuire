@@ -10,6 +10,12 @@ $(function() {
     init: function(dependencies) {
       this._measuresService = dependencies.DynamicMeasureService;
       this._data = dependencies.AjaxDataServiceInitialData;
+      this._data.nextIndex = 0;
+
+      for (var i in this._data.all) {
+        this._indexData(this._data.all[i]);
+      }
+
       this._dataListeners = [];
 
       this._setButtonsMode(this._data.current ? 'saved' : 'new');
@@ -54,6 +60,9 @@ $(function() {
     },
     addDataListener: function(callback) {
       this._dataListeners.push(callback);
+    },
+    _indexData: function(data) {
+      data.index = this._data.nextIndex++;
     },
     _fireDataChangeEvent: function(event, data) {
       for (var i in this._dataListeners) {
@@ -125,6 +134,9 @@ $(function() {
       var processResponse = function(success, data) {
         if (success) {
           var id = data.id;
+          if (!self._data.all[id]) {
+            self._indexData(data);
+          }
           self._data.all[id] = data;
           self.setData(id, function() {
             self._fireDataChangeEvent('modified', data);

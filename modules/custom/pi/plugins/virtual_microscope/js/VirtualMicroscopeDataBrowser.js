@@ -16,14 +16,20 @@ $(function() {
           x: position.x,
           y: position.y
         },
-        shape: {
-          type: 'circle',
-          r: 12,
-          settings: options.mode === 'hover' ?
-                  {fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 2} :
-                  {fill: '#FDD017', stroke: '#AF7817', strokeWidth: 2},
-          callbacks: this._actionCallbacks
-        },
+        shapes: [
+          {
+            type: 'circle',
+            r: 12,
+            settings: options.mode === 'hover' ?
+                    {fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 2} :
+                    {fill: '#FDD017', stroke: '#AF7817', strokeWidth: 2},
+            callbacks: this._actionCallbacks
+          }, {
+            type: 'text',
+            text: "" + (1 + options.index),
+            settings: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'central', 'text-anchor': 'middle'}
+          }
+        ],
         dontScale: true,
         position: 'front'
       };
@@ -198,7 +204,7 @@ $(function() {
       var fid = data ? data.id + '-' + feature : 'temp';
       var remove = true;
       if (status === 'selected' || (all && $('#virtual_microscope_view_menu').find('.virtual_microscope_view_menu_popup').find('input[name="feature_' + feature + '"]').attr('checked'))) {
-        var shape = fh.createPaintShape(data, {mode: status});
+        var shape = fh.createPaintShape(data, {mode: status, index: data ? data.index : -1});
         if (shape) {
           var layer;
           switch (shape.position) {
