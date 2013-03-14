@@ -163,6 +163,11 @@ $(function() {
       };
       this._post('set', 'PositionPixels', content);
     },
+    resetPosition: function() {
+      if (this._position) {
+        this.setPosition({x: this._position.position.x, y: this._position.position.y, zoom: 0.0});
+      }
+    },
     getCurrentSample: function() {
       return this._sample;
     },

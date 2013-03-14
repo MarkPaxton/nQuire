@@ -39,6 +39,10 @@ $(function() {
         });
         return false;
       });
+      
+      $('#nquire-data-input-button-deletedata').click(function() {
+        self.
+      });
 
       this._measuresService.addUserChangeListener(function(automaticSave) {
         self._userInputChanged(automaticSave);
@@ -90,6 +94,7 @@ $(function() {
       return this._measuresService.getMeasureHandler('measure_' + measure);
     },
     clearData: function(enabledAtEnd) {
+      this._data.current = null;
       var self = this;
       this._setButtonsMode('new');
 
@@ -134,9 +139,12 @@ $(function() {
       var processResponse = function(success, data) {
         if (success) {
           var id = data.id;
-          if (!self._data.all[id]) {
+          if (self._data.all[id]) {
+            data.index = self._data.all[id].index;
+          } else {
             self._indexData(data);
           }
+
           self._data.all[id] = data;
           self.setData(id, function() {
             self._fireDataChangeEvent('modified', data);
@@ -213,6 +221,10 @@ $(function() {
         self._enableDataInput();
         if (callbackWhenDone) {
           callbackWhenDone();
+        }
+
+        if (self._data.current) {
+          self._fireDataChangeEvent('selected', self._data.all[self._data.current]);
         }
       };
 

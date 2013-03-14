@@ -234,12 +234,12 @@ $(function() {
       });
 
       var buttonContainer = $('<div>').addClass('virtual-microscope-annotation-buttons-container').appendTo(this._menuContainer);
-      $('<button>').html('Done').appendTo(buttonContainer).click(function() {
+      /*$('<button>').html('Done').appendTo(buttonContainer).click(function() {
         if (self._listener) {
           self._listener('done');
         }
         return false;
-      });
+      });*/
       $('<button>').html('Cancel').appendTo(buttonContainer).click(function() {
         if (self._listener) {
           self._listener('cancel');

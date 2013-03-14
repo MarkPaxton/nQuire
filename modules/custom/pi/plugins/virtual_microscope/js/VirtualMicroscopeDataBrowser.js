@@ -74,17 +74,37 @@ $(function() {
     _loadingData: null,
     _ready: null,
     _paintFeatureHandlers: null,
+    _viewButtons: null,
     init: function(dependencies) {
       var self = this;
       this._ready = false;
+
+      this._viewButtons = {
+        reset: $('#virtual_microscope_view_menu_reset').click(function() {
+          self._vmManager.resetPosition();
+          return false;
+        }),
+        centerOnData: $('#virtual_microscope_view_menu_center').click(function() {
+          var pos = self._vmViewMeasureHandler.parsePositionFromData(self._ajaxService.getCurrentData());
+          self._vmManager.setPosition(pos);
+        })
+      };
+
       this._vmManager = dependencies.VirtualMicroscopeManager;
+      this._vmManager.addPositionListener(function(position) {
+        if (position) {
+          self._viewButtons.reset[position.position.zoom > .001 ? 'removeClass' : 'addClass']('inactive');
+        }
+      });
+
       this._pageManager = dependencies.VirtualMicroscopePageManager;
       this._whiteboard = dependencies.VirtualMicroscopeWhiteboard;
       this._paintFeatureHandlers = {};
 
       this._ajaxService = dependencies.AjaxDataService;
       this._ajaxService.addDataListener(function(event, data) {
-        self._dataModified(event, data);
+        self._updatePaint();
+        self._viewButtons.centerOnData[event === 'unselected' ? 'addClass' : 'removeClass']('inactive');
       });
 
       this._whiteboard.addWhiteboardReadyListener(function(ready) {
@@ -131,9 +151,7 @@ $(function() {
           var id = "" + parseInt(featureName);
           var pos = self._vmViewMeasureHandler.parsePositionFromData(self._ajaxService.getData(id));
           self._vmManager.setPosition(pos);
-          self._ajaxService.setData(id, function() {
-            self._updatePaint();
-          });
+          self._ajaxService.setData(id);
         }
       };
 
@@ -167,9 +185,6 @@ $(function() {
       if (ready) {
         this._updatePaint();
       }
-    },
-    _dataModified: function(event, data) {
-      this._updatePaint();
     },
     updateCurrentDataFeaturePaint: function(feature) {
       var data = this._ajaxService.getCurrentData();
