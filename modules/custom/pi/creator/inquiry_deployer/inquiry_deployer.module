@@ -3,9 +3,7 @@
 function inquiry_deployer_update_inquiry_node(&$design_node) {
   _inquiry_deployer_create_update_ref_node($design_node, 'inquiry', 'pi_inquiry', array(
       'layout' => 'list',
-      'hide_activity_link' => 'pi_key_questions,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary',
-      'hide_activity_in_summary' => 'pi_key_questions,pi_available_measures,pi_result_presentations,pi_data,pi_key_answers,pi_fooddiary',
-      'actor_gid' => nquire_group_get_single_user_group_nid($design_node->uid),
+      'roles' => $design_node->roles,
   ));
 }
 
@@ -16,7 +14,7 @@ function inquiry_deployer_update_inquiry_phases(&$design_node) {
     $design_phase = node_load($phase['id']);
     $ref_phase = _inquiry_deployer_create_update_ref_node($design_phase, 'phase', 'pi_phase', array(
         'inquiry_nid' => $design_node->inquiry,
-        'phase_actor' => nquire_group_get_single_user_group_nid($design_node->uid),
+        'phase_actor' => nquire_group_get_inquiry_group_nid($design_node->inquiry),
     ));
     $query = "UPDATE {pi_phase} SET weight=%d WHERE vid=%d";
     db_query($query, $i, $ref_phase->vid);
@@ -37,7 +35,7 @@ function inquiry_deployer_update_inquiry_phases(&$design_node) {
 function inquiry_deployer_update_phase(&$design_node, &$design_phase) {
   _inquiry_deployer_create_update_ref_node($design_phase, 'phase', 'pi_phase', array(
       'inquiry_nid' => $design_node->inquiry,
-      'phase_actor' => nquire_group_get_single_user_group_nid($design_node->uid),
+      'phase_actor' => nquire_group_get_inquiry_group_nid($design_node->inquiry),
   ));
 }
 

@@ -1,25 +1,25 @@
 <?php
+
 // $Id: pi_inquiry.module,v 0.1 2010/03/17 MCP $
 
 /**
  * @file  This module provides the implementation of the Inquiry content type
  */
 
-
 /**
  * hook_node_info()Define the pi_inquiry node type
  */
 function pi_inquiry_node_info() {
   return array(
-		'pi_inquiry' => array(
-			'name' => t('Inquiry'), // Required.
-			'module' => 'pi_inquiry',  // Required.
-			'description' => t('An nQuire Inquiry'), // Required.
-			'has_title' => TRUE,
-			'title_label' => t('Inquiry Name'),
-			'has_body' => TRUE,
-			'body_label' => t('Inquiry Description'),
-  )
+      'pi_inquiry' => array(
+          'name' => t('Inquiry'), // Required.
+          'module' => 'pi_inquiry', // Required.
+          'description' => t('An nQuire Inquiry'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Inquiry Name'),
+          'has_body' => TRUE,
+          'body_label' => t('Inquiry Description'),
+      )
   );
 }
 
@@ -43,15 +43,14 @@ function pi_inquiry_access($op, $node, $account) {
       // Allow if user's role has 'edit own inquiry' permission and user is
       // the author; or if the user's role has 'edit any inquiry' permission.
       return user_access('edit own inquiry', $account) && is_author ||
-      user_access('edit any inquiry', $account);
+              user_access('edit any inquiry', $account);
     case 'delete':
       // Allow if user's role has 'delete own inquiry' permission and user is
       // the author; or if the user's role has 'delete any inquiry' permission.
       return user_access('delete own inquiry', $account) && $is_author ||
-      user_access('delete any inquiry', $account);
+              user_access('delete any inquiry', $account);
   }
 }
-
 
 /**
  * The form for adding/editing an Inquiry
@@ -61,18 +60,18 @@ function pi_inquiry_form($node) {
   $type = node_get_types('type', $node);
 
   $form['title'] = array(
-		'#type' => 'textfield',
-		'#title' => check_plain($type->title_label),
-		'#required' => TRUE,
-		'#default_value' => $node->title,
+      '#type' => 'textfield',
+      '#title' => check_plain($type->title_label),
+      '#required' => TRUE,
+      '#default_value' => $node->title,
   );
 
   //Show a simple textarea, no input selector required....
   $form['body_filter']['body'] = array(
-        '#type' => 'textarea',
-        '#title' => check_plain($type->body_label),
-         '#default_value' => $node->body,
-        '#required' => TRUE
+      '#type' => 'textarea',
+      '#title' => check_plain($type->body_label),
+      '#default_value' => $node->body,
+      '#required' => TRUE
   );
 
   $inquiry_groups = pi_get_defined_group_nids();
@@ -84,30 +83,30 @@ function pi_inquiry_form($node) {
   $inquiry_actor_default_value = 'none';
 
   $form['actor_gid'] = array(
-		'#type' => 'select',
-		'#title' => t('Who is this inquiry for'),
-		'#description' => t('Select the group that will be see this inquiry'),
-		'#required' => TRUE,
-		'#weight' => 1,
-		'#default_value' =>  isset($node->actor_gid) ? $node->actor_gid : 'none',
-		'#options' => $group_names,
-		'#allowed_inquiry_actors' => $all_defined_groups,
-		'#element_validate' => array('pi_inquiry_form_actor_gid_validate')
+      '#type' => 'select',
+      '#title' => t('Who is this inquiry for'),
+      '#description' => t('Select the group that will be see this inquiry'),
+      '#required' => TRUE,
+      '#weight' => 1,
+      '#default_value' => isset($node->actor_gid) ? $node->actor_gid : 'none',
+      '#options' => $group_names,
+      '#allowed_inquiry_actors' => $all_defined_groups,
+      '#element_validate' => array('pi_inquiry_form_actor_gid_validate')
   );
 
   $form['layout'] = array(
-		'#type' => 'select',
-		'#title' => t('Layout'),
-		'#weight' => 2,
-		'#default_value' => isset($node->layout) ? $node->layout : 'list',
-		'#options' => array(
-			'list'=> t("List"),
-			'pentagon'=> t("Pentagon"),
-			'octagon'=> t("Plain octagon"),
-			'octagon_icon'=> t("Octagon with icons"),
-			'octagon_activity'=> t("Octagon with activity counts"),
-			'octagon_icon_activity' => t("Octagon with activity counts and icons"),
-  ),
+      '#type' => 'select',
+      '#title' => t('Layout'),
+      '#weight' => 2,
+      '#default_value' => isset($node->layout) ? $node->layout : 'list',
+      '#options' => array(
+          'list' => t("List"),
+          'pentagon' => t("Pentagon"),
+          'octagon' => t("Plain octagon"),
+          'octagon_icon' => t("Octagon with icons"),
+          'octagon_activity' => t("Octagon with activity counts"),
+          'octagon_icon_activity' => t("Octagon with activity counts and icons"),
+      ),
   );
 
   $inquiry_groups = pi_get_defined_group_nids();
@@ -116,7 +115,7 @@ function pi_inquiry_form($node) {
   $group_names['none'] = "Select a group...";
   $group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
 
-  $form['activities'] = pi_activity_show_hide_from( $node->nid );
+  $form['activities'] = pi_activity_show_hide_from($node->nid);
   $form['activities']['#weight'] = 3;
 
   return $form;
@@ -127,62 +126,45 @@ function pi_inquiry_form($node) {
  * @param array $element
  * @param array $form_state
  */
-function pi_inquiry_form_actor_gid_validate($element, $form_state)
-{
-  if(!in_array($form_state['values']['actor_gid'], $element['#allowed_inquiry_actors']))
-  {
+function pi_inquiry_form_actor_gid_validate($element, $form_state) {
+  if (!in_array($form_state['values']['actor_gid'], $element['#allowed_inquiry_actors'])) {
     form_error($element, t('The selected inquiry actor group is not valid, please choose a group from the list.'));
   }
 }
-
 
 /**
  * hook_form_alter - changes the form to change it from default node layout
  */
 function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
-  if($form_id == 'pi_inquiry_node_form')
-  {
+  if ($form_id == 'pi_inquiry_node_form') {
     $form['menu']['#weight'] = 3;
 
     //Remove attachments and comment settings
-    unset( $form['attachments'] );
-    unset( $form['comment_settings'] );
+    unset($form['attachments']);
+    unset($form['comment_settings']);
   }
 }
 
+function _pi_inquiry_prepare_participants_to_save($node, &$data_to_write) {
+  if (!isset($node->participants_selection)) {
+    $data_to_write->participants_selection = 'justme';
+    $data_to_write->participants_cohort = nquire_group_create_default_inquiry_group($node->uid, "Participants of {$node->nid}");
+    $data_to_write->actor_gid = $data_to_write->participants_cohort;
+  } else {
+    $data_to_write->participants_selection = $node->participants_selection;
+    $data_to_write->participants_cohort = $node->participants_cohort;
+    $data_to_write->actor_gid = $node->actor_gid;
+  }
+}
 
 /**
  * INSERT command for a new inquiry
  */
-function pi_inquiry_insert($node)
-{
+function pi_inquiry_insert($node) {
   // Query the database first to set the weight to place the item at the end of lists.
   // If the query result is NULL then the the field will to default=0 since the weight
   // column is defined with NOT NULL DEFAULT 0
 
-  $link = array();
-  $summary = array();
-
-  // If there are no activities installed then the options will be empty, so make into an empty array
-  if(!is_array($node->activities_show_hide))
-  {
-  	$node->activities_show_hide = array();
-  }
-  
-  foreach( $node->activities_show_hide as $module_name => $show_hide )
-  {
-    if( $show_hide['link'] !== 0 )
-    {
-      $link[] = $module_name;
-    }
-    if( $show_hide['summary'] !== 0 )
-    {
-      $summary[] = $module_name;
-    }
-  }
-
-  $links = implode( ',', $link );
-  $summaries = implode( ',', $summary );
 
   $initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_inquiry}"));
   $data_to_write = new stdClass();
@@ -190,14 +172,12 @@ function pi_inquiry_insert($node)
   $data_to_write->vid = $node->vid;
   $data_to_write->layout = $node->layout;
   $data_to_write->weight = $initial_weight;
-  $data_to_write->hide_activity_link = $links;
-  $data_to_write->hide_activity_in_summary = $summaries;
-  $data_to_write->actor_gid = $node->actor_gid;
+  $data_to_write->roles = $node->roles;
+  _pi_inquiry_prepare_participants_to_save($node, $data_to_write);
 
   $result = drupal_write_record('pi_inquiry', $data_to_write);
 
-  if($result != SAVED_NEW)
-  {
+  if ($result != SAVED_NEW) {
     $result_string = _pi_write_record_result_string($result);
     drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
   }
@@ -206,61 +186,39 @@ function pi_inquiry_insert($node)
 /**
  * UPDATE command for an existing inquiry
  */
-function pi_inquiry_update($node)
-{
-  if ($node->revision)
-  {
+function pi_inquiry_update($node) {
+  if ($node->revision) {
     // New revision; treat it as a new record.
     pi_inquiry_insert($node);
-  }
-  else
-  {
+  } else {
     $link = array();
     $summary = array();
-    
+
     // If there are no activities installed then the options will be empty, so make into an empty array
-    if(!is_array($node->activities_show_hide))
-    {
-    	$node->activities_show_hide = array();
+    if (!is_array($node->activities_show_hide)) {
+      $node->activities_show_hide = array();
     }
-    
-    foreach($node->activities_show_hide as $module_name => $show_hide )
-    {
-      if( $show_hide['link'] !== 0 )
-      {
+
+    foreach ($node->activities_show_hide as $module_name => $show_hide) {
+      if ($show_hide['link'] !== 0) {
         $link[] = $module_name;
       }
 
-      if( $show_hide['summary'] !== 0 )
-      {
+      if ($show_hide['summary'] !== 0) {
         $summary[] = $module_name;
       }
     }
-
-    if( is_array($link) )
-    {
-      $links = implode( ',', $link ) ;
-    }
-
-    if( is_array($summary) )
-    {
-      $summaries = implode( ',', $summary ) ;
-    }
-
-    //pi_debug_message("L: " . $links . " S: " . $summaries);
 
     $data_to_write = new stdClass();
     $data_to_write->nid = $node->nid;
     $data_to_write->vid = $node->vid;
     $data_to_write->layout = $node->layout;
-    $data_to_write->weight = $initial_weight;
-    $data_to_write->hide_activity_link = $links;
-    $data_to_write->hide_activity_in_summary = $summaries;
-    $data_to_write->actor_gid = $node->actor_gid;
-    //pi_debug_message($data_to_write);
+    $data_to_write->weight = $node->weight;
+    $data_to_write->roles = $node->roles;
+    _pi_inquiry_prepare_participants_to_save($node, $data_to_write);
+
     $result = drupal_write_record('pi_inquiry', $data_to_write, array('vid', 'nid'));
-    if($result != SAVED_UPDATED)
-    {
+    if ($result != SAVED_UPDATED) {
       $result_string = _pi_write_record_result_string($result);
       drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
     }
@@ -296,28 +254,18 @@ function pi_inquiry_delete(&$node) {
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-  $inquiry_row = db_fetch_array(db_query('SELECT `layout`, `hide_activity_link`, `hide_activity_in_summary`, `weight`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+  $inquiry_row = db_fetch_array(db_query('SELECT `layout`, `roles`, `weight`, `participants_selection`, `participants_cohort`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
   $inquiry = new stdClass();
   $inquiry->layout = $inquiry_row['layout'];
-  $inquiry->hide_activity_link = $inquiry_row['hide_activity_link'];
-  $inquiry->hide_activity_in_summary = $inquiry_row['hide_activity_in_summary'];
   $inquiry->weight = $inquiry_row['weight'];
+  
+  $inquiry->participants_selection = $inquiry_row['participants_selection'];
+  $inquiry->participants_cohort = $inquiry_row['participants_cohort'];
   $inquiry->actor_gid = $inquiry_row['actor_gid'];
-
-  $link = explode(',', $inquiry_row['hide_activity_link']);
-  $summary = explode(',', $inquiry_row['hide_activity_in_summary']);
-  foreach($link as $activity)
-  {
-    $inquiry->activities_show_hide[$activity] = array('link'=> true, 'summary' => in_array($activity, $summary));
-  }
-  foreach($summary as $activity)
-  {
-    if(!in_array($activity, $summary))
-    {
-      $inquiry->activities_show_hide[$activity] = array('link'=> false, 'summary' => true);
-    }
-  }
-
+  
+  $inquiry->roles = $inquiry_row['roles'];
+  $inquiry->roles_array = nquire_commons_decode_data($inquiry_row['roles']);
+  
   return $inquiry;
 }
 
@@ -327,23 +275,21 @@ function pi_inquiry_load($node) {
  */
 function pi_inquiry_view($node, $teaser = FALSE, $page = FALSE) {
   // If $teaser is FALSE, the entire node is being displayed.
-  if (!$teaser)
-  {
+  if (!$teaser) {
     //Use Drupal's default node view.
     $node = node_prepare($node, $teaser);
 
     // render the inquiry description using a theme function
     $node->content['layout'] = array(
-			'#value' => theme('inquiry_layout', $node),
-			'#weight' => 1,
+        '#value' => theme('inquiry_layout', $node),
+        '#weight' => 1,
     );
     // Add more involved inquiry layout here
   }
 
   // If $teaser is true, node is being displayed as a teaser,
   // in this case, just show the description and none of the rest of the inquiry stuff
-  if ($teaser)
-  {
+  if ($teaser) {
     //Use Drupal's default node view.
     $node = node_prepare($node, $teaser);
   }
@@ -356,20 +302,17 @@ function pi_inquiry_view($node, $teaser = FALSE, $page = FALSE) {
  * use node_load($nid) to then access the inquiry details
  * @return array of nids ordered by weight
  */
-function pi_inquiry_load_nids()
-{
+function pi_inquiry_load_nids() {
   $query = "SELECT nid from {pi_inquiry} ORDER BY weight";
   $result = db_query($query);
   $inquiry_nodes = array();
-  while($nid=db_result($result))
-  {
+  while ($nid = db_result($result)) {
     $inquiry_nodes[] = $nid;
   }
   return $inquiry_nodes;
 }
 
-function pi_activity_show_hide_from( $nid )
-{
+function pi_activity_show_hide_from($nid) {
   //$details = get_inquiry_details_from_current_path();
   //Since this is going to be an add-only form, junk the node data.
   //Now create a new form to submit the measures.
@@ -377,97 +320,85 @@ function pi_activity_show_hide_from( $nid )
   $form = array();
   $default = array();
 
-  $options = array( 'link' => t('Hide link'), 'summary' => t('Hide summary') );
+  $options = array('link' => t('Hide link'), 'summary' => t('Hide summary'));
 
   $form['activities_show_hide'] = array(
-		'#type' => 'fieldset',
-		'#title'  => t('Show/Hide Activities'),
-		'#collapsible' => TRUE,
-		'#collapsed' => TRUE,
-		'#tree' => TRUE,
-	    '#weight' => 5,
+      '#type' => 'fieldset',
+      '#title' => t('Show/Hide Activities'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#tree' => TRUE,
+      '#weight' => 5,
   );
 
-  $activities = variable_get('pi_activities', array() );
-  asort( $activities );
-  $hidden_activities = pi_activity_get_hidden_activities_from_inquiry( $nid );
+  $activities = variable_get('pi_activities', array());
+  asort($activities);
+  $hidden_activities = pi_activity_get_hidden_activities_from_inquiry($nid);
 
-  foreach( $activities as $module_name => $name )
-  {
+  foreach ($activities as $module_name => $name) {
     $default = array();
     $hidden_activities_link = array();
     $hidden_activities_summary = array();
 
-    if( is_array( $hidden_activities['link'] ) )
-    {
+    if (is_array($hidden_activities['link'])) {
       $hidden_activities_link = $hidden_activities['link'];
     }
 
-    if( is_array( $hidden_activities['summary'] ) )
-    {
+    if (is_array($hidden_activities['summary'])) {
       $hidden_activities_summary = $hidden_activities['summary'];
     }
 
-    if( array_search( $module_name, $hidden_activities_link ) !== FALSE )
-    {
+    if (array_search($module_name, $hidden_activities_link) !== FALSE) {
       $default[] = 'link';
     }
 
-    if( array_search( $module_name, $hidden_activities_summary ) !== FALSE )
-    {
+    if (array_search($module_name, $hidden_activities_summary) !== FALSE) {
       $default[] = 'summary';
     }
 
-    $form['activities_show_hide'][ $module_name ] = array(
-  			'#type' => 'checkboxes',
-  			'#title' => $name,
-			'#default_value' => $default,
-  			'#options' => $options
+    $form['activities_show_hide'][$module_name] = array(
+        '#type' => 'checkboxes',
+        '#title' => $name,
+        '#default_value' => $default,
+        '#options' => $options
     );
-
   }
-  if($form_state['submitted'])
-  {
+  if ($form_state['submitted']) {
     pi_activity_show_hide_from_submit($form, $form_state);
   }
 
   return $form;
 }
 
-function pi_activity_get_hidden_activities_from_inquiry( $inquiry_id )
-{
+function pi_activity_get_hidden_activities_from_inquiry($inquiry_id) {
   $query = "SELECT * FROM {pi_inquiry} WHERE nid = %d";
 
-  $result = db_query( $query, $inquiry_id);
+  $result = db_query($query, $inquiry_id);
   $data = array();
 
-  if( $inquiry = db_fetch_object( $result) )
-  {
-    $data[ 'link' ] =  explode( ',', $inquiry->hide_activity_link ) ;
-    $data[ 'summary' ] = explode( ',', $inquiry->hide_activity_in_summary ) ;
+  if ($inquiry = db_fetch_object($result)) {
+    $data['link'] = explode(',', $inquiry->hide_activity_link);
+    $data['summary'] = explode(',', $inquiry->hide_activity_in_summary);
   }
 
   return $data;
 }
 
-function theme_pi_activity_show_hide($form)
-{
+function theme_pi_activity_show_hide($form) {
   $output .= drupal_render($form);
   return $output;
 }
-
 
 /**
  * Declare theme functions for pi_inquiry
  */
 function pi_inquiry_theme() {
   return array(
-    'inquiry_layout' => array(
-      'arguments' => array('node'),
-  ),
+      'inquiry_layout' => array(
+          'arguments' => array('node'),
+      ),
   );
 }
-
 
 /**
  * Theme function to display the inquiry layout

@@ -59,7 +59,7 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
       '#required' => FALSE,
   );
 
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_phase_form_submit', "creator/{$design->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_phase_form_submit', "creator/{$design->nid}/");
 
   return $form;
 }
@@ -92,7 +92,7 @@ function inquiry_creator_phase_form_submit($form, $form_state) {
     }
   }
 
-  inquiry_creator_form_close($form, $form_state);
+  nquire_commons_form_close($form, $form_state);
 }
 
 function inquiry_creator_phase_delete($design_nid, $phase_nid) {
@@ -130,7 +130,7 @@ function inquiry_creator_phase_delete_form(&$form_state, $design, $node) {
       '#value' => $info,
   );
 
-  inquiry_creator_create_form_delete_cancel_buttons($form, 'inquiry_creator_phase_delete_form_submit', "creator/{$design->nid}");
+  nquire_commont_create_form_delete_cancel_buttons($form, 'inquiry_creator_phase_delete_form_submit', "creator/{$design->nid}");
 
   return $form;
 }
@@ -159,5 +159,5 @@ function inquiry_creator_phase_delete_form_submit($form, $form_state) {
     }
   }
 
-  inquiry_creator_form_close($form, $form_state);
+  nquire_commons_form_close($form, $form_state);
 }

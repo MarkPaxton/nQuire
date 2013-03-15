@@ -41,7 +41,7 @@ $(function() {
       });
       
       $('#nquire-data-input-button-deletedata').click(function() {
-        self.
+        
       });
 
       this._measuresService.addUserChangeListener(function(automaticSave) {

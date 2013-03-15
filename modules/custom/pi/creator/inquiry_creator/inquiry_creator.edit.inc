@@ -132,90 +132,6 @@ function _inquiry_creator_create_inquiry_id_form_item($node, &$form) {
   );
 }
 
-function inquiry_creator_create_form_save_cancel_buttons(&$form, $save_callback, $cancel_path) {
-  inquiry_creator_create_form_buttons($form, array(
-      'submit' => array(
-          'type' => 'button',
-          'label' => t('Save'),
-          'callback' => $save_callback,
-      ),
-      'cancel' => array(
-          'type' => 'link',
-          'label' => t('Cancel'),
-          'callback' => $cancel_path,
-      ),
-  ));
-  inquiry_creator_create_form_destination($form, $cancel_path);
-}
-
-function inquiry_creator_create_form_delete_cancel_buttons(&$form, $delete_callback, $cancel_path) {
-  inquiry_creator_create_form_buttons($form, array(
-      'delete' => array(
-          'type' => 'button',
-          'label' => t('Delete'),
-          'callback' => $delete_callback,
-      ),
-      'cancel' => array(
-          'type' => 'link',
-          'label' => t('Cancel'),
-          'callback' => $cancel_path,
-      ),
-  ));
-  inquiry_creator_create_form_destination($form, $cancel_path);
-}
-
-function inquiry_creator_create_form_save_delete_cancel_buttons(&$form, $save_callback, $delete_callback, $cancel_path) {
-  inquiry_creator_create_form_buttons($form, array(
-      'submit' => array(
-          'type' => 'button',
-          'label' => t('Save'),
-          'callback' => $save_callback,
-      ),
-      'delete' => array(
-          'type' => 'button',
-          'label' => t('Delete'),
-          'callback' => $delete_callback,
-      ),
-      'cancel' => array(
-          'type' => 'link',
-          'label' => t('Cancel'),
-          'callback' => $cancel_path,
-      ),
-  ));
-  inquiry_creator_create_form_destination($form, $cancel_path);
-}
-
-function inquiry_creator_create_form_destination(&$form, $destination) {
-  $form['form_destination'] = array(
-      '#type' => 'hidden',
-      '#default_value' => $destination,
-      '#required' => FALSE,
-  );
-}
-
-function inquiry_creator_create_form_buttons(&$form, $buttons) {
-  foreach ($buttons as $button => $data) {
-    switch ($data['type']) {
-      case 'button':
-        $form[$button] = array(
-            '#type' => 'submit',
-            '#value' => $data['label'],
-            '#submit' => array($data['callback']),
-        );
-        break;
-      case 'link':
-        $form[$button] = array(
-            '#type' => 'markup',
-            '#value' => l($data['label'], $data['callback']),
-        );
-        break;
-    }
-  }
-}
-
-function inquiry_creator_form_close($form, $form_state) {
-  drupal_goto($form_state['values']['form_destination']);
-}
 
 function inquiry_creator_activities_form(&$form_state, $node) {
   $form = array();
@@ -224,7 +140,7 @@ function inquiry_creator_activities_form(&$form_state, $node) {
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   inquiry_structure_widget_create_form_item($form, 'structure', $node->structure);
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_activities_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_activities_form_submit', "creator/{$node->nid}/");
 
   return $form;
 }
@@ -273,7 +189,7 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
     $form_state['values']['form_destination'] = implode('/', $destination_parts);
   }
   
-  inquiry_creator_form_close($form, $form_state);
+  nquire_commons_form_close($form, $form_state);
 }
 
 function inquiry_creator_groups_form(&$form_state, $node) {
@@ -282,7 +198,7 @@ function inquiry_creator_groups_form(&$form_state, $node) {
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   inquiry_structure_groups_table_create_form_item($form, 'groups', $node->structure, $node->groups);
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_groups_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_groups_form_submit', "creator/{$node->nid}/");
 
   return $form;
 }
@@ -298,7 +214,7 @@ function inquiry_creator_groups_form_submit($form, $form_state) {
       node_save($node);
     }
   }
-  inquiry_creator_form_close($form, $form_state);
+  nquire_commons_form_close($form, $form_state);
 }
 
 function inquiry_creator_roles_form(&$form_state, $node) {
@@ -308,7 +224,7 @@ function inquiry_creator_roles_form(&$form_state, $node) {
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   inquiry_structure_roles_table_create_form_item($form, 'roles', $node->structure, $node->roles);
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_roles_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_roles_form_submit', "creator/{$node->nid}/");
 
   return $form;
 }
@@ -338,7 +254,7 @@ function inquiry_creator_roles_form_submit($form, $form_state) {
       node_save($node);
     }
   }
-  inquiry_creator_form_close($form, $form_state);
+  nquire_commons_form_close($form, $form_state);
 }
 
 function inquiry_creator_stages_form(&$form_state, $node) {
@@ -358,7 +274,7 @@ function inquiry_creator_stages_form(&$form_state, $node) {
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   inquiry_structure_stages_table_create_form_item($form, 'stages', $node->structure, json_encode($stages));
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_stages_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_stages_form_submit', "creator/{$node->nid}/");
 
   return $form;
 }
@@ -411,7 +327,7 @@ function inquiry_creator_stages_form_submit($form, $form_state) {
   }
   
   
-  inquiry_creator_form_close($form, $form_state);
+  nquire_commons_form_close($form, $form_state);
 }
 
 function inquiry_creator_metadata_form(&$form_state, $node) {
@@ -439,7 +355,7 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
       '#required' => TRUE
   );
 
-  inquiry_creator_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', "creator/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', "creator/");
 
   return $form;
 }
@@ -478,7 +394,7 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
       inquiry_deployer_update_inquiry_node($node);
     }
 
-    inquiry_creator_form_close($form, $form_state);
+    nquire_commons_form_close($form, $form_state);
   }
 }
 

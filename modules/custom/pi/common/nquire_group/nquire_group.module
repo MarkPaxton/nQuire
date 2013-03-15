@@ -1,5 +1,9 @@
 <?php
 
+define("NQUIRE_GROUP_TYPE_NORMAL", 0);
+define("NQUIRE_GROUP_TYPE_INQUIRY", 1);
+define("NQUIRE_GROUP_TYPE_SUBGROUP", 2);
+
 // $Id: nquire_group.module,v 0.1 2010/03/17 MCP $
 
 /**
@@ -127,29 +131,27 @@ function nquire_group_view($node, $teaser = FALSE, $page = FALSE) {
   return $node;
 }
 
-function nquire_group_get_single_user_group_nid($uid) {
+function nquire_group_create_default_inquiry_group($owner, $title) {
 
-  $query = "SELECT {node}.nid FROM {node} LEFT JOIN {nquire_group} ON {node}.vid={nquire_group}.vid WHERE {node}.uid=%d AND {nquire_group}.group_type=1";
-  $result = db_fetch_array(db_query($query, $uid));
+  $node = new stdClass();
+  $node->type = 'nquire_group';
+  $node->uid = $owner;
+  $node->title = $title;
+  $node->body = t('Body');
+  $node->og_description = $title;
+  $node->og_selective = OG_CLOSED;
+  $node->og_register = OG_REGISTRATION_NEVER;
+  $node->og_directory = OG_DIRECTORY_NEVER;
+  $node->og_private = TRUE;
 
-  if ($result && isset($result['nid'])) {
-    return $result['nid'];
-  } else {
-    $node = new stdClass();
-    $node->type = 'nquire_group';
-    $node->uid = $uid;
-    $node->title = t('Just me');
-    $node->body = t('Body');
-    $node->og_description = t('Just me');
-    $node->og_selective = OG_CLOSED;
-    $node->og_register = OG_REGISTRATION_NEVER;
-    $node->og_directory = OG_DIRECTORY_NEVER;
-    $node->og_private = TRUE;
-    
-    $node->group_type = 1;
-    
-    node_save($node);
-    og_save_subscription($node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1));
-    return $node->nid;
-  }
+  $node->group_type = NQUIRE_GROUP_TYPE_INQUIRY;
+
+  node_save($node);
+  og_save_subscription($node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1));
+  return $node->nid;
+}
+
+function nquire_group_get_inquiry_group_nid($inquiry_nid) {
+  $node = node_load($inquiry_nid);
+  return $node->actor_gid;
 }

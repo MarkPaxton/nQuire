@@ -290,3 +290,72 @@ function nquire_commons_random_string($length) {
   
   return $output;
 }
+
+
+/* form functions */ 
+
+
+function nquire_commons_create_form_save_cancel_buttons(&$form, $save_callback, $cancel_path) {
+  nquire_commons_create_form_buttons($form, array(
+      'submit' => array(
+          'type' => 'button',
+          'label' => t('Save'),
+          'callback' => $save_callback,
+      ),
+      'cancel' => array(
+          'type' => 'link',
+          'label' => t('Cancel'),
+          'callback' => $cancel_path,
+      ),
+  ));
+  nquire_commons_create_form_destination($form, $cancel_path);
+}
+
+function nquire_commont_create_form_delete_cancel_buttons(&$form, $delete_callback, $cancel_path) {
+  nquire_commons_create_form_buttons($form, array(
+      'delete' => array(
+          'type' => 'button',
+          'label' => t('Delete'),
+          'callback' => $delete_callback,
+      ),
+      'cancel' => array(
+          'type' => 'link',
+          'label' => t('Cancel'),
+          'callback' => $cancel_path,
+      ),
+  ));
+  nquire_commons_create_form_destination($form, $cancel_path);
+}
+
+
+function nquire_commons_create_form_destination(&$form, $destination) {
+  $form['form_destination'] = array(
+      '#type' => 'hidden',
+      '#default_value' => $destination,
+      '#required' => FALSE,
+  );
+}
+
+function nquire_commons_create_form_buttons(&$form, $buttons) {
+  foreach ($buttons as $button => $data) {
+    switch ($data['type']) {
+      case 'button':
+        $form[$button] = array(
+            '#type' => 'submit',
+            '#value' => $data['label'],
+            '#submit' => array($data['callback']),
+        );
+        break;
+      case 'link':
+        $form[$button] = array(
+            '#type' => 'markup',
+            '#value' => l($data['label'], $data['callback']),
+        );
+        break;
+    }
+  }
+}
+
+function nquire_commons_form_close($form, $form_state) {
+  drupal_goto($form_state['values']['form_destination']);
+}
