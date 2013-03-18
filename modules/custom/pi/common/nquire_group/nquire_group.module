@@ -14,57 +14,59 @@ define("NQUIRE_GROUP_TYPE_SUBGROUP", 2);
  * hook_node_info()Define the nquire_group node type
  */
 function nquire_group_node_info() {
-  return array(
-      'nquire_group' => array(
-          'name' => t('nQuire Group'), // Required.
-          'module' => 'nquire_group', // Required.
-          'description' => t('An nQuire Group'), // Required.
-          'has_title' => TRUE,
-          'title_label' => t('Group name'),
-          'has_body' => TRUE,
-          'body_label' => t('Group Description'),
-      )
-  );
+	return array(
+			'nquire_group' => array(
+					'name' => t('nQuire Group'), // Required.
+					'module' => 'nquire_group', // Required.
+					'description' => t('An nQuire Group'), // Required.
+					'has_title' => TRUE,
+					'title_label' => t('Group name'),
+					'has_body' => TRUE,
+					'body_label' => t('Group Description'),
+			)
+	);
 }
 
 /**
  * Work out if a user has permission to do something with an Inquiry
  */
 function nquire_group_access($op, $node, $account) {
-  $is_author = $account->uid == $node->uid;
-  switch ($op) {
-    case 'create':
-      // Allow if user's role has 'create inquiry' permission.
-      return user_access('create inquiry design', $account);
-    case 'update':
-      // Allow if user's role has 'edit own inquiry' permission and user is
-      // the author; or if the user's role has 'edit any inquiry' permission.
-      return user_access('edit own inquiry design', $account) && is_author ||
-              user_access('edit any inquiry design', $account);
-    case 'delete':
-      // Allow if user's role has 'delete own inquiry' permission and user is
-      // the author; or if the user's role has 'delete any inquiry' permission.
-      return user_access('delete own inquiry design', $account) && $is_author ||
-              user_access('delete any inquiry design', $account);
-  }
+	$is_author = $account->uid == $node->uid;
+	switch ($op) {
+		case 'create':
+			// Allow if user's role has 'create inquiry' permission.
+			return user_access('create inquiry design', $account);
+		case 'update':
+			// Allow if user's role has 'edit own inquiry' permission and user is
+			// the author; or if the user's role has 'edit any inquiry' permission.
+			return user_access('edit own inquiry design', $account) && is_author ||
+							user_access('edit any inquiry design', $account);
+		case 'delete':
+			// Allow if user's role has 'delete own inquiry' permission and user is
+			// the author; or if the user's role has 'delete any inquiry' permission.
+			return user_access('delete own inquiry design', $account) && $is_author ||
+							user_access('delete any inquiry design', $account);
+	}
 }
 
 /**
  * INSERT command for a new activity
  */
 function nquire_group_insert($node) {
-  db_query("INSERT INTO {nquire_group} (nid, vid, group_type) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->group_type);
+	$group_type = isset($node->group_type) ? $node->group_type : NQUIRE_GROUP_TYPE_NORMAL;
+	db_query("INSERT INTO {nquire_group} (nid, vid, group_type) VALUES (%d, %d, %d)", $node->nid, $node->vid, $group_type);
 }
 
 /**
  * UPDATE command for an existing inquiry
  */
 function nquire_group_update($node) {
-  if ($node->revision) {
-    nquire_group_insert($node);
-  } else {
-    db_query("UPDATE {nquire_group} SET group_type='%s', data='%s' WHERE vid='%d'", $node->group_type, $node->vid);
-  }
+	if ($node->revision) {
+		nquire_group_insert($node);
+	} else {
+		$group_type = isset($node->group_type) ? $node->group_type : NQUIRE_GROUP_TYPE_NORMAL;
+		db_query("UPDATE {nquire_group} SET group_type='%s' WHERE vid='%d'", $group_type, $node->vid);
+	}
 }
 
 /**
@@ -75,15 +77,15 @@ function nquire_group_update($node) {
  * hook_nodeapi().
  */
 function nquire_group_nodeapi(&$node, $op, $teaser, $page) {
-  if ($node->type === 'nquire_group') {
-    switch ($op) {
-      case 'delete revision':
-        // Notice that we're matching a single revision based on the node's vid.
-        db_query('DELETE FROM {nquire_group} WHERE vid = %d', $node->vid);
-        break;
-    }
-  }
-  return;
+	if ($node->type === 'nquire_group') {
+		switch ($op) {
+			case 'delete revision':
+				// Notice that we're matching a single revision based on the node's vid.
+				db_query('DELETE FROM {nquire_group} WHERE vid = %d', $node->vid);
+				break;
+		}
+	}
+	return;
 }
 
 /**
@@ -91,17 +93,17 @@ function nquire_group_nodeapi(&$node, $op, $teaser, $page) {
  * @todo this should delete all the associated data with the inquiry too!
  */
 function nquire_group_delete(&$node) {
-  // Delete the related information we were saving for this node.
-  db_query('DELETE FROM {nquire_group} WHERE nid = %d', $node->nid);
+	// Delete the related information we were saving for this node.
+	db_query('DELETE FROM {nquire_group} WHERE nid = %d', $node->nid);
 }
 
 /**
  * node loader function for inquiry type called when noad_load() is called
  */
 function nquire_group_load($node) {
-  $design = db_fetch_object(db_query('SELECT * FROM {nquire_group} WHERE vid = %d', $node->vid));
+	$design = db_fetch_object(db_query('SELECT * FROM {nquire_group} WHERE vid = %d', $node->vid));
 
-  return $design;
+	return $design;
 }
 
 /**
@@ -109,49 +111,49 @@ function nquire_group_load($node) {
  * @todo Add a detailed inquiry view to be used in the whole system
  */
 function nquire_group_view($node, $teaser = FALSE, $page = FALSE) {
-  // If $teaser is FALSE, the entire node is being displayed.
-  if (!$teaser) {
-    //Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
+	// If $teaser is FALSE, the entire node is being displayed.
+	if (!$teaser) {
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
 
-    // render the inquiry description using a theme function
-    $node->content['layout'] = array(
-        '#value' => theme('inquiry_layout', $node),
-        '#weight' => 1,
-    );
-    // Add more involved inquiry layout here
-  }
+		// render the inquiry description using a theme function
+		$node->content['layout'] = array(
+				'#value' => theme('inquiry_layout', $node),
+				'#weight' => 1,
+		);
+		// Add more involved inquiry layout here
+	}
 
-  // If $teaser is true, node is being displayed as a teaser,
-  // in this case, just show the description and none of the rest of the inquiry stuff
-  if ($teaser) {
-    //Use Drupal's default node view.
-    $node = node_prepare($node, $teaser);
-  }
-  return $node;
+	// If $teaser is true, node is being displayed as a teaser,
+	// in this case, just show the description and none of the rest of the inquiry stuff
+	if ($teaser) {
+		//Use Drupal's default node view.
+		$node = node_prepare($node, $teaser);
+	}
+	return $node;
 }
 
 function nquire_group_create_default_inquiry_group($owner, $title) {
 
-  $node = new stdClass();
-  $node->type = 'nquire_group';
-  $node->uid = $owner;
-  $node->title = $title;
-  $node->body = t('Body');
-  $node->og_description = $title;
-  $node->og_selective = OG_CLOSED;
-  $node->og_register = OG_REGISTRATION_NEVER;
-  $node->og_directory = OG_DIRECTORY_NEVER;
-  $node->og_private = TRUE;
+	$node = new stdClass();
+	$node->type = 'nquire_group';
+	$node->uid = $owner;
+	$node->title = $title;
+	$node->body = t('Body');
+	$node->og_description = $title;
+	$node->og_selective = OG_CLOSED;
+	$node->og_register = OG_REGISTRATION_NEVER;
+	$node->og_directory = OG_DIRECTORY_NEVER;
+	$node->og_private = TRUE;
 
-  $node->group_type = NQUIRE_GROUP_TYPE_INQUIRY;
+	$node->group_type = NQUIRE_GROUP_TYPE_INQUIRY;
 
-  node_save($node);
-  og_save_subscription($node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1));
-  return $node->nid;
+	node_save($node);
+	og_save_subscription($node->nid, $node->uid, array('is_active' => 1, 'is_admin' => 1));
+	return $node->nid;
 }
 
 function nquire_group_get_inquiry_group_nid($inquiry_nid) {
-  $node = node_load($inquiry_nid);
-  return $node->actor_gid;
+	$node = node_load($inquiry_nid);
+	return $node->actor_gid;
 }

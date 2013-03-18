@@ -135,6 +135,22 @@ function nquire_commons_form_node_default_value($node, $attribute, $form_state, 
   return nquire_commons_form_default_value($form_state, $form_state_path, $_default);
 }
 
+function nquire_commons_create_form_wrapped_section(&$form, $section_id) {
+	$form[$section_id] = array(
+			'wrapper_open' => array(
+					'#value' => "<div id='$section_id'>",
+					'#weight' => 0,
+			),
+			'wrapped_content' => array(
+					'#weight' => 1,
+			),
+			'wrapper_end' => array(
+					'#value' => '</div>',
+					'#weight' => 2,
+			)
+	);
+}
+
 function nquire_commons_read_data_value($data, $path, $default) {
   if ($data) {
     $current = $data;
@@ -344,6 +360,7 @@ function nquire_commons_create_form_buttons(&$form, $buttons) {
             '#type' => 'submit',
             '#value' => $data['label'],
             '#submit' => array($data['callback']),
+						'#attributes' => array('onclick' => 'this.form.target="_self";return true;'),
         );
         break;
       case 'link':

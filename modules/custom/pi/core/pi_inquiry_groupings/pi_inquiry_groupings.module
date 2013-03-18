@@ -1,8 +1,139 @@
 <?php
 
+function pi_inquiry_groupings_get_inquiry_group($inquiry_node) {
+	return $inquiry_node->actor_gid;
+}
 
+function pi_inquiry_groupings_get_selection_type($inquiry_node) {
+	return $inquiry_node->participants_selection;
+}
 
+function pi_inquiry_groupings_get_cohort_group($inquiry_node) {
+	return $inquiry_node->participants_cohort;
+}
 
-function pi_inquiry_groupings_selection_type($inquiry_node) {
-  return $inquiry_node->participants_selection;
+function pi_inquiry_groupings_get_join_mode($group_nid) {
+	$og = node_load($group_nid);
+	og_load_group($og);
+	return $og->og_selective;
+}
+
+function pi_inquiry_groupings_get_join_mode_for_inquiry_nid($inquiry_nid) {
+	$inquiry = node_load($inquiry_nid);
+	return pi_inquiry_groupings_get_join_mode($inquiry->actor_gid);
+}
+
+function pi_inquiry_groupings_get_user_status_in_group($gid, $uid) {
+	$query = "SELECT is_active FROM {og_uid} WHERE nid=%d AND uid=%d";
+	$row = db_fetch_array(db_query($query, $gid, $uid));
+	return $row ? ($row['is_active'] ? 'member' : 'awaiting') : 'none';
+}
+
+function pi_inquiry_groupings_get_normal_groups() {
+	$query = "SELECT {node}.nid FROM {nquire_group} LEFT JOIN {node} ON {node}.vid={nquire_group}.vid WHERE {nquire_group}.group_type=%d";
+	$result = db_query($query, NQUIRE_GROUP_TYPE_NORMAL);
+
+	$groups = array();
+	while ($row = db_fetch_array($result)) {
+		$node = node_load($row['nid']);
+		og_load_group($node);
+		$groups[$node->nid] = check_plain($node->og_description);
+	}
+
+	return $groups;
+}
+
+function pi_inquiry_groupings_get_allowed_participants_for_inquiry($inquiry_node) {
+	return pi_inquiry_groupings_get_allowed_participants($inquiry_node->participants_selection, $inquiry_node->uid, $inquiry_node->participants_cohort);
+}
+
+function pi_inquiry_groupings_get_allowed_participants($selection_type, $owner_uid, $cohort) {
+	if ($selection_type === 'justme') {
+		return array($owner_uid);
+	} else if ($selection_type === 'group') {
+		$members = pi_inquiry_groupings_get_group_member_uids($cohort);
+		if (!in_array($owner_uid, $members)) {
+			$members[] = $owner_uid;
+		}
+		return $members;
+	} else {
+		return FALSE;
+	}
+}
+
+function pi_inquiry_groupings_get_group_member_uids($group_nid) {
+	$members = array();
+
+	$query = "SELECT uid FROM og_uid WHERE nid=%d";
+	$result = db_query($query, $group_nid);
+	while ($row = db_fetch_array($result)) {
+		$members[] = $row['uid'];
+	}
+
+	return $members;
+}
+
+function pi_inquiry_groupings_get_groups_for_user($uid, $group_type) {
+	$groups_query = "SELECT {nquire_group}.nid, {og_uid}.is_active FROM {nquire_group} "
+					. "LEFT JOIN {node} ON {node}.vid={nquire_group}.vid "
+					. "LEFT JOIN {og_uid} ON {og_uid}.nid={nquire_group}.nid "
+					. "WHERE {nquire_group}.group_type=%d AND {og_uid}.uid=%d";
+
+	$user_groups = array(
+			'active' => array(),
+			'inactive' => array(),
+	);
+
+	$result = db_query($groups_query, $group_type, $uid);
+	while ($row = db_fetch_array($result)) {
+		$user_groups[$row['is_active'] ? 'active' : 'inactive'][] = $row['nid'];
+	}
+
+	return $user_groups;
+}
+
+function pi_inquiry_groupings_get_inquiries_for_groups($group_nids) {
+	$inquiry_nids = array();
+	if (count($group_nids) > 0) {
+		$query = "SELECT DISTINCT {pi_inquiry}.nid FROM {pi_inquiry} LEFT JOIN {node} ON {node}.vid={pi_inquiry}.vid WHERE ({pi_inquiry}.participants_selection='group' OR {pi_inquiry}.participants_selection='justme') AND {pi_inquiry}.actor_gid IN (" . db_placeholders($group_nids) . ")";
+		$result = db_query($query, $group_nids);
+		while ($row = db_fetch_array($result)) {
+			$inquiry_nids[] = $row['nid'];
+		}
+	}
+	return $inquiry_nids;
+}
+
+function pi_inquiry_groupings_get_inquiries_for_anyone() {
+	$query = "SELECT DISTINCT {pi_inquiry}.nid FROM {pi_inquiry} LEFT JOIN {node} ON {node}.vid={pi_inquiry}.vid WHERE {pi_inquiry}.participants_selection='anyone'";
+	$result = db_query($query);
+	$inquiry_nids = array();
+	while ($row = db_fetch_array($result)) {
+		$inquiry_nids[] = $row['nid'];
+	}
+	return $inquiry_nids;
+}
+
+function pi_inquiry_groupings_get_inquiries_for_user($uid) {
+	$inquiry_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_INQUIRY);
+	$joined_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups['active']);
+	$awaiting_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups['inactive']);
+
+	$user_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_NORMAL);
+	$available_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($user_groups['active']);
+	$available_inquiries += pi_inquiry_groupings_get_inquiries_for_anyone();
+
+	$output = array(
+			'joined' => $joined_inquiries,
+			'awaiting' => $awaiting_inquiries,
+			'available' => array(),
+	);
+
+	foreach ($available_inquiries as $nid) {
+		if (!in_array($nid, $joined_inquiries) && !in_array($nid, $awaiting_inquiries) && pi_inquiry_groupings_get_join_mode_for_inquiry_nid($nid) != OG_INVITE_ONLY) {
+			$output['available'][] = $nid;
+		}
+	}
+
+	return $output;
 }
