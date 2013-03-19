@@ -38,7 +38,7 @@ function pi_home_view() {
 
 			foreach ($inquiries as $inquiry_nid) {
 				$inquiry = node_load($inquiry_nid);
-				$status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry->actor_gid, $user->uid);
+				$status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry, $user->uid);
 
 				$rows[] = array(l($inquiry->title, "inquiry/{$inquiry->nid}") . '<br/>' . $status, $inquiry->description);
 			}

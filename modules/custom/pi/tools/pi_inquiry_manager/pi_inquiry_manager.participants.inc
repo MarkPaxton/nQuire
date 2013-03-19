@@ -1,12 +1,10 @@
 <?php
 
 function pi_inquiry_manager_participants($nid) {
-	global $user;
-
 	$inquiry = node_load($nid);
 	$output = theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry);
 
-	$output .= theme('pi_inquiry_manager_participants_list', $inquiry->actor_gid, $user->uid);
+	$output .= theme('pi_inquiry_manager_participants_list', $inquiry);
 
 	return $output;
 }
@@ -51,7 +49,7 @@ function theme_pi_inquiry_manager_participants_view_inquiry_group($inquiry_node)
 		}
 	}
 
-	if (pi_inquiry_manager_participants_group_edit_access($inquiry_node->nid)) {
+	if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_node->nid)) {
 		$output .= '<br/>' . l(t('Edit'), "inquiry/{$inquiry_node->nid}/participants/access");
 	}
 	return $output;
@@ -160,7 +158,7 @@ function _pi_inquiry_manager_participants_get_participants_to_be_expelled($inqui
 
 function pi_inquiry_manager_participants_edit_inquiry_group_form_submit($form, $form_state) {
 	$inquiry_nid = arg(1);
-	if (pi_inquiry_manager_participants_group_edit_access($inquiry_nid)) {
+	if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid)) {
 		$inquiry = node_load($inquiry_nid);
 		$new_participant_selection = $form_state['values']['target'];
 		$new_participant_cohort = $form_state['values']['cohort_group'];
@@ -212,71 +210,98 @@ function _pi_inquiry_manager_participants_process_join_mode_form_value($group_ni
 
 /* Participant list */
 
-function theme_pi_inquiry_manager_participants_list($group_nid, $uid, $owner_can_leave = FALSE) {
-	$og = node_load($group_nid);
-	og_load_group($og);
+function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = FALSE, $owner_can_leave = FALSE) {
+	$gid = pi_inquiry_groupings_get_group_nid($inquiry_node, $group_nid);
+	if ($gid) {
+		global $user;
 
-	$join_mode = $og->og_selective;
-	$user_status = pi_inquiry_groupings_get_user_status_in_group($group_nid, $uid);
-	$is_owner = $uid === $og->uid;
+		$og = node_load($gid);
+		og_load_group($og);
 
-	$members = pi_inquiry_groupings_get_group_member_uids($group_nid);
-	usort($members, function($a, $b) {
-						return $a === $uid ? -1 : ($b === $uid ? 1 : 0);
-					});
 
-	$members_data = array_map(function($_uid) use ($group_nid, $uid) {
-						if ($uid === $_uid) {
-							$n = t('Me');
-						} else {
-							$u = user_load($_uid);
-							$n = check_plain($u->name);
-						}
-						return array(
-								'uid' => $_uid,
-								'name' => $n,
-								'status' => pi_inquiry_groupings_get_user_status_in_group($group_nid, $_uid),
-						);
-					}, $members);
+		$members = pi_inquiry_groupings_get_group_member_uids($gid);
+		usort($members, function($a, $b) use($user) {
+							return $a === $user->uid ? -1 : ($b === $user->uid ? 1 : 0);
+						});
 
-	$rows = array();
+		$rows = array();
 
-	foreach ($members_data as $member) {
-		$its_me = $uid === $member['uid'];
+		foreach ($members as $uid) {
+
+			$status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $uid, $group_nid, $owner_can_leave);
+			if ($user->uid === $uid) {
+				$name = t('Me');
+			} else {
+				$u = user_load($uid);
+				$name = check_plain($u->name);
+			}
+			$rows[] = array($name, $status);
+		}
+
+		$header = array(t('User'), t('Status'));
+
+		return theme_table($header, $rows);
+	}
+}
+
+function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry_node, $uid, $group_nid = FALSE, $owner_can_leave = FALSE) {
+	global $user;
+
+	$gid = pi_inquiry_groupings_get_group_nid($inquiry_node, $group_nid);
+	if ($gid) {
+		$og = node_load($gid);
+		og_load_group($og);
+
+		$its_me = $uid === $user->uid;
+		$im_owner = $og->uid === $user->uid;
+		$its_owner = $uid === $og->uid;
+		$join_mode = $og->og_selective;
+		$user_status = pi_inquiry_groupings_get_user_status_in_group($gid, $uid);
 
 		$status = '';
 		$buttons = array();
-		if ($member['status'] === 'member') {
+		$base_path = "inquiry/{$inquiry_node->nid}/participants" . ($group_nid ? "/$group_nid" : '');
+		$link_params = array('query' => drupal_get_destination());
+
+		if ($user_status === 'member') {
 			$status .= t('Active');
-			if ($member['uid'] === $og->uid) {
+			if ($its_owner) {
 				$status .= '&nbsp;' . t('(owner)');
 			}
 
 			if ($its_me) {
-				if (!$is_owner || $owner_can_leave) {
-					$buttons[] = l(t('leave'), '');
+				if (!$im_owner || $owner_can_leave) {
+					$buttons[] = l(t('leave'), "$base_path/leave", $link_params);
 				}
 			} else {
-				if ($is_owner) {
+				if ($im_owner) {
 					$buttons[] = l(t('expel'), '');
 				}
 			}
-		} else if ($member['status'] === 'awaiting') {
-			if ($join_mode === OG_MODERATED) {
+		} else if ($user_status === 'awaiting') {
+			if ($join_mode == OG_MODERATED) {
 				$status .= t('Awaiting approval');
-				if ($is_owner) {
-					$buttons[] = l(t('accept'), '');
-					$buttons[] = l(t('reject'), '');
+				if ($im_owner) {
+					$buttons[] = l(t('accept'), "$base_path/accept/$uid");
+					$buttons[] = l(t('reject'), "$base_path/reject/$uid");
 				} else if ($its_me) {
-					$buttons[] = l(t('cancel request'), '');
+					$buttons[] = l(t('cancel request'), "$base_path/leave", $link_params);
 				}
-			} else if ($join_mode === OG_INVITE_ONLY) {
+			} else if ($join_mode == OG_INVITE_ONLY) {
 				$status .= t('Invitation sent');
-				if ($is_owner) {
+				if ($im_owner) {
 					$buttons[] = l(t('cancel invitation'), '');
 				} else if ($its_me) {
 					$buttons[] = l(t('accept'), '');
-					$buttons[] = l(t('refuse'), '');
+					$buttons[] = l(t('decline'), "$base_path/leave", $link_params);
+				}
+			}
+		} else {
+			if ($its_me) {
+				if ($join_mode == OG_OPEN) {
+					$buttons[] = l(t('join'), "$base_path/join", $link_params);
+				} else if ($join_mode == OG_MODERATED) {
+					$buttons[] = l(t('request membership'), "$base_path/join", $link_params);
 				}
 			}
 		}
@@ -285,73 +310,183 @@ function theme_pi_inquiry_manager_participants_list($group_nid, $uid, $owner_can
 			$status .= '<br/><small>' . implode('&nbsp;&nbsp;&nbsp;', $buttons) . '</small>';
 		}
 
-		$rows[] = array($member['name'], $status);
+		return $status;
+	} else {
+		return 'bad group!';
 	}
-
-	$header = array(t('User'), t('Status'));
-
-	return theme_table($header, $rows);
 }
 
-function theme_pi_inquiry_manager_participants_group_status_and_options($gid, $uid, $owner_can_leave = FALSE) {
+/* confirmation pages */
+
+function pi_inquiry_manager_participants_group_join($inquiry_nid, $group_nid = FALSE) {
 	global $user;
 
-	$og = node_load($gid);
-	og_load_group($og);
+	$output = '';
 
-	$its_me = $uid === $user->uid;
-	$im_owner = $og->uid === $user->uid;
-	$its_owner = $uid === $og->uid;
-	$join_mode = $og->og_selective;
-	$user_status = pi_inquiry_groupings_get_user_status_in_group($gid, $uid);
+	$inquiry = node_load($inquiry_nid);
+	$g = pi_inquiry_groupings_get_group_nid($inquiry, $group_nid);
+	if ($g) {
+		$og = node_load($g);
+		og_load_group($og);
 
-	$status = '';
-	$buttons = array();
-	if ($user_status === 'member') {
-		$status .= t('Active');
-		if ($its_owner) {
-			$status .= '&nbsp;' . t('(owner)');
-		}
+		$group_param = array(
+				'@group' => ($group_nid ?
+								t("group '@title'", array('@title' => $og->description)) :
+								t("inquiry '@title'", array('@title' => $inquiry->title))
+				),
+		);
 
-		if ($its_me) {
-			if (!$im_owner || $owner_can_leave) {
-				$buttons[] = l(t('leave'), '');
+		$status = pi_inquiry_groupings_get_user_status_in_group($g, $user->uid);
+
+		if ($status === 'member') {
+			$output .= '<p>' . t('You are already a member of @group', $group_param);
+		} else if ($status === 'awaiting') {
+			if ($og->og_selective == OG_MODERATED) {
+				$output .= '<p>' . t('You are already requested membership of @group', $group_param);
+			} else {
+				$output .= '<p>' . t('You have already been invited to @group', $group_param);
 			}
 		} else {
-			if ($im_owner) {
-				$buttons[] = l(t('expel'), '');
+			if ($og->og_selective == OG_MODERATED) {
+				$label = t('Request membership');
+				$output .= t('<h2>Do you want to request membership for @group?</h2>', $group_param);
+			} else {
+				$label = t('Join');
+				$output .= t('<h2>Do you want to join @group?</h2>', $group_param);
 			}
+
+			$output .= drupal_get_form('pi_inquiry_manager_participants_group_confirm_form', 'pi_inquiry_manager_participants_group_join_form_submit', $label);
 		}
-	} else if ($user_status === 'awaiting') {
-		if ($join_mode == OG_MODERATED) {
-			$status .= t('Awaiting approval');
-			if ($im_owner) {
-				$buttons[] = l(t('accept'), '');
-				$buttons[] = l(t('reject'), '');
-			} else if ($its_me) {
-				$buttons[] = l(t('cancel request'), '');
-			}
-		} else if ($join_mode == OG_INVITE_ONLY) {
-			$status .= t('Invitation sent');
-			if ($im_owner) {
-				$buttons[] = l(t('cancel invitation'), '');
-			} else if ($its_me) {
-				$buttons[] = l(t('accept'), '');
-				$buttons[] = l(t('refuse'), '');
-			}
-		}
-	} else {
-		if ($join_mode == OG_OPEN) {
-			$buttons[] = l(t('join'), '');
-		} else if ($join_mode == OG_MODERATED) {
-			$buttons[] = l(t('request membership'), '');
-		} 
 	}
 
-	if (count($buttons) > 0) {
-		$status .= '<br/><small>' . implode('&nbsp;&nbsp;&nbsp;', $buttons) . '</small>';
+	return $output;
+}
+
+function pi_inquiry_manager_participants_group_join_form_submit() {
+	$inquiry_nid = arg(1);
+	$group_nid = arg(4);
+
+	$inquiry = node_load($inquiry_nid);
+	$gid = pi_inquiry_groupings_get_group_nid($inquiry, $group_nid);
+	if ($gid) {
+		global $user;
+		og_save_subscription($gid, $user->uid);
 	}
-	
-	return $status;
+
+	drupal_goto($_REQUEST['destination']);
+}
+
+function pi_inquiry_manager_participants_group_leave($inquiry_nid, $group_nid = FALSE) {
+	global $user;
+
+	$output = '';
+
+	$inquiry = node_load($inquiry_nid);
+	$g = pi_inquiry_groupings_get_group_nid($inquiry, $group_nid);
+	if ($g) {
+		$og = node_load($g);
+		og_load_group($og);
+
+		$group_param = array(
+				'@group' => ($group_nid ?
+								t("group '@title'", array('@title' => $og->description)) :
+								t("inquiry '@title'", array('@title' => $inquiry->title))
+				),
+		);
+
+		$status = pi_inquiry_groupings_get_user_status_in_group($g, $user->uid);
+
+		if ($status === 'none') {
+			$output .= '<p>' . t('You are not a member of @group', $group_param) . '</p>';
+		} else {
+			if ($status === 'member') {
+				$label = t('Leave');
+				$output .= t('<h2>Do you want to leave @group?</h2>', $group_param);
+			} else if ($og->og_selective == OG_MODERATED) {
+				$label = t('Cancel request');
+				$output .= t('<h2>Do you want to cancel your membership request from @group?</h2>', $group_param);
+			} else {
+				$label = t('Decline');
+				$output .= t('<h2>Do you want to decline the invitation to join @group?</h2>', $group_param);
+			}
+			$output .= drupal_get_form('pi_inquiry_manager_participants_group_confirm_form', 'pi_inquiry_manager_participants_group_leave_form_submit', $label);
+		}
+	}
+
+	return $output;
+}
+
+function pi_inquiry_manager_participants_group_leave_form_submit() {
+	$inquiry_nid = arg(1);
+	$group_nid = arg(4);
+
+	$inquiry = node_load($inquiry_nid);
+	$gid = pi_inquiry_groupings_get_group_nid($inquiry, $group_nid);
+	if ($gid) {
+		global $user;
+		og_delete_subscription($gid, $user->uid);
+	}
+
+	drupal_goto($_REQUEST['destination']);
+}
+
+function pi_inquiry_manager_participants_group_accept_user($inquiry_nid, $uid, $group_nid = FALSE) {
+	global $user;
+
+	$output = '';
+
+	$inquiry = node_load($inquiry_nid);
+	$g = pi_inquiry_groupings_get_group_nid($inquiry, $group_nid);
+	if ($g) {
+		$og = node_load($g);
+		og_load_group($og);
+
+		$group_param = array(
+				'@group' => ($group_nid ?
+								t("group '@title'", array('@title' => $og->description)) :
+								t("inquiry '@title'", array('@title' => $inquiry->title))
+				),
+		);
+
+		$status = pi_inquiry_groupings_get_user_status_in_group($g, $user->uid);
+
+		if ($status === 'none') {
+			$output .= '<p>' . t('You are not a member of @group', $group_param) . '</p>';
+		} else {
+			if ($status === 'member') {
+				$label = t('Leave');
+				$output .= t('<h2>Do you want to leave @group?</h2>', $group_param);
+			} else if ($og->og_selective == OG_MODERATED) {
+				$label = t('Cancel request');
+				$output .= t('<h2>Do you want to cancel your membership request from @group?</h2>', $group_param);
+			} else {
+				$label = t('Decline');
+				$output .= t('<h2>Do you want to decline the invitation to join @group?</h2>', $group_param);
+			}
+			$output .= drupal_get_form('pi_inquiry_manager_participants_group_confirm_form', 'pi_inquiry_manager_participants_group_leave_form_submit', $label);
+		}
+	}
+
+	return $output;
+}
+
+function pi_inquiry_manager_participants_group_leave_form_submit() {
+	$inquiry_nid = arg(1);
+	$group_nid = arg(4);
+
+	$inquiry = node_load($inquiry_nid);
+	$gid = pi_inquiry_groupings_get_group_nid($inquiry, $group_nid);
+	if ($gid) {
+		global $user;
+		og_delete_subscription($gid, $user->uid);
+	}
+
+	drupal_goto($_REQUEST['destination']);
+}
+
+function pi_inquiry_manager_participants_group_confirm_form($form_status, $save_callback, $save_label) {
+	$form = array();
+	nquire_commons_create_form_save_cancel_buttons($form, $save_callback, $_REQUEST['destination'], $save_label);
+	return $form;
 }
 
