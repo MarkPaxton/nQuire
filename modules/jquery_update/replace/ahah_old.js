@@ -67,10 +67,7 @@ Drupal.ahah = function(base, element_settings) {
   this.form_action = form.attr('action');
   this.form_target = form.attr('target');
   this.form_encattr = form.attr('encattr');
-  
-  this.in_progress = false;
-  this.repeat_submit = false;
-  
+
   // Set the options for the ajaxSubmit function.
   // The 'this' variable will not persist inside of the options object.
   var ahah = this;
@@ -89,12 +86,6 @@ Drupal.ahah = function(base, element_settings) {
       return ahah.success(response, status);
     },
     complete: function(response, status) {
-       $(ahah.element).parent().children('div.ahah-progress').remove();
-       ahah.in_progress = false;
-       if (ahah.repeat_submit) {
-	 ahah.repeat_submit = false;
-	 $(element_settings.element).trigger(element_settings.event);
-       }
       if (status == 'error' || status == 'parsererror') {
         return ahah.error(response, ahah.url);
       }
@@ -105,11 +96,7 @@ Drupal.ahah = function(base, element_settings) {
 
   // Bind the ajaxSubmit function to the element event.
   $(element_settings.element).bind(element_settings.event, function() {
-    if (ahah.in_progress) {
-      shsh.repeat_submit = true;
-    } else {
-      $(element_settings.element).parents('form').ajaxSubmit(options);
-    }
+    $(element_settings.element).parents('form').ajaxSubmit(options);
     return false;
   });
   // If necessary, enable keyboard submission so that AHAH behaviors
@@ -131,7 +118,7 @@ Drupal.ahah = function(base, element_settings) {
  */
 Drupal.ahah.prototype.beforeSubmit = function (form_values, element, options) {
   // Disable the element that received the change.
-  //$(this.element).addClass('progress-disabled').attr('disabled', true);
+  $(this.element).addClass('progress-disabled').attr('disabled', true);
 
   // Insert progressbar or throbber.
   if (this.progress.type == 'bar') {

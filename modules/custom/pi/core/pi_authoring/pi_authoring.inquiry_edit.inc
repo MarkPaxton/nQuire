@@ -37,7 +37,7 @@ function pi_authoring_inquiry_phases($inquiry) {
 	$output .= theme('pi_authoring_inquiry_phases', $inquiry->nid);	
 	
 	// Query for inquiry phases 
-	$phase_nids = pi_phase_load_nids($inquiry->nid);
+	$phase_nids = pi_phase_load_nids_for_inquiry($inquiry->nid);
 
     $rows = array();
 	if(!empty($phase_nids))
@@ -202,7 +202,7 @@ function pi_authoring_inquiry_list_activities($inquiry) {
 
 	// Query for inquiry phases and list them if there are any
 	$stage_nids = pi_stage_load_nids($inquiry->nid);
-	$phase_nids = pi_phase_load_nids($inquiry->nid);
+	$phase_nids = pi_phase_load_nids_for_inquiry($inquiry->nid);
 	
 	if(!empty($stage_nids) && !empty($phase_nids))
 	{
@@ -261,7 +261,7 @@ function pi_authoring_order_stages_form(&$form_state, $stages, $inquiry_nid) {
 		'#tree' => TRUE
 	);
 	
-	$phase_nids = pi_phase_load_nids($inquiry_nid);
+	$phase_nids = pi_phase_load_nids_for_inquiry($inquiry_nid);
 	$phase_titles = array();
 	foreach($phase_nids as $phase_nid)
 	{

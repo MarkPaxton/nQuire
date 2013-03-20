@@ -212,6 +212,7 @@ function inquiry_creator_groups_form_submit($form, $form_state) {
       $node->groups = $form_state['values']['groups'];
       $node->revision = TRUE;
       node_save($node);
+			inquiry_deployer_update_groups($node);
     }
   }
   nquire_commons_form_close($form, $form_state);
@@ -252,6 +253,7 @@ function inquiry_creator_roles_form_submit($form, $form_state) {
       $node->roles = $new_roles;
       $node->revision = TRUE;
       node_save($node);
+			inquiry_deployer_update_inquiry_node($node);
     }
   }
   nquire_commons_form_close($form, $form_state);

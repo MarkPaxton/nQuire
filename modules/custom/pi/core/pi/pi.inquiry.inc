@@ -26,7 +26,7 @@ function pi_inquiry_inquiry_view($node) {
 	$loaded_stage = node_load($details->stage_id);
 	drupal_set_title($loaded_stage->title);
 	$output = "<p>" . $loaded_stage->body . "</p>";
-	$phases = pi_phase_load_nids_for_user($details->inquiry_id, $user->uid);
+	$phases = pi_phase_load_nids_for_inquiry_for_user($details->inquiry_id, $user->uid);
 
 	// Header
 	$header = array(

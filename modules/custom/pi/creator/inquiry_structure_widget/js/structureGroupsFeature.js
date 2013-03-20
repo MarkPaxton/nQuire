@@ -12,7 +12,7 @@ $(function() {
       values: {
         individual: 'Individual',
         group: 'In groups',
-        communitary: 'Communitary'
+        all: 'All together'
       },
       forItemType: 'phase'
     },

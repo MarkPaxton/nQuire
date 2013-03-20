@@ -621,7 +621,7 @@ function _pi_activity_form_generate_phase_select($inquiry_nid, $default_value = 
   // Based on the selection above generate the select boxes for phases
   $phase_select_options = array('none' => t('Select the phase for this activity...'));
   if ($inquiry_nid != 'none') {
-    $inquiry_phase_nids = pi_phase_load_nids($inquiry_nid);
+    $inquiry_phase_nids = pi_phase_load_nids_for_inquiry($inquiry_nid);
     $phase_names = pi_util_get_names_from_nids($inquiry_phase_nids);
     foreach ($phase_names as $phase_nid => $name) {
       $phase_select_options[$phase_nid] = $name;
@@ -1647,48 +1647,7 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
   return $activities_in_order;
 }
 
-/**
- *
- * Return an array of activity nodes from the database for a particular user
- * @param uint $phase_nid
- * @param uint $stage_nid
- */
-function pi_activity_get_activities_of_phase_and_user($phase_nid, $uid) {
-  //get the phases and stages for this inquiry and user
-  if (is_null($phase_nid)) {
-    drupal_set_message('Null given for phase_nid in pi_activity_get_activities_of_phase_and_user, returning all activities (this is annoying.. use pi_activity_get_activities_of_inquiry_and_user() instead)', 'warning');
-    $query = "SELECT DISTINCT nid FROM {pi_activity} " .
-            "LEFT JOIN {pi_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity}.activity_id " .
-            "LEFT JOIN {pi_activity_actor} ON {pi_activity}.activity_id = {pi_activity_actor}.activity_id " .
-            "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid ";
-  } else {
-    $return_data = array();
-    $phase = node_load($phase_nid);
-    if (is_null($phase)) {
-      drupal_set_message('The given phase for pi_activity_get_activities_of_phase_and_user() does not exist as a node', 'error');
-      return array();
-    } else {
-      if ($phase->type == 'pi_phase') {
-        drupal_set_message('The given node is not a phase for pi_activity_get_activities_of_phase_and_user', 'error');
-        return array();
-      } else {
-        $query .= "WHERE phase_nid = %d ";
-      }
-    }
 
-    if (!is_null($uid)) {
-      $query .= "AND ( {og_uid}.uid = %d OR {pi_activity_actor}.uid = %d ) ";
-    } else {
-      drupal_set_message("No user id set for pi_activity_get_activities_of_phase_and_user, returning all activities - use pi_activity_get_activities_for_inquiry() instead.", 'warning');
-    }
-  }
-  $query .= "ORDER BY {pi_activity}.weight";
-  $result = db_query($query, $phase->nid, $uid);
-  while ($activity = db_fetch_object($result)) {
-    $return_data[$activity->nid] = $activity;
-  }
-  return $return_data;
-}
 
 /**
  * Return the activity_id of an "Add $whatever"n activity for a given "Sort $whatever" function, if not return NULL
@@ -1712,34 +1671,6 @@ function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_i
     }
 
 
-    /*
-      //if(isset($type->add_node_type)) {
-
-
-      if ($sort_activity->type == "pi_sort_data") {
-      $node_type_to_find = "pi_data";
-      } else {
-      $node_type_to_find = $type->add_node_type;
-      }
-
-      $phases = pi_phase_load_nids_for_user($inquiry_id, $uid);
-      foreach ($phases as $phase) {
-      $activities = get_activities_of_stage_phase_and_user($inquiry_id, NULL, $phase, $uid);
-      foreach ($activities as $activity) {
-      $activity = node_load($activity);
-
-      if ($activity->node_type == $node_type_to_find) {
-      //@TODO FIXME Add missing function again !
-      //$activity_status = load_activity_status($activity->activity_id, $uid);
-      //if ($activity_status->visible_status == 'start') {
-      //$return_value = $activity->activity_id;
-      $return_value = $activity->nid;
-      break;
-      }
-      }
-      }
-      }
-      } */
   }
 
   return NULL;
