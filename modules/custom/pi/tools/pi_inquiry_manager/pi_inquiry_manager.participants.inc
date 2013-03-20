@@ -5,7 +5,9 @@ function pi_inquiry_manager_participants($nid) {
 	$output = theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry);
 
 	$output .= theme('pi_inquiry_manager_participants_list', $inquiry);
-
+	
+	$output .= theme('pi_inquiry_manager_participants_roles', $inquiry);
+	
 	return $output;
 }
 
@@ -244,7 +246,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 
 		if ($og->og_selective == OG_INVITE_ONLY && pi_inquiry_manager_participants_group_manageuser_access($inquiry_node->nid, $group_nid)) {
 			$output .= '<p>'
-							. l(t('Invite users'), _pi_inquiry_manager_partipants_group_operation_path($inquiry_node->nid, 'invite', $group_nid, FALSE), array('query' => drupal_get_destination()))
+							. _pi_inquiry_manager_partipants_group_operation_link(t('Invite users'), $inquiry_node->nid, 'invite', $group_nid, FALSE)
 							. '</p>';
 		}
 
@@ -252,10 +254,17 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 	}
 }
 
-function _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $op, $group_nid, $uid) {
+function _pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_nid, $op, $group_nid, $elements) {
+	return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $op, $group_nid, $elements), array('query' => drupal_get_destination()));
+}
+function _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $op, $group_nid, $elements) {
 	$path = "inquiry/$inquiry_nid/participants/$op";
-	if ($uid) {
-		$path .= '/' . $uid;
+	if ($elements) {
+		if (is_array($elements)) {
+			$path .= '/' . implode('/', $elements);
+		} else {
+			$path .= '/' . $elements;
+		}
 	}
 	if ($group_nid) {
 		$path .= '/' . $group_nid;
@@ -342,14 +351,69 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
 /* roles list */
 
 function theme_pi_inquiry_manager_participants_roles($inquiry_node, $group_nid = FALSE) {
-	$roles = nquire_commons_decode_data($inquiry_node->roles, '[]');
 
 	$gid = pi_inquiry_groupings_get_group_nid($inquiry_node, $group_nid);
 	if ($gid) {
+		$roles_data = pi_inquiry_groupings_get_inquiry_roles($inquiry_node);
 		$collaboration_type = $group_nid ? 'group' : 'all';
-		$phases = pi_phase_load_nids_for_inquiry_and_collaboration_type($inquiry_node->nid, $collaboration_type);
+
+
+		$phase_nids = pi_phase_load_nids_for_inquiry_and_collaboration_type($inquiry_node->nid, $collaboration_type);
+
+		$role_phase_activities = array();
+		foreach ($phase_nids as $phase_nid) {
+			$phase = node_load($phase_nid);
+
+			$activity_nids = pi_get_activities_for_phase($phase_nid);
+			$activity_titles = array();
+			foreach ($activity_nids as $nid) {
+				$a = node_load($nid);
+				$activity_titles[$nid] = check_plain($a->title);
+			}
+
+			foreach ($roles_data as $role) {
+				$activities_for_role = array_filter($activity_nids, function($aid) use($role) {
+									return $role['activities'][$aid] === 'edit';
+								});
+				if (count($activities_for_role) > 0) {
+					$role_phase_activities[$role['id']][$phase_nid] = array(
+							'data' => check_plain($phase->title),
+							'children' => array_map(function($aid) use ($activity_titles) {
+												return $activity_titles[$aid];
+											}, $activities_for_role),
+					);
+				}
+			}
+		}
+
+		$header = array(t('Role'), t('Responsible for'), t('Participants'));
+		$rows = array();
+		foreach ($roles_data as $role) {
+			$title = $role['title'];
+			$activities = theme_item_list($role_phase_activities[$role['id']]);
+
+			$users = nquire_group_get_participants_for_role($gid, $role['id']);
+			$im_manager = pi_inquiry_manager_participants_group_manageuser_access($inquiry_node->nid, $group_nid);
+
+			$user_list = array_map(function($uid) use ($inquiry_node, $group_nid, $im_manager, $role) {
+								$user = user_load($uid);
+								$output = check_plain($user->name);
+								if ($im_manager) {
+									$output .= '<small>&nbsp;&nbsp;&nbsp;' 
+													. _pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, 'removerole', $group_nid, array($uid, $role['uid']))
+													.'</small>';
+								}
+								return $output;
+							}, $users);
+			$user_html = theme_item_list($user_list);
+			if ($im_manager) {
+				$user_html .= _pi_inquiry_manager_partipants_group_operation_link(t('Add participant'), $inquiry_node->nid, 'addrole', $group_nid, $role['id']);
+			}
+			
+			$rows[] = array($title, $activities, $user_html);
+		}
 		
-		
+		return theme_table($header, $rows);
 	}
 }
 
@@ -688,7 +752,6 @@ function pi_inquiry_manager_participants_group_invite_users_form($form_state, $i
 						'path' => ahah_helper_path(array('username_dependent_section')),
 						'wrapper' => 'username_dependent_section',
 						'method' => 'replace',
-//'effect' => 'fade',
 						'event' => 'keyup',
 						'keypress' => TRUE,
 				),
