@@ -150,10 +150,12 @@ function _pi_inquiry_prepare_participants_to_save($node, &$data_to_write) {
     $data_to_write->participants_selection = 'justme';
     $data_to_write->participants_cohort = nquire_group_create_default_inquiry_group($node->uid, "Participants of {$node->nid}");
     $data_to_write->actor_gid = $data_to_write->participants_cohort;
+    $data_to_write->group_creation = 'moderated';
   } else {
     $data_to_write->participants_selection = $node->participants_selection;
     $data_to_write->participants_cohort = $node->participants_cohort;
     $data_to_write->actor_gid = $node->actor_gid;
+    $data_to_write->group_creation = $data_to_write->group_creation;
   }
 }
 
@@ -254,7 +256,7 @@ function pi_inquiry_delete(&$node) {
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-  $inquiry_row = db_fetch_array(db_query('SELECT `layout`, `roles`, `weight`, `participants_selection`, `participants_cohort`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+  $inquiry_row = db_fetch_array(db_query('SELECT `layout`, `roles`, `weight`, `participants_selection`, `participants_cohort`, `group_creation`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
   $inquiry = new stdClass();
   $inquiry->layout = $inquiry_row['layout'];
   $inquiry->weight = $inquiry_row['weight'];
@@ -262,6 +264,7 @@ function pi_inquiry_load($node) {
   $inquiry->participants_selection = $inquiry_row['participants_selection'];
   $inquiry->participants_cohort = $inquiry_row['participants_cohort'];
   $inquiry->actor_gid = $inquiry_row['actor_gid'];
+  $inquiry->group_creation = $inquiry_row['group_creation'];
   
   $inquiry->roles = $inquiry_row['roles'];
   $inquiry->roles_array = nquire_commons_decode_data($inquiry_row['roles']);

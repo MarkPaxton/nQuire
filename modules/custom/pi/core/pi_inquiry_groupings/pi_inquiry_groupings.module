@@ -12,12 +12,21 @@ function pi_inquiry_groupings_get_cohort_group($inquiry_node) {
 	return $inquiry_node->participants_cohort;
 }
 
-function pi_inquiry_groupings_get_group_nid($inquiry_node, $group_nid = FALSE) {
+
+function pi_inquiry_groupings_check_group($inquiry_node, $group_nid = FALSE) {
 	if ($group_nid) {
-		/* TODO check group is part of inquiry */
+		return FALSE;
 	} else {
-		return $inquiry_node->actor_gid;
-	}
+		$output = array(
+				'gid' => $inquiry_node->actor_gid,
+				'manager' => $inquiry_node->uid,
+				'normal_management' => TRUE,
+		);
+	}	
+	
+	$output['group'] = node_load($output['gid']);
+	og_load_group($output['group']);
+	return $output;
 }
 
 function pi_inquiry_groupings_get_join_mode($group_nid) {
@@ -30,8 +39,6 @@ function pi_inquiry_groupings_get_join_mode_for_inquiry_nid($inquiry_nid) {
 	$inquiry = node_load($inquiry_nid);
 	return pi_inquiry_groupings_get_join_mode($inquiry->actor_gid);
 }
-
-
 
 function pi_inquiry_groupings_get_normal_groups() {
 	$query = "SELECT {node}.nid FROM {nquire_group} LEFT JOIN {node} ON {node}.vid={nquire_group}.vid WHERE {nquire_group}.group_type=%d";
@@ -72,13 +79,20 @@ function pi_inquiry_groupings_get_group_member_uids($group_nid, $only_active = F
 	if ($only_active) {
 		$query .= " AND is_active=1";
 	}
-	
+
 	$result = db_query($query, $group_nid);
 	while ($row = db_fetch_array($result)) {
 		$members[] = $row['uid'];
 	}
 
 	return $members;
+}
+
+function pi_inquiry_groupings_has_collaboration_phases($inquiry_nid, $collaboration_type) {
+	$query = "SELECT EXISTS(SELECT 1 FROM {node} LEFT JOIN {pi_phase} ON node.`vid`= pi_phase.`vid` WHERE inquiry_nid = %d AND collaboration='%s') AS e";
+	$result = db_query($query, $inquiry_nid, $collaboration_type);
+	$row = db_fetch_array($result);
+	return $row && $row['e'];
 }
 
 function pi_inquiry_groupings_get_groups_for_user($uid, $group_type) {
@@ -153,15 +167,15 @@ function pi_inquiry_groupings_get_inquiry_roles($inquiry_node) {
 function pi_inquiry_groupings_get_inquiry_role_names($inquiry_node) {
 	$roles = pi_inquiry_groupings_get_inquiry_roles($inquiry_node);
 	$names = array();
-	foreach($roles as $role) {
+	foreach ($roles as $role) {
 		$names[$role['id']] = check_plain($role['title']);
 	}
-	return $names;	
+	return $names;
 }
 
 function pi_inquiry_groupings_get_inquiry_role_name($inquiry_node, $role_id) {
 	$roles = pi_inquiry_groupings_get_inquiry_roles($inquiry_node);
-	foreach($roles as $role) {
+	foreach ($roles as $role) {
 		if ($role['id'] == $role_id) {
 			return $role['title'];
 		}
