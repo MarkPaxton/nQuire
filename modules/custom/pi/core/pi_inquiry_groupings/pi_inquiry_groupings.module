@@ -31,11 +31,7 @@ function pi_inquiry_groupings_get_join_mode_for_inquiry_nid($inquiry_nid) {
 	return pi_inquiry_groupings_get_join_mode($inquiry->actor_gid);
 }
 
-function pi_inquiry_groupings_get_user_status_in_group($gid, $uid) {
-	$query = "SELECT is_active FROM {og_uid} WHERE nid=%d AND uid=%d";
-	$row = db_fetch_array(db_query($query, $gid, $uid));
-	return $row ? ($row['is_active'] ? 'member' : 'awaiting') : 'none';
-}
+
 
 function pi_inquiry_groupings_get_normal_groups() {
 	$query = "SELECT {node}.nid FROM {nquire_group} LEFT JOIN {node} ON {node}.vid={nquire_group}.vid WHERE {nquire_group}.group_type=%d";
@@ -69,10 +65,14 @@ function pi_inquiry_groupings_get_allowed_participants($selection_type, $owner_u
 	}
 }
 
-function pi_inquiry_groupings_get_group_member_uids($group_nid) {
+function pi_inquiry_groupings_get_group_member_uids($group_nid, $only_active = FALSE) {
 	$members = array();
 
 	$query = "SELECT uid FROM og_uid WHERE nid=%d";
+	if ($only_active) {
+		$query .= " AND is_active=1";
+	}
+	
 	$result = db_query($query, $group_nid);
 	while ($row = db_fetch_array($result)) {
 		$members[] = $row['uid'];
@@ -148,6 +148,15 @@ function pi_inquiry_groupings_get_inquiries_for_user($uid) {
 
 function pi_inquiry_groupings_get_inquiry_roles($inquiry_node) {
 	return nquire_commons_decode_data($inquiry_node->roles);
+}
+
+function pi_inquiry_groupings_get_inquiry_role_names($inquiry_node) {
+	$roles = pi_inquiry_groupings_get_inquiry_roles($inquiry_node);
+	$names = array();
+	foreach($roles as $role) {
+		$names[$role['id']] = check_plain($role['title']);
+	}
+	return $names;	
 }
 
 function pi_inquiry_groupings_get_inquiry_role_name($inquiry_node, $role_id) {

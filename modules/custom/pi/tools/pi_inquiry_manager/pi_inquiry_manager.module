@@ -120,11 +120,31 @@ function pi_inquiry_manager_menu() {
 					'access arguments' => array(1),
 					'weight' => 1,
 			),
-			'inquiry/%/participants/adduserrole/%' => array(
+			'inquiry/%/participants/adduserstorole/%' => array(
 					'title' => 'Reject user',
 					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_adduserrole',
-					'page arguments' => array(1, 4),
+					'page callback' => 'pi_inquiry_manager_participants_group_adduserstorole',
+					'page arguments' => array(1, 4), // (inquiry_id, role_id)
+					'type' => MENU_CALLBACK,
+					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+					'access arguments' => array(1),
+					'weight' => 1,
+			),
+			'inquiry/%/participants/addrolestouser/%' => array(
+					'title' => 'Reject user',
+					'file' => 'pi_inquiry_manager.participants.inc',
+					'page callback' => 'pi_inquiry_manager_participants_group_addrolestouser',
+					'page arguments' => array(1, 4),// (inquiry_id, uid)
+					'type' => MENU_CALLBACK,
+					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+					'access arguments' => array(1),
+					'weight' => 1,
+			),
+			'inquiry/%/participants/removeuserrole/%/%' => array(
+					'title' => 'Reject user',
+					'file' => 'pi_inquiry_manager.participants.inc',
+					'page callback' => 'pi_inquiry_manager_participants_group_removeuserrole',
+					'page arguments' => array(1, 4, 5),// (inquiry_id, uid, rold_id)
 					'type' => MENU_CALLBACK,
 					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
 					'access arguments' => array(1),
@@ -203,7 +223,7 @@ function pi_inquiry_manager_participants_group_acceptinvitation_access($inquiry_
 		if ($g) {
 			$og = node_load($g);
 			og_load_group($og);
-			if ($og->og_selective == OG_INVITE_ONLY && pi_inquiry_groupings_get_user_status_in_group($g, $user->uid)) {
+			if ($og->og_selective == OG_INVITE_ONLY && nquire_group_get_user_status_in_group($g, $user->uid)) {
 				return TRUE;
 			}
 		}
