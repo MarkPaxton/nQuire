@@ -23,7 +23,7 @@ function get_required_pi_modules()
 	$pi_modules[] = 'pi_information';
 	$pi_modules[] = 'pi_inquiry';
 	$pi_modules[] = 'pi_inquiry_info';
-	$pi_modules[] = 'pi_install_inquiry';
+	//$pi_modules[] = 'pi_install_inquiry';
 	$pi_modules[] = 'pi_key_answers';
 	$pi_modules[] = 'pi_key_questions';
 	$pi_modules[] = 'pi_manage_focus';
@@ -35,13 +35,13 @@ function get_required_pi_modules()
 	$pi_modules[] = 'pi_sort_data';
 	$pi_modules[] = 'pi_sort_key_answers';
 	$pi_modules[] = 'pi_sort_key_questions';
-	$pi_modules[] = 'pi_sort_measures';
+	//$pi_modules[] = 'pi_sort_measures';
 	$pi_modules[] = 'pi_sort_result_presentations';
 	$pi_modules[] = 'pi_stage';
 	$pi_modules[] = 'pi_stage_selector';
 	$pi_modules[] = 'pi_summary';
-	$pi_modules[] = 'pi_teacher_tools';
-	$pi_modules[] = 'pi_user_import';
+	//$pi_modules[] = 'pi_teacher_tools';
+	//$pi_modules[] = 'pi_user_import';
 	$pi_modules[] = 'pi_wiki_notes';
 
 	$pi_modules[] = 'comment';

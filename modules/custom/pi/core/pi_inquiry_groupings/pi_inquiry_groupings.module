@@ -8,30 +8,37 @@ function pi_inquiry_groupings_get_selection_type($inquiry_node) {
 	return $inquiry_node->participants_selection;
 }
 
-function pi_inquiry_groupings_get_cohort_group($inquiry_node) {
+function pi_inquiry_groupings_get_cohort_og($inquiry_node) {
 	return $inquiry_node->participants_cohort;
 }
 
-
 function pi_inquiry_groupings_check_group($inquiry_node, $group_nid = FALSE) {
 	if ($group_nid) {
-		return FALSE;
+		$group = node_load($group_nid);
+		if ($group && $group->parent === $inquiry_node->actor_gid) {
+			return array(
+					'type' => 'group',
+					'gid' => $group_nid,
+					'group' => $group,
+					'normal_management' => $inquiry_node->group_creation === 'normal',
+					'manager' => $inquiry_node->group_creation === 'normal' ? $group->uid : $inquiry_node->uid,
+			);
+		} else {
+			return FALSE;
+		}
 	} else {
-		$output = array(
+		return array(
+				'type' => 'inquiry',
 				'gid' => $inquiry_node->actor_gid,
 				'manager' => $inquiry_node->uid,
 				'normal_management' => TRUE,
+				'group' => node_load($inquiry_node->actor_gid),
 		);
-	}	
-	
-	$output['group'] = node_load($output['gid']);
-	og_load_group($output['group']);
-	return $output;
+	}
 }
 
 function pi_inquiry_groupings_get_join_mode($group_nid) {
 	$og = node_load($group_nid);
-	og_load_group($og);
 	return $og->og_selective;
 }
 
@@ -62,7 +69,7 @@ function pi_inquiry_groupings_get_allowed_participants($selection_type, $owner_u
 	if ($selection_type === 'justme') {
 		return array($owner_uid);
 	} else if ($selection_type === 'group') {
-		$members = pi_inquiry_groupings_get_group_member_uids($cohort);
+		$members = nquire_group_get_member_uids($cohort);
 		if (!in_array($owner_uid, $members)) {
 			$members[] = $owner_uid;
 		}
@@ -70,22 +77,6 @@ function pi_inquiry_groupings_get_allowed_participants($selection_type, $owner_u
 	} else {
 		return FALSE;
 	}
-}
-
-function pi_inquiry_groupings_get_group_member_uids($group_nid, $only_active = FALSE) {
-	$members = array();
-
-	$query = "SELECT uid FROM og_uid WHERE nid=%d";
-	if ($only_active) {
-		$query .= " AND is_active=1";
-	}
-
-	$result = db_query($query, $group_nid);
-	while ($row = db_fetch_array($result)) {
-		$members[] = $row['uid'];
-	}
-
-	return $members;
 }
 
 function pi_inquiry_groupings_has_collaboration_phases($inquiry_nid, $collaboration_type) {
@@ -181,4 +172,48 @@ function pi_inquiry_groupings_get_inquiry_role_name($inquiry_node, $role_id) {
 		}
 	}
 	return FALSE;
+}
+
+function pi_inquiry_groupings_get_user_subgroup($inquiry_node, $uid) {
+	$query = "SELECT og_uid_nid FROM (SELECT og_uid.nid AS og_uid_nid FROM og_uid WHERE og_uid.uid=%d) as x "
+					. "LEFT JOIN "
+					. "(SELECT node.nid AS node_nid, nquire_group.parent AS parent, nquire_group.group_type AS type FROM node LEFT JOIN nquire_group ON node.vid=nquire_group.vid) AS y "
+					. "ON x.og_uid_nid = y.node_nid "
+					. "WHERE type=%d AND parent=%d";
+
+	$row = db_fetch_array(db_query($query, $uid, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid));
+	return $row ? $row['og_uid_nid'] : FALSE;
+}
+
+function pi_inquiry_groupings_subgroup_name_exists($inquiry_node, $name) {
+	$query = "SELECT nquire_group.nid AS nid FROM (SELECT vid FROM {node} WHERE title='%s') AS node_vids "
+					. "LEFT JOIN nquire_group ON {node_vids}.vid={nquire_group}.vid "
+					. "WHERE nquire_group.group_type=%d AND parent=%d";
+
+	$row = db_fetch_array(db_query($query, $name, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid));
+	return $row ? $row['nid'] : FALSE;
+}
+
+function pi_inquiry_groupings_subgroups($inquiry_node) {
+	$query = "SELECT {nquire_group}.nid FROM {node} LEFT JOIN {nquire_group} ON {node}.vid={nquire_group}.vid WHERE group_type=%d AND parent=%d";
+
+	$result = db_query($query, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid);
+	$groups = array();
+	while ($row = db_fetch_array($result)) {
+		$group = node_load($row['nid']);
+		og_load_group($group);
+		$groups[] = $group;
+	}
+	return $groups;
+}
+
+function pi_inquiry_groupings_create_inquiry_subgroup($inquiry_nid, $owner, $title, $subscribe_owner) {
+	$inquiry = node_load($inquiry_nid);
+	if ($inquiry) {
+		$nid = nquire_group_create_group($owner, $title, $subscribe_owner, $inquiry->actor_gid);
+		nquire_group_set_join_mode($nid, OG_INVITE_ONLY);
+		return $nid;
+	} else {
+		return FALSE;
+	}
 }
