@@ -24,6 +24,9 @@ $(function() {
       this._position = null;
       this._positionListeners = [];
 
+      this._measure = null;
+      this._measureListeners = [];
+
       this._getViewUrlListeners = [];
       this._getSnapshotListeners = [];
 
@@ -32,6 +35,7 @@ $(function() {
 
       var self = this;
       window.addEventListener("message", function(event) {
+				console.log(event);
         self._receiveMessage(event);
       }, false);
 
@@ -49,6 +53,10 @@ $(function() {
     addPositionListener: function(callback) {
       this._positionListeners.push(callback);
       callback(this._position);
+    },
+    addMeasureListener: function(callback) {
+      this._measureListeners.push(callback);
+      callback(this._measure);
     },
     getUrlView: function(callback) {
       this._getViewUrlListeners.push(callback);
@@ -85,7 +93,9 @@ $(function() {
             }
           }
         }
-      }
+      } else {
+				console.log(msg);
+			};
     },
     _getMessageReceived: function(msg) {
       if (msg.param === 'viewURL') {

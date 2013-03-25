@@ -175,14 +175,22 @@ function pi_inquiry_groupings_get_inquiry_role_name($inquiry_node, $role_id) {
 }
 
 function pi_inquiry_groupings_get_user_subgroup($inquiry_node, $uid) {
-	$query = "SELECT og_uid_nid FROM (SELECT og_uid.nid AS og_uid_nid FROM og_uid WHERE og_uid.uid=%d) as x "
-					. "LEFT JOIN "
-					. "(SELECT node.nid AS node_nid, nquire_group.parent AS parent, nquire_group.group_type AS type FROM node LEFT JOIN nquire_group ON node.vid=nquire_group.vid) AS y "
-					. "ON x.og_uid_nid = y.node_nid "
-					. "WHERE type=%d AND parent=%d";
+	$query = "SELECT group_node.node_nid FROM (SELECT node.nid AS node_nid, nquire_group.parent, nquire_group.group_type FROM node LEFT JOIN nquire_group ON node.vid=nquire_group.vid WHERE group_type=%d AND parent=%d) AS group_node "
+					. "LEFT JOIN nquire_group_participant ON nquire_group_participant.nid=group_node.node_nid "
+					. "WHERE nquire_group_participant.uid=%d";
 
-	$row = db_fetch_array(db_query($query, $uid, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid));
-	return $row ? $row['og_uid_nid'] : FALSE;
+	$row = db_fetch_array(db_query($query, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid, $uid));
+	return $row ? $row['node_nid'] : FALSE;
+}
+
+function pi_inquiry_groupings_get_users_without_subgroup($inquiry_node) {
+	/* TODO clean this */
+	$users = nquire_group_get_member_uids($inquiry_node->actor_gid);
+	$filtered = array_filter($users, function($uid) use ($inquiry_node) {
+						return pi_inquiry_groupings_get_user_subgroup($inquiry_node, $uid) === FALSE;
+					});
+
+	return $filtered;
 }
 
 function pi_inquiry_groupings_subgroup_name_exists($inquiry_node, $name) {
