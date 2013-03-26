@@ -1126,7 +1126,7 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 						}, $subgroups);
 		if (count($rows) > 0) {
 			$header = array('Group', 'Members');
-			$output .= theme_table($header, $rows);
+			$output .= nquire_commons_create_not_expanding_table_block(theme_table($header, $rows));
 		}
 
 		if (pi_inquiry_manager_participants_subgroups_create_access($inquiry_node->nid)) {
