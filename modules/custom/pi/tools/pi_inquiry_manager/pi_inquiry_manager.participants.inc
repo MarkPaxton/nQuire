@@ -54,7 +54,7 @@ function theme_pi_inquiry_manager_participants_view_inquiry_group($inquiry_node)
 	}
 
 	if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_node->nid)) {
-		$output .= '<br/>' . l(t('Edit'), "inquiry/{$inquiry_node->nid}/participants/access");
+		$output .= '<br/>' . _pi_inquiry_manager_partipants_group_operation_link(t('Edit'), $inquiry_node->nid, FALSE, "access");
 	}
 	return $output;
 }
@@ -288,7 +288,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 		$output = nquire_commons_create_not_expanding_table_block(theme_table($header, $rows));
 
 		if ($group_check['group']->selective == OG_INVITE_ONLY && pi_inquiry_manager_participants_group_manageuser_access($inquiry_node->nid, $group_nid)) {
-			$label = $inquiry_node->group_management === 'normal' ? t('Invite users') : t('Add users');
+			$label = $group_check['normal_management'] ? t('Invite users') : t('Add users');
 			$output .= '<p>'
 							. _pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_node->nid, $group_nid, 'invite')
 							. '</p>';
@@ -298,14 +298,18 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 	}
 }
 
-function _pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_nid, $group_nid = FALSE, $elements = FALSE) {
-	return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements), array('query' => drupal_get_destination()));
+function _pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_nid, $group_nid = FALSE, $elements = FALSE, $add_destination = TRUE) {
+	if ($add_destination) {
+		return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements), array('query' => drupal_get_destination()));
+	} else {
+		return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements));
+	}
 }
 
 function _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements) {
 	$path = "inquiry/$inquiry_nid/participants";
 	if ($group_nid) {
-		$path .= '/subgroup/' . $group_nid;
+		$path .= '/' . $group_nid;
 	}
 	if ($elements) {
 		if (is_array($elements)) {
@@ -377,7 +381,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
 				$status .= 'error';
 			}
 		} else {
-			if ($its_me && $group_check['normal_management']) {
+			if ($its_me && pi_inquiry_manager_participants_group_join_access($inquiry_node->nid, $group_nid)) {
 				if ($join_mode == OG_OPEN) {
 					$buttons[] = l(t('join'), $path('join'), $link_params);
 				} else if ($join_mode == OG_MODERATED) {
@@ -505,9 +509,9 @@ function pi_inquiry_manager_participants_group_adduserstorole_form($form_state, 
 
 function _pi_inquiry_manager_participants_form_submit_decode_path($a = FALSE, $ai = 0, $b = FALSE, $bi = 0) {
 	$result = array('inquiry_nid' => arg(1));
-	if (arg(3) === 'subgroup') {
-		$delta = 2;
-		$result['group_nid'] = arg(4);
+	if (is_numeric(arg(3))) {
+		$delta = 1;
+		$result['group_nid'] = arg(3);
 	} else {
 		$delta = 0;
 		$result['group_nid'] = FALSE;
@@ -1112,9 +1116,9 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 						});
 
 		$rows = array_map(function($group) use ($user, $inquiry_node) {
-							$title = _pi_inquiry_manager_partipants_group_operation_link(check_plain($group->title), $inquiry_node->nid, $group->nid);
-							$title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid, FALSE);
-							
+							$title = _pi_inquiry_manager_partipants_group_operation_link(check_plain($group->title), $inquiry_node->nid, $group->nid, FALSE, FALSE);
+							$title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid, FALSE, FALSE);
+
 							$members = nquire_group_get_member_uids($group->nid, TRUE);
 							$members_names = _pi_inquiry_manager_participants_user_names($members, $user->uid);
 							$members_text = implode(', ', $members_names);
@@ -1201,6 +1205,11 @@ function pi_inquiry_manager_participants_subgroups_create($inquiry_nid) {
 	return $output;
 }
 
+function pi_inquiry_manager_participants_subgroup_edit($inquiry_nid, $group_nid) {
+	$output = drupal_get_form('pi_inquiry_manager_participants_subgroup_form', node_load($inquiry_nid), $group_nid);
+	return $output;
+}
+
 function pi_inquiry_manager_participants_subgroup_form(&$form_state, $inquiry_node, $group_nid = FALSE) {
 	$form = array();
 
@@ -1227,10 +1236,10 @@ function pi_inquiry_manager_participants_subgroup_form(&$form_state, $inquiry_no
 }
 
 function pi_inquiry_manager_participants_subgroup_form_validate($form, $form_state) {
-	$inquiry_nid = arg(1);
-	$inquiry = node_load($inquiry_nid);
-
-	if (pi_inquiry_groupings_subgroup_name_exists($inquiry, $form_state['values']['group_title'])) {
+	$ids = _pi_inquiry_manager_participants_form_submit_decode_path();
+	$inquiry = node_load($ids['inquiry_nid']);
+	$subgroup = pi_inquiry_groupings_subgroup_with_name($inquiry, $form_state['values']['group_title']);
+	if ($subgroup && $subgroup != $ids['group_nid']) {
 		form_set_error('group_title', t('A group with the same already exists in this inquiry.'));
 	}
 }
@@ -1238,12 +1247,12 @@ function pi_inquiry_manager_participants_subgroup_form_validate($form, $form_sta
 function pi_inquiry_manager_participants_subgroup_form_submit($form, $form_state) {
 	$ids = _pi_inquiry_manager_participants_form_submit_decode_path();
 
-	$save = FALSE;
+	$save_group_nid = FALSE;
 
 	if ($ids['group_nid']) {
 		if (pi_inquiry_manager_participants_subgroups_edit_access($ids['inquiry_nid'], $ids['group_nid'])) {
 			nquire_group_set_title($ids['group_nid'], $form_state['values']['group_title']);
-			$save = TRUE;
+			$save_group_nid = $ids['group_nid'];
 		}
 	} else {
 		if (pi_inquiry_manager_participants_subgroups_create_access($ids['inquiry_nid'])) {
@@ -1251,17 +1260,14 @@ function pi_inquiry_manager_participants_subgroup_form_submit($form, $form_state
 			$inquiry = node_load($ids['inquiry_nid']);
 			if ($inquiry && $inquiry->actor_gid) {
 				if ($inquiry->group_creation === 'controlled' || !pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid)) {
-					$new_group_nid = pi_inquiry_groupings_create_inquiry_subgroup($ids['inquiry_nid'], $user->uid, $form_state['values']['group_title'], $inquiry->group_creation === 'normal');
-					$save = TRUE;
+					$save_group_nid = pi_inquiry_groupings_create_inquiry_subgroup($ids['inquiry_nid'], $user->uid, $form_state['values']['group_title'], $inquiry->group_creation === 'normal');
 				}
 			}
 		}
 	}
 
-	if ($save) {
-		if (isset($form_state['values']['join_mode'])) {
-			_pi_inquiry_manager_participants_process_join_mode_form_value($new_group_nid, $form_state['values']['join_mode']);
-		}
+	if ($save_group_nid && isset($form_state['values']['join_mode'])) {
+		_pi_inquiry_manager_participants_process_join_mode_form_value($save_group_nid, $form_state['values']['join_mode']);
 	}
 
 	nquire_commons_form_close($form, $form_state);
@@ -1273,7 +1279,7 @@ function pi_inquiry_manager_participants_subgroup($inquiry_nid, $group_nid) {
 	$output .= theme('pi_inquiry_manager_participants_list', $inquiry, $group_nid);
 	$output .= theme('pi_inquiry_manager_participants_roles', $inquiry, $group_nid);
 
-	$output .= '<p>' . _pi_inquiry_manager_partipants_group_operation_link(t('Go back'), $inquiry_nid) . '</p>';
+	$output .= '<p>' . _pi_inquiry_manager_partipants_group_operation_link(t('Go back'), $inquiry_nid, FALSE, FALSE, FALSE) . '</p>';
 	return $output;
 }
 
@@ -1297,7 +1303,7 @@ function theme_pi_inquiry_manager_participants_group_access_policy($inquiry_node
 
 
 	if (pi_inquiry_manager_participants_subgroups_edit_access($inquiry_node->nid, $group_nid)) {
-		$output .= '<br/>' . l(t('Edit'), "inquiry/{$inquiry_node->nid}/participants/subgroup/$group_nid/edit");
+		$output .= '<br/>' . _pi_inquiry_manager_partipants_group_operation_link(t('Edit group'), $inquiry_node->nid, $group_nid, "edit", TRUE);
 	}
 	return $output;
 }
