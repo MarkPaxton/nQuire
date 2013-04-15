@@ -45,10 +45,6 @@ function pi_activity_content_view($activity, $arg_node_function)
 				//get nid
 				$nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
         
-        if ($nid == NULL) {
-          $nid = pi_activity_create_content_on_first_visit($activity, $user->uid);
-        }
-        
 				if($nid!=NULL)
 				{
 					$loaded_node = node_load($nid);
@@ -215,19 +211,3 @@ function pi_actor_audience_translate($actor) {
 	}
 }
 
-
-/* FIX (eloy) This is needed for the spreadsheet activity */
-
-function pi_activity_create_content_on_first_visit($activity, $uid) {
-  
-  if ($activity->activity_type === 'pi_data_spreadsheet') {
-    $node = new stdClass();
-    $node->uid = $uid;
-    $node->type = 'pi_data_spreadsheet';
-    $node->body = '';
-    node_save($node);
-    return $node->nid;
-  }
-  
-  return NULL;
-}

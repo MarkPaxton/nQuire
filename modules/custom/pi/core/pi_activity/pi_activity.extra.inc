@@ -157,6 +157,15 @@ function pi_activity_load_activity_actor($activity_id) {
 	return $activities;
 }
 
+function pi_activity_build_link_2($activity_node, $access) {
+	$text = check_plain($activity_node->title);
+	if (!$access) {
+		return $text;
+	}
+	
+	
+}
+
 
 /**
  * Create a link to a particular activity with associated icon

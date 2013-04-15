@@ -123,5 +123,9 @@ class PiInquiryGroupingAccess {
 	function get_phase($nid) {
 		return $this->phases[$nid];
 	}
+	
+	function get_uid() {
+		return $this->uid;
+	}
 
 }
