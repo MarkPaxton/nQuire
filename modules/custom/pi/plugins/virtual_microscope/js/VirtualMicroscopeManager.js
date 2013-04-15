@@ -35,7 +35,9 @@ $(function() {
 
       var self = this;
       window.addEventListener("message", function(event) {
-				console.log(event);
+				if (event) {// && event.param === "MeasureMM") {
+					console.log(event.data.param + ' ' + JSON.stringify(event.data.content));
+				}
         self._receiveMessage(event);
       }, false);
 
@@ -94,7 +96,7 @@ $(function() {
           }
         }
       } else {
-				console.log(msg);
+				//console.log(msg);
 			};
     },
     _getMessageReceived: function(msg) {

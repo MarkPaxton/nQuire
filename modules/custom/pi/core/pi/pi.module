@@ -58,18 +58,9 @@ function pi_menu() {
 			'page callback' => 'pi_inquiry_inquiry_view',
 			'page arguments' => array(1),
 			'file' => 'pi.inquiry.inc',
-			'access arguments' => array('access content'),
+			'access arguments' => array(1),
+			'access callback' => 'pi_inquiry_inquiry_view_access',
 			'type' => MENU_CALLBACK
-	);
-
-	$items['inquiry/%node/view'] = array(
-			'title' => 'View',
-			'page callback' => 'pi_inquiry_inquiry_view',
-			'page arguments' => array(1),
-			'file' => 'pi.inquiry.inc',
-			'access arguments' => array('access content'),
-			'type' => MENU_DEFAULT_LOCAL_TASK,
-			'weight' => 0
 	);
 
 	$items['phase/%node'] = array(
@@ -77,37 +68,11 @@ function pi_menu() {
 			'page callback' => 'pi_inquiry_phase_view',
 			'page arguments' => array(1),
 			'file' => 'pi.phase.inc',
-			'access arguments' => array('access content'),
+			'access arguments' => array(1),
+			'access callback' => 'pi_inquiry_phase_view_access',
 			'type' => MENU_CALLBACK,
 	);
 
-	$items['export/%/csv'] = array(
-			'title' => 'CSV',
-			'access callback' => TRUE,
-			'page callback' => 'pi_data_export_csv',
-			'type' => MENU_CALLBACK,
-	);
-
-	$items['export/%/kml'] = array(
-			'title' => 'KML',
-			'access callback' => TRUE,
-			'page callback' => 'pi_data_export_kml',
-			'type' => MENU_CALLBACK,
-	);
-
-	$items['set_stage'] = array(
-			'title' => 'Stage selector',
-			'page callback' => 'pi_stage_selector_view',
-			'access arguments' => array('access content'),
-			'type' => MENU_CALLBACK,
-	);
-
-	$items['set_status'] = array(
-			'title' => 'Change activity status',
-			'page callback' => 'pi_status_changer_view',
-			'access arguments' => array('access content'),
-			'type' => MENU_CALLBACK,
-	);
 
 	return $items;
 }
@@ -708,4 +673,12 @@ function get_viewable_activity_ids($inquiry_id, $uid) {
 	return $activity_ids;
 }
 
-?>
+function pi_inquiry_inquiry_view_access() {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	return $access_data->has_inquiry_access();
+}
+
+function pi_inquiry_phase_view_access($phase) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	return $access_data->has_phase_access($phase->nid);
+}
