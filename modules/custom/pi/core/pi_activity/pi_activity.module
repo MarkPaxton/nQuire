@@ -5,7 +5,7 @@
 
 module_load_include('inc', 'pi_activity', 'pi_activity.workflow');
 module_load_include('inc', 'pi_activity', 'pi_activity.extra');
-module_load_include('inc', 'pi_activity', 'pi_activity.status');
+//module_load_include('inc', 'pi_activity', 'pi_activity.status');
 module_load_include('inc', 'pi_activity', 'pi_activity.content');
 
 /**
@@ -54,7 +54,7 @@ function pi_activity_access($activity, $op) {
 			$return_value = pi_activity_check_node_function($activity->nid, $user->uid, 'edit');
 		}
 		if (($node_function_allowed === false) && ($op == 'add')) {
-			$possible_add_nid = pi_activity_get_add_activity_for_sort_activity($details->inquiry_id, $activity->nid, $user->uid);
+			$possible_add_nid = pi_activity_get_add_activity_for_sort_activity($activity->nid);
 			if ($possible_add_nid !== NULL) {
 				$return_value = true;
 			}
@@ -161,8 +161,6 @@ function pi_activity_menu() {
 }
 
 function pi_activity_tab_view_access_callback($node) {
-	global $user;
-
 	switch ($node->activity_type) {
 		case 'pi_data':
 		case 'pi_key_questions':
@@ -177,6 +175,8 @@ function pi_activity_tab_edit_access_callback($node) {
 	switch ($node->activity_type) {
 		case 'pi_read_information':
 		case 'pi_sort_data':
+		case 'pi_sort_key_questions':
+		case 'pi_sort_key_answers':
 		case 'pi_data_spreadsheet':
 		case 'pi_explore_tool':
 			return FALSE;
@@ -888,35 +888,7 @@ function pi_activity_load($node) {
 			$stages[$stage_state_row['stage_nid']] = $stage_state_row['stage_state'];
 		}
 		$activity->activity_phases_stages['stages'] = $stages;
-
-		//Now get the default node function and visible status from the status table
-		$result_rows = pi_activity_get_group_status($activity->nid, $activity->actor);
-		//pi_debug_message($result_rows);
-		// There should only be one result for this... unless it's specifically been overridden in the db
-		// per user/group statuses aren't implemented here
-		switch (count($result_rows)) {
-			case 0:
-				$activity->visible_status = NULL;
-				$activity->node_function = NULL;
-				drupal_set_message(t("No activity status set for activity !id, group !gid", array('!id' => $node->nid, '!gid' => $activity->actor)), 'warning');
-				break;
-			case 1:
-				// This is the ideal case, so just copy the data as needed
-				$activity->visible_status = $result_rows[0]['visible_status'];
-				$activity->node_function = $result_rows[0]['node_function'];
-				break;
-			default:
-				//take the first and generate a warning if more than one is found
-
-				$activity->visible_status = $result_rows[0]['visible_status'];
-				$activity->node_function = $result_rows[0]['node_function'];
-				drupal_set_message(
-								t("Conflicting status data for group @gid and activity @nid; the first one will be used: @function, @visible_status", array(
-						'@nid' => $node->nid, '@gid' => $activity->actor,
-						'@function' => $activity->node_function,
-						'@visible_status' => $activity->visible_status), 'warning')
-				);
-		}
+		
 	} else {
 		//@TODO FIXME
 		if ($node->type != "pi_data") {
@@ -1513,7 +1485,7 @@ function pi_activity_nodeapi(&$node, $op) {
 						if (in_array($node->type, $node_types_to_create_activity_for)) {
 							pi_activity_add_new_activity_for_activity_content_node($node, 'edit', 'edit', $node->title, $activity);
 						} else {
-							pi_activity_link_activity_content($node, 'edit', 'edit', $activity->nid);
+							pi_activity_link_content_with_activity($node, $activity->nid);
 						}
 						_pi_activity_set_activity_content_audience($node, $activity_nid);
 						_pi_activity_set_activity_content_actor($node, $activity_nid);
@@ -1562,63 +1534,6 @@ function pi_activity_nodeapi(&$node, $op) {
 // ---------------------------------------------------------------------------
 
 /**
- * Create the url to a particular activity
- * @param uint $activity_id
- * @param uint $uid
- * @return array ['url'] and ['title'] countaining link url (via drupal url()) and title (via chaeck_plain())
- */
-function pi_activity_get_link($activity_id, $uid) {
-	global $base_path;
-
-	$url = array('url' => '', 'title' => '');
-
-	$image_path = $base_path . '/' . drupal_get_path('module', 'pi') . '/images/';
-	$status_image = array('start' => 'creatable.png',
-			'edit' => 'editable.png',
-			'view' => 'viewable.png',
-			'unavailable' => 'unavailable.png');
-
-	$loaded_activity = node_load($activity_id);
-	$visible_status = pi_activity_get_visible_status_of_activity($activity_id, $uid);
-
-	$node_function = pi_activity_get_node_function($activity_id, $uid);
-
-	switch ($loaded_activity->destination) {
-		case "self":
-			$destination = "destination=activity/" . $activity_id . "/view";
-			break;
-		case "phase":
-			$destination = "destination=phase/" . $loaded_activity->phase_nid;
-			break;
-		default:
-			$phase = node_load($loaded_activity->phase_nid);
-			$destination = "destination=inquiry/" . $phase->inquiry_nid;
-			break;
-	}
-
-	// set editable nodes to be viewed by default
-	/* FIX (eloy) final node_function depends on activity */
-	if ($node_function == 'edit') {
-		$activity = node_load($activity_id);
-		if (pi_activity_tab_view_access_callback($activity)) {
-			$node_function = 'view';
-		}
-	}
-
-	$url['url'] = "activity/" . $activity_id . "/" . $node_function;
-	$url['destination'] = $destination;
-
-	$teacher_only = pi_check_teacher_flag_on_activity($activity_id);
-	//@TODO FIXME Function _pi_ag_teacher_only_flag is missing
-	$activity_name_text = check_plain($loaded_activity->title); // . _pi_ag_teacher_only_flag($teacher_only);
-
-	$label_icon = "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
-	$url['title'] = $activity_name_text . '&nbsp;' . $label_icon;
-
-	return $url;
-}
-
-/**
  * Returns an array of activities in order based on a sort of the posistion column
  * @param uint $inquiry_nid
  * @param uint $stage_nid
@@ -1652,8 +1567,7 @@ function pi_activity_get_activities_of_stage_phase_user($inquiry_nid, $stage_nid
  * @param unknown_type $activity_ind The "Sort $whatever" activity id for the add activity.
  * @param unknown_type $uid The user id to find the add activity id for.
  */
-function pi_activity_get_add_activity_for_sort_activity($inquiry_id, $activity_id, $uid) {
-	//$return_value = NULL;
+function pi_activity_get_add_activity_for_sort_activity($activity_id) {
 	$sort_activity = node_load($activity_id);
 
 	if ($sort_activity != FALSE) {
@@ -1918,30 +1832,4 @@ function pi_activity_og_access_grants_alter_XXX(&$grants, $node) {
 			}
 		}
 	}
-}
-
-/* FIX (eloy) This is needed for the spreadsheet activity */
-
-function pi_activity_create_content_on_first_visit($activity, $uid) {
-	$types = array(
-			'pi_data_spreadsheet',
-			'pi_sort_data',
-			'pi_sort_key_answers',
-			'pi_sort_key_questions',
-			'pi_sort_result_presentations',
-	);
-	if (in_array($activity->activity_type, $types)) {
-		$node = new stdClass();
-		$node->uid = $uid;
-		$node->type = $activity->activity_type;
-		$node->body = '';
-		node_save($node);
-
-		$activity_node = array('nid' => $node->nid, 'activity_id' => $activity->nid);
-		drupal_write_record('pi_activity_node', $activity_node);
-
-		return $node;
-	}
-
-	return NULL;
 }

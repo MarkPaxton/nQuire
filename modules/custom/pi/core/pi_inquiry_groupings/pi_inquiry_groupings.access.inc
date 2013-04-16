@@ -9,6 +9,7 @@ class PiInquiryGroupingAccess {
 	private $subgroup;
 	private $roles;
 	private $phases;
+	private $activities;
 
 	function __construct() {
 		global $user;
@@ -57,6 +58,8 @@ class PiInquiryGroupingAccess {
 	}
 
 	private function load_activities() {
+		$this->activities = array();
+
 		foreach ($this->phases as $phase_nid => $data) {
 			$activity_nids = pi_get_activities_for_phase($phase_nid);
 			foreach ($activity_nids as $activity_nid) {
@@ -81,6 +84,7 @@ class PiInquiryGroupingAccess {
 					$item['access'] = FALSE;
 				}
 				$this->phases[$phase_nid]['activities'][$activity_nid] = $item;
+				$this->activities[$activity_nid] = $item;
 			}
 		}
 	}
@@ -105,13 +109,17 @@ class PiInquiryGroupingAccess {
 	}
 
 	function get_inquiry_node() {
-		return $this->inquiry_node;
+		return $this->inquiry['node'];
+	}
+
+	function get_inquiry_nid() {
+		return $this->inquiry['nid'];
 	}
 
 	function has_inquiry_access() {
 		return $this->inquiry['access'];
 	}
-	
+
 	function has_phase_access($phase_nid) {
 		return $this->phases[$phase_nid]['access'];
 	}
@@ -123,9 +131,47 @@ class PiInquiryGroupingAccess {
 	function get_phase($nid) {
 		return $this->phases[$nid];
 	}
-	
+
+	function get_activity($nid) {
+		if (!isset($this->activities[$nid])) {
+			$parent_nid = pi_activity_get_parent_activity($nid);
+			if (isset($this->activities[$parent_nid])) {
+				$parent_data = $this->activities[$parent_nid];
+				$child_data = array(
+						'node' => node_load($nid),
+						'collaboration' => $parent_data['collaboration'],
+						'phase_nid' => $parent_data['phase_nid'],
+						'access' => $parent_data['access'],
+				);
+				$this->activities[$nid] = $child_data;
+			}
+		}
+
+		return $this->activities[$nid];
+	}
+
+	function get_subgroup() {
+		return $this->subgroup;
+	}
+
 	function get_uid() {
 		return $this->uid;
+	}
+
+	function get_current_activity_nid() {
+		return $this->current_path->activity_id;
+	}
+	
+	function get_activity_by_type($type) {
+		foreach ($this->phases as $phase_data) {
+			foreach($phase_data['activities'] as $activity_data) {
+				if ($activity_data['node']->activity_type === $type) {
+					return $activity_data;
+				}
+			}
+		}
+		
+		return NULL;
 	}
 
 }

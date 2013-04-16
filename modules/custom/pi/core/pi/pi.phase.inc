@@ -44,30 +44,14 @@ function pi_inquiry_phase_view($phase) {
 			$activity_link = pi_activity_build_link($activity_nid, $uid);
 
 			if ($activity_data['access']) {
-				$nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity_nid, $uid);
+				$nid = pi_activity_get_content_nid_for_activity($activity_nid);
 				$activity_content_node = node_load($nid);
-				// If no content node is associated, then check for child nodes... 
-				if (!$activity_content_node) {
-					$activity_content_node = pi_activity_create_content_on_first_visit($activity, $uid);
-				}
+				
 				if (!$activity_content_node) {
 					$activity_content_node = $activity;
 				}
 
-
-				$loaded_activity_status = pi_activity_get_activity_status_for_user($activity->nid, $uid);
-				if (count($loaded_activity_status) == NULL) {
-					$loaded_activity_status['visible_status'] = $activity->visible_status;
-					$loaded_activity_status['node_function'] = $activity->node_function;
-				}
-
-				// (By default) always open an existing node in view
-				// if node_function for link is edit or view then set node function to view
-				$link_node_function = $loaded_activity_status['node_function'];
-				if (($link_node_function == 'edit') || ($link_node_function == 'view'))
-					$link_node_function = 'view';
-
-				$activity_desc = pi_activity_teaser($activity_content_node, $activity, $link_node_function);
+				$activity_desc = pi_activity_teaser($activity_content_node, $activity, 'view');
 			} else {
 				$activity_desc = t('You do not have access to view or edit this activity.');
 			}

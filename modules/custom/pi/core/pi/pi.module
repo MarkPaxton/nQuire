@@ -571,57 +571,7 @@ function get_psp_id_for_stage_and_phase($stage_id, $phase_id) {
 	return $psp_id;
 }
 
-/**
- * By previous we mean the started activity with the largest postion value.
- * Returns the started activity in the phase visible to that user with the
- * largest position value in the phase.
- */
-function previous_activity_for_stage_phase_and_uid($inquiry_id, $stage_id, $phase_id, $uid) {
-	$query = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} "
-					. "LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity_node}.nid "
-					. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.psp_id = {pi_stage_phase_activity}.psp_id "
-					. "LEFT JOIN {pi_activity_actor} ON ( {pi_activity_actor}.inquiry_id = {pi_activity_node}.inquiry_id "
-					. "AND {pi_activity_actor}.activity_id = {pi_activity_node}.activity_id) "
-					. "LEFT JOIN {pi_activity_status} ON ( {pi_activity_status}.inquiry_id = {pi_activity_node}.inquiry_id "
-					. "AND {pi_activity_status}.activity_id = {pi_activity_node}.activity_id) "
-					. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-					. "WHERE {pi_activity_node}.inquiry_id = %d "
-					. "AND {pi_stage_phase}.stage_id = %d "
-					. "AND {pi_stage_phase}.phase_id = %d "
-					. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid = %d ) "
-					. "AND ( {pi_activity_status}.visible_status = 'in_progress' "
-					. "OR {pi_activity_status}.visible_status = 'view') "
-					. "ORDER BY pi_stage_phase_activity.position DESC LIMIT 1)";
 
-	$result = db_result(db_query($query, $inquiry_id, $stage_id, $phase_id, $uid, $uid));
-	return $result;
-}
-
-/**
- * By next we mean the startable activity with the smallest postion value.
- * Returns the not started activity in the phase visible to that user with
- * the smallest position value in the phase.
- */
-function next_activity_for_stage_phase_and_uid($inquiry_id, $stage_id, $phase_id, $uid) {
-
-	$query = "SELECT {pi_activity_node}.nid FROM {pi_activity_node} "
-					. "LEFT JOIN {pi_stage_phase_activity} ON {pi_stage_phase_activity}.activity_id = {pi_activity_node}.nid "
-					. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase}.psp_id = {pi_stage_phase_activity}.psp_id "
-					. "LEFT JOIN {pi_activity_actor} ON ( {pi_activity_actor}.inquiry_id = {pi_activity_node}.inquiry_id "
-					. "AND {pi_activity_actor}.activity_id = {pi_activity_node}.activity_id) "
-					. "LEFT JOIN {pi_activity_status} ON ( {pi_activity_status}.inquiry_id = {pi_activity_node}.inquiry_id "
-					. "AND {pi_activity_status}.activity_id = {pi_activity_node}.activity_id) "
-					. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-					. "WHERE {pi_activity_node}.inquiry_id = %d "
-					. "AND {pi_stage_phase.stage_id} = %d "
-					. "AND {pi_stage_phase.phase_id} = %d "
-					. "AND ( {pi_activity_actor}.uid = %d OR {og_uid}.uid = %d) "
-					. "AND {pi_activity_status}.visible_status = 'start' "
-					. "ORDER BY {pi_stage_phase_activity}.position ASC LIMIT 1)";
-
-	$result = db_result(db_query($query, $inquiry_id, $stage_id, $phase_id, $uid, $uid));
-	return $result;
-}
 
 //interface parameters
 function show_activites($uid) {
@@ -652,26 +602,6 @@ function show_phases($uid) {
 	}
 }
 
-function get_viewable_activity_ids($inquiry_id, $uid) {
-	$query = "SELECT DISTINCT( {pi_activity_status}.activity_id), {pi_phase}.weight, {pi_stage_phase_activity}.position FROM {pi_activity_status} "
-					. "LEFT JOIN {pi_stage_phase_activity} ON {pi_activity_status}.activity_id = {pi_stage_phase_activity}.activity_id "
-					. "LEFT JOIN {pi_stage_phase} ON {pi_stage_phase_activity}.psp_id = {pi_stage_phase}.psp_id "
-					. "LEFT JOIN {pi_phase} ON {pi_stage_phase}.phase_id = {pi_phase}.nid "
-					. "LEFT JOIN {pi_activity_actor} ON {pi_activity_status}.activity_id = {pi_activity_actor}.activity_id "
-					. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_activity_actor}.gid "
-					. "WHERE ( {pi_activity_status}.inquiry_id = %d "
-					. "AND ( {pi_activity_status}.visible_status = 'view' OR {pi_activity_status}.visible_status = 'edit')) "
-					. "AND ( {og_uid}.uid = %d OR {pi_activity_actor}.uid = %d) "
-					. "ORDER BY pi_phase.weight,pi_stage_phase_activity.position";
-
-	// drupal_set_message(sprintf($query, $inquiry_id, $uid, $uid));
-	$results = db_query($query, $inquiry_id, $uid, $uid);
-	$activity_ids = array();
-	while ($item = db_fetch_object($results)) {
-		$activity_ids[] = $item->activity_id;
-	}
-	return $activity_ids;
-}
 
 function pi_inquiry_inquiry_view_access() {
 	$access_data = pi_inquiry_groupings_get_access_data();

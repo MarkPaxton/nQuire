@@ -136,67 +136,6 @@ function previous_next_buttons($inquiry_id, $stage_id, $phase_id, $activity_id, 
 	return $output;
 }
 
-function next_button() {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
-	$activities = get_viewable_activity_ids($details->inquiry_id, $user->uid);
-	$next_activity = $activities[0];
-
-    foreach($activities as $activity) {
-		if ($prev_activity == $details->activity_id) {
-			$next_activity = $activity;
-		}
-		$prev_activity = $activity;
-	};
-	
-	$loaded_activity = node_load($next_activity);
-	$loaded_activity_status = load_activity_status($next_activity, $user->uid);
-	
-	switch ($loaded_activity->destination) {
-		case "self":
-			$destination = "";
-		break;
-	    case "phase":
-	    	$destination = "destination=" . "phase/" . $phase->nid;
-		break;
-		default:
-			$destination = "destination=" . "inquiry/" . $phase->inquiry_nid;
-	};
-    
-	// so that (by default) always open an existing node in view
-	// if node_function for link is edit or view then set node function to view
-    $link_node_function = $loaded_activity_status->node_function;
-    
-	if (($link_node_function == 'edit') OR ($link_node_function == 'view')) {
-		$link_node_function = 'view';
-	};
-    
-	$activity_path = "activity/" . $next_activity . "/" . $link_node_function;
-	if ($loaded_activity_status->visible_status == 'unavailable') {
-		$activity_link = t($loaded_activity->title);
-	}
-	else {
-		$image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-		if (in_array($activity->activity_id, new_activity_list($details->inquiry_id, $details->phase_id, $user->uid))) {
-			$new_icon = "<img width='12' src='" . $image_path . "new_activity.png'/>";
-		}
-		else {
-			$new_icon = "";
-		};
-		
-    // $activity_link = l(t('Next'), $activity_path, array('html' => TRUE, 'query' => $destination));
-		$activity_link = '<strong>' .t(Next) . ':&nbsp;</strong>' . l(check_plain($loaded_activity->title) . ' ' . add_activity_icon($loaded_activity_status->visible_status) . ' ' . $new_icon, $activity_path, array('html' => TRUE, 'query' => $destination));
-	};
-				
-	$output = '';
-	
-	if ($next_activity) 
-	{
-		$output .= theme('pi_previous_next_text', NULL, $activity_link);
-	};
-	return $output;
-}
-
 
 /**
  * Generate the previous and next links for the phase level view based on user and current stage

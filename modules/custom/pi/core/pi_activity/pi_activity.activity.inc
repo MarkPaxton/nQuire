@@ -1,4 +1,5 @@
 <?php
+
 // $Id: pi.activity.inc, 2010/05/17 MCP $
 
 /**
@@ -15,57 +16,45 @@
  * @param uint $activity_id The id of the pi_activity to work with
  * @param $arg_node_function The function to perform on the activity
  */
-function pi_activity_content_view($activity, $arg_node_function)
-{
+function pi_activity_content_view($activity, $arg_node_function) {
 	global $user;
 	$activity_inquiry_id = pi_activity_get_inquiry_nid($activity->nid);
 	$output = '';
 	//If this is admin user, show activity content admin page instead
-	if($user->uid==1)
-	{
+	if ($user->uid == 1) {
 		drupal_set_message(t("Showing Activity Content as you are logged in as the Administrator user who cannot create Activity Content."), 'status');
 		// Override any destination parameters since this breaks drupal_goto for this case
 		unset($_REQUEST['destination']);
 		unset($_GET['destination']);
 		drupal_goto('activity/' . $activity->nid . '/admin/content');
-	}
-	else
-	{
+	} else {
 		// Check that the node function given in the URL is allowed by comparing it with the
 		//   node function in the database for this inquiry and user
 		//$node_function = pi_activity_get_node_function($activity->nid, $user->uid);
 		// this is now handled with the access callback pi_activity_item_access
-    
-    /* FIX (eloy) */
-    $output .= '<p>' . check_plain($activity->body) . '</p>';
-    
-		switch($arg_node_function)
-		{
+
+		/* FIX (eloy) */
+		$output .= '<p>' . check_plain($activity->body) . '</p>';
+
+		switch ($arg_node_function) {
 			case 'view':
 				//get nid
-				$nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
-        
-				if($nid!=NULL)
-				{
+				$nid = pi_activity_get_content_nid_for_activity($activity->nid);
+
+				if ($nid != NULL) {
 					$loaded_node = node_load($nid);
-					if($loaded_node==false)
-					{
+					if ($loaded_node == false) {
 						drupal_not_found();
-					}
-					else
-					{
+					} else {
 						//build page
-						if(!function_exists("node_view"))
-						{
+						if (!function_exists("node_view")) {
 							include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 						}
-            $node_view = node_view($loaded_node, FALSE, TRUE, TRUE);
+						$node_view = node_view($loaded_node, FALSE, TRUE, TRUE);
 						$output .= $node_view;
 					}
-				}
-				else
-				{
-          
+				} else {
+
 					//drupal_set_message(t("Can't find the content this activity."), 'error');
 
 					$activity_link = 'activity/' . $activity->nid . '/edit';
@@ -86,23 +75,18 @@ function pi_activity_content_view($activity, $arg_node_function)
 				// 3) If an "Add x" activity of the correct node type exists, then the add function is available to be
 				//		called, so forward to that page using drupal_goto().
 				$node_function = pi_activity_get_node_function($activity->nid, $user->uid);
-				if($node_function == 'add')
-				{
+				if ($node_function == 'add') {
 					// Normal add activity
 					$node_type = $activity->node_type;
-					if(!function_exists("node_add"))
-					{
+					if (!function_exists("node_add")) {
 						include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 					}
 					$output .= pi_activity_actor_audience_info($activity_inquiry_id, $activity->nid);
 					$output .= node_add($node_type);
-				}
-				else
-				{
+				} else {
 					// Possible add shortcut, check if there's a valid shortcut target
-					$add_activity_id = pi_activity_get_add_activity_for_sort_activity($activity_inquiry_id, $activity->nid, $user->uid);
-					if($add_activity_id !== NULL)
-					{
+					$add_activity_id = pi_activity_get_add_activity_for_sort_activity($activity->nid);
+					if ($add_activity_id !== NULL) {
 						$activity_link = 'activity/' . $add_activity_id . '/add';
 						$destination = drupal_get_destination();
 						unset($_REQUEST['destination']);
@@ -110,44 +94,35 @@ function pi_activity_content_view($activity, $arg_node_function)
 						//drupal_goto($activity_link, 'destination=activity/' . $activity->nid . '/view');
 						return '';
 					}
-
 				}
 				break;
 			case 'edit':
 				// Edit existing content or create new
-				$nid = pi_activity_get_activity_content_nid_for_activity_and_user($activity->nid, $user->uid);
-				
-				if(!function_exists("node_page_edit"))
-				{
+				$nid = pi_activity_get_content_nid_for_activity($activity->nid);
+
+				if (!function_exists("node_page_edit")) {
 					include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 				}
-					
+
 				$output .= pi_activity_actor_audience_info($activity_inquiry_id, $activity->nid);
-				if($nid==NULL)
-				{
-				  $loaded_node = new stdClass;
-				  $loaded_node->uid = $user->uid; 
-				  $loaded_node->name = (isset($user->name) ? $user->name : ''); 
-			    $loaded_node->type = $activity->node_type;
-				  $loaded_node->language = '';
-				  $output .= node_page_edit($loaded_node);
-				}
-				else
-				{
+				if ($nid == NULL) {
+					$loaded_node = new stdClass;
+					$loaded_node->uid = $user->uid;
+					$loaded_node->name = (isset($user->name) ? $user->name : '');
+					$loaded_node->type = $activity->node_type;
+					$loaded_node->language = '';
+					$output .= node_page_edit($loaded_node);
+				} else {
 					$loaded_node = node_load($nid);
-					if(pi_check_is_node_of_type($loaded_node, $activity->node_type))
-					{
+					if (pi_check_is_node_of_type($loaded_node, $activity->node_type)) {
 						$output .= node_page_edit($loaded_node);
-					}
-					else
-					{
+					} else {
 						drupal_set_message(t('Error, Activity content is the wrong type or does not exist', 'error'));
 					}
 				}
 				break;
 		}
 		drupal_set_title(check_plain($activity->title));
-
 	}
 	return $output;
 }
@@ -161,25 +136,19 @@ function pi_activity_actor_audience_info($inquiry_id, $activity_id) {
 	global $user;
 	$output = "";
 
-	if ($activity_id && $inquiry_id)
-	{
+	if ($activity_id && $inquiry_id) {
 		$loaded_activity = node_load($activity_id);
 		$audience = $loaded_activity->audience;
 		$loaded_activity_actor = $loaded_activity->actor;
 		$activity_gid = $loaded_activity_actor;
 		$activity_gid_type = pi_get_type_of_group($gid);
-			
+
 		$seen_by = $audience;
-		if ($audience == 'individual')
-		{
+		if ($audience == 'individual') {
 			$done_by = 'individual';
-		}
-		elseif ($activity_gid_type == 'class' && $audience == 'class')
-		{
+		} elseif ($activity_gid_type == 'class' && $audience == 'class') {
 			$done_by = 'class';
-		}
-		else
-		{
+		} else {
 			$done_by = 'group';
 		}
 
@@ -199,14 +168,11 @@ function pi_activity_actor_audience_info($inquiry_id, $activity_id) {
 function pi_actor_audience_translate($actor) {
 	$translation = array();
 	$translation['individual'] = t('me');
-	$translation['group'] =  t('my group');
+	$translation['group'] = t('my group');
 	$translation['class'] = t('my class');
-	if(array_key_exists($actor, $translation))
-	{
+	if (array_key_exists($actor, $translation)) {
 		return $translation[$actor];
-	}
-	else
-	{
+	} else {
 		return t($actor);
 	}
 }

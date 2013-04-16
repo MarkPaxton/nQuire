@@ -1,53 +1,51 @@
 <?php
+
 // $Id: pi_sort_key_questions.module,v 1.2 2010/02/15 09:17:48 ou_pm Exp $
 
 function pi_sort_key_questions_node_info() {
 	return array(
-	    'pi_sort_key_questions' => array(
-		    'name' => t('Inquiry show and sort key questions'), // Required.
-		    'module' => 'pi_sort_key_questions',  // Required.
-		    'description' => t('Questions sort'), // Required.
-		    'has_title' => FALSE,
-		    'title_label' => t('Show and sorted key questions'),
-		    'has_body' => FALSE,
-		    'body_label' => t('Show and sort of key questions'),
-		    'locked' => TRUE,
-			'add_node_type' => 'pi_key_questions'
-		)
+			'pi_sort_key_questions' => array(
+					'name' => t('Inquiry show and sort key questions'), // Required.
+					'module' => 'pi_sort_key_questions', // Required.
+					'description' => t('Questions sort'), // Required.
+					'has_title' => FALSE,
+					'title_label' => t('Show and sorted key questions'),
+					'has_body' => FALSE,
+					'body_label' => t('Show and sort of key questions'),
+					'locked' => TRUE,
+					'add_node_type' => 'pi_key_questions'
+			)
 	);
-
 }
 
 function pi_sort_key_questions_perm() {
+	
 }
 
 function pi_sort_key_questions_access($op, $node, $user) {
-    $details = get_inquiry_details_from_current_path();
-    if ($op == 'create')
-    {
-        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-    }
-    if ($op == 'update')
-    {
-        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-    }
+	return TRUE;
+	$details = get_inquiry_details_from_current_path();
+	if ($op == 'create') {
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+	}
+	if ($op == 'update') {
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+	}
 }
-
 
 /**
  * Implementation of hook_theme().
  */
 function pi_sort_key_questions_theme() {
-    return array(
-	    'pi_sort_key_questions_node_form' => array(
-	    	'arguments' => array('form'),
-	    ),
-	    'pi_sort_key_questions' => array(
-			'arguments' => array('node', 'teaser', 'key_questions_to_show'),
-	    ),
-    );
+	return array(
+			'pi_sort_key_questions_node_form' => array(
+					'arguments' => array('form'),
+			),
+			'pi_sort_key_questions' => array(
+					'arguments' => array('node', 'teaser', 'key_questions_to_show'),
+			),
+	);
 }
-
 
 /**
  * hook_form() for pi_sort_key_questions which provides draggable sorting for pi_key_questions
@@ -55,76 +53,37 @@ function pi_sort_key_questions_theme() {
  * @param $node the pi_sort_key_questions node if it is to be edited, as per drupal 6 API
  */
 function pi_sort_key_questions_form(&$node) {
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id))
-  	{
-  		$current_activity = node_load($node_details->activity_id);
-  	}
-  	
-  	if ($current_activity->name)
-  	{
-  		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
-  		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id); 
-  		if($users_group!=false)
-  		{
-  			$group = node_load($users_group);
-  			$sort_for = $group->title;
-		}
-  		else
-  		{
-  			$sort_for = $user->name;
-  		}
-  		$node_title = check_plain(t('Key questions for ') . $sort_for);
-  	}
-  	else
-  	{
-	    $type = node_get_types('type', $node);
-  		$node_title = $type->name;
-  	}
-  	
-  	// Build the form
-    $form = array();
-    $form['title'] = array (
-        '#type' => 'hidden',
-        '#value' => $node_title,
-    );
 
-    // All key qiestions are collected in this array:
-    $form['onepageprofile_categories'] = array(
-        '#tree'   => TRUE,
-    );
+	// All key qiestions are collected in this array:
+	$form['onepageprofile_categories'] = array(
+			'#tree' => TRUE,
+	);
 
-     // Add the existing sorted items and add the new new ones to the end
-    if(isset($node->nid))
-    {
-        $sorted_key_questions = $node->categories;
-    }
-    else
-    {
-        $sorted_key_questions = array();
-    }
+	// Add the existing sorted items and add the new new ones to the end
+	if (isset($node->nid)) {
+		$sorted_key_questions = $node->categories;
+	} else {
+		$sorted_key_questions = array();
+	}
 
-    $unsorted_key_questions = pi_sort_key_questions_get_options();
-    $key_questions_to_list = pi_merge_content_item_lists($sorted_key_questions, $unsorted_key_questions);
+	$unsorted_key_questions = pi_sort_key_questions_get_options();
+	$key_questions_to_list = pi_merge_content_item_lists($sorted_key_questions, $unsorted_key_questions);
 
-    // set $tree to point to the above $form['onepageprofile_categories'] object
-    $key_question_elements = &$form['onepageprofile_categories'];
-    foreach ($key_questions_to_list as $question_nid => $question_item)
-    {
-        $key_question = node_load($question_nid);
-        $key_question_elements[$question_nid] = array(
-            /* FIX (eloy) use key_question instead of title */
+	// set $tree to point to the above $form['onepageprofile_categories'] object
+	$key_question_elements = &$form['onepageprofile_categories'];
+	foreach ($key_questions_to_list as $question_nid => $question_item) {
+		$key_question_elements[$question_nid] = array(
+				/* FIX (eloy) use key_question instead of title */
 //        	'title' => array('#value' => $question_item['#title']),
-        	'title' => array('#value' => $question_item['#title']),
-       		'weight' => array(
-	            '#type' => 'weight',
-	            '#delta' => count($key_questions_to_list),
-				'#default_value' => $question_item['#weight']
-        	)
-        );
-    }
-    return $form;
+				'title' => array('#value' => $question_item['#key_question']),
+				'weight' => array(
+						'#type' => 'weight',
+						'#delta' => count($key_questions_to_list),
+						'#default_value' => $question_item['#weight']
+				)
+		);
+	}
+	return $form;
 }
 
 /**
@@ -134,21 +93,18 @@ function pi_sort_key_questions_form(&$node) {
  * @param object(pi_sort_key_questions) $node
  */
 function pi_sort_key_questions_insert($node) {
-	$details  = get_inquiry_details_from_current_path();
+	$details = get_inquiry_details_from_current_path();
 	$question_weights = array();
-	if(count($node->onepageprofile_categories) > 0)
-	{
-	  foreach($node->onepageprofile_categories as $question_nid => $question_weight)
-	  {
-		$question_weights[$question_nid] = $question_weight['weight'];
-	  }
-	  asort($question_weights);
+	if (count($node->onepageprofile_categories) > 0) {
+		foreach ($node->onepageprofile_categories as $question_nid => $question_weight) {
+			$question_weights[$question_nid] = $question_weight['weight'];
+		}
+		asort($question_weights);
 	}
-	
-	$query = "INSERT INTO {pi_sort_key_questions} (nid, vid, key_question, weight) VALUES (%d, %d, %d, %d)"; 
+
+	$query = "INSERT INTO {pi_sort_key_questions} (nid, vid, key_question, weight) VALUES (%d, %d, %d, %d)";
 	$weight_count = 0;
-	foreach(array_keys($question_weights) as $key_question_nid)
-	{
+	foreach (array_keys($question_weights) as $key_question_nid) {
 		$key_question = $node->onepageprofile_categories[$key_question_nid];
 		db_query($query, $node->nid, $node->vid, $key_question_nid, $weight_count);
 		$weight_count++;
@@ -161,94 +117,74 @@ function pi_sort_key_questions_insert($node) {
  */
 function pi_sort_key_questions_update($node) {
 // if this is a new node or we're adding a new revision,
-    if ($node->revision)
-    {
-        pi_sort_key_questions_insert($node);
-    }
-    else
-    {
-        db_query("DELETE FROM {pi_sort_key_questions} WHERE vid = %d", $node->vid);
-        pi_sort_key_questions_insert($node);
-    }
+	if ($node->revision) {
+		pi_sort_key_questions_insert($node);
+	} else {
+		db_query("DELETE FROM {pi_sort_key_questions} WHERE vid = %d", $node->vid);
+		pi_sort_key_questions_insert($node);
+	}
 }
 
 function pi_sort_key_questions_delete(&$node) {
-    db_query("DELETE FROM {pi_sort_key_questions} WHERE nid = %d", $node->nid);
+	db_query("DELETE FROM {pi_sort_key_questions} WHERE nid = %d", $node->nid);
 }
-
 
 function pi_sort_key_questions_load($node) {
-    $result = new stdClass;
-    $result->categories = pi_sort_key_questions_get_choice($node);
-    return $result;
+	$result = new stdClass;
+	$result->categories = pi_sort_key_questions_get_choice($node);
+	return $result;
 }
 
-
 function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
+	$data_access = pi_inquiry_groupings_get_access_data();
+	$parent_activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
+
 	$node = node_prepare($node, $teaser);
-	
-	if(!$teaser)
-	{
-	  $hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-	  if($hypothesis_nid!=null)
-	  {
-	    $hypothesis_node = node_load($hypothesis_nid);
-	    $hypothesis_activity_nid = pi_activity_get_activity_nid_for_content_nid($hypothesis_node->nid);
-	    if($hypothesis_activity_nid)
-	    {
-	      $hypothesis_activity = node_load($hypothesis_activity_nid);
-	      if($hypothesis_activity)
-	      {
-	        $node->content['pi_key_questions_hypothesis'] = array(
+
+	if (!$teaser) {
+		$no_hypothesis = TRUE;
+		$hypothesis_activity = $data_access->get_activity_by_type('pi_hypothesis');
+		if ($hypothesis_activity) {
+			$hypothesis_node = node_load(pi_activity_get_content_nid_for_activity($hypothesis_activity['node']->nid));
+			if ($hypothesis_node) {
+				$node->content['pi_key_questions_hypothesis'] = array(
 						'#value' => node_view($hypothesis_node, TRUE, TRUE),
 						'#weight' => -2
-	        );
-	      }
-	    }
-	  }
-	  else
-	  {
-	    drupal_set_message( "No hypothesis found", "error" );
-	  }
+				);
+				$no_hypothesis = FALSE;
+			}
+		}
+		if ($no_hypothesis) {
+			drupal_set_message("No hypothesis found", "error");
+		}
 	}
 
 	// Assemble an array of key questions in the output format (build_activity_link makes this a link with icon)
-	$already_sorted_key_questions = $node->categories;
-  /* FIX (eloy) */
-	$unsorted_key_questions = pi_sort_key_questions_get_options();
-	$sorted_key_questions = pi_merge_content_item_lists($already_sorted_key_questions, $unsorted_key_questions);
-    
-	$key_questions_to_show = array(); 
-	foreach($sorted_key_questions as $sorted_key_question_nid => $key_question)
-	{
-		$key_question_activity_id =  pi_activity_get_activity_nid_for_content_nid($sorted_key_question_nid);
-		//  pi_debug_message($key_question_activity_id);
-		if ($key_question_activity_id)
-		{
-  /* FIX (eloy) */
-//			$key_questions_to_show[] = array('data' => pi_activity_build_link($key_question_activity_id, $user->uid, 'heading', $key_question['#title']), 'class' => 'activity');
-			$key_questions_to_show[] = array('data' => pi_activity_build_link($key_question_activity_id, $user->uid, 'heading', $key_question['#body']), 'class' => 'activity');
+	//$already_sorted_key_questions = $node->categories;
+	/* FIX (eloy) */
+//	$unsorted_key_questions = pi_sort_key_questions_get_options();
+//	$sorted_key_questions = pi_merge_content_item_lists($already_sorted_key_questions, $unsorted_key_questions);
+	$sorted_key_questions = pi_sort_key_questions_get_questions();
+
+	$key_questions_to_show = array();
+	foreach ($sorted_key_questions as $sorted_key_question_nid) {
+		$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($sorted_key_question_nid);
+		if ($key_question_activity_id) {
+			$key_questions_to_show[] = array('data' => pi_activity_build_link_for_child($parent_activity_nid, $key_question_activity_id));
 		}
 	}
-	//pi_debug_message($key_questions_to_show);
-	/* FIX (eloy) since activity/%/add menu link is disabled, add link must be shown even if $teaset=false */
-  //if($teaser)
-	{
-		//Link to add a new key question
-		//cannot get activity id from $details when viewing a list of activity teasers
-		$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
-		$link_output = make_add_activity_link($details->inquiry_id, $details->stage_id, $details->phase_id, $activity_id_for_this_node, $user->uid);
-		$node->content['pi_sort_key_questions_add_key_question_link'] =  array(
-            '#value' =>$link_output,
-            '#weight' => -3
-		);
-	}
+
+	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
+	$link_output = make_add_activity_link($activity_id_for_this_node);
+	$node->content['pi_sort_key_questions_add_key_question_link'] = array(
+			'#value' => $link_output,
+			'#weight' => -3
+	);
+
 
 	$node->content['pi_sort_key_questions'] = array(
-            '#value' => theme('pi_sort_key_questions', $node, $teaser, $key_questions_to_show),
-            '#weight' => 2
+			'#value' => theme('pi_sort_key_questions', $node, $teaser, $key_questions_to_show),
+			'#weight' => 2
 	);
 
 	return $node;
@@ -259,26 +195,20 @@ function theme_pi_sort_key_questions($node, $teaser, $key_questions_to_show) {
 
 	// When there's key questions to show, show them
 	// otherwise show a placeholder text
-	if (count($key_questions_to_show) > 0)
-	{
+	if (count($key_questions_to_show) > 0) {
 		// Add a title to the list in a nice format, then list the key questions
 //		$sentence = format_plural(count($key_questions_to_show), 'Your key question is:', 'Your key questions are:');
 //		$output .= '<p>' . $sentence . '</p>';
-		if($teaser)
-		{
+		if ($teaser) {
 			$output .= '<p>' . t('These are my key questions.  Click the activity to sort them or add a new one.') . '</p>';
 		}
-		$output .= theme('item_list', $key_questions_to_show, NULL, 'ul', array('class' => 'activity'));
-	}
-	else
-	{
+		$output .= theme('item_list', $key_questions_to_show, NULL, 'ul');
+	} else {
 		// No key questions, so say that.
 		$output .= "<p>No key questions are available.</p>";
 	}
 	return $output;
 }
-
-
 
 /**
  * THeme for key questions sorting form to provide draggable sorting method
@@ -287,56 +217,50 @@ function theme_pi_sort_key_questions_node_form($form) {
 	global $user;
 	$uid = $user->uid;
 	$details = get_inquiry_details_from_current_path();
-	
-    drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
 
-    // Header
-    $header = array(
-        t('Key question'),
-        t('Weight')
-    );
+	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
 
-    // Rows for the tabledrag
-    $rows = array();
+	// Header
+	$header = array(
+			t('Key question'),
+			t('Weight')
+	);
 
-    $tree = &$form['onepageprofile_categories'];
-    foreach (element_children($tree) as $key) {
-        $tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
-        
-        $row = array();
-        $row[] = drupal_render($tree[$key]['title']);
-        $row[] = drupal_render($tree[$key]['weight']);
+	// Rows for the tabledrag
+	$rows = array();
 
-        $rows[] = array('data' => $row, 'class' => 'draggable');
-    }
+	$tree = &$form['onepageprofile_categories'];
+	foreach (element_children($tree) as $key) {
+		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
 
-    // Build the output
-    $activity = node_load($details->activity_id);
-    if ($activity->body) {
-    	$output  = '<p>' . check_plain($activity->body) . '</p>';
-    }
-    else {
-    	$output  = '<p>' . t('Order your key questions.') . '</p>';
-    }
-    
-    //only display form and submit button if there are some entries
-    if (count($rows) > 0) {
-    	$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
-    }
-   	else {
-   	  if(arg(2) == 'add')
-      {
-        $output  .= '<p> Press <strong>Save</strong> to start adding your key questions.</p>';
-      }
-      else
-      {
-        $output .= "<p>" . t('No key questions are available') . ".</p>";
-      }
-   	}
-   	$output .= drupal_render($form);
-    return $output;
+		$row = array();
+		$row[] = drupal_render($tree[$key]['title']);
+		$row[] = drupal_render($tree[$key]['weight']);
+
+		$rows[] = array('data' => $row, 'class' => 'draggable');
+	}
+
+	// Build the output
+	$activity = node_load($details->activity_id);
+	if ($activity->body) {
+		$output = '<p>' . check_plain($activity->body) . '</p>';
+	} else {
+		$output = '<p>' . t('Order your key questions.') . '</p>';
+	}
+
+	//only display form and submit button if there are some entries
+	if (count($rows) > 0) {
+		$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
+	} else {
+		if (arg(2) == 'add') {
+			$output .= '<p> Press <strong>Save</strong> to start adding your key questions.</p>';
+		} else {
+			$output .= "<p>" . t('No key questions are available') . ".</p>";
+		}
+	}
+	$output .= drupal_render($form);
+	return $output;
 }
-
 
 /**
  * Returns the array of key questions that were selected for the sort 
@@ -344,40 +268,42 @@ function theme_pi_sort_key_questions_node_form($form) {
  * @return array [key question node id] #weight=> 1, #title = key question title
  */
 function pi_sort_key_questions_get_choice($node) {
-    $query = "SELECT key_question FROM {pi_sort_key_questions} WHERE {pi_sort_key_questions}.nid = %d AND {pi_sort_key_questions}.vid = %d ORDER BY weight ASC";
-    $result = db_query($query, $node->nid, $node->vid);
-	
-    $questions = array();
-    while ($row = db_fetch_object($result))
-    {
-        $loaded_node = node_load($row->key_question, NULL, TRUE);
-        if($loaded_node!=false)
-        {
-	        $questions[$row->key_question] = array(
-	            '#title'  => check_plain($loaded_node->key_question),
-	            '#weight' => count($questions)
-	        );
-        }
-    }
-    return $questions;
+	$query = "SELECT key_question FROM {pi_sort_key_questions} WHERE {pi_sort_key_questions}.nid = %d AND {pi_sort_key_questions}.vid = %d ORDER BY weight ASC";
+	$result = db_query($query, $node->nid, $node->vid);
+
+	$questions = array();
+	while ($row = db_fetch_object($result)) {
+		$loaded_node = node_load($row->key_question, NULL, TRUE);
+		if ($loaded_node != false) {
+			$questions[$row->key_question] = array(
+					'#title' => check_plain($loaded_node->key_question),
+					'#weight' => count($questions)
+			);
+		}
+	}
+	return $questions;
 }
 
 /**
  * Returns an array of key question titles indexed by their node ids
  * @return array [key question node id] #weight=> 1, #title = key question title
  */
+/* TOREMOVE */
 function pi_sort_key_questions_get_options() {
 	global $user;
 	$details = get_inquiry_details_from_current_path();
-	
+
 	$items = array();
 	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_key_questions');
-  /* FIX (eloy) */
+	/* FIX (eloy) */
 	//$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
 	$items = pi_activity_map_fields_from_nids($nids, array('key_question' => '#key_question'));
-	foreach(array_keys($items) as $nid)
-	{
+	foreach (array_keys($items) as $nid) {
 		$items[$nid]['#weight'] = 0;
 	}
 	return $items;
+}
+
+function pi_sort_key_questions_get_questions() {
+	return pi_activity_get_children_content_nids_for_sort_activity('pi_sort_key_questions');
 }
