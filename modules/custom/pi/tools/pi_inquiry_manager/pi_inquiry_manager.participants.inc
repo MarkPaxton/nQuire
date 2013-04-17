@@ -212,7 +212,7 @@ function _pi_inquiry_manager_participants_process_join_mode_form_value($group_ni
 
 /* Participant list */
 
-function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = FALSE, $owner_can_leave = FALSE) {
+function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = FALSE) {
 	$group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
 	if ($group_check) {
 		global $user;
@@ -253,7 +253,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 		$rows = array();
 
 		foreach ($members_data as $member_data) {
-			$status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $member_data['uid'], $group_nid, $owner_can_leave);
+			$status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $member_data['uid'], $group_nid);
 			$row = array($member_data['name'], $status);
 
 			if ($has_roles && $member_data['status'] === 'member') {
@@ -321,7 +321,7 @@ function _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $grou
 	return $path;
 }
 
-function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry_node, $uid, $group_nid = FALSE, $owner_can_leave = FALSE) {
+function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry_node, $uid, $group_nid = FALSE) {
 	$group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
 	if ($group_check) {
 
@@ -350,7 +350,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
 			}
 
 			if ($its_me) {
-				if ($group_check['normal_management'] && (!$im_owner || $owner_can_leave)) {
+				if ($group_check['normal_management']) {
 					$buttons[] = l(t('leave'), $path('leave'), $link_params);
 				}
 			} else {
@@ -681,7 +681,8 @@ function pi_inquiry_manager_participants_group_join_form_submit() {
 	$group_check = pi_inquiry_groupings_check_group($inquiry, $ids['group_nid']);
 	if ($group_check) {
 		global $user;
-		nquire_group_add_user_to_group($group_check['gid'], $user->uid, $group_check['group']->selective == OG_OPEN);
+		pi_inquiry_groupings_add_user_to_group($group_check, $user->uid, $group_check['group']->selective == OG_OPEN);
+//		nquire_group_add_user_to_group($group_check['gid'], $user->uid, $group_check['group']->selective == OG_OPEN);
 	}
 
 	drupal_goto($_REQUEST['destination']);
@@ -728,7 +729,8 @@ function pi_inquiry_manager_participants_group_acceptinvitation_form_submit() {
 	$group_check = pi_inquiry_groupings_check_group($inquiry, $ids['group_nid']);
 	if ($group_check) {
 		global $user;
-		nquire_group_add_user_to_group($group_check['gid'], $user->uid, TRUE);
+		pi_inquiry_groupings_add_user_to_group($group_check, $user->uid, TRUE);
+//		nquire_group_add_user_to_group($group_check['gid'], $user->uid, TRUE);
 	}
 
 	drupal_goto($_REQUEST['destination']);
@@ -757,13 +759,19 @@ function pi_inquiry_manager_participants_group_leave($inquiry_nid, $group_nid = 
 		} else {
 			if ($status === 'member') {
 				$label = t('Leave');
-				$output .= drupal_set_title(t('Do you want to leave @group?', $group_param));
+				drupal_set_title(t('Do you want to leave @group?', $group_param));
+
+				if (count(nquire_group_get_member_uids($group_check['gid'], TRUE)) === 1) {
+					$output .= '<p>' . t('You are the only member of @group. <b>If you leave, @group will be deleted!</b>', $group_param) . '</p>';
+				} else if ($group_check['group']->uid === $user->uid) {
+					$output .= '<p>' . t('You are the owner of @group. <b>If you leave, you will lose ownership to another group member!</b>', $group_param) . '</p>';
+				}
 			} else if ($group_check['group']->selective == OG_MODERATED) {
 				$label = t('Cancel request');
-				$output .= drupal_set_title(t('Do you want to cancel your membership request from @group?', $group_param));
+				drupal_set_title(t('Do you want to cancel your membership request from @group?', $group_param));
 			} else {
 				$label = t('Decline');
-				$output .= drupal_set_title(t('Do you want to decline the invitation to join @group?', $group_param));
+				drupal_set_title(t('Do you want to decline the invitation to join @group?', $group_param));
 			}
 			$output .= drupal_get_form('pi_inquiry_manager_participants_group_confirm_form', 'pi_inquiry_manager_participants_group_leave_form_submit', $label);
 		}
@@ -779,7 +787,7 @@ function pi_inquiry_manager_participants_group_leave_form_submit() {
 	$group_check = pi_inquiry_groupings_check_group($inquiry, $ids['group_nid']);
 	if ($group_check) {
 		global $user;
-		nquire_group_delete_user_from_group($group_check['gid'], $user->uid);
+		pi_inquiry_groupings_remove_user_from_group($group_check, $user->uid);
 	}
 
 	drupal_goto($_REQUEST['destination']);
@@ -828,7 +836,8 @@ function pi_inquiry_manager_participants_group_accept_user_form_submit() {
 	$group_check = pi_inquiry_groupings_check_group($inquiry, $ids['group_nid']);
 	if ($group_check) {
 		if (nquire_group_get_user_status_in_group($group_check['gid'], $ids['uid']) === 'awaiting') {
-			nquire_group_add_user_to_group($group_check['gid'], $ids['uid'], TRUE);
+			pi_inquiry_groupings_add_user_to_group($group_check, $ids['uid'], TRUE);
+			//nquire_group_add_user_to_group($group_check['gid'], $ids['uid'], TRUE);
 		}
 	}
 
@@ -886,7 +895,7 @@ function pi_inquiry_manager_participants_group_reject_user_form_submit() {
 	$inquiry = node_load($ids['inquiry_nid']);
 	$group_check = pi_inquiry_groupings_check_group($inquiry, $ids['group_nid']);
 	if ($group_check) {
-		nquire_group_delete_user_from_group($group_check['gid'], $ids['uid']);
+		pi_inquiry_groupings_remove_user_from_group($group_check, $ids['uid']);
 	}
 
 	drupal_goto($_REQUEST['destination']);
@@ -1020,7 +1029,8 @@ function pi_inquiry_manager_participants_group_invite_users_form_submit($form, $
 	if ($group_check && isset($form_state['values']['userlist'])) {
 		foreach ($form_state['values']['userlist'] as $uid => $invite) {
 			if ($invite && ($group_check['type'] === 'inquiry' || pi_inquiry_groupings_get_user_subgroup($inquiry, $uid) === FALSE)) {
-				nquire_group_add_user_to_group($group_check['gid'], $uid, !$group_check['normal_management']);
+				pi_inquiry_groupings_add_user_to_group($group_check, $uid, !$group_check['normal_management']);
+				//nquire_group_add_user_to_group($group_check['gid'], $uid, !$group_check['normal_management']);
 			}
 		}
 	}
@@ -1102,7 +1112,7 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 		$can_edit = pi_inquiry_manager_participants_subgroups_edit_policy_access($inquiry_node->nid);
 
 		$output .= '<p>'
-						. t('Some of the inquiries are carried out in groups.')
+						. t('Some of the activities are carried out in groups.')
 						. '<br/>';
 		$output .= $normal_group_management ?
 						t('Group management is open for inquiry members.') :
@@ -1126,8 +1136,8 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 						});
 
 		$rows = array_map(function($group) use ($user, $inquiry_node) {
-							$title = _pi_inquiry_manager_partipants_group_operation_link(check_plain($group->title), $inquiry_node->nid, $group->nid, FALSE, FALSE);
-							$title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid, FALSE, FALSE);
+							$title = _pi_inquiry_manager_partipants_group_operation_link($group->title, $inquiry_node->nid, $group->nid, FALSE, FALSE);
+							$title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid, FALSE);
 
 							$members = nquire_group_get_member_uids($group->nid, TRUE);
 							$members_names = _pi_inquiry_manager_participants_user_names($members, $user->uid);
@@ -1221,13 +1231,29 @@ function pi_inquiry_manager_participants_subgroup_edit($inquiry_nid, $group_nid)
 }
 
 function pi_inquiry_manager_participants_subgroup_form(&$form_state, $inquiry_node, $group_nid = FALSE) {
+	global $user;
+
 	$form = array();
 
 	if ($group_nid) {
 		$group = node_load($group_nid);
-		drupal_set_title(t("Edit group '@group'"), array('@group' => $group->title));
+		drupal_set_title(t("Edit group '@group'", array('@group' => $group->title)));
 	} else {
 		drupal_set_title(t('Create new group'));
+
+		$awaiting_gids = pi_inquiry_groupings_get_user_awaiting_subgroups($inquiry_node, $user->uid);
+		if (count($awaiting_gids) > 0) {
+			$group_names = array_map(function($gid) {
+								$g = node_load($gid);
+								return check_plain($g->title);
+							}, $awaiting_gids);
+
+			$form['group_awaiting_warning'] = array(
+					'#value' => '<p>' . t('Membership for the following groups will be cancelled: ')
+					. "'" . implode("', '", $group_names) . "'."
+					. '</p>',
+			);
+		}
 	}
 
 	$form['group_title'] = array(

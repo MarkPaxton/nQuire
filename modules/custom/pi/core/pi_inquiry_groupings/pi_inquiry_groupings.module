@@ -22,6 +22,7 @@ function pi_inquiry_groupings_check_group($inquiry_node, $group_nid = FALSE) {
 					'group' => $group,
 					'normal_management' => $inquiry_node->group_creation === 'normal',
 					'manager' => $inquiry_node->group_creation === 'normal' ? $group->uid : $inquiry_node->uid,
+					'inquiry_node' => $inquiry_node,
 			);
 		} else {
 			return FALSE;
@@ -33,6 +34,7 @@ function pi_inquiry_groupings_check_group($inquiry_node, $group_nid = FALSE) {
 				'manager' => $inquiry_node->uid,
 				'normal_management' => TRUE,
 				'group' => node_load($inquiry_node->actor_gid),
+				'inquiry_node' => $inquiry_node,
 		);
 	}
 }
@@ -177,10 +179,36 @@ function pi_inquiry_groupings_get_inquiry_role_name($inquiry_node, $role_id) {
 function pi_inquiry_groupings_get_user_subgroup($inquiry_node, $uid) {
 	$query = "SELECT group_node.node_nid FROM (SELECT node.nid AS node_nid, nquire_group.parent, nquire_group.group_type FROM node LEFT JOIN nquire_group ON node.vid=nquire_group.vid WHERE group_type=%d AND parent=%d) AS group_node "
 					. "LEFT JOIN nquire_group_participant ON nquire_group_participant.nid=group_node.node_nid "
-					. "WHERE nquire_group_participant.uid=%d";
+					. "WHERE nquire_group_participant.uid=%d AND nquire_group_participant.active=1";
 
 	$row = db_fetch_array(db_query($query, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid, $uid));
 	return $row ? $row['node_nid'] : FALSE;
+}
+
+function pi_inquiry_groupings_get_user_awaiting_subgroups($inquiry_node, $uid) {
+	$query = "SELECT group_node.node_nid FROM (SELECT node.nid AS node_nid, nquire_group.parent, nquire_group.group_type FROM node LEFT JOIN nquire_group ON node.vid=nquire_group.vid WHERE group_type=%d AND parent=%d) AS group_node "
+					. "LEFT JOIN nquire_group_participant ON nquire_group_participant.nid=group_node.node_nid "
+					. "WHERE nquire_group_participant.uid=%d AND nquire_group_participant.active=0";
+
+	$gids = array();
+	$result = db_query($query, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid, $uid);
+	while ($row = db_fetch_array($result)) {
+		$gids[] = $row['node_nid'];
+	}
+	return $gids;
+}
+
+function pi_inquiry_groupings_get_user_anystate_subgroups($inquiry_node, $uid) {
+	$query = "SELECT group_node.node_nid FROM (SELECT node.nid AS node_nid, nquire_group.parent, nquire_group.group_type FROM node LEFT JOIN nquire_group ON node.vid=nquire_group.vid WHERE group_type=%d AND parent=%d) AS group_node "
+					. "LEFT JOIN nquire_group_participant ON nquire_group_participant.nid=group_node.node_nid "
+					. "WHERE nquire_group_participant.uid=%d";
+
+	$gids = array();
+	$result = db_query($query, NQUIRE_GROUP_TYPE_SUBGROUP, $inquiry_node->actor_gid, $uid);
+	while ($row = db_fetch_array($result)) {
+		$gids[] = $row['node_nid'];
+	}
+	return $gids;
 }
 
 function pi_inquiry_groupings_get_users_without_subgroup($inquiry_node) {
@@ -220,19 +248,46 @@ function pi_inquiry_groupings_create_inquiry_subgroup($inquiry_nid, $owner, $tit
 	if ($inquiry) {
 		$nid = nquire_group_create_group($owner, $title, $subscribe_owner, $inquiry->actor_gid);
 		nquire_group_set_join_mode($nid, OG_INVITE_ONLY);
+
+		if ($subscribe_owner) {
+			$awaiting_gids = pi_inquiry_groupings_get_user_awaiting_subgroups($inquiry, $owner);
+			foreach ($awaiting_gids as $gid) {
+				nquire_group_delete_user_from_group($gid, $owner);
+			}
+		}
 		return $nid;
 	} else {
 		return FALSE;
 	}
 }
 
+function pi_inquiry_groupings_add_user_to_group($group_check, $uid, $active) {
+	nquire_group_add_user_to_group($group_check['gid'], $uid, $active);
+	if ($active && $group_check['type'] === 'inquiry' && $group_check['inquiry_node']->group_creation === 'normal') {
+		$user = user_load($uid);
+		$title = t('@name group', array('@name' => $user->name));
+		pi_inquiry_groupings_create_inquiry_subgroup($group_check['inquiry_node']->nid, $uid, $title, TRUE);
+	}
+}
+
+function pi_inquiry_groupings_remove_user_from_group($group_check, $uid) {
+	if ($group_check['type'] === 'inquiry') {
+		$gids = pi_inquiry_groupings_get_user_anystate_subgroups($group_check['inquiry_node'], $uid);
+		foreach($gids as $gid) {
+			nquire_group_delete_user_from_group($gid, $uid);
+		}
+	}
+
+	nquire_group_delete_user_from_group($group_check['gid'], $uid);
+}
+
 function pi_inquiry_groupings_get_access_data() {
 	static $access_data = NULL;
-	
+
 	if (!$access_data) {
 		include_once 'pi_inquiry_groupings.access.inc';
 		$access_data = new PiInquiryGroupingAccess();
 	}
-	
+
 	return $access_data;
 }

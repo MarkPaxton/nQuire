@@ -172,6 +172,18 @@ function nquire_group_add_user_to_group($gid, $uid, $is_active = FALSE) {
 function nquire_group_delete_user_from_group($gid, $uid) {
 	db_query("DELETE FROM {nquire_group_participant} WHERE nid=%d AND uid=%d", $gid, $uid);
 	db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
+	
+	if (count(nquire_group_get_member_uids($gid, TRUE)) === 0) {
+		node_delete($gid);
+	} else {
+		$group = node_load($gid);
+		if ($group->uid === $uid) {
+			$query = "SELECT uid FROM {nquire_group_participant} WHERE nid=%d AND active=1 LIMIT 1";
+			$row = db_fetch_array(db_query($query, $gid));
+			$group->uid = $row['uid'];
+			node_save($group);
+		}
+	}
 }
 
 function nquire_group_add_user_role($gid, $uid, $role_id) {

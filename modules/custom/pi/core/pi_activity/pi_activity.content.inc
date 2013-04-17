@@ -119,7 +119,7 @@ function pi_activity_create_content_on_first_visit($activity, $uid) {
 /**
  * Returns a list of nids of activity nodes generated for the given pi_activity
  * @param uint $inquiry_id the id of a pi_inquiry to get all related nodes for the activity (n.b. this is probably not needed)
- * @return array(uint) an array of all the activity content nids for the given activity_is
+ * @return array(uint) an array of all the activity content nids for the given activity_id
  */
 function pi_activity_get_activity_content_nids($activity_id) {
 	$activity_content_nids = array();
