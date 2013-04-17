@@ -156,33 +156,11 @@ function pi_activity_build_link($activity_nid) {
 		}
 		$url = "activity/" . $activity_nid . "/" . $node_function;
 		return l($text, $url, array('html' => TRUE));
+	} else {
+		return $text;
 	}
 }
 
-/**
- * Create a link to a particular activity with associated icon
- * @param uint $inquiry_id
- * @param uint $stage_id
- * @param uint $phase_id
- * @param uint $activity_id
- * @param uint $uid
- */
-function _pi_activity_build_link($activity_id, $uid, $class = 'menu', $title = NULL) {
-	$link = pi_activity_get_link($activity_id, $uid);
-	if ($title != NULL)
-		$link['title'] = $title;
-
-	$options['html'] = TRUE;
-	$options['query'] = $link['destination'];
-	$options['attributes'] = array('class' => $class);
-
-	$visible_status = pi_activity_get_visible_status_of_activity($activity_id, $uid);
-	if ($visible_status == 'unavailable')
-		$output = t("@link<br/>", array('@link' => $link['title']));
-	else
-		$output = l($link['title'], $link['url'], $options);
-	return $output;
-}
 
 /**
  * Generates add activity link

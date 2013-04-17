@@ -43,6 +43,7 @@ function pi_activity_perm() {
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
 function pi_activity_access($activity, $op) {
+	return TRUE;
 	//pi_debug_message('pi_activity_item_access:' . $op);
 	// pi_debug_message($activity);
 	// exit;
@@ -75,7 +76,8 @@ function pi_activity_menu() {
 			'file' => 'pi_activity.activity.inc',
 			'page callback' => 'pi_activity_content_view',
 			'page arguments' => array(1, 'view'),
-			'access arguments' => array('access content'),
+			'access callback' => 'pi_activity_tab_view_access_callback',
+			'access arguments' => array(1),
 			'type' => MENU_CALLBACK
 	);
 
@@ -97,55 +99,44 @@ function pi_activity_menu() {
 			'type' => MENU_LOCAL_TASK,
 			'weight' => 1
 	);
-
 	/*
-	  $items['activity/%node/add'] = array(
-	  'title' => 'Add',
-	  'file' => 'pi_activity.activity.inc',
-	  'page callback' => 'pi_activity_content_view',
-	  'page arguments' => array(1, 'add'),
-	  'access arguments' => array(1, 'add'),
+	  $items['activity/%node/admin'] = array(
+	  'title' => 'Admin',
+	  'file' => 'pi_activity.admin.inc',
+	  'page callback' => 'pi_activity_content',
+	  'page arguments' => array(1),
+	  'access arguments' => array('access pi_authoring content'),
 	  'type' => MENU_LOCAL_TASK,
-	  'weight' => 2
+	  'weight' => 3
 	  );
-	 */
-	$items['activity/%node/admin'] = array(
-			'title' => 'Admin',
-			'file' => 'pi_activity.admin.inc',
-			'page callback' => 'pi_activity_content',
-			'page arguments' => array(1),
-			'access arguments' => array('access pi_authoring content'),
-			'type' => MENU_LOCAL_TASK,
-			'weight' => 3
-	);
 
-	$items['activity/%node/admin/content'] = array(
-			'title' => 'View Activity Content',
-			'type' => MENU_DEFAULT_LOCAL_TASK,
-			'weight' => 0
-	);
+	  $items['activity/%node/admin/content'] = array(
+	  'title' => 'View Activity Content',
+	  'type' => MENU_DEFAULT_LOCAL_TASK,
+	  'weight' => 0
+	  );
 
-	$items['activity/%node/admin/edit'] = array(
-			'title' => 'Edit Activity',
-			'file' => 'pi_activity.admin.inc',
-			'page callback' => 'pi_activity_edit',
-			'page arguments' => array(1),
-			'access_callback' => TRUE,
-			'access arguments' => array('access pi_authoring content'),
-			'type' => MENU_LOCAL_TASK,
-			'weight' => 1
-	);
+	  $items['activity/%node/admin/edit'] = array(
+	  'title' => 'Edit Activity',
+	  'file' => 'pi_activity.admin.inc',
+	  'page callback' => 'pi_activity_edit',
+	  'page arguments' => array(1),
+	  'access_callback' => TRUE,
+	  'access arguments' => array('access pi_authoring content'),
+	  'type' => MENU_LOCAL_TASK,
+	  'weight' => 1
+	  );
 
-	$items['activity/%node/admin/view/%node'] = array(
-			'title' => 'Edit Activity',
-			'file' => 'pi_activity.admin.inc',
-			'page callback' => 'pi_activity_admin_view_node',
-			'page arguments' => array(1, 4),
-			'access_callback' => TRUE,
-			'access arguments' => array('access pi_authoring content'),
-			'type' => MENU_CALLBACK,
-			'weight' => 1
-	);
+	  $items['activity/%node/admin/view/%node'] = array(
+	  'title' => 'Edit Activity',
+	  'file' => 'pi_activity.admin.inc',
+	  'page callback' => 'pi_activity_admin_view_node',
+	  'page arguments' => array(1, 4),
+	  'access_callback' => TRUE,
+	  'access arguments' => array('access pi_authoring content'),
+	  'type' => MENU_CALLBACK,
+	  'weight' => 1
+	  ); */
 
 	// NOTE: If you change the url below also change pi_activity_form_pi_activity_form_alter()
 	$items['admin/nquire/activity'] = array(
@@ -163,11 +154,11 @@ function pi_activity_menu() {
 function pi_activity_tab_view_access_callback($node) {
 	switch ($node->activity_type) {
 		case 'pi_data':
-		case 'pi_key_questions':
-		case 'pi_key_answers':
+			//case 'pi_key_questions':
+			//case 'pi_key_answers':
 			return FALSE;
 		default:
-			return TRUE;
+			return pi_activity_tabs_access_to_content($node, 'view');
 	}
 }
 
@@ -181,8 +172,24 @@ function pi_activity_tab_edit_access_callback($node) {
 		case 'pi_explore_tool':
 			return FALSE;
 		default:
-			return TRUE;
+			return pi_activity_tabs_access_to_content($node, 'edit');
 	}
+}
+
+function pi_activity_tabs_access_to_content($node, $function) {
+	if ($node->type === 'pi_activity') {
+		$access_data = pi_inquiry_groupings_get_access_data();
+		$activity_data = $access_data->get_activity($node->nid);
+		if ($activity_data) {
+			if ($activity_data['script_activity'] || pi_activity_get_content_nid_for_activity($node->nid, FALSE)) {
+				return $activity_data['access'] === 'edit' ||
+								($activity_data['access'] === 'view' && $function === 'view');
+				return TRUE;
+			}
+		}
+	}
+
+	return FALSE;
 }
 
 /**
@@ -888,7 +895,6 @@ function pi_activity_load($node) {
 			$stages[$stage_state_row['stage_nid']] = $stage_state_row['stage_state'];
 		}
 		$activity->activity_phases_stages['stages'] = $stages;
-		
 	} else {
 		//@TODO FIXME
 		if ($node->type != "pi_data") {

@@ -1,9 +1,13 @@
 <?php
 
 /** Functions dealing with activity content */
-function pi_activity_get_content_nid_for_activity($activity_nid) {
+function pi_activity_get_content_nid_for_activity($activity_nid, $try_to_create = TRUE) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$activity_data = $access_data->get_activity($activity_nid);
+	
+	if ($activity_data['node']->referenced_node) {
+		return $activity_data['node']->referenced_node;
+	}
 
 	switch ($activity_data['collaboration']) {
 		case 'individual':
@@ -25,7 +29,7 @@ function pi_activity_get_content_nid_for_activity($activity_nid) {
 	if ($row) {
 		$nid = $row['nid'];
 		return $nid;
-	} else {
+	} else if ($try_to_create) {
 		$new_node = pi_activity_create_content_on_first_visit($activity_data['node'], $access_data->get_uid());
 		if ($new_node) {
 			return $new_node->nid;
@@ -66,6 +70,7 @@ function pi_activity_get_children_content_nids_for_sort_activity($sort_activity_
 	}
 	return $nids;
 }
+
 
 function pi_activity_link_content_with_activity($content_node, $activity_nid) {
 	$access_data = pi_inquiry_groupings_get_access_data();

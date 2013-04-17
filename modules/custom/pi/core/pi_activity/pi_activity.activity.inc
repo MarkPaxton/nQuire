@@ -54,14 +54,11 @@ function pi_activity_content_view($activity, $arg_node_function) {
 						$output .= $node_view;
 					}
 				} else {
-
-					//drupal_set_message(t("Can't find the content this activity."), 'error');
-
 					$activity_link = 'activity/' . $activity->nid . '/edit';
 					$destination = drupal_get_destination();
 					unset($_REQUEST['destination']);
 					unset($_GET['destination']);
-					drupal_goto($activity_link, 'destination=activity/' . $activity->nid . '/edit');
+					drupal_goto($activity_link);
 				}
 				break;
 			case 'add':

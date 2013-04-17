@@ -15,6 +15,7 @@ class PiInquiryGroupingAccess {
 		global $user;
 
 		$this->access_values = array(
+				FALSE => 0,
 				'noaccess' => 0,
 				'view' => 1,
 				'comment' => 2,
@@ -67,7 +68,8 @@ class PiInquiryGroupingAccess {
 				$item['node'] = node_load($activity_nid);
 				$item['collaboration'] = $data['node']->collaboration;
 				$item['phase_nid'] = $data['node']->nid;
-
+				$item['script_activity'] = TRUE;
+				
 				if ($this->inquiry['access']) {
 					switch ($item['collaboration']) {
 						case 'individual':
@@ -93,7 +95,7 @@ class PiInquiryGroupingAccess {
 		if (count($this->inquiry['roles']) === 0) {
 			return 'edit';
 		} else {
-			$access = 'noaccess';
+			$access = FALSE;
 			foreach ($this->inquiry['roles'] as $role) {
 				if (in_array($role['id'], $user_roles)) {
 					if (isset($role['activities'][$activity_nid])) {
@@ -137,11 +139,13 @@ class PiInquiryGroupingAccess {
 			$parent_nid = pi_activity_get_parent_activity($nid);
 			if (isset($this->activities[$parent_nid])) {
 				$parent_data = $this->activities[$parent_nid];
+				$activity_node = node_load($nid);
 				$child_data = array(
-						'node' => node_load($nid),
+						'node' => $activity_node,
 						'collaboration' => $parent_data['collaboration'],
 						'phase_nid' => $parent_data['phase_nid'],
 						'access' => $parent_data['access'],
+						'script_activity' => !$activity_node->referenced_node, // "add" activities are part of the script 
 				);
 				$this->activities[$nid] = $child_data;
 			}
@@ -161,16 +165,16 @@ class PiInquiryGroupingAccess {
 	function get_current_activity_nid() {
 		return $this->current_path->activity_id;
 	}
-	
+
 	function get_activity_by_type($type) {
 		foreach ($this->phases as $phase_data) {
-			foreach($phase_data['activities'] as $activity_data) {
+			foreach ($phase_data['activities'] as $activity_data) {
 				if ($activity_data['node']->activity_type === $type) {
 					return $activity_data;
 				}
 			}
 		}
-		
+
 		return NULL;
 	}
 

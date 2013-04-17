@@ -98,7 +98,8 @@ function inquiry_creator_activity_form_submit($form, $form_state) {
       $activity->revision = TRUE;
       node_save($activity);
       
-      inquiry_deployer_update_activity($design, inquiry_design_load_phase_for_activity($design, $activity->nid), $activity);
+			$phase = inquiry_design_load_phase_for_activity($design, $activity->nid);
+      inquiry_deployer_update_activity($design, $phase, $activity);
     }
 
     if ($design_changed) {
