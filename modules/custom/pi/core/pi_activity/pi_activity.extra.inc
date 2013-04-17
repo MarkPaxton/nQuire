@@ -132,13 +132,18 @@ function pi_activity_build_link($activity_nid) {
 	$activity_data = $access_data->get_activity($activity_nid);
 	$activity_node = $activity_data['node'];
 
+	$content_exists = pi_activity_get_content_nid_for_activity($activity_nid);
 
-	if (!$activity_data['access']) {
-		$image = 'unavailable.png';
-	} else if (pi_activity_get_content_nid_for_activity($activity_nid)) {
-		$image = $activity_data['access'] . 'able.png';
-	} else {
-		$image = 'creatable.png';
+	switch ($activity_data['access']) {
+		case 'edit':
+			$image = 'editable.png';
+			break;
+		case 'view':
+			$image = $content_exists ? 'viewable.png' : 'unavailable.png';
+			break;
+		default:
+			$image = 'unavailable.png';
+			break;
 	}
 
 	global $base_path;
@@ -160,7 +165,6 @@ function pi_activity_build_link($activity_nid) {
 		return $text;
 	}
 }
-
 
 /**
  * Generates add activity link

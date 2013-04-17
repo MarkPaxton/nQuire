@@ -54,11 +54,15 @@ function pi_activity_content_view($activity, $arg_node_function) {
 						$output .= $node_view;
 					}
 				} else {
-					$activity_link = 'activity/' . $activity->nid . '/edit';
-					$destination = drupal_get_destination();
-					unset($_REQUEST['destination']);
-					unset($_GET['destination']);
-					drupal_goto($activity_link);
+					$access_data = pi_inquiry_groupings_get_access_data();
+					$activity_data = $access_data->get_activity($activity->nid);
+					if ($activity_data['access'] === 'edit') {
+						$activity_link = 'activity/' . $activity->nid . '/edit';
+						$destination = drupal_get_destination();
+						unset($_REQUEST['destination']);
+						unset($_GET['destination']);
+						drupal_goto($activity_link);
+					}
 				}
 				break;
 			case 'add':

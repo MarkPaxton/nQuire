@@ -4,7 +4,7 @@
 function pi_activity_get_content_nid_for_activity($activity_nid, $try_to_create = TRUE) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$activity_data = $access_data->get_activity($activity_nid);
-	
+
 	if ($activity_data['node']->referenced_node) {
 		return $activity_data['node']->referenced_node;
 	}
@@ -71,7 +71,6 @@ function pi_activity_get_children_content_nids_for_sort_activity($sort_activity_
 	return $nids;
 }
 
-
 function pi_activity_link_content_with_activity($content_node, $activity_nid) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$activity_data = $access_data->get_activity($activity_nid);
@@ -88,8 +87,10 @@ function pi_activity_link_content_with_activity($content_node, $activity_nid) {
 
 	drupal_write_record('pi_activity_node', $activity_node);
 
-	$query = "UPDATE pi_activity SET referenced_node=%d WHERE nid=%d";
-	db_query($query, $content_node->nid, $activity_nid);
+	if (!$activity_data['script_activity']) {
+		$query = "UPDATE pi_activity SET referenced_node=%d WHERE nid=%d";
+		db_query($query, $content_node->nid, $activity_nid);
+	}
 }
 
 function pi_activity_create_content_on_first_visit($activity, $uid) {
