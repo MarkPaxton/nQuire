@@ -210,7 +210,7 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 
 	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
-	$data_nids = pi_sort_data_get_data($activity_id_for_this_node);
+	$data_nids = pi_sort_data_get_data_for_sort_activity_nid($activity_id_for_this_node);
 	$filtered_measure_nids = pi_sort_data_measures_for_activity($user->uid, $node_details->inquiry_id, $activity_id_for_this_node);
 
 	$header = array();
@@ -233,7 +233,7 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 		$data_item_activity_nid = pi_activity_get_activity_nid_for_content_nid($nid);
 
 		$row[] = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
-						. t('by @user', array('@user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid))) . '<br/>'
+						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid))) . '<br/>'
 						. l(t('edit'), 'activity/' . $data_item_activity_nid . '/edit') . '&nbsp;&nbsp;&nbsp;'
 						. l(t('delete'), 'node/' . $nid . '/delete', array('query' => 'destination=phase/' . $node_details->phase_id));
 
@@ -373,23 +373,16 @@ function pi_sort_data_get_item_nids($sort_data_activity_nid) {
 	return $nids;
 }
 
-function pi_sort_data_get_activities($inquiry_id) {
-	$phases = pi_phase_load_nids_for_inquiry($inquiry_id);
-	$query = "SELECT {node}.`nid`, {pi_activity}.`phase_nid` FROM {node} "
-					. "LEFT JOIN {pi_activity} ON {node}.`vid` = {pi_activity}.`vid` "
-					. "WHERE {pi_activity}.`activity_type`='pi_sort_data'";
-
-	$result = db_query($query);
-	$nids = array();
-	while ($row = db_fetch_array($result)) {
-		if (in_array($row['phase_nid'], $phases)) {
-			$nids[] = $row['nid'];
-		}
-	}
-	return $nids;
+function pi_sort_data_get_activities() {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	return $access_data->get_activities_by_type('pi_sort_data');
 }
 
-function pi_sort_data_get_data($sort_data_nid) {
+function pi_sort_data_get_data_for_sort_node_nid($sort_data_nid) {
 	$activity_nid = pi_activity_get_activity_nid_for_content_nid($sort_data_nid);
 	return pi_activity_get_children_content_nids_for_sort_activity_nid($activity_nid);
+}
+
+function pi_sort_data_get_data_for_sort_activity_nid($sort_activity_nid) {
+	return pi_activity_get_children_content_nids_for_sort_activity_nid($sort_activity_nid);	
 }

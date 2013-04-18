@@ -202,17 +202,13 @@ function _pi_data_spreadsheet_create_spreadsheet(&$node, $key) {
 function _pi_data_spreadsheet_update_data($session_key, $book_name) {
   include_once 'CellRequest.php';
 
-  global $user;
-  $details = get_inquiry_details_from_current_path();
-
   $client = new EditGrid(NULL);
   $client->setSessionKey($session_key);
 
-  $data_activities = pi_sort_data_get_activities($details->inquiry_id);
+	$access_data = pi_inquiry_groupings_get_access_data();
+  $data_activities = pi_sort_data_get_activities();
 
-  foreach ($data_activities as $i => $activity_nid) {
-    $activity = node_load($activity_nid);
-
+  foreach ($data_activities as $i => $activity_data) {
     $worksheet_name = 'Data' . ($i + 1);
 
     $result_list = $client->call("worksheet.get", array('worksheet' => "user/evilfer/$book_name/$worksheet_name"));
@@ -230,15 +226,15 @@ function _pi_data_spreadsheet_update_data($session_key, $book_name) {
 
     $cells = new PiDataSpreadSheetCellRequest();
 
-    $cells->addCell(0, 0, t('Data for activity: @title', array('@title' => $activity->title)));
+    $cells->addCell(0, 0, t('Data for activity: @title', array('@title' => $activity_data['node']->title)));
     $cells->addCell(0, 1, t('This sheet is created automatically, Please do not modify it!'));
 
-    $data_nids = pi_sort_data_get_item_nids($activity_nid);
+    $data_nids = pi_sort_data_get_data_for_sort_activity_nid($activity_data['node']->nid);
     $data = array_map(function($nid) {
               return node_load($nid);
             }, $data_nids);
 
-    $measure_nids = pi_sort_data_measures_for_activity($user->uid, $details->inquiry_id, $activity_nid);
+    $measure_nids = pi_sort_data_measures_for_activity($access_data->get_uid(), $access_data->get_inquiry_nid(), $activity_data['node']->nid);
 
     $x = 0;
     foreach ($measure_nids as $nid) {

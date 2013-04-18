@@ -1156,7 +1156,9 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 
 		$unasigned_users = pi_inquiry_groupings_get_users_without_subgroup($inquiry_node);
 		if (count($unasigned_users) > 0) {
-			$output .= '<p>' . t('Some users havent been assigned to groups:<br/>') . implode(', ', _pi_inquiry_manager_participants_user_names($unasigned_users, $user->uid)) . '</p>';
+			$output .= '<p>' . t('Some users have not been assigned to groups yet: \'')
+							. implode('\', \'', _pi_inquiry_manager_participants_user_names($unasigned_users, $user->uid))
+							. '\'.</p>';
 		}
 	}
 
@@ -1306,7 +1308,11 @@ function pi_inquiry_manager_participants_subgroup_form_submit($form, $form_state
 
 function pi_inquiry_manager_participants_subgroup($inquiry_nid, $group_nid) {
 	$inquiry = node_load($inquiry_nid);
-	$output = theme('pi_inquiry_manager_participants_group_access_policy', $inquiry, $group_nid);
+
+	if ($inquiry->group_creation === 'normal') {
+		$output = theme('pi_inquiry_manager_participants_group_access_policy', $inquiry, $group_nid);
+	}
+
 	$output .= theme('pi_inquiry_manager_participants_list', $inquiry, $group_nid);
 	$output .= theme('pi_inquiry_manager_participants_roles', $inquiry, $group_nid);
 

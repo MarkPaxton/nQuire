@@ -180,5 +180,18 @@ class PiInquiryGroupingAccess {
 
 		return NULL;
 	}
+	
+	function get_activities_by_type($type) {
+		$activities = array();
+		foreach ($this->phases as $phase_data) {
+			foreach ($phase_data['activities'] as $activity_data) {
+				if ($activity_data['node']->activity_type === $type) {
+					$activities[] = $activity_data;
+				}
+			}
+		}
+
+		return $activities;
+	}
 
 }
