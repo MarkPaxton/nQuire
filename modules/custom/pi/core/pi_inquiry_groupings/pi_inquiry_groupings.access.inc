@@ -145,7 +145,7 @@ class PiInquiryGroupingAccess {
 						'collaboration' => $parent_data['collaboration'],
 						'phase_nid' => $parent_data['phase_nid'],
 						'access' => $parent_data['access'],
-						'script_activity' => !$activity_node->referenced_node, // "add" activities are part of the script 
+						'script_activity' => $activity_node->script_activity,
 				);
 				$this->activities[$nid] = $child_data;
 			}
@@ -162,6 +162,9 @@ class PiInquiryGroupingAccess {
 		return $this->uid;
 	}
 
+	function get_current_phase_nid() {
+		return $this->current_path->phase_id;
+	}
 	function get_current_activity_nid() {
 		return $this->current_path->activity_id;
 	}

@@ -273,8 +273,22 @@ function pi_inquiry_groupings_add_user_to_group($group_check, $uid, $active) {
 function pi_inquiry_groupings_remove_user_from_group($group_check, $uid) {
 	if ($group_check['type'] === 'inquiry') {
 		$gids = pi_inquiry_groupings_get_user_anystate_subgroups($group_check['inquiry_node'], $uid);
-		foreach($gids as $gid) {
+		global $user;
+
+		if ($user->uid != $uid) {
+			$original_user = $user;
+			$old_state = session_save_session();
+			session_save_session(FALSE);
+			$user = user_load(array('uid' => $uid));
+		}
+
+		foreach ($gids as $gid) {
 			nquire_group_delete_user_from_group($gid, $uid);
+		}
+
+		if ($original_user) {
+			$user = $original_user;
+			session_save_session($old_state);
 		}
 	}
 

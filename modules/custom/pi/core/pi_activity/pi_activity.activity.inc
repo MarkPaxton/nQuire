@@ -78,7 +78,7 @@ function pi_activity_content_view($activity, $arg_node_function) {
 				$node_function = pi_activity_get_node_function($activity->nid, $user->uid);
 				if ($node_function == 'add') {
 					// Normal add activity
-					$node_type = $activity->node_type;
+					$node_type = $activity->activity_type;
 					if (!function_exists("node_add")) {
 						include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 					}
@@ -110,12 +110,12 @@ function pi_activity_content_view($activity, $arg_node_function) {
 					$loaded_node = new stdClass;
 					$loaded_node->uid = $user->uid;
 					$loaded_node->name = (isset($user->name) ? $user->name : '');
-					$loaded_node->type = $activity->node_type;
+					$loaded_node->type = $activity->activity_type;
 					$loaded_node->language = '';
 					$output .= node_page_edit($loaded_node);
 				} else {
 					$loaded_node = node_load($nid);
-					if (pi_check_is_node_of_type($loaded_node, $activity->node_type)) {
+					if (pi_check_is_node_of_type($loaded_node, $activity->activity_type)) {
 						$output .= node_page_edit($loaded_node);
 					} else {
 						drupal_set_message(t('Error, Activity content is the wrong type or does not exist', 'error'));

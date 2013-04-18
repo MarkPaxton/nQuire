@@ -57,17 +57,13 @@ function pi_activity_add_activity_node_for_activity_content_node($add_activity, 
   $new_activity_node->title = $content_node->title;
   $new_activity_node->body = $add_activity->description;
   $new_activity_node->activity_type = $add_activity->activity_type;
-  $new_activity_node->node_type = $content_node->node_type;
   $new_activity_node->parameters = $add_activity->parameters;
-  $new_activity_node->destination_after = $add_activity->destination_after;
-  $new_activity_node->audience = $add_activity->audience;
-  $new_activity_node->actor = $add_activity->actor;
+  $new_activity_node->script_activity = FALSE;
+  $new_activity_node->phase_nid = $add_activity->phase_nid;
   $new_activity_node->weight = $add_activity->weight;
-
-  /* FIX (eloy) set parent activity */
   $new_activity_node->parent_activity = $add_activity->parent_activity;
 
-  node_save($new_activity_node);
+	  node_save($new_activity_node);
   
   /* FIX (eloy) */
   pi_activity_link_content_with_activity($content_node, $new_activity_node->nid);

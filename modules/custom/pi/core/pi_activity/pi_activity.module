@@ -383,18 +383,7 @@ function pi_activity_form(&$node, $form_state) {
 	$form['body_field']['body']['#rows'] = 6;
 	$form['body_field']['teaser_include']['#access'] = FALSE;
 
-	//@TODO FIXME node_type is hidden, node_type = activity_type
-	/*
-	  $form['node_type'] = array(
-	  '#type' => 'select',
-	  '#title' => t('Node Type'),
-	  '#required' => true,
-	  '#weight' => -8,
-	  '#options' => $node_type_options,
-	  '#default_value' => $node->node_type,
-	  '#description' => t('Some activities will create content of different types, but unless you know otherwise choose the same as the Activity Type.')
-	  );
-	 */
+
 	$form['parameters'] = array(
 			'#type' => 'textfield',
 			'#title' => t('Parameters'),
@@ -411,7 +400,7 @@ function pi_activity_form(&$node, $form_state) {
 			'#required' => true,
 			'#weight' => 8,
 			'#options' => $destination_option,
-			'#default_value' => $result->destination,
+			'#default_value' => 'phase',
 			'#description' => t('When someone completes an activity and saves it, they can go back to the phase view, or stay on the activity page (self), so choose which one here.')
 	);
 
@@ -582,7 +571,7 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 			$activity_id = pi_util_get_path_element(1);
 			$target_activity = node_load($activity_id);
 			if (pi_check_is_node_of_type($target_activity, 'pi_activity')) {
-				$redirect_destination = $target_activity->destination_after;
+				$redirect_destination = 'phase';//$target_activity->destination_after;
 				if ($redirect_destination == 'phase')
 					$form['#redirect'] = 'phase/' . $target_activity->phase_nid;
 				elseif ($redirect_destination == 'self')
@@ -867,40 +856,13 @@ function pi_activity_load($node) {
 	$result = db_query($query, $node->nid);
 	$activity = db_fetch_object($result);
 
-	if ($activity != NULL) {
+	/*if ($activity != NULL) {
 		//map activity_id to nid for backward compatability
 		$phase = node_load($activity->phase_nid);
 		$activity->inquiry_id = $phase->inquiry_nid;
 		$activity->activity_id = &$activity->nid;
+	}*/
 
-		// map destination_after to destination - using destination in forms overrides
-		// the form destination variable, and breaks  it, so this has to have a different name
-		// in the form
-		if (!isset($activity->destination)) {
-			$activity->destination = &$activity->destination_after;
-		}
-
-		//The constraints of the construction of the form mean that variable names are
-		// also in random places in the node object, so link them to sensible places too
-		$activity->activity_phases_stages = array();
-		$activity->activity_phases_stages['phase_nid'] = &$activity->phase_nid;
-		$activity->selects['audience'] = &$activity->audience;
-		$activity->selects['gid'] = &$activity->actor;
-
-		//Now get the stage states:
-		$stages_result = _pi_activity_get_activity_stage_stages($node->nid);
-		$stages = array();
-
-		foreach ($stages_result as $stage_state_row) {
-			$stages[$stage_state_row['stage_nid']] = $stage_state_row['stage_state'];
-		}
-		$activity->activity_phases_stages['stages'] = $stages;
-	} else {
-		//@TODO FIXME
-		if ($node->type != "pi_data") {
-			drupal_set_message(t('Error: Activity data not found in pi_activity table'), 'error');
-		}
-	}
 	return $activity;
 }
 
@@ -922,140 +884,6 @@ function pi_activity_insert($node) {
 	if ($write_result == FALSE) {
 		drupal_set_message(t('Error saving new pi_activity data'), 'error');
 	}
-
-	$selected_stages = array();
-	/* FIX (eloy) */
-//	foreach($node->activity_phases_stages['stages']['stage_select'] as $stage_nid => $selected) {
-	foreach ($node->activity_phases_stages['stages'] as $stage_nid => $selected) {
-		if ($selected != 0)
-			$selected_stages[$stage_nid] = 'visible';
-	}
-
-	// Now set stage_states
-	foreach ($selected_stages as $stage_nid => $stage_state) {
-		$pi_activity_stage_state = array(
-				'activity_nid' => $node->nid,
-				'stage_nid' => $stage_nid,
-				'stage_state' => $stage_state
-		);
-
-		$write_result = drupal_write_record('pi_activity_stage_state', $pi_activity_stage_state);
-
-		if ($write_result == FALSE) {
-			$translate['!stage_nid'] = $stage_nid;
-			drupal_set_message(t('Error saving pi_activity stage state for stage !stage_nid', $translate), 'error');
-		}
-	}
-
-	// now set activity_statuses - one for the main activity and one for the shared view part of
-	// activities
-	$activity_statuses_to_add = array();
-
-	if ($node->selects['gid'] == NULL) {
-		$phase = node_load($activity_phases_stages['phase_nid']);
-		if ($phase) {
-			$node->actor = $phase->phase_actor;
-			$node->selects['gid'] = $phase->phase_actor;
-
-			$translate['!activity_id'] = $node->nid;
-			$translate['%title'] = $node->title;
-			$translate['!phase_actor'] = $phase->phase_actor;
-			drupal_set_message(t('No actor set for activity !activity_id "%title", using default for phase: !phase_actor.', $translate), 'error');
-		} else {
-			$translate['!activity_id'] = $node->nid;
-			$translate['%title'] = $node->title;
-			drupal_set_message(t('No actor set for activity !activity_id "%title", no activity statuses will be set.', $translate), 'error');
-		}
-	}
-
-	// Set a status for the activity actor group. If this is a group larger than the audience, then
-	// this is a default that's overridden when an actor sub-group creates their content and their own
-	// override status is set.
-	if ($node->selects['gid'] != NULL) {
-		//Start with the default status for all activity actors
-		$default_status = array(
-				'activity_id' => $node->nid,
-				'uid' => NULL,
-				'gid' => $node->selects['gid'],
-				'visible_status' => "start",
-				'node_function' => "edit"
-		);
-
-		$activity_statuses_to_add[] = $default_status;
-
-		// If it is a shared activity, then make a 'view' status for the share group
-		// otherwise just make the standard activity status for the activity.
-		$activity_actor_audience_result_type = _pi_activity_get_activity_actor_audience_result_type($node->selects['gid'], $node->actor);
-		switch ($activity_actor_audience_result_type) {
-			case 'done_as_individuals_in_group_not_shared':
-				//If audience is individual then everyone in the target group will create
-				// their own activity content and it wont be shared.
-				// do nothing - no view status needed for any other group
-				break;
-
-			case 'done_as_single_group_not_shared':
-				// do nothing - no view status needed for any other group
-				break;
-			case 'done_by_all_groups_in_larger_group_not_shared':
-				// If audience is group then activity will be done as a group and shared within the specified audience group type
-				// All the groups of nquire group type 'group' within the selected group will do one item of content
-				// Need to get all audience group within the hierarchy of the selected actor group.
-				// do nothing - no view status needed for any other group
-				break;
-			case 'done_by_group_shared_with_larger_group':
-				$actor_group = node_load($node->selects['gid']);
-				$actor_group_type = null;
-				if ($actor_group != null) {
-					$actor_group_type = pi_get_type_of_group($actor_group->nid);
-				}
-				if ($actor_group_type != null) {
-					$audience_ids = pi_groups_get_associated_groups($node->selects['gid'], $node->selects['audience']);
-					// There should only be one larger group, so if more than one is returned, there's a problem
-					// if 0 is returned then there is also a problem, but it's less bad as it means the parent hasn't
-					// been assigned, rather than it having 2 parents (that's a DB error!).
-					if (count($audience_ids) == 0) {
-						drupal_set_message(t("Haven't set activity status to share the result of this activity as no associated group is defined for the actor group."), 'warning');
-					} else {
-						if (count($audience_ids) > 1) {
-							$group = node_load($node->actor);
-							$translate['@actor_group_type'] = $actor_group_type;
-							$translate['%group_name'] = $group->title;
-							$translate['@audience_group_type'] = $node->selects['audience'];
-
-							drupal_set_message(t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type however there's more than one class associated with '%group_name' - please check the group hierarchy is set up correctly.", $translate), 'warning');
-						}
-						foreach ($audience_ids as $audience_nid) {
-							$activity_statuses_to_add[] = array(
-									'activity_id' => $node->nid,
-									'gid' => $audience_nid,
-									'node_function' => 'view',
-									'visible_status' => 'view'
-							);
-						}
-					}
-				}
-				break;
-			default:
-				//This bit should never be reached because the above options cover all eventualities!!
-				break;
-		}
-	} else {
-		drupal_set_message(t('Error no node->actor NULL data'), 'error');
-	}
-
-	if (is_array($activity_statuses_to_add))
-		if (count($activity_statuses_to_add) == 0)
-			drupal_set_message(t('Error no pi_activity_status data'), 'error');
-
-	foreach ($activity_statuses_to_add as $status) {
-		$result = drupal_write_record('pi_activity_status', $status);
-		if ($result == FALSE) {
-			$translate['!function'] = $status['node_function'];
-			$translate['!status'] = $status['visible_status'];
-			$translate['!gid'] = $status['gid'];
-			drupal_set_message(t('Error saving pi_activity_status, node function !function, visible status !status for group !gid', $translate), 'error');
-		}
-	}
 }
 
 /**
@@ -1066,222 +894,9 @@ function pi_activity_insert($node) {
 function pi_activity_update($node) {
 	$activity_row_data = _pi_activity_form_data_to_pi_activity_row($node);
 	$update_result = drupal_write_record('pi_activity', $activity_row_data, array('nid'));
+
 	if ($update_result == FALSE)
 		drupal_set_message('Error: Activity data not saved due to database problem; try saving again.', 'error');
-
-	// update associated pi_activity_stage_states
-	// get current ones; add new ones; delete old ones
-
-	$existing_stage_states = _pi_activity_get_activity_stage_states($node->nid);
-	//make a list of stages and pass_ids
-	$stage_state_pass_ids = array();
-	foreach ($existing_stage_states as $pass_id => $row)
-		$stage_state_pass_ids[$row['stage_nid']] = $pass_id;
-
-	$selected_stages = array();
-	$stage_states_to_add = array();
-	$stage_state_ids_to_remove = array();
-
-	//Create a list of stage states to add and remove, by checking which ones exist already
-	// and by what is specified in the form
-	/* FIX (eloy) */
-//	foreach($node->activity_phases_stages['stages']['stage_select'] as $stage_nid => $selected) {
-	foreach ($node->activity_phases_stages['stages'] as $stage_nid => $selected) {
-		if ($selected == 'visible') {
-			//if a stage state is specified then set the state to visible - check if it the state is already
-			// set, if it is not already set then add it to the add list
-			$selected_stages[$stage_nid] = 'visible';
-			if (!array_key_exists($stage_nid, $stage_state_pass_ids) && !array_key_exists($stage_nid, $stage_states_to_add)) {
-				$stage_states_to_add[$stage_nid] = $selected_stages[$stage_nid];
-			}
-		} else {
-			// If the stage is not selected in the form, then check if a state is already set, and add it
-			// to the remove list if it is.
-			if (array_key_exists($stage_nid, $stage_state_pass_ids) && !array_key_exists($stage_nid, $stage_state_ids_to_remove))
-				$stage_state_ids_to_remove[$stage_nid] = $stage_state_pass_ids[$stage_nid];
-		}
-	}
-
-	//find any existing states for stages not given in the form and add them to the remove list
-	foreach ($stage_state_pass_ids as $stage_nid => $pass_id) {
-		if (!array_key_exists($stage_nid, $selected_stages) && !array_key_exists($stage_nid, $stage_state_ids_to_remove))
-			$stage_state_ids_to_remove[$stage_nid] = $pass_id;
-	}
-
-	//Add only the non-exisitant state rows
-	foreach ($stage_states_to_add as $stage_nid => $stage_state) {
-		$pi_activity_stage_state = array('activity_nid' => $node->nid, 'stage_nid' => $stage_nid, 'stage_state' => $stage_state);
-		$write_result = drupal_write_record('pi_activity_stage_state', $pi_activity_stage_state);
-		if ($write_result == FALSE) {
-			drupal_set_message(
-							t('Error saving pi_activity stage state for stage !stage_nid', array('!stage_nid' => $stage_nid)
-							), 'error'
-			);
-		}
-	}
-
-	// Remove all the unneeded state rows
-	foreach ($stage_state_ids_to_remove as $pass_id)
-		db_query('DELETE FROM {pi_activity_stage_state} WHERE `pass_id` = %d', $pass_id);
-
-	// now update activity_statuses - one for the main activity and one for the shared view modde part of
-	// activities
-	$existing_activity_statuses = array();
-	$result = db_query("SELECT * FROM {pi_activity_status} WHERE `activity_id` = %d", $node->nid);
-	if ($result != FALSE) {
-		while ($status_row = db_fetch_array($result))
-			$existing_activity_statuses[$status_row['gid']] = $status_row;
-	}
-
-	$activity_statuses_to_add = array();
-
-	//Start with the default status for all activity types
-	$default_status = array(
-			'activity_id' => $node->nid,
-			'uid' => NULL,
-			'gid' => $activity_row_data->actor,
-			'node_function' => $node->node_function,
-			'visible_status' => $node->visible_status
-	);
-
-	$activity_statuses_to_add[$activity_row_data->actor] = $default_status;
-
-	// If it is a shared activity, then make a 'view' status for the share group
-	// otherwisese just make the standard activity status for the activity.
-	$activity_actor_audience_result_type = _pi_activity_get_activity_actor_audience_result_type($activity_row_data->actor, $activity_row_data->audience);
-	switch ($activity_actor_audience_result_type) {
-		case 'done_as_individuals_in_group_not_shared':
-			//If audience is individual then everyone in the target group will create
-			// their own activity content and it wont be shared.
-			// do nothing - no view status needed for any other group
-			break;
-
-		case 'done_as_single_group_not_shared':
-			// do nothing - no view status needed for any other group
-			break;
-		case 'done_by_all_groups_in_larger_group_not_shared':
-			// If audience is group then activity will be done as a group and shared within the specified audience group type
-			// All the groups of nquire group type 'group' within the selected group will do one item of content
-			// Need to get all audience group within the hierarchy of the selected actor group.
-			// do nothing - no view status needed for any other group
-			break;
-		case 'done_by_group_shared_with_larger_group':
-			$audience_id = pi_groups_get_associated_groups($activity_row_data->actor, $activity_row_data->audience);
-			// There should only be one larger group, so if more than one is returned, there's a problem
-			// if 0 is returned then there is also a problem, but it's less bad as it means the parent hasn't
-			// been assigned, rather than it having 2 parents (that's a DB error!).
-			if (count($audience_id) == 0) {
-				drupal_set_message(t("Haven't set activity status to share the result of this activity as no associated group is defined for the actor group."), 'warning');
-			} else {
-				if (count($audience_id) > 1) {
-					drupal_set_message(t("This activity will done by @actor_group_type '%group_name' and the result would be viewable by the associated @audience_group_type however there's more than one class associated with '%group_name' - please check the group hierarchy is set up correctly.", array(
-							'@actor_group_type' => $actor_group_type,
-							'%group_name' => $group->title,
-							'@audience_group_type' => $activity_row_data->audience,
-									)), 'warning'
-					);
-				}
-				foreach ($audience_id as $audience_nid) {
-					$activity_statuses_to_add[$audience_nid] = array(
-							'activity_id' => $node->nid,
-							'uid' => NULL,
-							'gid' => $audience_nid,
-							'node_function' => 'view',
-							'visible_status' => 'view'
-					);
-				}
-			}
-			break;
-		default:
-			//This bit should never be reached because the above options cover all eventualities!!
-			break;
-	}
-
-	$activity_statuses_to_update = array();
-	foreach ($existing_activity_statuses as $existing_status_gid => $existing_status) {
-		//if(!in_array(array_keys($activity_statuses_to_add), $existing_status_gid))
-		if (!in_array($existing_status_gid, array_keys($activity_statuses_to_add))) {
-			drupal_set_message(t("Activity status for !activity_id set for group !gid, but this is not a valid actor or audience gid so it's being removed.", array('!activity_id' => $node->nid, '!gid' => $existing_status_gid)));
-			// If a status isn't to be updated, then remove it
-			db_query('DELETE FROM {pi_activity_status} WHERE `pas_id` = %d', $existing_status['pas_id']);
-		} else {
-			// Move the status item to the update list so it's not added below
-			$activity_statuses_to_update[$existing_status_gid] = $existing_status;
-			unset($activity_statuses_to_add[$existing_status_gid]);
-		}
-	}
-
-	foreach ($activity_statuses_to_add as $status) {
-		$result = drupal_write_record('pi_activity_status', $status);
-		if ($result == FALSE) {
-			drupal_set_message(
-							t('Error saving pi_activity_status, node function !function, visible status !status for group !gid: !error', array('!function' => $status['node_function'],
-					'!status' => $status['visible_status'], '!gid' => $status['gid'],
-					'!error' => _pi_write_record_result_string($result))
-							), 'error'
-			);
-		}
-	}
-
-	// Update any existing activity statuses that need to be updated
-	foreach ($activity_statuses_to_update as $id => $status) {
-		//check if it needs to be updating before doing anything...
-		if (($status['visible_status'] != $existing_activity_statuses[$status['gid']]['visible_status']) ||
-						($status['node_function'] != $existing_activity_statuses[$status['gid']]['node_function'])) {
-			$result = drupal_write_record('pi_activity_status', $status, 'pas_id');
-			if ($result == FALSE) {
-				drupal_set_message(
-								t('Error saving pi_activity_status, node function !function, visible status !status for group !gid', array('!function' => $status['node_function'], '!status' => $sstatus['visible_status'], '!gid' => $status['gid'])
-								), 'error'
-				);
-			}
-		}
-	}
-
-
-	// Finally the related node if necessary
-	// Check if there's an activity node with nid=0 - if so then update this
-	// Otherwise check if there's more than one activity node, if there is, then add the 0
-	// if there's only one activity node then
-	$result = db_query("SELECT * FROM {pi_activity_node} WHERE activity_id = %d ORDER BY nid", $node->nid);
-	$id_to_update = NULL;
-	if ($result != FALSE) {
-		$activity_nodes = array();
-		while ($row = db_fetch_array($result)) {
-			$activity_nodes[] = $row;
-		}
-		switch (count($activity_nodes)) {
-			case 0:
-				// id to update will be null and a node will be inserted
-				break;
-			case 1:
-				// when 1 result is returned, this is the one to update
-				$id_to_update = $activity_nodes[0]['pan_id'];
-				break;
-			default:
-				// if there's more than one activity_node id then do nothing as it's
-				// used in a different way
-				break;
-		}
-	}
-	if ($node->existing_nid == 'none') {
-		$nid_to_write = 0;
-	} else {
-		$nid_to_write = $node->existing_nid;
-	}
-	$activity_node = array('activity_id' => $node->nid, 'nid' => $nid_to_write);
-	if ($id_to_update != NULL) {
-		$result = drupal_write_record('pi_activity_node', $activity_node, 'pan_id');
-	} else {
-		$result = drupal_write_record('pi_activity_node', $activity_node);
-	}
-
-	if ($result == FALSE) {
-		drupal_set_message(
-						t('Error saving pi_activity_node (!nid)', array('!nid' => $node->existing_nid)
-						), 'error'
-		);
-	}
 }
 
 /**
@@ -1299,12 +914,9 @@ function _pi_activity_form_data_to_pi_activity_row($node) {
 			'activity_type' => 'activity_type',
 			'node_type' => 'node_type',
 			'parameters' => 'parameters',
-			'weight' => 'weight',
-			'destination_after' => 'destination_after',
-			'node_function' => 'node_function',
-			'visible_status' => 'visible_status',
-			/* FIX (eloy) add child related fields */
+			'script_activity' => 'script_activity',
 			'parent_activity' => 'parent_activity',
+			'phase_nid' => 'phase_nid',
 			'show_children_in_phase' => 'show_children_in_phase',
 	);
 
@@ -1312,93 +924,19 @@ function _pi_activity_form_data_to_pi_activity_row($node) {
 		$data_to_save->$column = $node->$property;
 	}
 
-	//@TODO FIXME node_type is hidden and node_type = activity_type
-
-	$data_to_save->node_type = $data_to_save->activity_type;
-
-	$data_to_save->phase_nid = $node->activity_phases_stages['phase_nid'];
-	$data_to_save->audience = $node->selects["audience"];
-	$data_to_save->actor = $node->selects["gid"];
-	//drupal_set_message(t('Saving data...', 'info'));
-	//pi_debug_message($data_to_save);
 	return $data_to_save;
 }
 
 function pi_activity_delete(&$node) {
 	//delete from pi_activity
-	$query = "DELETE FROM {pi_activity} WHERE nid = %d AND vid = %d";
-	db_query($query, $node->nid, $node->vid);
-
-	//delete from pi_activity_stage_state
-	$query = "DELETE FROM {pi_activity_stage_state} WHERE activity_nid = %d";
-	db_query($query, $node->nid);
-
-	//delete from pi_activity_status
-	$query = "DELETE FROM {pi_activity_status} WHERE activity_id = %d";
-	db_query($query, $node->nid);
+	db_query("DELETE FROM {pi_activity} WHERE nid = %d AND vid = %d", $node->nid, $node->vid);
 
 	//delete from pi_activity_node
-	$query = "DELETE FROM {pi_activity_node} WHERE activity_id = %d";
-	db_query($query, $node->nid);
-
-	//delete enter and leave focus
-	$query = "DELETE FROM {pi_activity_enter_focus} WHERE activity_id = %d";
-	db_query($query, $node->nid);
-	$query = "DELETE FROM {pi_activity_leave_focus} WHERE activity_id = %d";
-	db_query($query, $node->nid);
+	db_query("DELETE FROM {pi_activity_node} WHERE activity_id = %d", $node->nid);
 }
 
-/**
- *
- * Return an array of pi_activity_stage_states fior $nid
- *  indexed by pass_id, filled with db_fetch_array() results:
- *  array(pass_id => array(pass_id, stage_nid, activity_nid, stage_state)
- * @param $nid id of node id of a valid activity
- */
-function _pi_activity_get_activity_stage_stages($nid) {
-	//Now get the stage states:
-	$stage_states = array();
-	$stages_result = db_query('SELECT * FROM {pi_activity_stage_state} WHERE activity_nid = %d', $nid);
-	if ($stages_result != FALSE) {
-		while ($stage_state_row = db_fetch_array($stages_result)) {
-			$stage_states[$stage_state_row['pass_id']] = $stage_state_row;
-		}
-	}
-	return $stage_states;
-}
 
-/**
- *
- * Return an array of arrays containing the desired state of activities in each stage of the inquiry
- * The array is indexed by 'pass_id' to allow updates to change the state rather than delete
- * and reinsert rows. e.g. retult:
- * array( $pass_id => array( 'stage_nid' => $stage_nid, 'stage_state' => $stage_state ), ... )
- * @param uint $activity_nid a valid activity node id
- * @returns array of array('stage_nid', 'stage_state') indexed by pass_id
- */
-function _pi_activity_get_activity_stage_states($activity_nid) {
-	$query = 'SELECT * from {pi_activity_stage_state} WHERE activity_nid = %d';
-	$result = db_query($query, $activity_nid);
 
-	$seen_stage_nids = array();
-	$return_rows = array();
-
-	if ($result != FALSE) {
-		while ($row = db_fetch_array($result)) {
-			if (array_key_exists($row['stage_nid'], $seen_stage_nids)) {
-				$previous_state = $return_rows[$seen_stage_nids[$row['stage_nid']]['stage_state']];
-				//pi_debug_message($previous_state);
-				drupal_set_message(
-								t("More than one stage state set for activity @activity_nid and stage @stage_nid - using state @state", array('@activity_nid' => $activity_nid, '@stage_nid' => $row['stage_nid'], '@state' => $previous_state))
-				);
-			} else {
-				$return_rows[$row['pass_id']] = array('stage_nid' => $row['stage_nid'], 'stage_state' => $row['stage_state']);
-				$seen_stage_nids[$row['stage_nid']] = $row['stage_state'];
-			}
-		}
-	}
-	return $return_rows;
-}
 
 /**
  * hook_theme() for pi_activity content
@@ -1577,10 +1115,9 @@ function pi_activity_get_add_activity_for_sort_activity($activity_id) {
 	$sort_activity = node_load($activity_id);
 
 	if ($sort_activity != FALSE) {
-		$type = node_get_types('type', $sort_activity->node_type);
-		/* FIX (eloy) use parent_activity */
+		$type = node_get_types('type', $sort_activity->activity_type);
 
-		$query = "SELECT {pi_activity}.`nid` FROM {pi_activity} WHERE parent_activity=%d AND activity_type='%s' AND referenced_node IS NULL";
+		$query = "SELECT {pi_activity}.`nid` FROM {pi_activity} WHERE parent_activity=%d AND activity_type='%s' AND referenced_node IS NULL AND script_activity=1";
 		$result = db_query($query, $activity_id, $type->add_node_type);
 		$row = db_fetch_array($result);
 		if ($row) {

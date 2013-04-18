@@ -1090,12 +1090,7 @@ function pi_inquiry_manager_participants_group_removeuserrole_form_submit() {
 
 function _pi_inquiry_manager_participants_user_names($uids, $myuid) {
 	return array_map(function($uid) use ($myuid) {
-						if ($uid === $myuid) {
-							return '<b>' . t('Me') . '</b>';
-						} else {
-							$u = user_load($uid);
-							return check_plain($u->name);
-						}
+						return nquire_commons_user_name_or_me($uid, $myuid);
 					}, $uids);
 }
 

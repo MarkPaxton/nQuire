@@ -1,7 +1,8 @@
 <?php
+
 // $Id: ag.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
 
- 
+
 /**
  * @file
  * Implements block for Activity Guide navigation.
@@ -10,9 +11,8 @@
 /**  and n.uid = %d' $uid,
  * Implementation of hook_block().
  */
-
 function add_activity_icon($visible_status) {
-	$image_path = "/" . drupal_get_path( 'module', 'pi' ) . '/images/';
+	$image_path = "/" . drupal_get_path('module', 'pi') . '/images/';
 	$status_image = array();
 	$status_image["start"] = "creatable.png";
 	$status_image["edit"] = "editable.png";
@@ -21,151 +21,73 @@ function add_activity_icon($visible_status) {
 	return "<img width='12' src='" . $image_path . $status_image[$visible_status] . "'/>";
 }
 
-function build_link($first, $second, $third, $inquiry_id = 0, $stage_id = 0, $phase_id = 0, $activity_id = 0)
-{
-	if (! $activity_id)
-	{
-		return $first . "/" . $second . "/" . $third . "/" . $inquiry_id . "/" . $stage_id . "/" . $phase_id;
-	}
-	else
-	{
-		return $first . "/" . $second . "/" . $third . "/" . $inquiry_id . "/" . $stage_id . "/" . $phase_id . "/" . $activity_id;
-	}
-}
-
-function build_home_link($inquiry_id, $stage_id, $phase_id, $activity_id) 
-{
-	if (!$inquiry_id) 
-	{
-		$query = "SELECT inquiry_id FROM {pi_current_stage} ORDER BY inquiry_id DESC";
-		$result = db_fetch_object(db_query($query));
-		$inquiry_id = $result->inquiry_id;
-	}
-	
-	return "home///" . $inquiry_id . "///";
-}
-
 function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
-  switch ($op)
-  {
-	case 'list':
-	  $blocks[0]['info'] = t('New Activity Guide');
-	  return $blocks;
+	switch ($op) {
+		case 'list':
 
-	case 'view':
-	  global $user;
-	  $block = array();
-	  
-	  if($user!=null)
-	  {
-	    $show_activities = show_activites($user->uid);
-	    $show_phases = show_phases($user->uid);
+			$blocks = array(
+					array('info' => t('Activity Guide'))
+			);
 
-	    $node_details = get_inquiry_details_from_current_path();
+			return $blocks;
 
-        //$hidden_created_activity_types = get_hidden_link_activities($node_details->inquiry_id);
-        
-        $image_path = drupal_get_path( 'module', 'pi' ) . '/images/';
-        
-        if(arg(0) == 'phase' || arg(0) == 'activity')
-        {
-          $phases = pi_phase_load_nids_for_inquiry_for_user($node_details->inquiry_id, $user->uid);
-          $current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
-          
-          if (isset($current_stage->stage_id))
-          {
-            $current_stage_id = $current_stage->stage_id;
-          }
-          else
-          {
-            $current_stage_id = '';
-          }
-          
-          $stage = node_load($current_stage_id);
-          $phases_of_current_stage = $stage->phases;
-          
-          $phase_menu_items = array();
-          $phase_menu_item = array();
+		case 'view':
+			global $user;
+			$block = array();
 
-          foreach($phases as $phase_nid)
-          {
-            $phase = node_load($phase_nid);
-            $teacher_only = pi_check_teacher_flag_on_phase($phase->nid);
-          
-            if ($phase_nid == $node_details->phase_id && arg(0) == 'phase')
-            {
-              $phase_link = t($phase->title);
-            }
-            else
-            {
-              $phase_link = l($phase->title . _pi_ag_teacher_only_flag($teacher_only), "phase/" . $phase->nid, array('html' => true));
-            }
-          
-            $activity_menu_items = array();
+			if ($user != null) {
+				$show_activities = TRUE; //show_activites($user->uid);
+				$show_phases = TRUE; //show_phases($user->uid);
+				//$node_details = get_inquiry_details_from_current_path();
+				$access_data = pi_inquiry_groupings_get_access_data();
 
-            //expand activities of the phase if it is current
-            if ($phase->nid == $node_details->phase_id && $show_activities)
-            {
-              //$activities = get_activities_of_stage_phase_and_user(NULL, NULL, 1);
-              $activities = pi_get_activities_for_phase_and_user($phase->nid, $user->uid);
-              foreach($activities as $activity_nid)
-              {
-                $activity = node_load($activity_nid);
-                //do not show activity if created and on the hidden list
-                //this applies to e.g. created measures or data that you
-                //do not want to show
-                //$loaded_activity_nid = pi_activity_get_content_nid_for_activity($activity->nid);
-                //$visible_status = get_visible_status_of_activity($node_details->inquiry_id, $activity->activity_id, $user->uid);
-                //if (!(in_array($activity->node_type, $hidden_created_activity_types)))
-                {
-                  $activity_menu_items[] = pi_activity_build_link($activity->nid, $user->uid);
-                }
-              }
-            }
+				//$hidden_created_activity_types = get_hidden_link_activities($node_details->inquiry_id);
 
-            if ($phase->nid == $node_details->phase_id)
-            {
-              $phase_class = 'expanded active-trail';
-            }
-            else
-            {
-              $phase_class = 'collapsed';
-            }
-            //@TODO FIXME check this....
-            if( is_array( $phases_of_current_stage ) && in_array($phase->nid, $phases_of_current_stage) && $phase->nid == $node_details->phase_id)
-            {
-              //icon changed from folder_empty_current.png
-              $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
-            }
-            //@TODO FIXME check this....
-            elseif( is_array( $phases_of_current_stage ) && in_array($phase->nid, $phases_of_current_stage) && $show_phases)
-            {
-              $phase_menu_items[] = array('data' => t($phase_link." <img width='12' src='${image_path}/folder_empty_current.png'/>"), 'children' => $activity_menu_items, 'class' => $phase_class);
-            }
-            elseif ($phase->nid == $node_details->phase_id && $show_activities)
-            {
-              $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
-            }
-            elseif ($show_phases)
-            {
-              $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
-            }
-	      }
+				$image_path = drupal_get_path('module', 'pi') . '/images/';
 
-    	  $home_link = build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-    	  $previous_answers = array("title" => "my title", "author" => "my author");
-    	  $block_content = t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')));
-        }
-        if(arg(0) == 'phase' && $show_phases || arg(0) == 'activity' && ($show_phases || $show_activities))
-        {
-          $loaded_inquiry = node_load($node_details->inquiry_id);
-          $block['subject'] = t('Navigation');
-          $block['content'] = "<div class='activity-guide'>" . $block_content . "</div>";
-        }
-      }
-      return $block;
-  }
+				if (arg(0) == 'phase' || arg(0) == 'activity') {
+					//$phases = pi_phase_load_nids_for_inquiry_for_user($node_details->inquiry_id, $user->uid);
+					//$current_stage = get_current_stage_of_inquiry_and_user($node_details->inquiry_id, $user->uid);
+
+					$phase_menu_items = array();
+
+					foreach ($access_data->get_phases() as $phase_nid => $phase_data) {
+						$is_current_phase = $phase_nid == $access_data->get_current_phase_nid();
+
+						if (!$phase_data['access']) {
+							$phase_link = check_plain($phase_data['node']->title);
+						} else {
+							$phase_link = l($phase_data['node']->title, "phase/" . $phase_nid, array('html' => true));
+						}
+
+						$activity_menu_items = array();
+
+						//expand activities of the phase if it is current
+						if ($is_current_phase && $show_activities) {
+							foreach ($phase_data['activities'] as $activity_nid => $activity_data) {
+								$activity_menu_items[] = pi_activity_build_link($activity_nid, $user->uid);
+							}
+						}
+
+						if ($is_current_phase) {
+							$phase_class = 'expanded active-trail';
+						} else {
+							$phase_class = 'collapsed';
+						}
+
+						$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
+					}
+
+					//$home_link = ag_build_home_link($node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+					$block_content = t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')));
+					
+					$block['subject'] = t('Navigation');
+					$block['content'] = "<div class='activity-guide'>" . $block_content . "</div>";
+				}
+			}
+			return $block;
+	}
 }
 
 /** Generate teacher only suffix given the flag
@@ -176,18 +98,16 @@ function _pi_ag_teacher_only_flag($teacher_only) {
 	return $teacher_only ? " (T)" : "";
 }
 
-
-
 function new_activity_list($inquiry_id, $phase_id, $uid) {
 
 	/*
-	 $activity_list = array();
-	 $new_activities = new_activities($inquiry_id, $phase_id, $uid);
+	  $activity_list = array();
+	  $new_activities = new_activities($inquiry_id, $phase_id, $uid);
 
-	 while ($activity = db_fetch_object($new_activities)) {
-		$activity_list[] = $activity->activity_id;
-		}
-		*/
+	  while ($activity = db_fetch_object($new_activities)) {
+	  $activity_list[] = $activity->activity_id;
+	  }
+	 */
 	return $activity_list;
 }
 
@@ -195,16 +115,12 @@ function new_activity_list_count($inquiry_id, $phase_id, $uid) {
 	return count(new_activity_list($inquiry_id, $phase_id, $uid));
 }
 
-
 function do_the_phase_queries() {
 	$output = "";
-	$my_array = array(30=>809, 31=>810, 32=>811, 33=>812, 34=>813, 36=>814, 37=>815, 38=>816, 39=>817, 40=>818, 41=>819, 42=>820, 43=>821, 44=>822, 45=>823, 46=>824, 47=>825, 48=>826, 49=>827, 50=>828, 51=>829, 52=>830, 53=>831, 54=>832, 55=>833, 56=>834, 57=>835, 58=>836, 59=>837, 60=>838, 61=>839, 62=>840, 63 => 854, 64 =>855, 65=>856, 66=>857, 67=>858, 68=>859, 69=>860, 70=>861);
-	foreach($my_array as $key => $value) {
+	$my_array = array(30 => 809, 31 => 810, 32 => 811, 33 => 812, 34 => 813, 36 => 814, 37 => 815, 38 => 816, 39 => 817, 40 => 818, 41 => 819, 42 => 820, 43 => 821, 44 => 822, 45 => 823, 46 => 824, 47 => 825, 48 => 826, 49 => 827, 50 => 828, 51 => 829, 52 => 830, 53 => 831, 54 => 832, 55 => 833, 56 => 834, 57 => 835, 58 => 836, 59 => 837, 60 => 838, 61 => 839, 62 => 840, 63 => 854, 64 => 855, 65 => 856, 66 => 857, 67 => 858, 68 => 859, 69 => 860, 70 => 861);
+	foreach ($my_array as $key => $value) {
 		$output .= "UPDATE pi_inquiry_grouping SET pi_inquiry_grouping.phase_id='" . $value . "' WHERE pi_inquiry_grouping.phase_id='" . $key . "'; UPDATE pi_inquiry_phase SET pi_inquiry_phase.phase_id='" . $value . "' WHERE pi_inquiry_phase.phase_id='" . $key . "'; UPDATE pi_phase_actor SET pi_phase_actor.phase_id='" . $value . "' WHERE pi_phase_actor.phase_id='" . $key . "'; UPDATE pi_stage_phase SET pi_stage_phase.phase_id='" . $value . "' WHERE pi_stage_phase.phase_id='" . $key . "';";
 	}
 	return $output;
 }
-
-
-
 

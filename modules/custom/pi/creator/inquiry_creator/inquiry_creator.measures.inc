@@ -219,7 +219,8 @@ function inquiry_creator_measure_form_submit($form, $form_state) {
   }
 
   if ($save || $new) {
-    inquiry_deployer_update_activity($design, inquiry_design_load_phase_for_activity($design, $activity->nid), $activity);
+		$phase = inquiry_design_load_phase_for_activity($design, $activity->nid);
+    inquiry_deployer_update_activity($design, $phase, $activity);
   }
 
   nquire_commons_form_close($form, $form_state);

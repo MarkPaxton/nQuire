@@ -40,10 +40,7 @@ function pi_activity_get_content_nid_for_activity($activity_nid, $try_to_create 
 	return FALSE;
 }
 
-function pi_activity_get_children_content_nids_for_sort_activity($sort_activity_type) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity_by_type($sort_activity_type);
-
+function _pi_activity_get_children_content_nids_for_access_data($access_data, $activity_data) {
 	$nids = array();
 	if ($activity_data) {
 
@@ -69,6 +66,18 @@ function pi_activity_get_children_content_nids_for_sort_activity($sort_activity_
 		}
 	}
 	return $nids;
+}
+
+function pi_activity_get_children_content_nids_for_sort_activity_type($sort_activity_type) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$activity_data = $access_data->get_activity_by_type($sort_activity_type);
+	return _pi_activity_get_children_content_nids_for_access_data($access_data, $activity_data);
+}
+
+function pi_activity_get_children_content_nids_for_sort_activity_nid($sort_activity_nid) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$activity_data = $access_data->get_activity($sort_activity_nid);
+	return _pi_activity_get_children_content_nids_for_access_data($access_data, $activity_data);
 }
 
 function pi_activity_link_content_with_activity($content_node, $activity_nid) {
