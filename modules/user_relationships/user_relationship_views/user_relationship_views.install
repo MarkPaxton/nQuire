@@ -1,0 +1,19 @@
+<?php
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function user_relationship_views_uninstall() {
+  $ret = array();
+  $displays = array(
+    'user_relationships_content',
+    'user_relationships_browser',
+  );
+  $result = db_query("SELECT DISTINCT vid FROM {views_display} WHERE display_plugin IN ('". implode("','", $displays) ."')");
+  while($row = db_fetch_array($result)) {
+    db_query("DELETE FROM {views_view} WHERE vid = %d", $row['vid']);
+    db_query("DELETE FROM {views_display} WHERE vid = %d", $row['vid']);
+  }
+  db_query("DELETE FROM {cache_views}");
+  return $ret;
+}

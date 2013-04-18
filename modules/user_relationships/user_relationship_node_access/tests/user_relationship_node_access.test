@@ -1,0 +1,190 @@
+<?php
+/**
+ * @file
+ * User Relationships Node Access Tests
+ */
+class UserRelationshipsNodeAccessTestCase extends DrupalWebTestCase {
+
+  //test users
+  var $users = array();
+  //test relationship types
+  var $rtypes = array();
+
+  /**
+   * getInfo() returns properties that are displayed in the test selection form.
+   */
+  public static function getInfo() {
+    return array(
+      'name' => 'User Relationships Node Access',
+      'description' => 'Test User Relationships node access grants system',
+      'group' => 'User Relationships',
+    );
+  }
+
+  /**
+   * Enable modules.
+   */
+  function setUp() {
+    parent::setUp('user_relationships_api','user_relationship_node_access','user_relationships_ui');
+    $this->users = array();
+    $this->rtypes = array();
+    $this->nodes = array();
+
+    //clear cache
+    user_relationships_types_load(TRUE);
+
+    $rtype = new StdClass;
+    $rtype->name = 'oneway';
+    $rtype->plural_name = 'oneways';
+    $rtype->is_oneway = TRUE;
+    $rtype->requires_approval = FALSE;
+    $rtype->expires_val = 0;
+    user_relationships_type_save($rtype);
+    $this->rtypes['oneway'] = $rtype;
+
+    unset($rtype);
+    $rtype = new StdClass;
+    $rtype->name = 'twoway';
+    $rtype->plural_name = 'twoways';
+    $rtype->is_oneway = FALSE;
+    $rtype->requires_approval = FALSE;
+    $rtype->expires_val = 0;
+    user_relationships_type_save($rtype);
+    $this->rtypes['twoway'] = $rtype;
+
+    unset($rtype);
+    $rtype = new StdClass;
+    $rtype->name = 'external';
+    $rtype->plural_name = 'externals';
+    $rtype->is_oneway = FALSE;
+    $rtype->requires_approval = FALSE;
+    $rtype->expires_val = 0;
+    user_relationships_type_save($rtype);
+    $this->rtypes['external'] = $rtype;
+
+    //clear cache
+    user_relationships_types_load(TRUE);
+
+    // User with absolute minimal permissions.
+    $u1 = $this->drupalCreateUser(array('access content','can have relationships'));
+    $this->users['u1'] = $u1;
+
+    // User can grant delete.
+    $u2 = $this->drupalCreateUser(array('grant delete permission to related users','access content','create page content','can have relationships'));
+    $this->users['u2'] = $u2;
+    // User can grant update.
+
+    $u3 = $this->drupalCreateUser(array('grant update permission to related users','access content','create page content','can have relationships'));
+    $this->users['u3'] = $u3;
+
+    // User can grant view.
+    $u4 = $this->drupalCreateUser(array('grant view permission to related users','access content','create page content','can have relationships'));
+    $this->users['u4'] = $u4;
+
+    // Unrelated user.
+    $u5 = $this->drupalCreateUser(array('grant view permission to related users','access content','create page content','can have relationships'));
+    $this->users['u5'] = $u5;
+
+    // Admin user.
+    $admin = $this->drupalCreateUser(array('administer user relationships','access administration pages','administer nodes'));
+    $this->users['admin'] = $admin;
+
+
+    // Basically user 1 has every kind of relationships with everybody.
+    user_relationships_request_relationship($u1, $u2, $this->rtypes['oneway']->rtid, TRUE);
+    user_relationships_request_relationship($u1, $u3, $this->rtypes['oneway']->rtid, TRUE);
+    // Them to you.
+    user_relationships_request_relationship($u4, $u1, $this->rtypes['oneway']->rtid, TRUE);
+
+    user_relationships_request_relationship($u1, $u2, $this->rtypes['twoway']->rtid, TRUE);
+    user_relationships_request_relationship($u1, $u3, $this->rtypes['twoway']->rtid, TRUE);
+    // Them to you.
+    user_relationships_request_relationship($u4, $u1, $this->rtypes['twoway']->rtid, TRUE);
+
+    user_relationships_request_relationship($u5, $u1, $this->rtypes['external']->rtid, TRUE);
+
+    // Manually apply the proper type settings.
+    $this->drupalLogin($this->users['admin']);
+    $this->drupalPost('admin/content/node-settings/rebuild',null,'Rebuild permissions');
+
+    $type_settings = array('user_relationship_node_access_allowed_types[page]'=>TRUE);
+    $this->drupalPost('admin/content/user_relationship_node_access',$type_settings,'Save configuration');
+    $this->drupalLogout();
+  }
+
+
+  function testUserRelationshipsNodeAccessDelete() {
+    $this->drupalLogin($this->users['u2']);
+    $node = array();
+    $node['title'] = $this->randomName(8);
+    $node['body'] = $this->randomName(16);
+    $node['user_relationship_node_access[delete][1_ty]'] = TRUE;
+    $node['user_relationship_node_access[delete][2]'] = TRUE;
+    $this->drupalPost('node/add/page', $node, t('Save'));
+    $this->assertTrue(preg_match('|node/(\d+)$|', $this->getUrl(), $matches), 'Node created');
+    $this->drupalLogout();
+
+    // Can my relation delete after they log in?
+    $this->drupalLogin($this->users['u1']);
+    $this->drupalPost("node/{$matches[1]}/delete",null,t('Delete'));
+    $this->drupalLogout();
+
+    // Can unrelated user delete?
+    $this->drupalLogin($this->users['u5']);
+    $this->drupalGet("node/{$matches[1]}/delete");
+    $this->assertResponse(404, 'Outside user cannot delete.');
+    $this->drupalLogout();
+  }
+
+
+  function testUserRelationshipsNodeAccessUpdate() {
+    $this->drupalLogin($this->users['u3']);
+    $node = array();
+    $node['title'] = $this->randomName(8);
+    $node['body'] = $this->randomName(16);
+    $node['user_relationship_node_access[update][1_yt]'] = TRUE;
+    $node['user_relationship_node_access[update][2]'] = TRUE;
+    $this->drupalPost('node/add/page', $node, t('Save'));
+    $this->assertTrue(preg_match('|node/(\d+)$|', $this->getUrl(), $matches), 'Node created');
+    $this->drupalLogout();
+
+    // Can my relation update after they log in?
+    $this->drupalLogin($this->users['u1']);
+    $edit['title'] = 'foo';
+    $edit['body'] = 'bar';
+    $this->drupalPost("node/{$matches[1]}/edit",$edit,t('Save'));
+    $this->assertText(t('has been updated.'),'Updated message appears.');
+    $this->drupalLogout();
+
+    // Can unrelated user update?
+    $this->drupalLogin($this->users['u5']);
+    $this->drupalGet("node/{$matches[1]}/edit");
+    $this->assertResponse(403, 'Outside user cannot update.');
+    $this->drupalLogout();
+  }
+
+
+  function testUserRelationshipsNodeAccessView() {
+    $this->drupalLogin($this->users['u4']);
+    $node = array();
+    $node['title'] = $this->randomName(8);
+    $node['body'] = $this->randomName(16);
+    $node['user_relationship_node_access[view][1_ty]'] = TRUE;
+    $node['user_relationship_node_access[view][2]'] = TRUE;
+    $this->drupalPost('node/add/page', $node, t('Save'));
+    $this->assertTrue(preg_match('|node/(\d+)$|', $this->getUrl(), $matches), 'Node created');
+    $this->drupalLogout();
+
+    // Can related user view?
+    $this->drupalLogin($this->users['u1']);
+    $this->drupalGet("node/{$matches[1]}");
+    $this->assertResponse(200, 'Can view node.');
+    $this->drupalLogout();
+
+    // Can unrelated user view?
+    $this->drupalLogin($this->users['u5']);
+    $this->drupalGet("node/{$matches[1]}");
+    $this->assertResponse(403, 'Outside user cannot view node.');
+    $this->drupalLogout();
+  }
+}
