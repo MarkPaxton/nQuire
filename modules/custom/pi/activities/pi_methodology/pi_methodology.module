@@ -219,7 +219,6 @@ function pi_methodology_load($node) {
 	$output = new stdClass;
 	$output->measures = array();
 
-	$access_data = pi_inquiry_groupings_get_access_data();
 
 	$data_activities = pi_sort_data_get_activities();
 	$all_measures = array();
@@ -274,15 +273,20 @@ function pi_methodology_get_measures($activity_nid, $type) {
 		switch ($type) {
 			case 'key_dependent':
 				if (isset($methodology_node->measures[$activity_nid]['key'])) {
-					$measures += array_map(function($nid) {
+					$km = $methodology_node->measures[$activity_nid]['key'];
+					$kmd = array_map(function($nid) {
 										return array('nid' => $nid, 'required' => TRUE);
-									}, $methodology_node->measures[$activity_nid]['key']);
+									}, $km);
+									
+					$measures = array_merge($measures, $kmd);
 				}
 				
 				if (isset($methodology_node->measures[$activity_nid]['dependent'])) {
-					$measures += array_map(function($nid) {
+					$dm = $methodology_node->measures[$activity_nid]['dependent'];
+					$dmd = array_map(function($nid) {
 										return array('nid' => $nid, 'required' => FALSE);
-									}, $methodology_node->measures[$activity_nid]['dependent']);
+									}, $dm);
+					$measures = array_merge($measures, $dmd);
 				}
 				break;
 		}
@@ -369,8 +373,16 @@ function theme_pi_methodology($node, $teaser) {
 				if (count($list) > 0) {
 					foreach ($list as $measure_nid) {
 						$measure_node = node_load($measure_nid);
+						if ($measure_node->script_measure) {
+							$label = check_plain($measure_node->title);
+						} else {
+							$measure_activity = node_load(pi_activity_get_activity_nid_for_content_nid($measure_nid));
+							$label = pi_activity_build_link_for_child($measure_activity->parent_activity, $measure_activity->nid);
+						}
 						$region_section['children'][] = array(
-								'data' => '<b>' . check_plain($measure_node->title) . '</b>: ' . check_plain($measure_node->body),
+								
+								'data' => '<b>' . $label . '</b>: ' . 
+								inquiry_available_features_name('measure', $measure_node->measure_type),
 						);
 					}
 				} else {
