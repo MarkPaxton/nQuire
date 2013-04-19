@@ -571,7 +571,7 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 			$activity_id = pi_util_get_path_element(1);
 			$target_activity = node_load($activity_id);
 			if (pi_check_is_node_of_type($target_activity, 'pi_activity')) {
-				$redirect_destination = 'phase';//$target_activity->destination_after;
+				$redirect_destination = 'phase'; //$target_activity->destination_after;
 				if ($redirect_destination == 'phase')
 					$form['#redirect'] = 'phase/' . $target_activity->phase_nid;
 				elseif ($redirect_destination == 'self')
@@ -856,12 +856,12 @@ function pi_activity_load($node) {
 	$result = db_query($query, $node->nid);
 	$activity = db_fetch_object($result);
 
-	/*if ($activity != NULL) {
-		//map activity_id to nid for backward compatability
-		$phase = node_load($activity->phase_nid);
-		$activity->inquiry_id = $phase->inquiry_nid;
-		$activity->activity_id = &$activity->nid;
-	}*/
+	/* if ($activity != NULL) {
+	  //map activity_id to nid for backward compatability
+	  $phase = node_load($activity->phase_nid);
+	  $activity->inquiry_id = $phase->inquiry_nid;
+	  $activity->activity_id = &$activity->nid;
+	  } */
 
 	return $activity;
 }
@@ -935,9 +935,6 @@ function pi_activity_delete(&$node) {
 	db_query("DELETE FROM {pi_activity_node} WHERE activity_id = %d", $node->nid);
 }
 
-
-
-
 /**
  * hook_theme() for pi_activity content
  */
@@ -1002,7 +999,7 @@ function pi_activity_nodeapi(&$node, $op) {
 			if (pi_check_is_node_of_type($activity, 'pi_activity')) {
 				// Set PI activity node
 				$node_types_to_create_activity_for = array(
-						//'pi_available_measures',
+						//'pi_available_measures', // depends on whether the measure is part of the script
 						'pi_key_questions',
 						'pi_key_answers',
 						'pi_result_presentations',
@@ -1026,8 +1023,9 @@ function pi_activity_nodeapi(&$node, $op) {
 								break;
 						}
 
-						if (in_array($node->type, $node_types_to_create_activity_for)) {
-							pi_activity_add_new_activity_for_activity_content_node($node, 'edit', 'edit', $node->title, $activity);
+						if (in_array($node->type, $node_types_to_create_activity_for) ||
+										($node->type === 'pi_available_measures' && !$node->script_measure)) {
+							pi_activity_add_new_activity_for_activity_content_node($node, $activity);
 						} else {
 							pi_activity_link_content_with_activity($node, $activity->nid);
 						}

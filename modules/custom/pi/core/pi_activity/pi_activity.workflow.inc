@@ -77,11 +77,8 @@ function pi_activity_add_activity_node_for_activity_content_node($add_activity, 
  * @param $activity_title
  * @param $activity
  */
-function pi_activity_add_new_activity_for_activity_content_node($node, $node_function, $visible_status, $activity_title, $activity) {
-  //pi_debug_message("pi_activity_add_activity_when_activity_content_node_created called for " . $content_node->nid . "(" . $content_node->title . ")");
-  //load the defined "activity"
+function pi_activity_add_new_activity_for_activity_content_node($node, $activity) {
   if (!pi_check_is_node_of_type($activity, 'pi_activity')) {
-    //pi_debug_message("pi_activity_add_activity_when_activity_content_node_created called with no activity - getting activity from details: " . $details->activity_id);
     $activity = node_load(pi_activity_get_activity_nid_for_content_nid($node->nid));
   }
   if (pi_check_is_node_of_type($activity, 'pi_activity')) {

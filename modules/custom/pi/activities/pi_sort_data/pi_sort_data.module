@@ -179,30 +179,8 @@ function pi_sort_data_load($node) {
 	return $result;
 }
 
-function pi_sort_data_measures_for_activity($uid, $inquiry_id, $activty_nid) {
-	$measure_nids = pi_available_measures_get_measure_nids_for_sort_data_activity_nid($activty_nid);
-
-	$methodology = pi_methodology_find_user_content($uid, $inquiry_id);
-	if ($methodology && isset($methodology->measures[$activty_nid])) {
-		$filtered_measure_nids = array();
-		$regions = array('key', 'dependent');
-		foreach ($regions as $region) {
-			foreach ($methodology->measures[$activty_nid][$region] as $measure_nid) {
-				if (in_array($measure_nid, $measure_nids)) {
-					$filtered_measure_nids[] = $measure_nid;
-				}
-			}
-		}
-	} else {
-		$filtered_measure_nids = $measure_nids;
-	}
-	return $filtered_measure_nids;
-}
-
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
-
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
+	$access_data = pi_inquiry_groupings_get_access_data();
 
 	//print_r( $node );
 
@@ -211,13 +189,13 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
 	$data_nids = pi_sort_data_get_data_for_sort_activity_nid($activity_id_for_this_node);
-	$filtered_measure_nids = pi_sort_data_measures_for_activity($user->uid, $node_details->inquiry_id, $activity_id_for_this_node);
+	$selected_measures = pi_methodology_get_measures($activity_id_for_this_node, 'key_dependent');
 
 	$header = array();
 	$header[] = t('Created:');
 	$measures = array();
-	foreach ($filtered_measure_nids as $nid) {
-		$measure = node_load($nid);
+	foreach ($selected_measures as $measure_data) {
+		$measure = node_load($measure_data['nid']);
 		if (pi_data_tools_measure_plugin_show_in_table($measure)) {
 			$header[] = check_plain($measure->title) . t(':');
 			$measures[] = $measure;
@@ -233,9 +211,9 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 		$data_item_activity_nid = pi_activity_get_activity_nid_for_content_nid($nid);
 
 		$row[] = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
-						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid))) . '<br/>'
+						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $access_data->get_uid()))) . '<br/>'
 						. l(t('edit'), 'activity/' . $data_item_activity_nid . '/edit') . '&nbsp;&nbsp;&nbsp;'
-						. l(t('delete'), 'node/' . $nid . '/delete', array('query' => 'destination=phase/' . $node_details->phase_id));
+						. l(t('delete'), 'node/' . $nid . '/delete', array('query' => 'destination=phase/' . $access_data->get_current_phase_nid()));
 
 		foreach ($measures as $measure) {
 			$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
@@ -384,5 +362,5 @@ function pi_sort_data_get_data_for_sort_node_nid($sort_data_nid) {
 }
 
 function pi_sort_data_get_data_for_sort_activity_nid($sort_activity_nid) {
-	return pi_activity_get_children_content_nids_for_sort_activity_nid($sort_activity_nid);	
+	return pi_activity_get_children_content_nids_for_sort_activity_nid($sort_activity_nid);
 }

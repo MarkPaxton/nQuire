@@ -13,44 +13,44 @@
 function pi_data_node_info() {
 // We return an array since a module can define multiple node types.
 // We're only defining one node type, type 'pi_data'.
-  return array(
-      'pi_data' => array(
-          'name' => t('Inquiry add data'), // Required.
-          'module' => 'pi_data', // Required.
-          'description' => t('What is your data?'), // Required.
-          'has_title' => FALSE,
-          'title_label' => t('Collected Data'),
-          'has_body' => FALSE,
-          'locked' => TRUE
-      )
-  );
+	return array(
+			'pi_data' => array(
+					'name' => t('Inquiry add data'), // Required.
+					'module' => 'pi_data', // Required.
+					'description' => t('What is your data?'), // Required.
+					'has_title' => FALSE,
+					'title_label' => t('Collected Data'),
+					'has_body' => FALSE,
+					'locked' => TRUE
+			)
+	);
 }
 
 function pi_data_menu() {
-  $items = array();
+	$items = array();
 
-  $items['activity/%/edit/data/submit'] = array(
-      'page callback' => 'pi_data_ajax_submit',
-      'type' => MENU_CALLBACK,
-      'access_callback' => TRUE,
-      'access arguments' => array('access inquiry_creator content'),
-  );
+	$items['activity/%/edit/data/submit'] = array(
+			'page callback' => 'pi_data_ajax_submit',
+			'type' => MENU_CALLBACK,
+			'access_callback' => TRUE,
+			'access arguments' => array('access inquiry_creator content'),
+	);
 
-  $items['activity/%/edit/data/delete'] = array(
-      'page callback' => 'pi_data_ajax_delete',
-      'type' => MENU_CALLBACK,
-      'access_callback' => TRUE,
-      'access arguments' => array('access inquiry_creator content'),
-      'weight' => 1,
-  );
-  return $items;
+	$items['activity/%/edit/data/delete'] = array(
+			'page callback' => 'pi_data_ajax_delete',
+			'type' => MENU_CALLBACK,
+			'access_callback' => TRUE,
+			'access arguments' => array('access inquiry_creator content'),
+			'weight' => 1,
+	);
+	return $items;
 }
 
 /**
  * Implementation of pi_data_perm().
  */
 function pi_data_perm() {
-  
+	
 }
 
 /**
@@ -58,102 +58,82 @@ function pi_data_perm() {
  */
 function pi_data_access($op, $node, $account) {
 	return TRUE;
-  global $user;
-  $uid = $user->uid;
-  $details = get_inquiry_details_from_current_path();
+	global $user;
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
 
-  if (is_numeric($details->activity_id)) {
+	if (is_numeric($details->activity_id)) {
 
-    if ($op == 'create') {
-      return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-    } else if ($op == 'update') {
-      return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-    } else if ($op == 'delete') {
-      return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-    }
-  } else if ($op == 'delete' && arg(0) == 'node' && arg(2) == 'delete') {
-    $nid = arg(1);
-    $activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
-    $inquiry_id = pi_activity_get_inquiry_nid($activity_id);
-    if ($inquiry_id && $activity_id) {
-      return pi_activity_check_node_function($activity_id, $uid, 'edit');
-    } else {
-      return FALSE;
-    }
-  }
+		if ($op == 'create') {
+			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+		} else if ($op == 'update') {
+			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+		} else if ($op == 'delete') {
+			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+		}
+	} else if ($op == 'delete' && arg(0) == 'node' && arg(2) == 'delete') {
+		$nid = arg(1);
+		$activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
+		$inquiry_id = pi_activity_get_inquiry_nid($activity_id);
+		if ($inquiry_id && $activity_id) {
+			return pi_activity_check_node_function($activity_id, $uid, 'edit');
+		} else {
+			return FALSE;
+		}
+	}
 }
 
 /**
  * hook_form() for pi_data - dynamically generates the add data form based on selected, available measures and their weights
  */
 function pi_data_form(&$node) {
-  global $user;
-  $node_details = get_inquiry_details_from_current_path();
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$activity_nid = $access_data->get_current_activity_nid();
+	$activity_data = $access_data->get_activity($activity_nid);
 
-  if (is_numeric($node_details->activity_id)) {
-    $current_activity = node_load($node_details->activity_id);
-  }
+	$form = array();
 
-// Build the form
-  $form = array();
+	$form['#attributes'] = array('enctype' => "multipart/form-data");
 
-  $form['#attributes'] = array('enctype' => "multipart/form-data");
+	$form['title'] = array(
+			'#type' => 'hidden',
+			'#default_value' => t('Data'),
+	);
 
-  $form['title'] = array(
-      '#type' => 'hidden',
-      '#default_value' => t('Data'),
-  );
+	$form['data_id'] = array(
+			'#type' => 'hidden',
+			'#default_value' => $node->nid ? $node->nid : '',
+	);
 
-  $form['data_id'] = array(
-      '#type' => 'hidden',
-      '#default_value' => $node->nid ? $node->nid : '',
-  );
+	$form['data_form'] = array(
+			'#tree' => TRUE,
+	);
 
-  $form['data_form'] = array(
-      '#tree' => TRUE,
-  );
+	$measures = pi_methodology_get_measures($activity_data['node']->parent_activity, 'key_dependent');
 
-  $measure_nids = pi_available_measures_get_measure_nids_for_data_activity($current_activity);
 
-  $methodology = pi_methodology_find_user_content($user->uid, $node_details->inquiry_id);
-  if ($methodology && isset($methodology->measures[$current_activity->parent_activity])) {
-    $filtered_measures = array();
-    $regions = array('key', 'dependent');
-    foreach ($regions as $region) {
-      foreach ($methodology->measures[$current_activity->parent_activity][$region] as $measure_nid) {
-        if (in_array($measure_nid, $measure_nids)) {
-          $filtered_measures[] = array('nid' => $measure_nid, 'required' => $region === 'key');
-        }
-      }
-    }
-  } else {
-    $filtered_measures = array_map(function($nid) {
-              return array('nid' => $nid, 'required' => FALSE);
-            }, $measure_nids);
-  }
+	foreach ($measures as $measure) {
+		$value = $node->values[$measure['nid']];
+		$measure_node = node_load($measure['nid']);
+		pi_data_tools_measure_plugin_add_form_item($measure_node, $form, $value, $measure['required']);
+	}
 
-  foreach ($filtered_measures as $measure) {
-    $value = $node->values[$measure['nid']];
-    $measure_node = node_load($measure['nid']);
-    pi_data_tools_measure_plugin_add_form_item($measure_node, $form, $value, $measure['required']);
-  }
-
-  return $form;
+	return $form;
 }
 
 /**
  * Implementation of hook_validate().
  */
 function pi_data_validate($node) {
-  foreach ($node as $key => $value) {
-    if (strpos($key, 'measure_') == 0) {
-      $measure_nid = substr($key, 8);
-      $measure = node_load($measure_nid);
-      if ($measure) {
-        pi_data_tools_measure_plugin_validate_form_value($measure, $value);
-      }
-    }
-  }
+	foreach ($node as $key => $value) {
+		if (strpos($key, 'measure_') == 0) {
+			$measure_nid = substr($key, 8);
+			$measure = node_load($measure_nid);
+			if ($measure) {
+				pi_data_tools_measure_plugin_validate_form_value($measure, $value);
+			}
+		}
+	}
 }
 
 /**
@@ -161,20 +141,22 @@ function pi_data_validate($node) {
  * @param $node the node to be inserted
  */
 function pi_data_insert($node) {
-  foreach ($node as $key => $value) {
-    if (strpos($key, 'measure_') == 0) {
-      $measure_nid = substr($key, 8);
-      $measure = node_load($measure_nid);
-      if ($measure) {
-        pi_data_tools_measure_plugin_process_form_value($measure, $value, $node->values[$measure_nid], $node);
-        $node->values[$measure_nid] = $value;
-      }
-    }
-  }
-  db_query("INSERT INTO {pi_collected_data} (nid, vid, key_question_nid) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->key_question_nid);
-  foreach ($node->values as $measure_nid => $value) {
-    db_query("INSERT INTO {pi_collected_data_values} (nid, vid, measure_nid, value) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $measure_nid, $value);
-  }
+	foreach ($node as $key => $value) {
+		if (strpos($key, 'measure_') == 0) {
+			$measure_nid = substr($key, 8);
+			$measure = node_load($measure_nid);
+			if ($measure) {
+				pi_data_tools_measure_plugin_process_form_value($measure, $value, $node->values[$measure_nid], $node);
+				$node->values[$measure_nid] = $value;
+			}
+		}
+	}
+	db_query("INSERT INTO {pi_collected_data} (nid, vid, key_question_nid) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->key_question_nid);
+	if ($node->values) {
+		foreach ($node->values as $measure_nid => $value) {
+			db_query("INSERT INTO {pi_collected_data_values} (nid, vid, measure_nid, value) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $measure_nid, $value);
+		}
+	}
 }
 
 /**
@@ -182,227 +164,225 @@ function pi_data_insert($node) {
  */
 function pi_data_update($node) {
 // if this is a new node or we're adding a new revision,
-  if ($node->revision) {
-    pi_data_insert($node);
-  } else {
-    db_query("UPDATE {pi_collected_data} SET key_question_nid='%d' WHERE vid=%d", $node->key_question_nid, $node->vid);
+	if ($node->revision) {
+		pi_data_insert($node);
+	} else {
+		db_query("UPDATE {pi_collected_data} SET key_question_nid='%d' WHERE vid=%d", $node->key_question_nid, $node->vid);
 
-    $measure_nids = array();
-    $existing_values_result = db_query("SELECT measure_nid FROM {pi_collected_data_values} WHERE vid=%d", $node->vid);
-    while ($row = db_fetch_array($existing_values_result)) {
-      $measure_nids[] = $row['measure_nid'];
-    }
+		$measure_nids = array();
+		$existing_values_result = db_query("SELECT measure_nid FROM {pi_collected_data_values} WHERE vid=%d", $node->vid);
+		while ($row = db_fetch_array($existing_values_result)) {
+			$measure_nids[] = $row['measure_nid'];
+		}
 
-    foreach ($measure_nids as $nid) {
-      if (!isset($node->values[$nid])) {
-        db_query("DELETE FROM {pi_collected_data_values} WHERE measure_nid=%d AND vid=%d", $nid, $node->vid);
-      }
-    }
-    foreach ($node->values as $nid => $value) {
-      if (in_array($nid, $measure_nids)) {
-        db_query("UPDATE {pi_collected_data_values} SET value='%s' WHERE measure_nid=%d AND vid=%d", $value, $nid, $node->vid);
-      } else {
-        db_query("INSERT INTO {pi_collected_data_values} (nid, vid, measure_nid, value) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $nid, $value);
-      }
-    }
-  }
+		foreach ($measure_nids as $nid) {
+			if (!isset($node->values[$nid])) {
+				db_query("DELETE FROM {pi_collected_data_values} WHERE measure_nid=%d AND vid=%d", $nid, $node->vid);
+			}
+		}
+		foreach ($node->values as $nid => $value) {
+			if (in_array($nid, $measure_nids)) {
+				db_query("UPDATE {pi_collected_data_values} SET value='%s' WHERE measure_nid=%d AND vid=%d", $value, $nid, $node->vid);
+			} else {
+				db_query("INSERT INTO {pi_collected_data_values} (nid, vid, measure_nid, value) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $nid, $value);
+			}
+		}
+	}
 }
 
 /**
  * hook_delete() for pi_data, also deletes data values from pi_collected_data and attached images and files
  */
 function pi_data_delete(&$node) {
-  db_query('DELETE FROM {pi_collected_data_values} WHERE nid = %d', $node->nid);
-  db_query('DELETE FROM {pi_collected_data} WHERE nid = %d', $node->nid);
+	db_query('DELETE FROM {pi_collected_data_values} WHERE nid = %d', $node->nid);
+	db_query('DELETE FROM {pi_collected_data} WHERE nid = %d', $node->nid);
 
 //Remove the data from the sort table if exists
-  db_query('DELETE FROM {pi_sort_data} WHERE data = %d', $node->nid);
+	db_query('DELETE FROM {pi_sort_data} WHERE data = %d', $node->nid);
 }
 
 /**
  * Implementation of hook_load() - gets the pi_data time and also associated pi_collected_data rows
  */
 function pi_data_load($node) {
-  $result = new stdClass;
-  $query = "SELECT key_question_nid FROM {pi_collected_data} WHERE vid=%d";
-  $row = db_fetch_array(db_query($query, $node->vid));
-  if ($row) {
-    $result->key_question_nid = $row['key_question_array'];
-  }
+	$result = new stdClass;
+	$query = "SELECT key_question_nid FROM {pi_collected_data} WHERE vid=%d";
+	$row = db_fetch_array(db_query($query, $node->vid));
+	if ($row) {
+		$result->key_question_nid = $row['key_question_array'];
+	}
 
-  $result->measures = pi_available_measures_get_measure_nids_for_data($node->nid);
+	$result->values = array();
+	$values_query = "SELECT measure_nid, value FROM {pi_collected_data_values} WHERE vid=%d";
+	$values_query_result = db_query($values_query, $node->vid);
+	while ($row = db_fetch_array($values_query_result)) {
+		$result->values[$row['measure_nid']] = $row['value'];
+	}
 
-  $result->values = array();
-  $values_query = "SELECT measure_nid, value FROM {pi_collected_data_values} WHERE vid=%d";
-  $values_query_result = db_query($values_query, $node->vid);
-  while ($row = db_fetch_array($values_query_result)) {
-    $result->values[$row['measure_nid']] = $row['value'];
-  }
-
-  return $result;
+	return $result;
 }
 
 /**
  * Implementation of pi_data_view().
  */
 function pi_data_view($node, $teaser = FALSE, $page = FALSE) {
-  global $user;
-  $details = get_inquiry_details_from_current_path();
+	global $user;
+	$details = get_inquiry_details_from_current_path();
 
 // Use Drupal's default node view.
-  $node = node_prepare($node, $teaser);
+	$node = node_prepare($node, $teaser);
 
-  $node->content['pi_data'] = array(
-      '#value' => theme('pi_data', $node, $teaser),
-      '#weight' => 2
-  );
+	$node->content['pi_data'] = array(
+			'#value' => theme('pi_data', $node, $teaser),
+			'#weight' => 2
+	);
 
 // This is actually of type "pi_sort_measures"
-  $selected_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
+	$selected_measures_nid = find_selected_measures_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
 
 // If there's no sort_measures then just show all available
-  if (isset($selected_measures_nid)) {
-    $selected_measures_node = node_load($selected_measures_nid);
-    if ($selected_measures_node) {
-      $selected_measures_to_show = $selected_measures_node->measures_list;
-      $measures_to_show = $node->measures;
-      if (is_array($selected_measures_to_show)) {
-        foreach ($selected_measures_to_show as $measure_nid => $measure) {
-          $key = check_plain($selected_measures_nid . "-" . $measure_nid);
-          $measure_type = node_load($measure_nid);
-          if (array_key_exists($key, $measures_to_show)) {
-            $measure_value = $node->measures[$key]['#value'];
-          } else {
-            $measure_value = NULL;
-          }
-          $node->content[$key] = array(
-              '#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value, $teaser),
-              '#weight' => $measures_count++
-          );
-        }
-      }
-    }
-  }
-  return $node;
+	if (isset($selected_measures_nid)) {
+		$selected_measures_node = node_load($selected_measures_nid);
+		if ($selected_measures_node) {
+			$selected_measures_to_show = $selected_measures_node->measures_list;
+			$measures_to_show = $node->measures;
+			if (is_array($selected_measures_to_show)) {
+				foreach ($selected_measures_to_show as $measure_nid => $measure) {
+					$key = check_plain($selected_measures_nid . "-" . $measure_nid);
+					$measure_type = node_load($measure_nid);
+					if (array_key_exists($key, $measures_to_show)) {
+						$measure_value = $node->measures[$key]['#value'];
+					} else {
+						$measure_value = NULL;
+					}
+					$node->content[$key] = array(
+							'#value' => theme('pi_data_measure', $measure, $measure_type, $measure_value, $teaser),
+							'#weight' => $measures_count++
+					);
+				}
+			}
+		}
+	}
+	return $node;
 }
 
 /**
  * Implementation of hook_theme().
  */
 function pi_data_theme() {
-  return array(
-      'pi_data_node_form' => array(
-          'arguments' => array('form'),
-      ),
-      'pi_data' => array(
-          'arguments' => array('node', 'teaser'),
-      ),
-      'pi_data_measure' => array(
-          'arguments' => array('measure', 'measure_type', 'measure_value', 'teaser'),
-      ),
-  );
+	return array(
+			'pi_data_node_form' => array(
+					'arguments' => array('form'),
+			),
+			'pi_data' => array(
+					'arguments' => array('node', 'teaser'),
+			),
+			'pi_data_measure' => array(
+					'arguments' => array('measure', 'measure_type', 'measure_value', 'teaser'),
+			),
+	);
 }
 
 function theme_pi_data_node_form($form) {
-  $details = get_inquiry_details_from_current_path();
-  $activity = node_load($details->activity_id);
-  
+	$details = get_inquiry_details_from_current_path();
+	$activity = node_load($details->activity_id);
 
-  $parent_activity = node_load($activity->parent_activity);
 
-  $data = nquire_commons_decode_data($parent_activity->parameters);
-  if (isset($data['tool'])) {
-    if (pi_data_tools_plugin_use_ajax_form($data['tool'])) {
-      _pi_data_load_ajax_form_support($parent_activity, $form);
-      unset($form['buttons']);
-    }
+	$parent_activity = node_load($activity->parent_activity);
 
-    $rendered_form = drupal_render($form);
-    $page = pi_data_tools_plugin_format_form_page($data['tool'], $rendered_form);
+	$data = nquire_commons_decode_data($parent_activity->parameters);
+	if (isset($data['tool'])) {
+		if (pi_data_tools_plugin_use_ajax_form($data['tool'])) {
+			_pi_data_load_ajax_form_support($parent_activity, $form);
+			unset($form['buttons']);
+		}
 
-    $output .= $page ? $page : $rendered_form;
-  } else {
-    $output .= drupal_render($form);
-  }
+		$rendered_form = drupal_render($form);
+		$page = pi_data_tools_plugin_format_form_page($data['tool'], $rendered_form);
 
-  return $output;
+		$output .= $page ? $page : $rendered_form;
+	} else {
+		$output .= drupal_render($form);
+	}
+
+	return $output;
 }
 
 function _pi_data_load_ajax_form_support($sort_data_activity, $form) {
 
-  $data_id = $form['#node']->nid;
-  $data_id_str = $data_id ? "'$data_id'" : 'null';
+	$data_id = $form['#node']->nid;
+	$data_id_str = $data_id ? "'$data_id'" : 'null';
 
-  $data_nids = pi_sort_data_get_item_nids($sort_data_activity->nid);
-  $data_strs = array_map(function($nid) {
-            $data_node = node_load($nid);
-            $output = "$nid: {id:  '$nid'";
-            foreach ($data_node->values as $measure_nid => $value) {
-              $output .= ",measure_{$measure_nid}: '{$value}'";
-            }
-            $output .= '}';
-            return $output;
-          }, $data_nids);
-  $all_data_str = implode(',', $data_strs);
-  $module = "{"
-          . "  init: function() {"
-          . "    this.current = $data_id_str;"
-          . "    this.all = {{$all_data_str}};"
-          . "  }"
-          . "}";
-  nquire_commons_inject_inline_javascript_module('AjaxDataServiceInitialData', $module);
+	$data_nids = pi_sort_data_get_item_nids($sort_data_activity->nid);
+	$data_strs = array_map(function($nid) {
+						$data_node = node_load($nid);
+						$output = "$nid: {id:  '$nid'";
+						foreach ($data_node->values as $measure_nid => $value) {
+							$output .= ",measure_{$measure_nid}: '{$value}'";
+						}
+						$output .= '}';
+						return $output;
+					}, $data_nids);
+	$all_data_str = implode(',', $data_strs);
+	$module = "{"
+					. "  init: function() {"
+					. "    this.current = $data_id_str;"
+					. "    this.all = {{$all_data_str}};"
+					. "  }"
+					. "}";
+	nquire_commons_inject_inline_javascript_module('AjaxDataServiceInitialData', $module);
 
-  drupal_add_js(drupal_get_path('module', 'pi_data') . '/js/AjaxDataService.js');
-  drupal_add_css(drupal_get_path('module', 'pi_data') . '/css/ajaxDataMenu.css');
-  nquire_commons_load_nquire_dynamic_measure_support();
+	drupal_add_js(drupal_get_path('module', 'pi_data') . '/js/AjaxDataService.js');
+	drupal_add_css(drupal_get_path('module', 'pi_data') . '/css/ajaxDataMenu.css');
+	nquire_commons_load_nquire_dynamic_measure_support();
 }
 
 function theme_pi_data($node, $teaser) {
-  $output = '';
-  return $output;
+	$output = '';
+	return $output;
 }
 
 /* AJAX form functions */
 
 function pi_data_ajax_submit() {
-  global $user;
-  /* TODO check permissions! */
+	global $user;
+	/* TODO check permissions! */
 
-  $item = array();
-  $node = _pi_data_ajax_get_form_data_node();
-  if ($node) {
-    $node->revision = TRUE;
-  } else {
-    $node = new stdClass();
-    $node->uid = $user->uid;
-    $node->type = 'pi_data';
-    $node->values = array();
-  }
+	$item = array();
+	$node = _pi_data_ajax_get_form_data_node();
+	if ($node) {
+		$node->revision = TRUE;
+	} else {
+		$node = new stdClass();
+		$node->uid = $user->uid;
+		$node->type = 'pi_data';
+		$node->values = array();
+	}
 
-  foreach ($_REQUEST as $key => $value) {
-    if (strpos($key, "measure_") === 0 && strlen($key) > 8) {
-      $node->$key = $value;
-      $item[$key] = $value;
-    }
-  }
+	foreach ($_REQUEST as $key => $value) {
+		if (strpos($key, "measure_") === 0 && strlen($key) > 8) {
+			$node->$key = $value;
+			$item[$key] = $value;
+		}
+	}
 
-  node_save($node);
-  $item['id'] = $node->nid;
+	node_save($node);
+	$item['id'] = $node->nid;
 
-  $result = array(
-      'status' => TRUE,
-      'data' => $item,
-  );
+	$result = array(
+			'status' => TRUE,
+			'data' => $item,
+	);
 
-  drupal_json($result);
+	drupal_json($result);
 }
 
 function _pi_data_ajax_get_form_data_node() {
-  if (isset($_REQUEST['data_id']) && strlen($_REQUEST['data_id'])) {
-    $node = node_load($_REQUEST['data_id']);
-    if ($node && $node->type === 'pi_data') {
-      return $node;
-    }
-  }
-  return NULL;
+	if (isset($_REQUEST['data_id']) && strlen($_REQUEST['data_id'])) {
+		$node = node_load($_REQUEST['data_id']);
+		if ($node && $node->type === 'pi_data') {
+			return $node;
+		}
+	}
+	return NULL;
 }

@@ -12,8 +12,6 @@ class PiInquiryGroupingAccess {
 	private $activities;
 
 	function __construct() {
-		global $user;
-
 		$this->access_values = array(
 				FALSE => 0,
 				'noaccess' => 0,
@@ -22,9 +20,27 @@ class PiInquiryGroupingAccess {
 				'edit' => 3,
 		);
 
-		$this->current_path = get_inquiry_details_from_current_path();
+		$this->load_current_path(get_inquiry_details_from_current_path());
+	}
+
+	public function set_current_activity($activity_nid) {
+		$node = node_load($activity_nid);
+		$phase = node_load($node->phase_nid);
+
+		$path = new stdClass();
+		$path->phase_id = $node->phase_nid;
+		$path->inquiry_id = $phase->inquiry_nid;
+		$path->activity_id = $node->nid;
+		$path->stage_id = $node->activity_phases_stages['stages']['stage_select'];
+
+		$this->load_current_path($path);
+	}
+
+	private function load_current_path($path) {
+		$this->current_path = $path;
 
 		if ($this->current_path->inquiry_id) {
+			global $user;
 			$this->uid = $user->uid;
 
 			$this->inquiry = array();
@@ -69,7 +85,7 @@ class PiInquiryGroupingAccess {
 				$item['collaboration'] = $data['node']->collaboration;
 				$item['phase_nid'] = $data['node']->nid;
 				$item['script_activity'] = TRUE;
-				
+
 				if ($this->inquiry['access']) {
 					switch ($item['collaboration']) {
 						case 'individual':
@@ -165,6 +181,7 @@ class PiInquiryGroupingAccess {
 	function get_current_phase_nid() {
 		return $this->current_path->phase_id;
 	}
+
 	function get_current_activity_nid() {
 		return $this->current_path->activity_id;
 	}
@@ -180,13 +197,15 @@ class PiInquiryGroupingAccess {
 
 		return NULL;
 	}
-	
+
 	function get_activities_by_type($type) {
 		$activities = array();
-		foreach ($this->phases as $phase_data) {
-			foreach ($phase_data['activities'] as $activity_data) {
-				if ($activity_data['node']->activity_type === $type) {
-					$activities[] = $activity_data;
+		if ($this->phases) {
+			foreach ($this->phases as $phase_data) {
+				foreach ($phase_data['activities'] as $activity_data) {
+					if ($activity_data['node']->activity_type === $type) {
+						$activities[] = $activity_data;
+					}
 				}
 			}
 		}

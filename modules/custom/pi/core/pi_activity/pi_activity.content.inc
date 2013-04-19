@@ -104,6 +104,7 @@ function pi_activity_link_content_with_activity($content_node, $activity_nid) {
 
 function pi_activity_create_content_on_first_visit($activity, $uid) {
 	$types = array(
+			'pi_methodology',
 			'pi_data_spreadsheet',
 			'pi_sort_data',
 			'pi_sort_key_answers',
