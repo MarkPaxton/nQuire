@@ -46,7 +46,7 @@ class PiInquiryGroupingAccess {
 			$this->inquiry = array();
 			$this->inquiry['nid'] = $this->current_path->inquiry_id;
 			$this->inquiry['node'] = node_load($this->current_path->inquiry_id);
-			$this->inquiry['access'] = $this->inquiry['node']->uid || nquire_group_get_user_status_in_group($this->inquiry['node']->actor_gid, $this->uid) === 'member';
+			$this->inquiry['access'] = $this->inquiry['node']->uid == $user->uid || nquire_group_get_user_status_in_group($this->inquiry['node']->actor_gid, $this->uid) === 'member';
 			$this->inquiry['roles'] = nquire_commons_decode_data($this->inquiry['node']->roles);
 
 			$this->subgroup = pi_inquiry_groupings_get_user_subgroup($this->inquiry['node'], $this->uid);
