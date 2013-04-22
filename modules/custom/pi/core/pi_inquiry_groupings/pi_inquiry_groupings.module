@@ -88,6 +88,16 @@ function pi_inquiry_groupings_has_collaboration_phases($inquiry_nid, $collaborat
 	return $row && $row['e'];
 }
 
+function pi_inquiry_groupings_user_is_in_participants_target_group($uid, $inquiry_node) {
+	if ($inquiry_node->participants_selection !== 'group') {
+		return FALSE;
+	} 
+	
+	$query = "SELECT 1 FROM {og_uid} WHERE {og_uid}.uid=%d AND {og_uid}.is_active=1 AND {og_nid}.nid=%d";
+	$row = db_fetch_array(db_query($query, $uid, $inquiry_node->participants_cohort));
+	return $row ? TRUE : FALSE;	
+}
+
 function pi_inquiry_groupings_get_groups_for_user($uid, $group_type) {
 	$groups_query = "SELECT {nquire_group}.nid, {og_uid}.is_active FROM {nquire_group} "
 					. "LEFT JOIN {node} ON {node}.vid={nquire_group}.vid "
