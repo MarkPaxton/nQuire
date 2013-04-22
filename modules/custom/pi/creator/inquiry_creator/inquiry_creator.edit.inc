@@ -52,7 +52,7 @@ function theme_inquiry_creator_inquiry_metadata_form($form) {
 	return drupal_render($form);
 }
 
-function theme_inquiry_creator_inquiry_metadata($node, $editable) {
+function theme_inquiry_creator_inquiry_metadata($node, $editable = FALSE) {
 	drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/inquiry_creator_metadata.css');
 
 	$output = '<div class="inquiry_creator_metadata_block">'

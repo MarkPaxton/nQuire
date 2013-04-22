@@ -39,11 +39,18 @@ function pi_home_view() {
 			foreach ($inquiries as $inquiry_nid) {
 				$inquiry = node_load($inquiry_nid);
 				$status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry, $user->uid);
-
-				$rows[] = array(l($inquiry->title, "inquiry/{$inquiry->nid}") . '<br/>' . $status, $inquiry->description);
+				
+				$image = $inquiry->image ? ('<img src="' . file_create_url($inquiry->image) . '" style="float:left;width: 200px;"></img>') : '';
+				$title = l('<h3>' . check_plain($inquiry->title) . '</h3>', "inquiry/{$inquiry->nid}", array('html' => TRUE)) 
+								. '<p><b>' . nl2br(check_plain($inquiry->body)) . '</b></p>'
+								. '<p><small>' . t('Created by !user', array('!user' => nquire_commons_user_name_or_me($inquiry->uid))) . '<br/>'
+								. t('Number of participants: !n', array('!n' => count(nquire_group_get_member_uids($inquiry->actor_gid, TRUE)))) . '</small></p>';
+				
+				
+				$rows[] = array(array('data' => $image, 'style' => 'width: 200px'), $title);
 			}
 
-			$output .= theme_table($header, $rows);
+			$output .= theme_table(NULL, $rows);
 		}
 	}
 
