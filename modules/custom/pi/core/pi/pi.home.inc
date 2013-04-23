@@ -19,7 +19,7 @@ function pi_home_view() {
 	global $user;
 	$inquiries_for_user = pi_inquiry_groupings_get_inquiries_for_user($user->uid);
 
-	$header = array(t('Inquiry'), t('Description'));
+	//$header = array(t('Inquiry'), t('Description'));
 
 	foreach ($inquiries_for_user as $status => $inquiries) {
 		if (count($inquiries) > 0) {
@@ -64,7 +64,6 @@ function pi_home_view() {
 	$attributes = array('class' => 'inquiry');
 
 	$output .= theme_item_list($list, $title, $type, $attributes);
-	// $output .= theme('table', $header, $rows);
 	return $output;
 }
 

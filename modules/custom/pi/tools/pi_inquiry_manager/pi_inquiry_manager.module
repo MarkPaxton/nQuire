@@ -1,39 +1,102 @@
 <?php
 
-function pi_inquiry_manager_block($op = 'list') {
+include_once 'pi_inquiry_manager.participants.inc';
+
+function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 	switch ($op) {
 		case 'list':
 			$blocks = array();
 			$blocks[0]['info'] = t('Inquiry management');
+			$blocks[1]['info'] = t('Join inquiry');
 			return $blocks;
 
 		case 'view':
-			global $user;
+			switch ($delta) {
+				case 0;
+					$access_data = pi_inquiry_groupings_get_access_data();
 
-			$node_details = get_inquiry_details_from_current_path();
-			$inquiry_id = isset($node_details->inquiry_id) ? $node_details->inquiry_id : FALSE;
-			$inquiry = node_load($inquiry_id);
+					if ($access_data->get_inquiry_nid() && (arg(0) !== 'inquiry' || arg(2) === 'structure')) {
+						$tools = array();
 
-			if ($inquiry && $inquiry->type === 'pi_inquiry' && (arg(0) !== 'inquiry' || arg(2) === 'structure')) {
-				$tools = array();
+						$tools[] = t('Stages');
+						$tools[] = l(t('Participants'), 'inquiry/' . $access_data->get_inquiry_nid() . '/participants');
+						$tools[] = t('Activity status');
 
-				$tools[] = t('Stages');
-				$tools[] = l(t('Participants'), "inquiry/$inquiry_id/participants");
-				$tools[] = t('Activity status');
+						if ($access_data->get_uid() === $access_data->get_inquiry_node()->uid) {
+							$path = inquiry_design_path_to_inquiry_design($access_data->get_inquiry_nid());
+							if ($path) {
+								$tools[] = l(t('Edit inquiry'), $path);
+							}
+						}
 
-				if ($user->uid === $inquiry->uid) {
-					$path = inquiry_design_path_to_inquiry_design($inquiry_id);
-					if ($path) {
-						$tools[] = l(t('Edit inquiry'), $path);
+						$content = t(theme('item_list', $tools, NULL, 'ul', array('class' => 'menu')));
+
+						return array(
+								'subject' => t('Inquiry management'),
+								'content' => $content
+						);
 					}
-				}
+					break;
+				case 1:
+					$access_data = pi_inquiry_groupings_get_access_data();
+					if ($access_data->get_inquiry_nid() && arg(0) === 'inquiry' && !arg(2)) {
+						$status = nquire_group_get_user_status_in_group($access_data->get_inquiry_node()->actor_gid, $access_data->get_uid());
+						$im_owner = $access_data->get_uid() === $access_data->get_inquiry_node()->uid;
+						$group_selective = pi_inquiry_groupings_get_group_selective_type($access_data->get_inquiry_node());
 
-				$content = t(theme('item_list', $tools, NULL, 'ul', array('class' => 'menu')));
+						include_once 'pi_inquiry_manager.participants.inc';
 
-				return array(
-						'subject' => t('Inquiry management'),
-						'content' => $content
-				);
+						switch ($status) {
+							case 'member':
+								$title = t('Enter inquiry');
+								$intro = $im_owner ? t('You are the owner of this inquiry.') : t('You are a member of this inquiry.');
+								$links = array(
+										l(t('Enter inquiry'), 'inquiry/' . $access_data->get_inquiry_nid() . '/structure'),
+										pi_inquiry_manager_partipants_group_operation_link(t('Leave inquiry'), $access_data->get_inquiry_nid(), FALSE, 'leave')
+								);
+								break;
+							case 'awaiting':
+								$intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $access_data->get_inquiry_node());
+								if ($group_selective == OG_MODERATED) {
+									$title = t('Awaiting decision');
+									$intro .= ' ' . t('You have requested access to this inquiry.');
+									$links = array(
+											pi_inquiry_manager_partipants_group_operation_link(t('Cancel request'), $access_data->get_inquiry_nid(), FALSE, 'leave'),
+									);
+								} else {
+									$title = t('Invitation to inquiry');
+									$intro .= ' ' . t('You have been invited to join this inquiry.');
+									$links = array(
+											pi_inquiry_manager_partipants_group_operation_link(t('Accept invitation'), $access_data->get_inquiry_nid(), FALSE, 'acceptinvitation'),
+											pi_inquiry_manager_partipants_group_operation_link(t('Decline invitation'), $access_data->get_inquiry_nid(), FALSE, 'leave'),
+									);
+								}
+								break;
+							case 'none':
+								$title = t('Join inquiry');
+								$intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $access_data->get_inquiry_node());
+								switch ($group_selective) {
+									case OG_OPEN:
+										$links = array(
+												pi_inquiry_manager_partipants_group_operation_link(t('Join inquiry'), $access_data->get_inquiry_nid(), FALSE, 'join'),
+										);
+										break;
+									case OG_MODERATED:
+										$links = array(
+												pi_inquiry_manager_partipants_group_operation_link(t('Request access'), $access_data->get_inquiry_nid(), FALSE, 'join'),
+										);
+										break;
+									case OG_INVITATION_ONLY:
+										$links = array();
+										break;
+								}
+						}
+
+						return array(
+								'subject' => $title,
+								'content' => $intro . '<p/>' . theme('item_list', $links),
+						);
+					}
 			}
 			return NULL;
 	}
@@ -130,7 +193,7 @@ function pi_inquiry_manager_menu() {
 					'access callback' => 'pi_inquiry_manager_participants_group_acceptinvitation_access',
 					'access arguments' => array(1),
 					'weight' => 1,
-			), 
+			),
 			'inquiry/%/participants/%/acceptinvitation' => array(
 					'title' => 'Accept invitation',
 					'file' => 'pi_inquiry_manager.participants.inc',
@@ -140,7 +203,7 @@ function pi_inquiry_manager_menu() {
 					'access callback' => 'pi_inquiry_manager_participants_group_acceptinvitation_access',
 					'access arguments' => array(1, 3),
 					'weight' => 1,
-			), 
+			),
 			'inquiry/%/participants/accept/%' => array(
 					'title' => 'Accept user',
 					'file' => 'pi_inquiry_manager.participants.inc',
@@ -335,11 +398,11 @@ function pi_inquiry_manager_participants_group_join_access($inquiry_nid, $group_
 	$inquiry = node_load($inquiry_nid);
 	if ($inquiry->type === 'pi_inquiry') {
 		$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-		if ($group_check && $group_check['normal_management'] && 
-			($group_check['type']==='inquiry' || !pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid))) {
-			
+		if ($group_check && $group_check['normal_management'] &&
+						($group_check['type'] === 'inquiry' || !pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid))) {
+
 			$allowed_participants = $group_nid ? nquire_group_get_member_uids($inquiry->actor_gid) : pi_inquiry_groupings_get_allowed_participants_for_inquiry($inquiry);
-			
+
 			if (!$allowed_participants || in_array($user->uid, $allowed_participants)) {
 				if ($group_check['group']->og_selective == OG_OPEN || $group_check['group']->og_selective == OG_MODERATED) {
 					return TRUE;

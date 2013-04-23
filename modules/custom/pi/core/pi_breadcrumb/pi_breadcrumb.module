@@ -1,4 +1,5 @@
 <?php
+
 // $Id: pi_breadcrumb.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
 
 
@@ -7,19 +8,19 @@ function pi_breadcrumb_block($op = 'list', $delta = 0, $edit = array()) {
 	switch ($op) {
 
 		case 'list':
+			$blocks = array();
 			$blocks[0]['info'] = t('Activity guide breadcrumb');
 			return $blocks;
 
 		case 'view':
 
-			global $user;
-			$image_path = drupal_get_path('module', 'pi') . '/images/';
+			
 			$details = get_inquiry_details_from_current_path();
 
 			//$block['subject'] = "nQuire";
 
 			$output = "";
-			if(arg(0) == 'home' || arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage') {
+			if (arg(0) == 'home' || arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage') {
 				$output .= pi_breadcrumb(arg(0), $details);
 			}
 
@@ -31,49 +32,38 @@ function pi_breadcrumb_block($op = 'list', $delta = 0, $edit = array()) {
 }
 
 function pi_breadcrumb($page_level, $details) {
-	global $user;
-	$uid = $user->uid;
+
 	$breadcrumb = array('');
-	if($page_level == 'home') {
+	if ($page_level == 'home') {
 		$breadcrumb[] = t('My inquiries');
+	} else {
+		$breadcrumb[] = l('My inquiries', 'inquiries');
 	}
-	else {
-		$breadcrumb[] = l('My inquiries', 'home');
-	}
-	if($page_level == 'inquiry' || $page_level == 'phase' || $page_level == 'activity' || $page_level == 'set_stage') {
-		if($page_level == 'inquiry')
-		{
+	if ($page_level == 'inquiry' || $page_level == 'phase' || $page_level == 'activity' || $page_level == 'set_stage') {
+		if ($page_level == 'inquiry') {
 			$loaded_inquiry = node_load($details->inquiry_id);
 			$breadcrumb[] = check_plain($loaded_inquiry->title);
-		}
-		else
-		{
+		} else {
 			$loaded_inquiry = node_load($details->inquiry_id);
-			$breadcrumb[] = l( check_plain($loaded_inquiry->title), 'inquiry/' . $details->inquiry_id);
+			$breadcrumb[] = l(check_plain($loaded_inquiry->title), 'inquiry/' . $details->inquiry_id);
 		}
 	}
-	if($page_level == 'phase' || $page_level == 'activity') 
-	{
-		if($page_level == 'phase') 
-		{
+	if ($page_level == 'phase' || $page_level == 'activity') {
+		if ($page_level == 'phase') {
 			$loaded_phase = node_load($details->phase_id);
 			$breadcrumb[] = check_plain($loaded_phase->title);
-		}
-		else 
-		{
+		} else {
 			$loaded_phase = node_load($details->phase_id);
 			$breadcrumb[] = l($loaded_phase->title, 'phase/' . $details->phase_id);
 		}
 	}
-	if($page_level == 'activity') 
-	{
+	if ($page_level == 'activity') {
 		//@TODO FIXME Missing function get_visible_status_of_activity
 		//$visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
 		$loaded_activity = node_load($details->activity_id);
 		$breadcrumb[] = check_plain($loaded_activity->title);
 	}
-	if($page_level == 'set_stage') 
-	{
+	if ($page_level == 'set_stage') {
 		$breadcrumb[] = t("Change stage");
 	}
 	//$output = implode(' > ', $breadcrumb);
@@ -81,8 +71,4 @@ function pi_breadcrumb($page_level, $details) {
 
 	return $output;
 }
-
-
-
-
 

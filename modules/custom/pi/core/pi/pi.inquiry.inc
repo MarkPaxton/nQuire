@@ -5,17 +5,21 @@
  */
 function pi_inquiry_inquiry_view($node) {
 	$access_data = pi_inquiry_groupings_get_access_data();
-	$output = 'go to ' . l('structure', 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
+	
+	$output = '';
+	
+	if ($node->image) {
+		$output .= '<div><img style="width: 100%" src="' . file_create_url($node->image) . '"></img></div>';
+	}
+	
+	$output .= 'go to ' . l('structure', 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
 	return $output;
 }
 
 function pi_inquiry_structure_view($node) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 
-	//$image_path = drupal_get_path('module', 'pi') . '/images/';
-
 	$rows = array();
-	//current phase check
 
 
 	foreach ($access_data->get_phases() as $phase_nid => $phase_data) {

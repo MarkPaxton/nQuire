@@ -21,26 +21,23 @@ function theme_pi_inquiry_manager_participants_view_inquiry_group($inquiry_node)
 	$inquiry_selection = pi_inquiry_groupings_get_selection_type($inquiry_node);
 	switch ($inquiry_selection) {
 		case 'justme':
-			$output .= t('This inquiry is just for myself.');
+			$output .= t('This inquiry is just for myself. ');
 			break;
 		case 'group':
 			$cohort = node_load(pi_inquiry_groupings_get_cohort_og($inquiry_node));
 			og_load_group($cohort);
 
-			$output .= t('This inquiry is for members of group: <b>@group</b>.', array('@group' => $cohort->og_description));
-			$gid = pi_inquiry_groupings_get_inquiry_group($inquiry_node);
+			$output .= t('This inquiry is for members of group: <b>@group</b>. ', array('@group' => $cohort->og_description));
+			$show_selective = TRUE;
 			break;
 		case 'anyone':
-			$output .= t('This inquiry is for anyone.');
-			$gid = pi_inquiry_groupings_get_inquiry_group($inquiry_node);
+			$output .= t('This inquiry is for anyone. ');
+			$show_selective = TRUE;
 			break;
 	}
 
-	if ($gid) {
-		$group = node_load($gid);
-		$output .= '<br/>';
-
-		switch ($group->selective) {
+	if ($show_selective) {
+		switch (pi_inquiry_groupings_get_group_selective_type($inquiry_node)) {
 			case OG_OPEN:
 				$output .= $inquiry_selection === 'group' ? t('Access to the inquiry is open for group members.') : t('Access to the inquiry is open.');
 				break;
@@ -54,7 +51,7 @@ function theme_pi_inquiry_manager_participants_view_inquiry_group($inquiry_node)
 	}
 
 	if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_node->nid)) {
-		$output .= '<br/>' . _pi_inquiry_manager_partipants_group_operation_link(t('Edit'), $inquiry_node->nid, FALSE, "access");
+		$output .= '<br/>' . pi_inquiry_manager_partipants_group_operation_link(t('Edit'), $inquiry_node->nid, FALSE, "access");
 	}
 	return $output;
 }
@@ -262,7 +259,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 									$role_output = $roles[$role_id];
 									if ($im_owner) {
 										$role_output .= '<small>&nbsp;&nbsp;&nbsp;&nbsp;'
-														. _pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $member_data['uid'], $role_id))
+														. pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $member_data['uid'], $role_id))
 														. '</small>';
 									}
 									return $role_output;
@@ -271,7 +268,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 				$user_role_list_output = theme_item_list($user_role_list);
 				if ($im_owner) {
 					$user_role_list_output .= '<div><small>'
-									. _pi_inquiry_manager_partipants_group_operation_link(t('Add role'), $inquiry_node->nid, $group_nid, array('addrolestouser', $member_data['uid']))
+									. pi_inquiry_manager_partipants_group_operation_link(t('Add role'), $inquiry_node->nid, $group_nid, array('addrolestouser', $member_data['uid']))
 									. '</small></div>';
 				}
 				$row[] = $user_role_list_output;
@@ -290,7 +287,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 		if ($group_check['group']->selective == OG_INVITE_ONLY && pi_inquiry_manager_participants_group_manageuser_access($inquiry_node->nid, $group_nid)) {
 			$label = $group_check['normal_management'] ? t('Invite users') : t('Add users');
 			$output .= '<p>'
-							. _pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_node->nid, $group_nid, 'invite')
+							. pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_node->nid, $group_nid, 'invite')
 							. '</p>';
 		}
 
@@ -298,7 +295,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 	}
 }
 
-function _pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_nid, $group_nid = FALSE, $elements = FALSE, $add_destination = TRUE) {
+function pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_nid, $group_nid = FALSE, $elements = FALSE, $add_destination = TRUE) {
 	if ($add_destination) {
 		return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements), array('query' => drupal_get_destination()));
 	} else {
@@ -460,14 +457,14 @@ function theme_pi_inquiry_manager_participants_roles($inquiry_node, $group_nid =
 									$output = check_plain($user->name);
 									if ($im_manager) {
 										$output .= '<small>&nbsp;&nbsp;&nbsp;'
-														. _pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $uid, $role['id']))
+														. pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $uid, $role['id']))
 														. '</small>';
 									}
 									return $output;
 								}, $users);
 				$user_html = theme_item_list($user_list);
 				if ($im_manager) {
-					$user_html .= _pi_inquiry_manager_partipants_group_operation_link(t('Add participant'), $inquiry_node->nid, $group_nid, array('adduserstorole', $role['id']));
+					$user_html .= pi_inquiry_manager_partipants_group_operation_link(t('Add participant'), $inquiry_node->nid, $group_nid, array('adduserstorole', $role['id']));
 				}
 
 				$rows[] = array($title, $activities, $user_html);
@@ -1114,7 +1111,7 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 						($can_edit ? t('Groups are managed by me.') : t('Groups are managed by inquiry owner.'));
 
 		if ($can_edit) {
-			$output .= '<br/>' . _pi_inquiry_manager_partipants_group_operation_link(t('Edit'), $inquiry_node->nid, FALSE, 'groupmanagement');
+			$output .= '<br/>' . pi_inquiry_manager_partipants_group_operation_link(t('Edit'), $inquiry_node->nid, FALSE, 'groupmanagement');
 		}
 		$output .= '</p>';
 
@@ -1131,7 +1128,7 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 						});
 
 		$rows = array_map(function($group) use ($user, $inquiry_node) {
-							$title = _pi_inquiry_manager_partipants_group_operation_link($group->title, $inquiry_node->nid, $group->nid, FALSE, FALSE);
+							$title = pi_inquiry_manager_partipants_group_operation_link($group->title, $inquiry_node->nid, $group->nid, FALSE, FALSE);
 							$title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid, FALSE);
 
 							$members = nquire_group_get_member_uids($group->nid, TRUE);
@@ -1147,10 +1144,10 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 		if (pi_inquiry_manager_participants_subgroups_create_access($inquiry_node->nid)) {
 			if ($normal_group_management) {
 				if (!$my_subgroup) {
-					$output .= '<p>' . _pi_inquiry_manager_partipants_group_operation_link(t('Create my group'), $inquiry_node->nid, FALSE, 'createsubgroup') . '</p>';
+					$output .= '<p>' . pi_inquiry_manager_partipants_group_operation_link(t('Create my group'), $inquiry_node->nid, FALSE, 'createsubgroup') . '</p>';
 				}
 			} else {
-				$output .= '<p>' . _pi_inquiry_manager_partipants_group_operation_link(t('Create new subgroup'), $inquiry_node->nid, FALSE, 'createsubgroup') . '</p>';
+				$output .= '<p>' . pi_inquiry_manager_partipants_group_operation_link(t('Create new subgroup'), $inquiry_node->nid, FALSE, 'createsubgroup') . '</p>';
 			}
 		}
 
@@ -1316,7 +1313,7 @@ function pi_inquiry_manager_participants_subgroup($inquiry_nid, $group_nid) {
 	$output .= theme('pi_inquiry_manager_participants_list', $inquiry, $group_nid);
 	$output .= theme('pi_inquiry_manager_participants_roles', $inquiry, $group_nid);
 
-	$output .= '<p>' . _pi_inquiry_manager_partipants_group_operation_link(t('Go back'), $inquiry_nid, FALSE, FALSE, FALSE) . '</p>';
+	$output .= '<p>' . pi_inquiry_manager_partipants_group_operation_link(t('Go back'), $inquiry_nid, FALSE, FALSE, FALSE) . '</p>';
 	return $output;
 }
 
@@ -1340,7 +1337,7 @@ function theme_pi_inquiry_manager_participants_group_access_policy($inquiry_node
 
 
 	if (pi_inquiry_manager_participants_subgroups_edit_access($inquiry_node->nid, $group_nid)) {
-		$output .= '<br/>' . _pi_inquiry_manager_partipants_group_operation_link(t('Edit group'), $inquiry_node->nid, $group_nid, "edit", TRUE);
+		$output .= '<br/>' . pi_inquiry_manager_partipants_group_operation_link(t('Edit group'), $inquiry_node->nid, $group_nid, "edit", TRUE);
 	}
 	return $output;
 }
