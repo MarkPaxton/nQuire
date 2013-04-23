@@ -2,7 +2,7 @@
 $(function() {
 
 
-  nQuireJsSupport.register('InquiryStructureWidget', {
+  nQuireJsSupport.register('nquireStructureWidget', {
     activityTypes: {
       activity: {
         information: {
@@ -95,7 +95,7 @@ $(function() {
     init: function() {
       var self = this;
       $("div[nquire-widget='inquiry-structure']").each(function() {
-        $(this).inquiryStructureWidget({
+        $(this).nquireStructureWidget({
           availableActivities: self.activityTypes
         });
       });

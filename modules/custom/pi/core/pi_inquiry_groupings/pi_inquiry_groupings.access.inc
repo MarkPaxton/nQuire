@@ -7,9 +7,11 @@ class PiInquiryGroupingAccess {
 	private $uid;
 	private $inquiry;
 	private $subgroup;
+	private $subgroup_node;
 	private $roles;
 	private $phases;
 	private $activities;
+	private $share_policy;
 
 	function __construct() {
 		$this->access_values = array(
@@ -50,6 +52,8 @@ class PiInquiryGroupingAccess {
 			$this->inquiry['roles'] = nquire_commons_decode_data($this->inquiry['node']->roles);
 
 			$this->subgroup = pi_inquiry_groupings_get_user_subgroup($this->inquiry['node'], $this->uid);
+			$this->subgroup_node = node_load($this->subgroup);
+
 			$this->roles = array(
 					'inquiry' => nquire_group_get_user_roles($this->inquiry['node']->actor_gid, $this->uid),
 					'subgroup' => $this->subgroup ? nquire_group_get_user_roles($this->subgroup, $this->uid) : FALSE,
@@ -213,4 +217,59 @@ class PiInquiryGroupingAccess {
 		return $activities;
 	}
 
+	function get_user_share_policy() {
+		if (!isset($this->share_policy)) {
+			$this->share_policy = array('structure' => array(), 'values' => array());
+			$query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
+
+			foreach ($this->phases as $pnid => $phase_data) {
+				$phase_policy = array('id' => $pnid, 'title' => check_plain($phase_data['node']->title), 'activities' => array());
+
+				$valid = TRUE;
+				switch ($phase_data['collaboration']) {
+					case 'individual':
+						$actor = $this->uid;
+						$not_editable = FALSE;
+						$default = 'group';
+						break;
+					case 'group':
+						if ($this->subgroup) {
+							$actor = $this->subgroup;
+							$not_editable = $this->subgroup_node->uid !== $this->uid;
+							$default = 'group';
+						} else {
+							$valid = FALSE;
+						}
+						break;
+					default:
+						$actor = $this->inquiry['node']->actor_gid;
+						$not_editable = $this->inquiry['node']->uid !== $this->uid;
+						$default = 'inquiry';
+						break;
+				}
+
+				foreach ($phase_data['activities'] as $anid => $activity_data) {
+					if ($valid) {
+						$row = db_fetch_array(db_query($query, $anid, $actor));
+						$value = $row ? $row['share'] : $default;
+					} else {
+						$value = '';
+					}
+					
+					$activity_policy = array(
+							'id' => $anid,
+							'title' => check_plain($activity_data['node']->title),
+							'not_editable' => $not_editable,
+					);
+					
+					$phase_policy['activities'][] = $activity_policy;
+					$this->share_policy['values'][$anid] = $value;
+				}
+				
+				$this->share_policy['structure'][] = $phase_policy;
+			}	
+		}
+		
+		return $this->share_policy;
+	}
 }

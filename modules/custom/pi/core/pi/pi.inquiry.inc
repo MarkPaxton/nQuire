@@ -12,7 +12,6 @@ function pi_inquiry_inquiry_view($node) {
 		$output .= '<div><img style="width: 100%" src="' . file_create_url($node->image) . '"></img></div>';
 	}
 	
-	$output .= 'go to ' . l('structure', 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
 	return $output;
 }
 

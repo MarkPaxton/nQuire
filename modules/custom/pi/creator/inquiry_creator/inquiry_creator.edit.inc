@@ -125,7 +125,7 @@ function theme_inquiry_creator_side_form($design, $item, $type, $form) {
 	drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/sideForm.css');
 
 	$output = '<table class="item-edit-table"><tr><td>'
-					. theme('inquiry_structure_widget_view', $design, $item)
+					. theme('nquire_structure_widget_view', $design, $item)
 					. '</td><td><div class="item-edit-form-container item-edit-form-container-' . $type . '">'
 					. $form
 					. '</div></td></tr></table>';
@@ -149,7 +149,7 @@ function inquiry_creator_activities_form(&$form_state, $node) {
 	nquire_commons_form_set_default_link_action($form, 'submit');
 
 	_inquiry_creator_create_inquiry_id_form_item($node, $form);
-	inquiry_structure_widget_create_form_item($form, 'structure', $node->structure);
+	nquire_structure_widget_create_form_item($form, 'structure', $node->structure);
 	nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_activities_form_submit', "creator/{$node->nid}/");
 
 	return $form;
@@ -207,7 +207,7 @@ function inquiry_creator_groups_form(&$form_state, $node) {
 	nquire_commons_form_set_default_link_action($form, 'submit');
 
 	_inquiry_creator_create_inquiry_id_form_item($node, $form);
-	inquiry_structure_groups_table_create_form_item($form, 'groups', $node->structure, $node->groups);
+	nquire_structure_groups_table_create_form_item($form, 'groups', $node->structure, $node->groups);
 	nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_groups_form_submit', "creator/{$node->nid}/");
 
 	return $form;
@@ -234,7 +234,7 @@ function inquiry_creator_roles_form(&$form_state, $node) {
 	nquire_commons_form_set_default_link_action($form, 'submit');
 
 	_inquiry_creator_create_inquiry_id_form_item($node, $form);
-	inquiry_structure_roles_table_create_form_item($form, 'roles', $node->structure, $node->roles);
+	nquire_structure_roles_table_create_form_item($form, 'roles', $node->structure, $node->roles);
 	nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_roles_form_submit', "creator/{$node->nid}/");
 
 	return $form;
@@ -285,7 +285,7 @@ function inquiry_creator_stages_form(&$form_state, $node) {
 	}
 
 	_inquiry_creator_create_inquiry_id_form_item($node, $form);
-	inquiry_structure_stages_table_create_form_item($form, 'stages', $node->structure, json_encode($stages));
+	nquire_structure_stages_table_create_form_item($form, 'stages', $node->structure, json_encode($stages));
 	nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_stages_form_submit', "creator/{$node->nid}/");
 
 	$form['#theme'] = 'inquiry_creator_inquiry_metadata_form';
