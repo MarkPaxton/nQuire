@@ -326,6 +326,7 @@ function inquiry_creator_stages_form_submit($form, $form_state) {
 		$old_nids = nquire_commons_decode_data($node->stages, '[]');
 		foreach ($old_nids as $old_nid) {
 			if (!in_array($old_nid, $nids)) {
+				inquiry_deployer_stage_will_be_deleted($old_nid);
 				node_delete($old_nid);
 			}
 		}

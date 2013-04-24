@@ -136,18 +136,23 @@ function inquiry_deployer_update_stages($design_node) {
 			foreach (nquire_commons_decode_data($design_stage->data) as $design_phase_nid => $status) {
 				$design_phase = node_load($design_phase_nid);
 				if ($design_phase->phase) {
-					$phases[$design_phase->phase] = $status === 'edit';
+					$phases[$design_phase->phase] = $status;
 				}
 			}
 			$stage_node = _inquiry_deployer_create_update_ref_node($design_stage, 'stage', 'pi_stage', array(
 					'inquiry_nid' => $inquiry_nid,
 					'stage_actor' => $actor_gid,
-					'stage_phases' => array('phases' => $phases),
+					'phases' => array('phases' => $phases),
 			));
 
 			$valid_stages[] = $stage_node->nid;
 		}
 	}
+}
+
+function inquiry_deployer_stage_will_be_deleted($design_stage_nid) {
+	$node = node_load($design_stage_nid);
+	node_delete($node->stage);
 }
 
 function _inquiry_deployer_create_update_child_activity($design_activity, $child, $activity_attrs, $node_attrs = NULL) {

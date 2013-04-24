@@ -54,7 +54,7 @@
 
 
 			var value = this.nQuireWidget('getDataValue', 'object');
-			for (i in value) {
+			for (var i in value) {
 				this.structureFeatureTable('_buildColumn', value[i]);
 			}
 

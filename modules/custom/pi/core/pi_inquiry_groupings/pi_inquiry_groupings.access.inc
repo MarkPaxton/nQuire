@@ -3,6 +3,8 @@
 class PiInquiryGroupingAccess {
 
 	private $current_path;
+	private $current_stage;
+	private $all_stages_structure;
 	private $access_values;
 	private $uid;
 	private $inquiry;
@@ -34,7 +36,6 @@ class PiInquiryGroupingAccess {
 		$path->phase_id = $node->phase_nid;
 		$path->inquiry_id = $phase->inquiry_nid;
 		$path->activity_id = $node->nid;
-		$path->stage_id = $node->activity_phases_stages['stages']['stage_select'];
 
 		$this->load_current_path($path);
 	}
@@ -61,8 +62,23 @@ class PiInquiryGroupingAccess {
 			);
 
 
+			$this->load_stage();
 			$this->load_phases();
 			$this->load_activities();
+		}
+	}
+
+	private function load_stage() {
+		$query = "SELECT stage_id FROM {pi_stage_current} WHERE inquiry_id=%d";
+		$row = db_fetch_array(db_query($query, $this->inquiry['nid']));
+		if ($row) {
+			$this->current_stage = node_load($row['stage_id']);
+		} else {
+			$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node.vid}={pi_stage}.vid WHERE {pi_stage}.inquiry_nid=%d ORDER BY {pi_stage}.weight ASC LIMIT 1";
+			$row = db_fetch_array(db_query($query, $this->inquiry['nid']));
+			if ($row) {
+				$this->current_stage = node_load($row['nid']);
+			}
 		}
 	}
 
@@ -293,7 +309,47 @@ class PiInquiryGroupingAccess {
 	}
 
 	function user_is_inquiry_owner() {
-		return $this->inquiry && $this->inquire['node']->uid === $this->uid;
+		return $this->inquiry && $this->inquiry['node']->uid === $this->uid;
+	}
+
+	function get_all_stages_structure() {
+		if (!isset($this->all_stages_structure)) {
+			$this->all_stages_structure = array('structure' => array(), 'values' => array());
+			$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node}.vid={pi_stage}.vid WHERE inquiry_nid=%d";
+			$result = db_query($query, $this->inquiry['nid']);
+			while ($row = db_fetch_array($result)) {
+				$stage = node_load($row['nid']);
+				$this->all_stages_structure['values'][] = array(
+						'id' => $stage->nid,
+						'title' => check_plain($stage->title),
+						'values' => $stage->phases,
+				);
+			}
+
+			foreach ($this->phases as $pnid => $phase_data) {
+				$phase_policy = array(
+						'id' => $pnid,
+						'title' => check_plain($phase_data['node']->title),
+						'activities' => array(),
+				);
+
+				foreach ($phase_data['activities'] as $anid => $activity_data) {
+					$activity_policy = array(
+							'id' => $anid,
+							'title' => check_plain($activity_data['node']->title),
+					);
+
+					$phase_policy['activities'][] = $activity_policy;
+				}
+				$this->all_stages_structure['structure'][] = $phase_policy;
+			}
+		}
+
+		return $this->all_stages_structure;
+	}
+
+	function get_current_stage() {
+		return $this->current_stage;
 	}
 
 }

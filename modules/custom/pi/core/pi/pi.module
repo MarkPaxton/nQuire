@@ -155,7 +155,6 @@ function get_inquiry_details_from_current_path() {
 	$result->phase_id = NULL;
 	$result->inquiry_id = NULL;
 	$result->activity_id = NULL;
-	$result->stage_id = NULL;
 
 	switch (arg(0)) {
 		case'home':
@@ -167,11 +166,6 @@ function get_inquiry_details_from_current_path() {
 			if (arg(1)) {
 				$result->inquiry_id = (int) arg(1);
 			}
-			//get the current stage for the inquiry and user
-			$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-			$result->stage_id = $stage->stage_id;
-
-			//phase and activity are not set
 			break;
 		case'phase':
 			//get inquiry from the database
@@ -190,12 +184,6 @@ function get_inquiry_details_from_current_path() {
 					$result->inquiry_id = $row['inquiry_nid'];
 				}
 			}
-
-			//get the current stage for the inquiry and user
-			$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-			$result->stage_id = $stage->stage_id;
-
-			//activity is not set
 			break;
 		case 'activity':
 			if (is_numeric(arg(1))) {
@@ -207,7 +195,6 @@ function get_inquiry_details_from_current_path() {
 				$result->phase_id = $node->phase_nid;
 				$result->inquiry_id = $phase->inquiry_nid;
 				$result->activity_id = $node->nid;
-				$result->stage_id = $node->activity_phases_stages['stages']['stage_select'];
 			}
 
 
@@ -244,10 +231,6 @@ function get_inquiry_details_from_current_path() {
 				$result->activity_id = $node->nid;
 			}
 
-			//get the current stage for the inquiry and user
-			$stage = get_current_stage_of_inquiry_and_user($result->inquiry_id, $uid);
-			$result->stage_id = $stage->stage_id;
-
 			break;
 		default:
 			$result = null;
@@ -281,85 +264,6 @@ function check_teacher_phase_for_inquiry_phase_user($inquiry_id, $phase_id, $uid
 	} elseif ($result->uid) {
 		return 0;
 	}
-}
-
-/**
- * Is this activity a teacher only activity?  That means the actor is a teacher group.
- * @param uint $activity_id activity nid
- * @return bool true if the activity actor is a teacher group
- */
-function pi_check_teacher_flag_on_activity($activity_id) {
-	$is_teacher_activity = false;
-
-	$activity = node_load($activity_id);
-	if ($activity) {
-		if ($activity->type == "pi_activity") {
-			$group = node_load($activity->actor);
-
-			if ($group) {
-				//@TODO FIX ME Hard coded node types are not a real clever idea !
-				if ($group->type == "teacher_group") {
-					$is_teacher_activity = true;
-				} else {
-					if ($group->type != "group") {
-						//drupal_set_message(t("Trying to check teacher status of activity %activity_id, but actor group is a node of type %group.",
-						//array("%activity_id" => $activity_id, '%group' => $activity->actor, '%group' => $group->type)), 'warning');
-					}
-				}
-			} else {
-				//drupal_set_message(t("Trying to check teacher status of activity %activity_id, but actor group %group doesn't exist.", array("%activity_id" => $activity_id, '%group' => $activity->actor)), 'warning');
-			}
-		} else {
-			//drupal_set_message(t("Trying to check teacher status of activity %activity_id, but this node is not an activity.", array("%activity_id" => $activity_id)), 'warning');
-		}
-	} else {
-		//drupal_set_message(t("Trying to check teacher status of activity %activity_id, but this activity does not exist.", array("%activity_id" => $activity_id)), 'warning');
-	}
-
-	return $is_teacher_activity;
-}
-
-/**
- * Is this phase a teacher only phase?  That means the actor is a teacher group.
- * @param uint $phase_id phase nid
- * @return bool true if the phase actor is a teacher group
- */
-function pi_check_teacher_flag_on_phase($phase_id) {
-	$is_teacher_phase = false;
-
-	$phase = node_load($phase_id);
-	if ($phase) {
-		if ($phase->type == "pi_phase") {
-			$group = node_load($phase->phase_actor);
-			if ($group) {
-				//@TODO FIX ME Hard coded node types are not a real clever idea !
-				if ($group->type == "teacher_group") {
-					$is_teacher_phase = true;
-				} else {
-					if ($group->type != "group") {
-						//drupal_set_message(t("Trying to check teacher status of phase !phase_id, but actor group is a node of type !group.",
-						//array("!phase_id" => $phase_id, '!group' => $phase->actor, '!group' => $group->type)), 'warning');
-					}
-				}
-			} else {
-				drupal_set_message(t("Trying to check teacher status of phase !phase_id, but actor group !group doesn't exist.", array("!phase_id" => $phase_id, '!group' => $phase->phase_actor)), 'warning');
-			}
-		} else {
-			drupal_set_message(t("Trying to check teacher status of phase !phase_id, but this node is not an phase.", array("!phase_id" => $phase_id)), 'warning');
-		}
-	} else {
-		drupal_set_message(t("Trying to check teacher status of phase !phase_id, but this phase does not exist.", array("!phase_id" => $phase_id)), 'warning');
-	}
-	return $is_teacher_phase;
-}
-
-/**
- * Used to flag teacher only activities from the gid
- * @todo depricate
- *
- */
-function check_teacher_activity_for_inquiry_activity_user($inquiry_id, $activity_id, $uid) {
-	return pi_check_teacher_flag_on_activity($activity_id);
 }
 
 function pi_get_activities_for_phase($phase_nid) {
@@ -527,83 +431,6 @@ function get_unique_activities($activities) {
 	return $unique;
 }
 
-/**
- *  Returns current stage_id
- * @param uint $inquiry_id inquiry nid
- * @param  uint $uid User id
- * @return uint stage nid for current stage of given inquiry and user
- */
-function get_current_stage_of_inquiry_and_user($inquiry_id, $uid) {
-	// user's current stage
-	$query = "SELECT `stage_id`, `pcs_id` FROM {pi_current_stage} " .
-					"WHERE `inquiry_id` = %d AND `uid` = %d";
-	$result = db_fetch_object(db_query($query, $inquiry_id, $uid));
-
-	//user's group's current stage
-	if (isset($result) && ($result == NULL)) {
-		$query = "SELECT {pi_current_stage}.stage_id, {pi_current_stage}.pcs_id FROM {pi_current_stage} "
-						. "LEFT JOIN {og_uid} ON {og_uid}.nid = {pi_current_stage}.gid "
-						. "WHERE {pi_current_stage}.inquiry_id = %d "
-						. "AND {og_uid}.uid = %d ";
-
-		$result = db_fetch_object(db_query($query, $inquiry_id, $uid));
-
-		if (isset($result) && ($result == NULL)) {
-			$result = new stdClass();
-			$result->stage_id = NULL;
-		}
-	}
-	return $result;
-}
-
-function get_psp_id_for_stage_and_phase($stage_id, $phase_id) {
-	if ($stage_id && $phase_id) {
-		$query = "SELECT psp_id FROM {pi_stage_phase} WHERE (stage_id is NULL OR stage_id = %d) AND (phase_id is NULL OR phase_id = %d)";
-		$psp_id = db_result(db_query($query, $stage_id, $phase_id));
-	} elseif ($stage_id) {
-		$query = "SELECT psp_id FROM {pi_stage_phase} WHERE (stage_id is NULL OR stage_id = %d)";
-		$psp_id = db_result(db_query($query, $stage_id));
-	} elseif ($phase_id) {
-		$query = "SELECT psp_id FROM {pi_stage_phase} WHERE (phase_id is NULL OR phase_id = %d)";
-		$psp_id = db_result(db_query($query, $phase_id));
-	} else {
-		$psp_id = 0;
-	}
-
-	return $psp_id;
-}
-
-//interface parameters
-/* TOREMOVE */
-function show_activites($uid) {
-	$query = "SELECT {pi_activity_preference}.show_activity FROM {pi_activity_preference} "
-					. "LEFT JOIN {og_uid} ON {pi_activity_preference}.gid = {og_uid}.nid "
-					. "WHERE ( {pi_activity_preference}.uid = %d OR {og_uid}.uid = %d ) ";
-	$result = db_fetch_object(db_query($query, $uid, $uid));
-	if (isset($result->show_activity) && $result->show_activity == 0) {
-		return FALSE;
-	} elseif (isset($result->show_activity) && $result->show_activity == 1) {
-		return TRUE;
-	} else {
-		return TRUE;
-	}
-}
-
-/* TOREMOVE */
-
-function show_phases($uid) {
-	$query = "SELECT {pi_phase_preference}.show_phase FROM {pi_phase_preference} "
-					. "LEFT JOIN {og_uid} ON {pi_phase_preference}.gid = {og_uid}.nid "
-					. "WHERE ( {pi_phase_preference}.uid = %d OR {og_uid}.uid = %d)";
-	$result = db_fetch_object(db_query($query, $uid, $uid));
-	if (isset($result->show_phase) && $result->show_phase == 0) {
-		return FALSE;
-	} elseif (isset($result->show_phase) && $result->show_phase == 1) {
-		return TRUE;
-	} else {
-		return TRUE;
-	}
-}
 
 function pi_inquiry_inquiry_view_access() {
 	$access_data = pi_inquiry_groupings_get_access_data();

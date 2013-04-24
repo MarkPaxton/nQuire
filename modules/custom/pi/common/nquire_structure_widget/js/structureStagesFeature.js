@@ -4,7 +4,7 @@ $(function() {
     options: {
       defaultColumn: 'Stage 1',
       freeTextColumn: true,
-      defaultValue: 'view',
+      defaultValue: 'edit',
       allowCreate: true,
       newButtonLabel: 'Add stage',
       newDialogTitle: 'Enter the name of the new stage:',
@@ -13,8 +13,8 @@ $(function() {
       allowEmpty: false,
       values: {
         hidden: 'Not visible',
-        view: 'Visible',
-        edit: 'Editable'
+        view: 'View',
+        edit: 'Edit'
       },
       forItemType: 'phase'
     },

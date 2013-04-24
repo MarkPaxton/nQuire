@@ -2,6 +2,7 @@
 
 include_once 'pi_inquiry_manager.participants.inc';
 include_once 'pi_inquiry_manager.share.inc';
+include_once 'pi_inquiry_manager.stage.inc';
 
 function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 	switch ($op) {
@@ -16,20 +17,20 @@ function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 				case 0;
 					$access_data = pi_inquiry_groupings_get_access_data();
 
-					if ($access_data->has_inquiry_access() && (arg(0) !== 'inquiry' || arg(2) === 'structure' || arg(2) === 'participants' || arg(2) === 'share')) {
+					if ($access_data->has_inquiry_access() && (arg(0) !== 'inquiry' || arg(2) === 'structure' || arg(2) === 'participants' || arg(2) === 'share' || arg(2) === 'stages')) {
 						$tools = array();
 
 						$tools[] = l(t('Start'), 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
-						$tools[] = t('Stages');
+						$tools[] = l(t('Stages'), 'inquiry/' . $access_data->get_inquiry_nid() . '/stages');
 						$tools[] = l(t('Participants'), 'inquiry/' . $access_data->get_inquiry_nid() . '/participants');
 						$tools[] = l(t('Share content'), 'inquiry/' . $access_data->get_inquiry_nid() . '/share');
 
-						if ($access_data->get_uid() === $access_data->get_inquiry_node()->uid) {
+						/*if ($access_data->get_uid() === $access_data->get_inquiry_node()->uid) {
 							$path = inquiry_design_path_to_inquiry_design($access_data->get_inquiry_nid());
 							if ($path) {
 								$tools[] = l(t('Edit inquiry'), $path);
 							}
-						}
+						}*/
 
 						$content = t(theme('item_list', $tools, NULL, 'ul', array('class' => 'menu')));
 
@@ -354,6 +355,16 @@ function pi_inquiry_manager_menu() {
 					'access arguments' => array(),
 					'weight' => 1,
 			),
+			'inquiry/%/stages' => array(
+					'title' => 'Inquiry stages',
+					'file' => 'pi_inquiry_manager.share.inc',
+					'page callback' => 'pi_inquiry_manager_stage_selector',
+					'page arguments' => array(1),
+					'type' => MENU_CALLBACK,
+					'access callback' => 'pi_inquiry_manager_stage_access',
+					'access arguments' => array(),
+					'weight' => 1,
+			),
 	);
 
 	return $items;
@@ -392,7 +403,13 @@ function pi_inquiry_manager_participants_access() {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	return $access_data->has_inquiry_access();
 }
+
 function pi_inquiry_manager_share_access() {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	return $access_data->has_inquiry_access();
+}
+
+function pi_inquiry_manager_stage_access() {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	return $access_data->has_inquiry_access();
 }
