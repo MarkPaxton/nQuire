@@ -16,9 +16,10 @@ function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 				case 0;
 					$access_data = pi_inquiry_groupings_get_access_data();
 
-					if ($access_data->get_inquiry_nid() && (arg(0) !== 'inquiry' || arg(2) === 'structure')) {
+					if ($access_data->has_inquiry_access() && (arg(0) !== 'inquiry' || arg(2) === 'structure' || arg(2) === 'participants' || arg(2) === 'share')) {
 						$tools = array();
 
+						$tools[] = l(t('Start'), 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
 						$tools[] = t('Stages');
 						$tools[] = l(t('Participants'), 'inquiry/' . $access_data->get_inquiry_nid() . '/participants');
 						$tools[] = l(t('Share content'), 'inquiry/' . $access_data->get_inquiry_nid() . '/share');
@@ -110,7 +111,7 @@ function pi_inquiry_manager_menu() {
 					'page arguments' => array(1),
 					'type' => MENU_CALLBACK,
 					'access callback' => 'pi_inquiry_manager_participants_access',
-					'access arguments' => array(1),
+					'access arguments' => array(),
 					'weight' => 1,
 			),
 			'inquiry/%/participants/access' => array(
@@ -343,6 +344,16 @@ function pi_inquiry_manager_menu() {
 					'access arguments' => array(1, 3),
 					'weight' => 1,
 			),
+			'inquiry/%/share' => array(
+					'title' => 'Share my investigation',
+					'file' => 'pi_inquiry_manager.share.inc',
+					'page callback' => 'pi_inquiry_manager_share',
+					'page arguments' => array(1),
+					'type' => MENU_CALLBACK,
+					'access callback' => 'pi_inquiry_manager_share_access',
+					'access arguments' => array(),
+					'weight' => 1,
+			),
 	);
 
 	return $items;
@@ -377,10 +388,13 @@ function pi_inquiry_manager_theme() {
 	);
 }
 
-function pi_inquiry_manager_participants_access($nid) {
-	/* TODO */
-
-	return TRUE;
+function pi_inquiry_manager_participants_access() {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	return $access_data->has_inquiry_access();
+}
+function pi_inquiry_manager_share_access() {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	return $access_data->has_inquiry_access();
 }
 
 function pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid) {

@@ -29,9 +29,6 @@ function nquire_structure_widget_theme() {
 					'arguments' => array('id' => '', 'structure' => '[]'),
 			),
 			'nquire_structure_widget_share_content_feature_table' => array(
-					'arguments' => array('inquiry' => NULL),
-			),
-			'nquire_structure_widget_share_content_feature_table' => array(
 					'arguments' => array('id' => '', 'structure' => '[]'),
 			),
 	);
@@ -172,7 +169,14 @@ function _nquire_structure_widget_create_item_table_row($item, $type, $phaseInde
 	$isActive = $activeItemType === 'all' || $activeItemType === $type;
 
 	$trClassname = 'structure-tablerow' . ($endOfPhase ? ' structure-tablerow-endofphase' : '') . ($phaseAfterFirst ? ' structure-tablerow-phaseafterfirst' : '');
-	$output = "<tr item-id='{$item->id}' type='{$type}' class='$trClassname'>";
+	
+	$attributes = '';
+	if (isset($item->attributes)) {
+		foreach($item->attributes as $key => $value) {
+			$attributes .= ' ' . $key . '="' . $value . '"';
+		}
+	}
+	$output = "<tr item-id='{$item->id}' type='{$type}' class='$trClassname' $attributes>";
 
 	$tdClassname = 'item-cell' . ($isActive ? ' structure-tablecell-active-item' : '');
 	$output .= "<td class='$tdClassname' type='$type'>";
@@ -257,6 +261,11 @@ function nquire_structure_widget_share_content_table_create_form_item(&$form, $i
 function theme_nquire_structure_widget_share_content_feature_table($id, $structure) {
 	$output = '<p>' . t('Here you can select whether to share your content with other inquiry users.') . '<br/>'
 					. t('Please note that for activities carried out in groups or all the participants together, this decision is made by the group and inquiry owners respectively.') . '</p>';
+	
+	$access_data = pi_inquiry_groupings_get_access_data();
+	if ($access_data->get_use_groups() && !$access_data->get_subgroup()) {
+		$output .= '<p>' . t('You do not belong to any group in this inquiry. Therefore, you cannot change the sharing settings for group activities.') . '<p>';
+	}
 
 	$output .= theme('nquire_structure_widget_base_feature_table', $id, $structure, 'activity', 'structureShareContentFeature');
 	return $output;

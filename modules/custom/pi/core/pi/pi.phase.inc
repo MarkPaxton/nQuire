@@ -19,12 +19,17 @@ function pi_inquiry_phase_view($phase) {
 	$output = nl2br(check_plain($phase->body));
 
 	$output .= '<br><small>';
+
+	$link = l(t('here'), 'phase/' . $phase->nid . '/sharedcontent');
+
 	switch ($phase->collaboration) {
 		case 'individual':
-			$output .= t('Activities in this phase are carried out individually.');
+			$output .= t('Activities in this phase are carried out individually. ')
+							. t('Click !link to see what other participants are doing.', array('!link' => $link));
 			break;
 		case 'group':
-			$output .= t('Activities in this phase are carried out in groups.');
+			$output .= t('Activities in this phase are carried out in groups.')
+							. t('Click !link to see what other groups are doing.', array('!link' => $link));
 			break;
 		default:
 			$output .= t('Activities in this phase are done by all inquiry participants working together.');
@@ -46,7 +51,7 @@ function pi_inquiry_phase_view($phase) {
 			if ($activity_data['access']) {
 				$nid = pi_activity_get_content_nid_for_activity($activity_nid);
 				$activity_content_node = node_load($nid);
-				
+
 				if (!$activity_content_node) {
 					$activity_content_node = $activity;
 				}

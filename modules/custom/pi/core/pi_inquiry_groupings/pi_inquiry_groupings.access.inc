@@ -6,6 +6,7 @@ class PiInquiryGroupingAccess {
 	private $access_values;
 	private $uid;
 	private $inquiry;
+	private $use_groups;
 	private $subgroup;
 	private $subgroup_node;
 	private $roles;
@@ -67,6 +68,7 @@ class PiInquiryGroupingAccess {
 
 	private function load_phases() {
 		$this->phases = array();
+		$this->use_groups = FALSE;
 
 		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry['nid']);
 		foreach ($phase_nids as $nid) {
@@ -75,6 +77,10 @@ class PiInquiryGroupingAccess {
 			$item['access'] = $this->inquiry['access'];
 			$item['activities'] = array();
 			$this->phases[$nid] = $item;
+
+			if ($item['node']->collaboration === 'group') {
+				$this->use_groups = TRUE;
+			}
 		}
 	}
 
@@ -174,6 +180,10 @@ class PiInquiryGroupingAccess {
 		return $this->activities[$nid];
 	}
 
+	function get_use_groups() {
+		return $this->use_groups;
+	}
+
 	function get_subgroup() {
 		return $this->subgroup;
 	}
@@ -223,53 +233,67 @@ class PiInquiryGroupingAccess {
 			$query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
 
 			foreach ($this->phases as $pnid => $phase_data) {
-				$phase_policy = array('id' => $pnid, 'title' => check_plain($phase_data['node']->title), 'activities' => array());
+				$phase_policy = array(
+						'id' => $pnid,
+						'title' => check_plain($phase_data['node']->title) . ' <small>(' . $phase_data['node']->collaboration . ')</small>',
+						'activities' => array(),
+				);
 
 				$valid = TRUE;
-				switch ($phase_data['collaboration']) {
+				switch ($phase_data['node']->collaboration) {
 					case 'individual':
+						$default = $this->use_groups ? 'individual_group' : 'individual_no';
 						$actor = $this->uid;
 						$not_editable = FALSE;
-						$default = 'group';
 						break;
 					case 'group':
 						if ($this->subgroup) {
+							$default = 'group_no';
 							$actor = $this->subgroup;
-							$not_editable = $this->subgroup_node->uid !== $this->uid;
-							$default = 'group';
+							$not_editable = !$this->user_is_subgroup_owner();
 						} else {
 							$valid = FALSE;
 						}
 						break;
 					default:
+						$default = 'all_no';
 						$actor = $this->inquiry['node']->actor_gid;
-						$not_editable = $this->inquiry['node']->uid !== $this->uid;
-						$default = 'inquiry';
+						$not_editable = !$this->user_is_inquiry_owner();
 						break;
 				}
 
 				foreach ($phase_data['activities'] as $anid => $activity_data) {
 					if ($valid) {
 						$row = db_fetch_array(db_query($query, $anid, $actor));
-						$value = $row ? $row['share'] : $default;
-					} else {
-						$value = '';
+						$this->share_policy['values'][$anid] = $row ? $row['share'] : $default;
 					}
-					
+
 					$activity_policy = array(
 							'id' => $anid,
 							'title' => check_plain($activity_data['node']->title),
-							'not_editable' => $not_editable,
+							'attributes' => array(
+									'not_editable' => $not_editable || !$valid,
+									'collaboration' => $phase_data['node']->collaboration,
+									'use_groups' => $this->use_groups ? '1' : '0',
+							),
 					);
-					
+
 					$phase_policy['activities'][] = $activity_policy;
-					$this->share_policy['values'][$anid] = $value;
 				}
-				
+
 				$this->share_policy['structure'][] = $phase_policy;
-			}	
+			}
 		}
-		
+
 		return $this->share_policy;
 	}
+
+	function user_is_subgroup_owner() {
+		return $this->subgroup_node && $this->subgroup_node->uid === $this->uid;
+	}
+
+	function user_is_inquiry_owner() {
+		return $this->inquiry && $this->inquire['node']->uid === $this->uid;
+	}
+
 }
