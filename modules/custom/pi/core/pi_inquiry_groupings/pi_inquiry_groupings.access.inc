@@ -88,9 +88,14 @@ class PiInquiryGroupingAccess {
 
 		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry['nid']);
 		foreach ($phase_nids as $nid) {
+			$access = 'view';
+			if ($this->inquiry['access'] && $this->current_stage && isset($this->current_stage->phases[$nid])) {
+				$access = $this->current_stage->phases[$nid] === 'hidden' ? FALSE : $this->current_stage->phases[$nid];
+			}
+
 			$item = array();
 			$item['node'] = node_load($nid);
-			$item['access'] = $this->inquiry['access'];
+			$item['access'] = $access;
 			$item['activities'] = array();
 			$this->phases[$nid] = $item;
 
@@ -115,13 +120,13 @@ class PiInquiryGroupingAccess {
 				if ($this->inquiry['access']) {
 					switch ($item['collaboration']) {
 						case 'individual':
-							$item['access'] = 'edit';
+							$item['access'] = $data['access'];
 							break;
 						case 'group':
-							$item['access'] = $this->subgroup ? $this->max_access_for_user_roles($this->roles['subgroup'], $activity_nid) : FALSE;
+							$item['access'] = $this->subgroup ? $this->max_access_for_user_roles($this->roles['subgroup'], $activity_nid, $data['access']) : FALSE;
 							break;
 						default:
-							$item['access'] = $this->max_access_for_user_roles($this->roles['inquiry'], $activity_nid);
+							$item['access'] = $this->max_access_for_user_roles($this->roles['inquiry'], $activity_nid, $data['access']);
 							break;
 					}
 				} else {
@@ -133,9 +138,9 @@ class PiInquiryGroupingAccess {
 		}
 	}
 
-	private function max_access_for_user_roles($user_roles, $activity_nid) {
+	private function max_access_for_user_roles($user_roles, $activity_nid, $base_access = 'edit') {
 		if (count($this->inquiry['roles']) === 0) {
-			return 'edit';
+			return $base_access;
 		} else {
 			$access = FALSE;
 			foreach ($this->inquiry['roles'] as $role) {
@@ -148,6 +153,11 @@ class PiInquiryGroupingAccess {
 					}
 				}
 			}
+
+			if ($this->access_values[$access] > $this->access_values[$base_access]) {
+				$access = $base_access;
+			}
+
 			return $access;
 		}
 	}

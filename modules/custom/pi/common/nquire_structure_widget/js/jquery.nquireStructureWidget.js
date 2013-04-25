@@ -116,7 +116,7 @@
 			var status = this.data('status')[itemId].status;
 			var element = this.find('div[item-id="' + itemId + '"]');
 			var type = element.hasClass('nquire-structure-phase-container') ? 'phase' : 'activity';
-			var nquire = $('form[id^="nquire-creator"]').find('input[name="nquire_design"]').attr('value');
+			var inquiry = $('form[id^="inquiry-creator"]').find('input[name="inquiry_design"]').attr('value');
 
 			element.find('.item-data').removeClass()
 							.addClass('item-data item-' + status);
@@ -124,7 +124,7 @@
 			var buttons = element.find('.nquire-item-buttons');
 			buttons.html('');
 
-			var path = 'creator/' + nquire + '/' + type + '/' + itemId;
+			var path = 'creator/' + inquiry + '/' + type + '/' + itemId;
 			var baseHref = window.location.pathname + (window.location.pathname.match(/\/$/) ? '' : '/') + type + '/' + itemId;
 
 			buttons.append('&nbsp;&nbsp;');

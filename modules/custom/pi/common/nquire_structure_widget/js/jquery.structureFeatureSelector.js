@@ -8,7 +8,8 @@
 	var methods = {
 		init: function(options) {
 			var _options = $.extend({
-				multiple: false,
+				selection: 'single',
+				highlightColumn: null,
 				columnValues: [],
 				defaultValueForItem: false,
 				validValuesForItem: false,
@@ -16,38 +17,51 @@
 				forItemType: 'all'
 			}, options);
 
-			var defaultValue = options.columnValues.length > 0 ?
-							options.columnValues[0].id : null;
-
-			this.nQuireWidget({
-				defaultValue: defaultValue
-			});
 
 			this.data('options', _options);
-			
-			var value = this.nQuireWidget('getDataValue', 'object');
-			for (var i in options.columnValues) {
-				this.structureFeatureSelector('_buildColumn', options.columnValues[i], options.columnValues[i].id == value);
+
+			if (_options.selection !== 'none') {
+				var defaultValue = _options.columnValues.length > 0 ?
+								_options.columnValues[0].id : null;
+
+				this.nQuireWidget({
+					defaultValue: defaultValue
+				});
+
+				var value = this.nQuireWidget('getDataValue', 'object');
+			} else {
+				value = _options.defaultValue;
 			}
 
+			for (var i in _options.columnValues) {
+				this.structureFeatureSelector('_buildColumn', options.columnValues[i], _options.columnValues[i].id == value);
+			}
+
+			this.structureFeatureSelector('_updateSelectedColumn');
 			this.structureFeatureSelector('_enableSaveButton', false);
 		},
 		_buildColumn: function(column, checked) {
 			var options = this.data('options');
 
-			var button = $('<input type="radio" name="column" value="' + column.id + '"/>');
-			if (checked) {
-				button.attr('checked', 'checked');
-			}
-			
-			var self = this;
-			button.change(function() {
-				self.structureFeatureSelector('_dataModified', $(this).attr('value'));
-			});
-			
+
 			var headCell = $('<td>').addClass('feature-cell').attr('column-id', column.id);
 			var cellContainer = $('<div>').addClass('feature-title').appendTo(headCell);
-			cellContainer.append(button).append(column.title);
+
+			if (options.selection !== 'none') {
+				var button = $('<input type="radio" name="column" value="' + column.id + '"/>');
+				if (checked) {
+					button.attr('checked', 'checked');
+				}
+
+				var self = this;
+				button.change(function() {
+					self.structureFeatureSelector('_dataModified', $(this).attr('value'));
+				});
+
+				cellContainer.append(button);
+			}
+
+			cellContainer.append(column.title);
 
 			this.find('tr.structure-feature-list').append(headCell);
 
@@ -67,9 +81,16 @@
 
 			this.structureFeatureSelector('_updateOddEvenClasses');
 		},
+		_updateSelectedColumn: function() {
+			var options = this.data('options');
+			var selected = options.selection === 'none' ? options.highlightColumn : this.nQuireWidget('getDataValue', 'object');
+			this.find('[column-id="' + selected + '"]').addClass('column-selected');
+			this.find('[column-id!="' + selected + '"]').removeClass('column-selected');
+		},
 		_dataModified: function(data) {
 			this.nQuireWidget('setDataValue', data);
 			this.structureFeatureSelector('_enableSaveButton', true);
+			this.structureFeatureSelector('_updateSelectedColumn');
 		},
 		_enableSaveButton: function(enabled) {
 			var button = $('#edit-submit');

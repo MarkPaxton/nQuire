@@ -37,6 +37,9 @@ function nquire_structure_widget_theme() {
 			'nquire_structure_widget_stage_selector' => array(
 					'arguments' => array('id' => '', 'structure' => '[]'),
 			),
+			'nquire_structure_widget_stage_view' => array(
+					'arguments' => array('id' => '', 'structure' => '[]'),
+			),
 	);
 }
 
@@ -206,11 +209,10 @@ function theme_nquire_structure_widget_base_feature_selector($id, $structure, $a
 	return $output;
 }
 
-
 function _nquire_structure_widget_create_item_table_row($item, $type, $phaseIndex, $activeItemType, $endOfPhase, $phaseAfterFirst) {
 	$isActive = $activeItemType === 'all' || $activeItemType === $type;
 
-	$trClassname = 'structure-tablerow' . ($endOfPhase ? ' structure-tablerow-endofphase' : '') . ($phaseAfterFirst ? ' structure-tablerow-phaseafterfirst' : '');
+	$trClassname = 'structure-tablerow' . ($endOfPhase ? ' structure-tablerow-endofphase' : '') . ($phaseAfterFirst ? ' structure-tablerow-phaseafterfirst' : ' structure-tablerow-phasefirst');
 
 	$attributes = '';
 	if (isset($item->attributes)) {
@@ -324,6 +326,13 @@ function nquire_structure_widget_stage_selector_create_form_item(&$form, $id, $s
 
 function theme_nquire_structure_widget_stage_selector($id, $structure) {
 	$output = '<p>' . t('Here you can select the active stage for this inquiry.') . '</p>';
+
+	$output .= theme('nquire_structure_widget_base_feature_selector', $id, $structure, 'phase', 'structureStageSelector');
+	return $output;
+}
+
+function theme_nquire_structure_widget_stage_view($id, $structure) {
+	$output = '<p>' . t('Here you can see the stge currently active.') . '</p>';
 
 	$output .= theme('nquire_structure_widget_base_feature_selector', $id, $structure, 'phase', 'structureStageSelector');
 	return $output;
