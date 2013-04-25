@@ -49,14 +49,7 @@ function pi_inquiry_phase_view($phase) {
 			$activity_link = pi_activity_build_link($activity_nid, $uid);
 
 			if ($activity_data['access']) {
-				$nid = pi_activity_get_content_nid_for_activity($activity_nid);
-				$activity_content_node = node_load($nid);
-
-				if (!$activity_content_node) {
-					$activity_content_node = $activity;
-				}
-
-				$activity_desc = pi_activity_teaser($activity_content_node, $activity, 'view');
+				$activity_desc = pi_activity_teaser($activity);
 			} else {
 				$activity_desc = t('You do not have access to view or edit this activity.');
 			}
@@ -73,5 +66,4 @@ function pi_inquiry_phase_view($phase) {
 	}
 	return $output;
 }
-?>
 

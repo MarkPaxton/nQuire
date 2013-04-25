@@ -1,54 +1,54 @@
 <?php
+
 // $Id: pi_sort_result_presentations.module,v 1.2 2010/02/15 09:17:48 ou_pm Exp $
 
 function pi_sort_result_presentations_node_info() {
-    return array(
-		'pi_sort_result_presentations' => array(
-			'name' => t('Inquiry show and sort result presentations'), // Required.
-			'module' => 'pi_sort_result_presentations',  // Required.
-			'description' => t('Result presentations sort'), // Required.
-			'has_title' => FALSE,
-			'title_label' => t('Sorted result presentations'),
-			'has_body' => FALSE,
-			'body_label' => t('Sort of result presentations'),
-			'locked' => TRUE,
-			'add_node_type' => 'pi_result_presentations'
-    	)
-    );
+	return array(
+			'pi_sort_result_presentations' => array(
+					'name' => t('Inquiry show and sort result presentations'), // Required.
+					'module' => 'pi_sort_result_presentations', // Required.
+					'description' => t('Result presentations sort'), // Required.
+					'has_title' => FALSE,
+					'title_label' => t('Sorted result presentations'),
+					'has_body' => FALSE,
+					'body_label' => t('Sort of result presentations'),
+					'locked' => TRUE,
+					'add_node_type' => 'pi_result_presentations'
+			)
+	);
 }
 
 function pi_sort_result_presentations_perm() {
+	
 }
 
 function pi_sort_result_presentations_access($op, $node, $account) {
 	return TRUE;
-    global $user;
-    $details = get_inquiry_details_from_current_path();
+	global $user;
+	$details = get_inquiry_details_from_current_path();
 
-    if ($op == 'create') {
-        return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
-    }
+	if ($op == 'create') {
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
+	}
 
-    if ($op == 'update') {
-        return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-    }
+	if ($op == 'update') {
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+	}
 }
-
 
 /**
  * Implementation of hook_theme().
  */
 function pi_sort_result_presentations_theme() {
-    return array(
-	    'pi_sort_result_presentations_node_form' => array(
-	    	'arguments' => array('form'),
-	    ),
-	    'pi_sort_result_presentations' => array(
-	    	'arguments' => array('node', 'teaser', 'result_presentations'),
-	    ),
-    );
+	return array(
+			'pi_sort_result_presentations_node_form' => array(
+					'arguments' => array('form'),
+			),
+			'pi_sort_result_presentations' => array(
+					'arguments' => array('node', 'teaser', 'result_presentations'),
+			),
+	);
 }
-
 
 /**
  * hook_form() for pi_sort_result_presentations which provides draggable sorting for pi_result_presentations
@@ -58,85 +58,72 @@ function pi_sort_result_presentations_theme() {
 function pi_sort_result_presentations_form(&$node) {
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
-  	if (is_numeric($node_details->activity_id))
-  	{
-  		$current_activity = node_load($node_details->activity_id);
-  	}
-  	
-  	if ($current_activity->name)
-  	{
-  		$users_group = get_group_of_type($user->uid, $current_activity->audience, 
-  		$node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id); 
-  		if($users_group!=false)
-  		{
-  			$group = node_load($users_group);
-  			$sort_for = $group->title;
+	if (is_numeric($node_details->activity_id)) {
+		$current_activity = node_load($node_details->activity_id);
+	}
+
+	if ($current_activity->name) {
+		$users_group = get_group_of_type($user->uid, $current_activity->audience, $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
+		if ($users_group != false) {
+			$group = node_load($users_group);
+			$sort_for = $group->title;
+		} else {
+			$sort_for = $user->name;
 		}
-  		else
-  		{
-  			$sort_for = $user->name;
-  		}
-  		$node_title = check_plain(t('Results for ') . $sort_for);
-  	}
-  	else
-  	{
-		$type = node_get_types('type', $node);    
-  		$node_title = $type->name;
-  	}
-  	
-    // Add the existing sorted items and add the new new ones to the end
-    if(isset($node->nid))
-    {
-        $sorted_results = $node->categories;
-    }
-    else {
-        $sorted_results = array();
-    }
+		$node_title = check_plain(t('Results for ') . $sort_for);
+	} else {
+		$type = node_get_types('type', $node);
+		$node_title = $type->name;
+	}
+
+	// Add the existing sorted items and add the new new ones to the end
+	if (isset($node->nid)) {
+		$sorted_results = $node->categories;
+	} else {
+		$sorted_results = array();
+	}
 	$all_results = pi_sort_result_presentations_get_options();
 	$results_to_show = pi_merge_content_item_lists($sorted_results, $all_results);
-		
-  	
-  	// Build the form
-    $form = array();
-    $form['title'] = array (
-        '#type' => 'hidden',
-        '#value' => $node_title,
-    );
 
-    // All results presentations are collected in this array:
-    $form['onepageprofile_categories'] = array(
-        '#tree'   => TRUE,
-    );
 
-    // set $tree to point to the above $form['onepageprofile_categories'] object
-    $tree = &$form['onepageprofile_categories'];
-    foreach ($results_to_show as $results_nid => $results) {
+	// Build the form
+	$form = array();
+	$form['title'] = array(
+			'#type' => 'hidden',
+			'#value' => $node_title,
+	);
 
-        $result_presentation = node_load($results_nid);
-		if($result_presentation)
-		{
-	        // add $tree entries for current category (i.e. $key)
-	        $tree[$results_nid]['title'] = array(
-	            '#value' => t($results['#title']),
-	        );
-	
-	        $tree[$results_nid]['weight'] = array(
-	            '#type'          => 'weight',
-	            '#delta'         => count($results_to_show),
-				'#default_value' => $results['#weight'],
-	        );
+	// All results presentations are collected in this array:
+	$form['onepageprofile_categories'] = array(
+			'#tree' => TRUE,
+	);
+
+	// set $tree to point to the above $form['onepageprofile_categories'] object
+	$tree = &$form['onepageprofile_categories'];
+	foreach ($results_to_show as $results_nid => $results) {
+
+		$result_presentation = node_load($results_nid);
+		if ($result_presentation) {
+			// add $tree entries for current category (i.e. $key)
+			$tree[$results_nid]['title'] = array(
+					'#value' => t($results['#title']),
+			);
+
+			$tree[$results_nid]['weight'] = array(
+					'#type' => 'weight',
+					'#delta' => count($results_to_show),
+					'#default_value' => $results['#weight'],
+			);
 		}
-    }
-    return $form;
+	}
+	return $form;
 }
 
 function pi_sort_result_presentations_insert($node) {
-	$details  = get_inquiry_details_from_current_path();
-	if(count($node->onepageprofile_categories) > 0)
-	{
-		foreach($node->onepageprofile_categories as $key => $result_presentations)
-		{
-			$query = "INSERT INTO {pi_sort_result_presentations} (nid, vid, result_presentations, weight) VALUES (%d, %d, %d, %d)"; 
+	$details = get_inquiry_details_from_current_path();
+	if (count($node->onepageprofile_categories) > 0) {
+		foreach ($node->onepageprofile_categories as $key => $result_presentations) {
+			$query = "INSERT INTO {pi_sort_result_presentations} (nid, vid, result_presentations, weight) VALUES (%d, %d, %d, %d)";
 			db_query($query, $node->nid, $node->vid, $key, $result_presentations['weight']);
 		}
 	}
@@ -144,68 +131,60 @@ function pi_sort_result_presentations_insert($node) {
 
 function pi_sort_result_presentations_update($node) {
 // if this is a new node or we're adding a new revision,
-    if ($node->revision) {
-        pi_sort_result_presentations_insert($node);
-    }
-    else {
-        db_query("DELETE FROM {pi_sort_result_presentations} WHERE vid = %d", $node->vid);
-        pi_sort_result_presentations_insert($node);
-    }
+	if ($node->revision) {
+		pi_sort_result_presentations_insert($node);
+	} else {
+		db_query("DELETE FROM {pi_sort_result_presentations} WHERE vid = %d", $node->vid);
+		pi_sort_result_presentations_insert($node);
+	}
 }
 
 function pi_sort_result_presentations_delete(&$node) {
-    db_query("DELETE FROM {pi_sort_result_presentations} WHERE nid = %d", $node->nid);
+	db_query("DELETE FROM {pi_sort_result_presentations} WHERE nid = %d", $node->nid);
 }
-
 
 function pi_sort_result_presentations_load($node) {
-    $result = new stdClass;
-    $result->categories = pi_sort_result_presentations_get_choice($node);
-    return $result;
+	$result = new stdClass;
+	$result->categories = pi_sort_result_presentations_get_choice($node);
+	return $result;
 }
-
 
 function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 	global $user;
-	$details = get_inquiry_details_from_current_path();
 
 	$node = node_prepare($node, $teaser);
-	 
+
 	$already_sorted_result_presentations = $node->categories;
 	$unsorted_result_presentations = pi_sort_result_presentations_get_options();
-    $sorted_result_presentations = pi_merge_content_item_lists($already_sorted_result_presentations, $unsorted_result_presentations);
+	$sorted_result_presentations = pi_merge_content_item_lists($already_sorted_result_presentations, $unsorted_result_presentations);
 	$result_presentations_to_show = array();
-	foreach(array_keys($sorted_result_presentations) as $sorted_result_presentations_nid)
-	{
+	foreach (array_keys($sorted_result_presentations) as $sorted_result_presentations_nid) {
 		$result_presentation_activity_id = pi_activity_get_activity_nid_for_content_nid($sorted_result_presentations_nid);
-		if ($result_presentation_activity_id)
-		{
+		if ($result_presentation_activity_id) {
 			$loaded_activity = node_load($result_presentation_activity_id);
-			$loaded_node = node_load($sorted_result_presentations_nid);
 			$activity_link = pi_activity_build_link($result_presentation_activity_id, $user->uid);
-			$activity_teaser = pi_activity_teaser($loaded_node, $loaded_activity, 'view');
+			$activity_teaser = pi_activity_teaser($loaded_activity);
 			$result_presentations_to_show[] = array(
-				    	'title' => $activity_link,
-				    	'description' => $activity_teaser
+					'title' => $activity_link,
+					'description' => $activity_teaser
 			);
 		}
 	}
-	
-	if($teaser)
-	{
+
+	if ($teaser) {
 		//Link to add a new key question
 		//cannot get activity id from $details when viewing a list of activity teasers
 		$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
 		$link_output = make_add_activity_link($activity_id_for_this_node);
-		$node->content['pi_sort_result_presentations_add_result_presentations_link'] =  array(
-            '#value' =>$link_output,
-            '#weight' => -3
+		$node->content['pi_sort_result_presentations_add_result_presentations_link'] = array(
+				'#value' => $link_output,
+				'#weight' => -3
 		);
 	}
 
 	$node->content['pi_sort_result_presentations'] = array(
-            '#value' => theme('pi_sort_result_presentations', $node, $teaser, $result_presentations_to_show),
-            '#weight' => -1
+			'#value' => theme('pi_sort_result_presentations', $node, $teaser, $result_presentations_to_show),
+			'#weight' => -1
 	);
 	return $node;
 }
@@ -215,103 +194,91 @@ function theme_pi_sort_result_presentations($node, $teaser, $result_presentation
 	$output = '';
 	$output = '<p>' . t('View and organise the presentations of your results.') . '</p>';
 	$list = array();
-	
-	foreach ($result_presentations as $results)
-	{
+
+	foreach ($result_presentations as $results) {
 		$title_for_row = $results['title'];
 		$description_for_row = $results['description'];
-			
+
 		//$rows[] =	'<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $title_for_row . '</span>' .
 		//			'<div>' . $description_for_row . '</div>' .
 		//		'</div>';
 		$rows[] = array('data' => '<span class="heading">' . t($title_for_row) . '</span> ' . t($description_for_row), 'class' => 'activity');
-		
-		
 	}
 
 	//only display form and submit button if there are some entries
-	if (count($rows) > 0)
-	{
+	if (count($rows) > 0) {
 		$output .= theme('item_list', $rows, NULL, 'ul', array('class' => 'activity'));
-	}
-	else {
+	} else {
 		$output .= "<p>No result presentations are available.</p>";
 	}
 	return $output;
 }
-
 
 /**
  * Theme for result presentations form
  */
 function theme_pi_sort_result_presentations_node_form($form) {
 	$output = '';
-	
-    drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
 
-    // Rows for the tabledrag
-    $rows = array();
+	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
 
-    $tree = &$form['onepageprofile_categories'];
-    foreach (element_children($tree) as $key) {
-        $tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
-        
+	// Rows for the tabledrag
+	$rows = array();
+
+	$tree = &$form['onepageprofile_categories'];
+	foreach (element_children($tree) as $key) {
+		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
+
 		$row_activity_id = pi_activity_get_activity_nid_for_content_nid($key);
-				
-        $row = array();
-        $row[] = drupal_render($tree[$key]['title']);
-        $row[] = drupal_render($tree[$key]['weight']);
 
-        $rows[] = array('data' => $row, 'class' => 'draggable');
-    }
+		$row = array();
+		$row[] = drupal_render($tree[$key]['title']);
+		$row[] = drupal_render($tree[$key]['weight']);
 
-    // Build the output
-    $activity = node_load($details->activity_id);
+		$rows[] = array('data' => $row, 'class' => 'draggable');
+	}
 
-   	$output .= '<p>' . t('View and organise the presentations of your results.') . '</p>';
-    
-    //only display form and submit button if there are some entries
-    if (count($rows) > 0) {
-    	$output .= theme('table', $NULL, $rows, array('id' => 'onepageprofile-categories'));
-    }
-   	else {
-   	  if(arg(2) == 'add')
-      {
-        $output  .= '<p> Press <strong>Save</strong> to start adding your results.</p>';
-      }
-      else
-      {
-        $output .= "<p>No result presentations are available.</p>";
-      }
-   	}
-    	$output .= drupal_render($form);
-   	
-    //$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
-    //$output .= drupal_render($form);
+	// Build the output
+	$activity = node_load($details->activity_id);
 
-    return $output;
+	$output .= '<p>' . t('View and organise the presentations of your results.') . '</p>';
+
+	//only display form and submit button if there are some entries
+	if (count($rows) > 0) {
+		$output .= theme('table', $NULL, $rows, array('id' => 'onepageprofile-categories'));
+	} else {
+		if (arg(2) == 'add') {
+			$output .= '<p> Press <strong>Save</strong> to start adding your results.</p>';
+		} else {
+			$output .= "<p>No result presentations are available.</p>";
+		}
+	}
+	$output .= drupal_render($form);
+
+	//$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
+	//$output .= drupal_render($form);
+
+	return $output;
 }
 
 /**
  * Load all the already sorted rows for results presentations
  */
 function pi_sort_result_presentations_get_choice($node) {
-	$query = "SELECT * FROM {pi_sort_result_presentations} WHERE {pi_sort_result_presentations}.nid = %d AND {pi_sort_result_presentations}.vid = %d ORDER BY weight ASC";					
-    $result = db_query($query, $node->nid, $node->vid);
-    
-    $results = array();
-	while ($row = db_fetch_object($result))
-    {
-    	$loaded_node = node_load($row->result_presentations);
-    	if($loaded_node)
-    	{
-	    	$results[$row->result_presentations] = array(
-	            '#weight' => $row->weight,
-	            '#title'  => check_plain($loaded_node->title)
-	    	);
-    	}
-    }
-    return $results;
+	$query = "SELECT * FROM {pi_sort_result_presentations} WHERE {pi_sort_result_presentations}.nid = %d AND {pi_sort_result_presentations}.vid = %d ORDER BY weight ASC";
+	$result = db_query($query, $node->nid, $node->vid);
+
+	$results = array();
+	while ($row = db_fetch_object($result)) {
+		$loaded_node = node_load($row->result_presentations);
+		if ($loaded_node) {
+			$results[$row->result_presentations] = array(
+					'#weight' => $row->weight,
+					'#title' => check_plain($loaded_node->title)
+			);
+		}
+	}
+	return $results;
 }
 
 /**
@@ -323,8 +290,7 @@ function pi_sort_result_presentations_get_options() {
 
 	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_result_presentations');
 	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
-	foreach(array_keys($items) as $nid)
-	{
+	foreach (array_keys($items) as $nid) {
 		$items[$nid]['#weight'] = 0;
 	}
 	return $items;
