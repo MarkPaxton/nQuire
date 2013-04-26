@@ -41,9 +41,6 @@ function pi_sort_data_access($op, $node, $account) {
  */
 function pi_sort_data_theme() {
 	return array(
-			'pi_sort_data_node_form' => array(
-					'arguments' => array('form'),
-			),
 			'pi_sort_data' => array(
 					'arguments' => array('node', 'teaser', 'data_items_to_show'),
 			),
@@ -55,129 +52,12 @@ function pi_sort_data_theme() {
  * @param $node the pi_sort_data node if it is to be edited, as per drupal 6 API
  */
 function pi_sort_data_form(&$node) {
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
-
-	$current_activity = NULL;
-	if (is_numeric($node_details->activity_id)) {
-		$current_activity = node_load($node_details->activity_id);
-	}
-
-	if ($current_activity->name) {
-		$users_group = get_group_of_type($user->uid, $current_activity->audience, $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-		if ($users_group != false) {
-			$group = node_load($users_group);
-			$sort_for = $group->title;
-		} else {
-			$sort_for = $user->name;
-		}
-		$node_title = check_plain(t('Data for ') . $sort_for);
-	} else {
-		$type = node_get_types('type', $node);
-		$node_title = $type->name;
-	}
-
-	// Build the form
+	
 	$form = array();
-	if ($current_activity->description) {
-		$form['#prefix'] = $current_activity->description;
-	}
-
-	$form['title'] = array(
-			'#type' => 'hidden',
-			'#value' => $node_title,
-	);
-
-	$form['autosort'] = array(
-			'#type' => 'checkbox',
-			'#title' => t('Sort automatically using menu order'),
-			'#default_value' => $node->autosort,
-	);
-
-	// onepageprofile_categories and tree used for draggable menu items
-	$form['onepageprofile_categories'] = array(
-			'#tree' => TRUE,
-	);
-
-	// Add the sorted data for this node and the unsorted ones to the end
-	if (isset($node->nid)) {
-		$sorted_collected_data = $node->categories;
-	} else {
-		$sorted_collected_data = array();
-	}
-
-	$all_collected_data = pi_sort_data_get_options();
-
-	$data_to_show = pi_merge_content_item_lists($sorted_collected_data, $all_collected_data);
-
-	// set $tree to point to the above $form['onepageprofile_categories'] object
-	$tree = &$form['onepageprofile_categories'];
-	foreach ($data_to_show as $data_nid => $data_item) {
-		// if data item doesn't exist anymore, the don't add it to the form!
-		$data_item_node = node_load($data_nid);
-		if ($data_item_node) {
-			$title = $data_item_node->title;
-			//Overrride the data item title with activity title for node
-			$data_activity_id = pi_activity_get_activity_nid_for_content_nid($data_item_node->nid);
-			if ($data_activity_id) {
-				$data_activity = node_load($data_activity_id);
-				if ($data_activity) {
-					if (strlen($data_activity->title) > 0) {
-						$title = $data_activity->title;
-					}
-				}
-			}
-			// add $tree entries for current category (i.e. $key)
-			$tree[$data_nid]['title'] = array(
-					'#value' => check_plain($title),
-			);
-
-			$tree[$data_nid]['description'] = array(
-					'#value' => node_view($data_item_node, TRUE, TRUE),
-			);
-
-			$tree[$data_nid]['weight'] = array(
-					'#type' => 'weight',
-					'#delta' => count($data_to_show),
-					'#default_value' => $data_to_show[$data_nid]['#weight'],
-			);
-		}
-	}
+	
 	return $form;
 }
 
-function pi_sort_data_insert($node) {
-	if (count($node->onepageprofile_categories) > 0) {
-		foreach ($node->onepageprofile_categories as $key => $measure) {
-			db_query("INSERT INTO {pi_sort_data} (nid, vid, data, weight) VALUES (%d, %d, '%s', %d)", $node->nid, $node->vid, $key, $measure['weight']);
-		}
-	}
-	db_query("INSERT INTO {pi_auto_sort} (nid, vid, autosort) VALUES (%d, %d, %d)", $node->nid, $node->vid, $node->autosort);
-}
-
-function pi_sort_data_update($node) {
-	// if this is a new node or we're adding a new revision,
-	if ($node->revision) {
-		pi_sort_data_insert($node);
-	} else {
-		db_query("DELETE FROM {pi_sort_data} WHERE vid = %d", $node->vid);
-		db_query("DELETE FROM {pi_auto_sort} WHERE vid = %d", $node->vid);
-		pi_sort_data_insert($node);
-	}
-}
-
-function pi_sort_data_delete(&$node) {
-	db_query("DELETE FROM {pi_sort_data} WHERE nid = %d", $node->nid);
-	db_query("DELETE FROM {pi_auto_sort} WHERE nid = %d", $node->nid);
-}
-
-function pi_sort_data_load($node) {
-	$autosort = db_result(db_query("SELECT autosort FROM pi_auto_sort WHERE vid = %d", $node->vid));
-	$result = new stdClass;
-	$result->autosort = $autosort;
-	$result->categories = pi_sort_data_get_choice($node);
-	return $result;
-}
 
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	$access_data = pi_inquiry_groupings_get_access_data();
@@ -244,111 +124,6 @@ function theme_pi_sort_data($header, $data_rows) {
 	return theme('table', $header, $data_rows, array(
 			'class' => 'sortable'
 	));
-}
-
-/**
- * Theme for sort data form
- */
-function theme_pi_sort_data_node_form($form) {
-	$output = '';
-
-	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
-
-	/* 	// Header
-	  $header = array(
-	  t('Data'),
-	  t('Weight')
-	  );
-	 */
-	// Rows for the tabledrag
-	$rows = array();
-
-	$tree = &$form['onepageprofile_categories'];
-	foreach (element_children($tree) as $key) {
-		$tree[$key]['weight']['#attributes']['class'] = 'onepageprofile-element';
-
-		$row = array();
-		$tree[$key]['title']['#prefix'] = '<span style="white-space:nowrap;font-size:130%;font-weight:bold;margin-right:15px;">';
-		$tree[$key]['title']['#suffix'] = '</span>';
-
-		$tree[$key]['description']['#prefix'] = '<span style="font-size:90%;">';
-		$tree[$key]['description']['#suffix'] = '</span>';
-
-		$modified_description = str_replace(array('<div', '</div', 'class="submitted"'), array('<span', '</span', 'class="submitted" style="display:none"'), $tree[$key]['description']['#value']);
-		$tree[$key]['description']['#value'] = $modified_description;
-
-		$row[] = array('data' => drupal_render($tree[$key]['title']),
-				'style' => 'white-space:nowrap;'
-		);
-		$row[] = drupal_render($tree[$key]['description']);
-		$row[] = drupal_render($tree[$key]['weight']);
-
-		$rows[] = array('data' => $row, 'class' => 'draggable');
-	}
-
-	if (count($rows) == 0) {
-		if (arg(2) == 'add') {
-			$output .= '<p> Press <strong>Save</strong> to start adding your data.</p>';
-		} else {
-			$output .= "<p>No data is available.</p>";
-		}
-	} else {
-		$output .= theme('table', NULL, $rows, array('id' => 'onepageprofile-categories'));
-	}
-	$output .= drupal_render($form);
-
-	return $output;
-}
-
-/**
- * Load the user edit form and grab all of the fieldsets
- */
-function pi_sort_data_get_choice($node) {
-	$query = "SELECT * FROM {pi_sort_data} AS pi_sort_data "
-					. "WHERE pi_sort_data.nid = %d "
-					. "AND pi_sort_data.vid = %d "
-					. "ORDER BY weight ASC";
-	$result = db_query($query, $node->nid, $node->vid);
-	$data = array();
-	while ($row = db_fetch_object($result)) {
-		$loaded_node = node_load($row->data);
-		if ($loaded_node != false) {
-			$activity_nid = pi_activity_get_activity_nid_for_content_nid($loaded_node->nid);
-			$activity = node_load($activity_nid);
-			$title = $loaded_node->title;
-			// Activity title is better here, so if it's set, use that
-			if ($activity) {
-				if ($activity->title) {
-					$title = $activity->title;
-				}
-			}
-			$data[$row->data] = array(
-					'#weight' => count($data),
-					'#title' => check_plain($title)
-			);
-		}
-	}
-	return $data;
-}
-
-/**
- * Load the user edit form and grab all of the fieldsets
- */
-/* TOREMOVE */
-function pi_sort_data_get_item_nids($sort_data_activity_nid) {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
-
-	$all_nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_data');
-	$nids = array();
-	foreach ($all_nids as $nid) {
-		$activity = node_load(pi_activity_get_activity_nid_for_content_nid($nid));
-		if ($activity->parent_activity == $sort_data_activity_nid) {
-			$nids[] = $nid;
-		}
-	}
-
-	return $nids;
 }
 
 function pi_sort_data_get_activities() {

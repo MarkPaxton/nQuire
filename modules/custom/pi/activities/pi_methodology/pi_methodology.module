@@ -69,35 +69,14 @@ function pi_methodology_theme() {
  */
 function pi_methodology_form(&$node) {
 	//global $user;
-	$node_details = get_inquiry_details_from_current_path();
-
-	$current_activity = NULL;
-	if (is_numeric($node_details->activity_id)) {
-		$current_activity = node_load($node_details->activity_id);
-	}
-	/* if ($current_activity->title) {
-	  $users_group = get_group_of_type($user->uid, $current_activity->audience, $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-	  if ($users_group != false) {
-	  $group = node_load($users_group);
-	  $sort_for = $group->title;
-	  } else {
-	  $sort_for = $user->title;
-	  }
-	  $node_title = check_plain(t('Selected measures for ') . $sort_for);
-	  } else { */
+	
 	$type = node_get_types('type', $node);
-	$node_title = $type->name;
-	// }
-	// Build the form
+	
 	$form = array();
-	if ($current_activity->description) {
-		$form['#prefix'] = $current_activity->description;
-	}
-
-
+	
 	$form['title'] = array(
 			'#type' => 'hidden',
-			'#value' => $node_title,
+			'#value' => $type->name,
 	);
 
 	if (is_array($node->measures)) {
@@ -120,12 +99,15 @@ function pi_methodology_form(&$node) {
 		foreach ($regions as $region) {
 			foreach ($measures[$region] as $weight => $measure_nid) {
 				$measure = node_load($measure_nid);
+				$type_name = inquiry_available_features_name('measure', $measure->measure_type);
+				$description = strlen($measure->body) > 0 ? nl2br(check_plain($measure->body)) . ' (' . $type_name . ')' : $type_name;
+				
 				$tree[$region][$measure_nid] = array(
 						'title' => array(
 								'#value' => check_plain($measure->title),
 						),
 						'description' => array(
-								'#value' => check_plain($measure->body),
+								'#value' => $description,
 						),
 						'weight' => array(
 								'#type' => 'weight',
@@ -451,14 +433,8 @@ function pi_methodology_get_empty_region_label($region) {
  */
 function theme_pi_methodology_node_form($form) {
 	$output = '';
-	/*
-	  $regions = array('none', 'key', 'selected');
-	  foreach ($regions as $region) {
-	  drupal_add_tabledrag('measures_list', 'order', 'sibling', 'measures_list-element', 'measures_list-element-' . $region);
-	  };
-	 */
-
-	// Header
+	
+	
 	$header = array(array('theading' => t('Measure'), 'class' => ''),
 			array('theading' => t('Description'), 'class' => ''),
 			array('theading' => t('Status'), 'class' => 'measures_theading_status'),
@@ -499,25 +475,6 @@ function theme_pi_methodology_node_form($form) {
 	$output .= drupal_render($form);
 
 	return $output;
-
-	// Build the output
-	$activity = node_load($details->activity_id);
-	if ($activity->description) {
-		$output .= '<p>' . $activity->description . '</p>';
-	} else {
-		$output .= '<p>' . t('Choose which measures you will use.') . '</p>';
-	}
-
-	if (count($rows) == 0) {
-		if (arg(2) == 'add') {
-			$output .= '<p> Press <strong>Save</strong> to start adding your measures.</p>';
-		} else {
-			$output .= "No measures available";
-		}
-	} else {
-		// $output .= theme('table', $header, $rows, array('id' => 'measures_list'));
-	}
-	return $output;
 }
 
 function pi_methodology_display_table($header, $rows, $attributes) {
@@ -547,8 +504,8 @@ function pi_methodology_display_table($header, $rows, $attributes) {
 
 		if (is_array($rows[$region])) {
 			foreach ($rows[$region] as $data) {
-				$modified_description = str_replace(
-								array('<div', '</div', 'class="submitted"'), array('<span', '</span', 'class="submitted" style="display:none"'), $data['description']);
+				$modified_description = $data['description'];
+
 				$style = $row % 2 == 0 ? 'odd' : 'even';
 				$row_class = $data->row_class ? ' ' . $data->row_class : '';
 
@@ -574,36 +531,6 @@ function pi_methodology_display_table($header, $rows, $attributes) {
 
 
 	return $output;
-}
-
-/**
- * Load the selected measures indexed by status and nid, ordered by weight
- * @param unknown_type $node
- * @return unknown_type
- */
-function pi_methodology_get_choice($node) {
-	$query = "SELECT * FROM {pi_methodology} WHERE {pi_methodology}.nid = %d AND {pi_methodology}.vid = %d ORDER BY status ASC, weight ASC";
-	$result = db_query($query, $node->nid, $node->vid);
-
-	$measures = array();
-	while ($row = db_fetch_object($result)) {
-		$loaded_node = node_load($row->available_measure, NULL, TRUE);
-		if ($loaded_node) {
-			$status = $row->status;
-			if (!array_key_exists($status, $measures)) {
-				$measures[$status] = array();
-			}
-			$measures[$status][$row->available_measure] = array(
-					'#weight' => count($measures[$status]),
-					'#title' => $loaded_node->title,
-					'#status' => $status
-			);
-		}
-	}
-
-	$group_order = array('key', 'selected', 'unselected');
-	$sorted_measures = pi_sort_grouped_item_list($group_order, $measures, '#weight');
-	return $sorted_measures;
 }
 
 /**

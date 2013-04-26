@@ -125,7 +125,6 @@ function pi_sort_key_answers_form(&$node) {
 }
 
 function pi_sort_key_answers_insert($node) {
-	$details = get_inquiry_details_from_current_path();
 	if (count($node->onepageprofile_categories) > 0) {
 		foreach ($node->onepageprofile_categories as $nid => $key_answer) {
 			$query = "INSERT INTO {pi_sort_key_answers} (nid, vid, key_answer, weight) VALUES (%d, %d, %d, %d)";
@@ -225,17 +224,15 @@ function theme_pi_sort_key_answers_node_form($form) {
 	} else {
 		$sorted_key_questions = array();
 	}
+	
+	
 
-	$all_key_questions = pi_sort_key_questions_get_options();
-	$key_questions = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
+	$key_questions = pi_sort_key_questions_get_questions();
 
 	$rows = array();
-
-	// Prepare rows to hold an array of arrays if key answers, organised by key question nid
-	// also prepare draggable table elements
+	
 	if (count($key_questions) > 0) {
-		foreach ($key_questions as $key_question_nid => $key_question) {
-			//Make a table for each key question
+		foreach ($key_questions as $key_question_nid) {
 			$key_question_node = node_load($key_question_nid);
 			if ($key_question_node) {
 				drupal_add_tabledrag(check_plain('onepageprofile-categories' . $key_question_nid), 'order', 'sibling', 'onepageprofile-element');

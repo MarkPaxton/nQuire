@@ -1,4 +1,5 @@
 <?php
+
 // $Id: pi_key_questions.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
@@ -6,22 +7,21 @@
  * Module for creating "key questions" node type
  */
 
-
 /**
  * Implementation of hook_node_info().
  */
 function pi_key_questions_node_info() {
-    return array(
-	    'pi_key_questions' => array(
-		    'name' => t('Inquiry add key question'), // Required.
-		    'module' => 'pi_key_questions',  // Required.
-		    'description' => t('Key questions for an inquiry'), // Required.
-		    'has_title' => TRUE,
-		    'title_label' => t('Add key question'),
-		    'has_body' => FALSE,
-		    'locked' => TRUE
-    	)
-    );
+	return array(
+			'pi_key_questions' => array(
+					'name' => t('Inquiry add key question'), // Required.
+					'module' => 'pi_key_questions', // Required.
+					'description' => t('Key questions for an inquiry'), // Required.
+					'has_title' => TRUE,
+					'title_label' => t('Add key question'),
+					'has_body' => FALSE,
+					'locked' => TRUE
+			)
+	);
 }
 
 /**
@@ -33,24 +33,22 @@ function pi_key_questions_node_info() {
  * @param unknown_type $form_id
  * @return unknown_type
  */
-function pi_key_questions_form_alter(&$form, $form_state, $form_id) 
-{
-  global $user; // Bring $user object into scope if displaying shall depend on userid or role
-  #if ( $user->uid != 1 ) // 0 -> Anonymous, 1 -> SuperAdmin, 2+ -> Authenticated users
-  if ( !in_array('USER ROLE NAME', $user->roles) ) // Check for role (using role name)
-  {
-    // add class 'hideme' to elements which shall be hidden
-    $form['revision_information']['#attributes'] = array('class' => 'hideme'); // Revision information
-    // This class has been added to the CSS file:
-   //  .hideme { display: none; }
-  }
+function pi_key_questions_form_alter(&$form, $form_state, $form_id) {
+	global $user; // Bring $user object into scope if displaying shall depend on userid or role
+	#if ( $user->uid != 1 ) // 0 -> Anonymous, 1 -> SuperAdmin, 2+ -> Authenticated users
+	if (!in_array('USER ROLE NAME', $user->roles)) { // Check for role (using role name)
+		// add class 'hideme' to elements which shall be hidden
+		$form['revision_information']['#attributes'] = array('class' => 'hideme'); // Revision information
+		// This class has been added to the CSS file:
+		//  .hideme { display: none; }
+	}
 }
 
 /**
  * Implementation of hook_perm().
  */
 function pi_key_questions_perm() {
-    return array('create pi_key_questions content', 'edit pi_key_questions');
+	return array('create pi_key_questions content', 'edit pi_key_questions');
 }
 
 /**
@@ -73,20 +71,16 @@ function pi_key_questions_access($op, $node, $account) {
 			$nid = arg(1);
 			$activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
 			$inquiry_id = pi_activity_get_inquiry_nid($activity_id);
-			if($inquiry_id && $activity_id)
-			{
+			if ($inquiry_id && $activity_id) {
 				return pi_activity_check_node_function($activity_id, $uid, 'edit');
-			}
-			else {
+			} else {
 				return FALSE;
 			}
-		}
-		else {
+		} else {
 			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 		}
 	}
 }
-
 
 /**
  * Implementation of hook_form().
@@ -94,56 +88,52 @@ function pi_key_questions_access($op, $node, $account) {
 function pi_key_questions_form(&$node) {
 	global $user;
 	$node_details = get_inquiry_details_from_current_path();
-	
+
 	//print_r( $node );
-	
+
 	if (is_numeric($node_details->activity_id)) {
 		$current_activity = node_load($node_details->activity_id);
 	}
-  	
+
 	if ($current_activity->name) {
 		drupal_set_title(t($current_activity->name));
 	}
-	
+
 	//print_r( $current_activity );
-	
 	// Get metadata for this node type
 	// (we use it for labeling title and body fields).
 	// We defined this in pi_key_questions_node_info().
 	$type = node_get_types('type', $node);
 
 	$form['title'] = array(
-        '#type' => 'hidden',
-        '#value' => t('Key question')
+			'#type' => 'hidden',
+			'#value' => t('Key question')
 	);
 
 	$form['key_question'] = array(
-		'#type' => 'textarea',
-		'#title' => t('Key question'),
-		'#required' => TRUE,
-		'#default_value' => $node->key_question,
-		'#description' => t('A key question is asked in order to test all or part of a hypothesis. Write your key question here.'),
-		'#resizable' => FALSE,
-		'#rows' => 4,
-		'#cols' => 40,
-		'#weight' => 0
+			'#type' => 'textarea',
+			'#title' => t('Key question'),
+			'#required' => TRUE,
+			'#default_value' => $node->key_question,
+			'#description' => t('A key question is asked in order to test all or part of a hypothesis. Write your key question here.'),
+			'#resizable' => FALSE,
+			'#rows' => 4,
+			'#cols' => 40,
+			'#weight' => 0
 	);
 
 	$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-	if ($hypothesis_nid)
-	{
+	if ($hypothesis_nid) {
 		$hypothesis_node = node_load($hypothesis_nid);
 		$hypothesis_activity_nid = pi_activity_get_activity_nid_for_content_nid($hypothesis->nid);
-		if($hypothesis_activity_nid) 
-		{
+		if ($hypothesis_activity_nid) {
 			$hypothesis_activity = node_load($hypothesis_activity_nid);
-			if($hypothesis_activity)
-			{
+			if ($hypothesis_activity) {
 				$form['#prefix'] = theme('pi_hypothesis', $hypothesis_node, $hypothesis_activity);
 			}
 		}
 	}
-	
+
 	return $form;
 }
 
@@ -151,34 +141,30 @@ function pi_key_questions_form(&$node) {
  * Implementation of hook_insert().
  */
 function pi_key_questions_insert($node) {
-    db_query("INSERT INTO {pi_key_questions} (nid, vid, key_question) VALUES ('%d', '%d', '%s')",
-        $node->nid, $node->vid, $node->key_question);
+	db_query("INSERT INTO {pi_key_questions} (nid, vid, key_question) VALUES ('%d', '%d', '%s')", $node->nid, $node->vid, $node->key_question);
 }
 
 /**
  * Implementation of hook_update().
  */
 function pi_key_questions_update($node) {
-    if ($node->revision) {
-        pi_key_questions_insert($node);
-    }
-    else {
-        db_query("UPDATE {pi_key_questions} SET key_question = '%s' WHERE vid = %d", $node->key_question, $node->vid);
-    }
+	if ($node->revision) {
+		pi_key_questions_insert($node);
+	} else {
+		db_query("UPDATE {pi_key_questions} SET key_question = '%s' WHERE vid = %d", $node->key_question, $node->vid);
+	}
 }
 
-function pi_key_questions_delete(&$node) 
-{
+function pi_key_questions_delete(&$node) {
 	//Delete the key question from the table and the sort table if it exists
 	db_query('DELETE FROM {pi_key_questions} WHERE nid = %d', $node->nid);
 	db_query('DELETE FROM {pi_sort_key_questions} WHERE key_question = %d', $node->nid);
-	
+
 	$result = db_query('SELECT nid FROM {pi_key_answers} WHERE key_question_id = %d', $node->nid);
-	
+
 	//Remove the answers to the question
-	while( $answer = db_fetch_object($result) )
-	{
-		node_delete( $answer->nid );
+	while ($answer = db_fetch_object($result)) {
+		node_delete($answer->nid);
 	}
 }
 
@@ -186,43 +172,30 @@ function pi_key_questions_delete(&$node)
  * Implementation of hook_load().
  */
 function pi_key_questions_load($node) {
-    return db_fetch_object(db_query('SELECT * FROM {pi_key_questions} WHERE vid = %d', $node->vid));
+	return db_fetch_object(db_query('SELECT * FROM {pi_key_questions} WHERE vid = %d', $node->vid));
 }
-
 
 /**
  * Implementation of hook_view().
  */
 function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
+	$access_data = pi_inquiry_groupings_get_access_data();
 
 	$node = node_prepare($node, $teaser);
 
-	if(!$teaser)
-	{
-		$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-		if ($hypothesis_nid)
-		{
+	if (!$teaser) {
+		$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($access_data->get_uid(), $access_data->get_inquiry_nid());
+		if ($hypothesis_nid) {
 			$hypothesis_node = node_load($hypothesis_nid);
-			$hypothesis_activity_nid = pi_activity_get_activity_nid_for_content_nid($hypothesis_node->nid);
-			if($hypothesis_activity_nid)
-			{
-				$hypothesis_activity = node_load($hypothesis_activity_nid);
-				if($hypothesis_activity)
-				{
-					$hypothesis_node = node_load($hypothesis_nid);
-					$node->content['pi_hypothesis'] = array(
-						'#value' => node_view($hypothesis_node, TRUE, TRUE),
-						'#weight' => -2
-					);
-				}
-			}
+			$node->content['pi_hypothesis'] = array(
+					'#value' => node_view($hypothesis_node, TRUE, TRUE),
+					'#weight' => -2
+			);
 		}
 	}
 	$node->content['pi_key_questions'] = array(
-            '#value' => theme('pi_key_questions', $node, $teaser),
-            '#weight' => -1
+			'#value' => theme('pi_key_questions', $node, $teaser),
+			'#weight' => -1
 	);
 	return $node;
 }
@@ -232,13 +205,12 @@ function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
  * @return array describing the provided themes as per drupal 6 api    
  */
 function pi_key_questions_theme() {
-    return array(
-	    'pi_key_questions' => array(
-	    	'arguments' => array('node', 'teaser'),
-	    )
-    );
+	return array(
+			'pi_key_questions' => array(
+					'arguments' => array('node', 'teaser'),
+			)
+	);
 }
-
 
 /**
  * Theme function to show a key question
@@ -249,5 +221,4 @@ function theme_pi_key_questions($node, $teaser) {
 	$output = '<strong>' . t('Key question:') . '</strong> ' . nl2br($node->key_question);
 	return $output;
 }
-
 

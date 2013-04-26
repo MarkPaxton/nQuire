@@ -1,4 +1,5 @@
 <?php
+
 // $Id: pi_key_answers.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
@@ -6,25 +7,23 @@
  * Module for creating "key answers" node type
  */
 
-
 /**
  * Implementation of hook_node_info().
  */
 function pi_key_answers_node_info() {
 	return array(
-		'pi_key_answers' => array(
-			'name' => t('Inquiry add key answer'), // Required.
-			'module' => 'pi_key_answers',  // Required.
-			'description' => t('What are the answers to the key questions of your inquiry?'), // Required.
-		    'has_title' => TRUE,
-		    'title_label' => t('Short title'),
-		    'has_body' => FALSE,
-		    'body_label' => t('Key question answer'),
-		    'locked' => TRUE
-		)
+			'pi_key_answers' => array(
+					'name' => t('Inquiry add key answer'), // Required.
+					'module' => 'pi_key_answers', // Required.
+					'description' => t('What are the answers to the key questions of your inquiry?'), // Required.
+					'has_title' => TRUE,
+					'title_label' => t('Short title'),
+					'has_body' => FALSE,
+					'body_label' => t('Key question answer'),
+					'locked' => TRUE
+			)
 	);
 }
-
 
 /**
  * Implementation of hook_perm().
@@ -38,29 +37,27 @@ function pi_key_answers_perm() {
  */
 function pi_key_answers_access($op, $node, $account) {
 	return TRUE;
-  global $user;
-  $uid = $user->uid;
-  $details = get_inquiry_details_from_current_path();
-  if ($op == 'create') {
-    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-  }
-  if ($op == 'update') {
-    return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-  }
+	global $user;
+	$uid = $user->uid;
+	$details = get_inquiry_details_from_current_path();
+	if ($op == 'create') {
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+	}
+	if ($op == 'update') {
+		return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
+	}
 	if ($op == 'delete') {
 		if (arg(0) == 'node' && arg(2) == 'delete') {
-		//get inquiry for session id and activity
+			//get inquiry for session id and activity
 			$nid = arg(1);
 			$activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
 			$inquiry_id = pi_activity_get_inquiry_nid($activity_id);
-			if($inquiry_id && $activity_id) {
+			if ($inquiry_id && $activity_id) {
 				return pi_activity_check_node_function($activity_id, $uid, 'edit');
-			}
-			else {
+			} else {
 				return FALSE;
 			}
-		}
-		else {
+		} else {
 			return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
 		}
 	}
@@ -77,67 +74,57 @@ function pi_key_answers_form(&$node) {
 	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
 
 	$sorted_key_questions = array();
-	if(isset($key_questions_nid))
-	{
+	if (isset($key_questions_nid)) {
 		$key_questions_node = node_load($key_questions_nid);
-		if($key_questions_node)
-		{
+		if ($key_questions_node) {
 			$sorted_key_questions = $key_questions_node->categories;
 		}
 	}
-    
-    $all_key_questions = pi_sort_key_questions_get_options();
-    $key_questions_to_show = pi_merge_content_item_lists($sorted_key_questions, $all_key_questions);
 
-    if (count($key_questions_to_show) > 0)
-    {
-    	$key_question_options = array();
-    	foreach($key_questions_to_show as $question_nid => $question)
-    	{
-        /* FIX (eloy) */
-    		//$key_question_options[$question_nid] = $question['#title']; 
-    		$key_question_options[$question_nid] = $question['#key_question']; 
-    	}
-  
-    	$form['key_question_id'] = array(
-			'#type' => 'select',
-			'#title' => t('Key question'),
-			'#required' => TRUE,
-			'#default_value' => $node->key_question_id,
-			'#description' => t('Select a key question to answer'),
-			'#options' => $key_question_options,
-			'#weight' => -6
-    	);
+	$key_questions = pi_sort_key_questions_get_questions();
 
-    	$form['title'] = array(
-	        '#type' => 'hidden',
-	        '#value' => t('Key answer')
-    	);
+	if (count($key_questions) > 0) {
+		$key_question_options = array();
+		foreach ($key_questions as $question_nid) {
+			$question = node_load($question_nid);
+			$key_question_options[$question_nid] = $question->key_question;
+		}
 
-    	$form['body_filter']['key_answer'] = array(
-			'#type' => 'textarea',
-			'#title' => t('Answer'),
-			'#required' => TRUE,
-			'#default_value' => $node->key_answer,
-			'#description' => t('Enter an answer to your selected key question'),
-			'#resizable' => FALSE,
-			'#rows' => 4,
-			'#cols' => 40,
-			'#weight' => -2
-    	);
-    	
-    }
-	
-    $hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-	if ($hypothesis_nid)
-	{
+		$form['key_question_id'] = array(
+				'#type' => 'select',
+				'#title' => t('Key question'),
+				'#required' => TRUE,
+				'#default_value' => $node->key_question_id,
+				'#description' => t('Select a key question to answer'),
+				'#options' => $key_question_options,
+				'#weight' => -6
+		);
+
+		$form['title'] = array(
+				'#type' => 'hidden',
+				'#value' => t('Key answer')
+		);
+
+		$form['body_filter']['key_answer'] = array(
+				'#type' => 'textarea',
+				'#title' => t('Answer'),
+				'#required' => TRUE,
+				'#default_value' => $node->key_answer,
+				'#description' => t('Enter an answer to your selected key question'),
+				'#resizable' => FALSE,
+				'#rows' => 4,
+				'#cols' => 40,
+				'#weight' => -2
+		);
+	}
+
+	$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
+	if ($hypothesis_nid) {
 		$hypothesis_node = node_load($hypothesis_nid);
 		$hypothesis_activity_nid = pi_activity_get_activity_nid_for_content_nid($hypothesis->nid);
-		if($hypothesis_activity_nid) 
-		{
+		if ($hypothesis_activity_nid) {
 			$hypothesis_activity = node_load($hypothesis_activity_nid);
-			if($hypothesis_activity)
-			{
+			if ($hypothesis_activity) {
 				$form['#prefix'] = node_view($hypothesis_node, TRUE, TRUE);
 			}
 		}
@@ -149,20 +136,17 @@ function pi_key_answers_form(&$node) {
  * Implementation of hook_insert().
  */
 function pi_key_answers_insert($node) {
-    db_query("INSERT INTO {pi_key_answers} (nid, vid, key_question_id, key_answer) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $node->key_question_id, $node->key_answer);
+	db_query("INSERT INTO {pi_key_answers} (nid, vid, key_question_id, key_answer) VALUES (%d, %d, %d, '%s')", $node->nid, $node->vid, $node->key_question_id, $node->key_answer);
 }
 
 /**
  * Implementation of hook_update().
  */
 function pi_key_answers_update($node) {
-	
-	if ($node->revision) 
-	{
+
+	if ($node->revision) {
 		pi_key_answers_insert($node);
-	}
-	else 
-	{
+	} else {
 		db_query("UPDATE {pi_key_answers} SET key_question_id = %d, key_answer = '%s' WHERE vid = '%d'", $node->key_question_id, $node->key_answer, $node->vid);
 	}
 }
@@ -170,11 +154,10 @@ function pi_key_answers_update($node) {
 /**
  * Implementation of hook_delete().
  */
-function pi_key_answers_delete(&$node) 
-{
+function pi_key_answers_delete(&$node) {
 	// Delete the related information we were saving for this node.
 	db_query('DELETE FROM {pi_key_answers} WHERE nid = %d', $node->nid);
-	
+
 	//Delete the corresponding data in the sort tabe if exists
 	db_query('DELETE FROM {pi_sort_key_answers} WHERE key_answer = %d', $node->nid);
 }
@@ -183,8 +166,7 @@ function pi_key_answers_delete(&$node)
  * Implementation of hook_load().
  */
 function pi_key_answers_load($node) {
-	return db_fetch_object(db_query('SELECT * FROM {pi_key_answers} WHERE vid = %d',
-    $node->vid));
+	return db_fetch_object(db_query('SELECT * FROM {pi_key_answers} WHERE vid = %d', $node->vid));
 }
 
 /**
@@ -194,21 +176,19 @@ function pi_key_answers_view($node, $teaser = FALSE, $page = FALSE) {
 
 	// Use Drupal's default node view.
 	$node = node_prepare($node, $teaser);
-	
-	if(!$teaser)
-	{
+
+	if (!$teaser) {
 		$key_question_node = node_load($node->key_question_id);
-		if($key_question_node)
-		{
+		if ($key_question_node) {
 			$node->content['pi_key_question'] = array(
-				'#value' => node_view($key_question_node, TRUE, TRUE),
-				'#weight' => -1
+					'#value' => node_view($key_question_node, TRUE, TRUE),
+					'#weight' => -1
 			);
 		}
 	}
 	$node->content['pi_key_answers'] = array(
-		'#value' => theme('pi_key_answers', $node, $teaser),
-		'#weight' => 0
+			'#value' => theme('pi_key_answers', $node, $teaser),
+			'#weight' => 0
 	);
 
 	return $node;
@@ -221,41 +201,23 @@ function pi_key_answers_view($node, $teaser = FALSE, $page = FALSE) {
  */
 function pi_key_answers_theme() {
 	return array(
-		'pi_key_answers_node_form' => array(
-	    	'arguments' => array('form'),
-	    ),
-		'pi_key_answers' => array(
-			'arguments' => array('node','teaser'),
-		),
+			'pi_key_answers_node_form' => array(
+					'arguments' => array('form'),
+			),
+			'pi_key_answers' => array(
+					'arguments' => array('node', 'teaser'),
+			),
 	);
 }
 
-
 function theme_pi_key_answers_node_form($form) {
-	$details = get_inquiry_details_from_current_path();
-    $activity = node_load($details->activity_id);
-    
-    if ($activity->body) {
-    	$output  .= '<p>' . t($activity->body) . '</p>';
-    }
-    else {
-    	$output  .= '<p>' . t('Add a key answer.') . '</p>';
-    }
-/*    
-    $key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($uid, $node_details->inquiry_id);
-  
-  // Add the categories of existing nodes and the options list for new nodes
-  if(isset($key_questions_nid)) {
-    $key_questions_node = node_load($key_questions_nid);
-    $categories = $key_questions_node->categories;
-  }*/
-  $option_categories = pi_sort_key_questions_get_options();
-  if(count($option_categories) > 0) {
-    $output .= drupal_render($form);
-  }
-  else {
-  	$output .= "<p>No key questions are available to answer.</p>";
-  }
+
+	$option_categories = pi_sort_key_questions_get_questions();
+	if (count($option_categories) > 0) {
+		$output .= drupal_render($form);
+	} else {
+		$output .= "<p>No key questions are available to answer.</p>";
+	}
 	return $output;
 }
 
@@ -265,7 +227,7 @@ function theme_pi_key_answers_node_form($form) {
  * @param unknown_type $node
  * @return string
  */
-function theme_pi_key_answers($node,$teaser) {
+function theme_pi_key_answers($node, $teaser) {
 	$output = '<strong>' . t('Key answer:') . '</strong> ' . nl2br($node->key_answer);
 	return $output;
 }
