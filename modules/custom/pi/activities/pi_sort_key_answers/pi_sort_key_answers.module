@@ -83,7 +83,7 @@ function pi_sort_key_answers_form(&$node) {
 	);
 
 	// onepageprofile_categories and tree used for draggable menu items
-	$form['onepageprofile_categories'] = array(
+	$form['question_categories'] = array(
 			'#tree' => TRUE,
 	);
 
@@ -94,30 +94,21 @@ function pi_sort_key_answers_form(&$node) {
 		$sorted_key_answers = array();
 	}
 
-	$all_key_answers = pi_sort_key_answers_get_options();
+	$key_answers = pi_sort_key_answers_get_answers($node);
 
-	// don't do a normal merge as weights are dependant on the questions first...
-	foreach ($all_key_answers as $answer_nid => $answer) {
-		if (!array_key_exists($answer_nid, $sorted_key_answers)) {
-			$sorted_key_answers[$answer_nid] = $answer;
-		}
-	}
-
-
-	// set $tree to point to the above $form['onepageprofile_categories'] object
-	$tree = &$form['onepageprofile_categories'];
-	foreach ($sorted_key_answers as $key => $answer) {
-		$key_answer = node_load($key);
+	$question_categories = &$form['question_categories'];
+	foreach ($key_answers as $i => $answer_nid) {
+		$key_answer = node_load($answer_nid);
 		if ($key_answer) {
 			// add $tree entries for current category (i.e. $key)
 			$tree[$key]['title'] = array(
-					'#value' => check_plain($answer['#title']),
+					'#value' => check_plain($key_answer->title),
 			);
 
 			$tree[$key]['weight'] = array(
 					'#type' => 'weight',
-					'#delta' => count($sorted_key_answers),
-					'#default_value' => $answer['#weight'],
+					'#delta' => count($key_answers),
+					'#default_value' => $i,
 			);
 		}
 	}
@@ -149,12 +140,10 @@ function pi_sort_key_answers_delete(&$node) {
 
 function pi_sort_key_answers_load($node) {
 	$result = new stdClass;
-	$result->categories = pi_sort_key_answers_get_choice($node);
 	return $result;
 }
 
 function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
-	$data_access = pi_inquiry_groupings_get_access_data();
 	$parent_activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
 	$node = node_prepare($node, $teaser);
@@ -286,45 +275,40 @@ function theme_pi_sort_key_answers_node_form($form) {
 	return $output;
 }
 
-/**
- * Returns the array of key questions that were selected for the sort 
- * indexed by their node ids and with #weight and incremental count starting at 0 
- * @return array [key question node id] #weight=> 1, #title = key question title
- */
-function pi_sort_key_answers_get_choice($node) {
-	$query = "SELECT key_answer, weight FROM {pi_sort_key_answers} WHERE {pi_sort_key_answers}.nid = %d AND {pi_sort_key_answers}.vid = %d ORDER BY weight ASC";
-	$result = db_query($query, $node->nid, $node->vid);
 
-	$answers = array();
-	while ($row = db_fetch_object($result)) {
-		$loaded_node = node_load($row->key_answer);
-		if ($loaded_node != false) {
-			$answers[$row->key_answer] = array(
-					'#weight' => $row->weight,
-					'#title' => check_plain($loaded_node->title)
-			);
+
+
+
+function pi_sort_key_answers_get_answers($node = NULL) {
+	$answers =  pi_activity_get_children_content_nids_for_sort_activity_type('pi_sort_key_answers');
+	if (!$node) {
+		$access_data = pi_inquiry_groupings_get_access_data();
+		$activity_data = $access_data->get_activity_by_type('pi_sort_key_answers');
+
+		$content_nid = pi_activity_get_content_nid_for_activity($activity_data['node']->nid, FALSE);
+		$node = node_load($content_nid);
+	}
+
+	if ($node) {
+		$query = "SELECT key_answer, weight FROM {pi_sort_key_answers} WHERE vid=%d";
+		$result = db_query($query, $node->vid);
+		$weights = array();
+		while ($row = db_fetch_array($result)) {
+			$weights[$row['key_answer']] = intval($row['weight']);
 		}
+
+		usort($answers, function($a, $b) use($weights) {
+							if (isset($weights[$a]) && isset($weights[$b])) {
+								return $weights[$a] - $weights[$b];
+							} else if (isset($weights[$a])) {
+								return -1;
+							} else if (isset($weights[$b])) {
+								return 1;
+							} else {
+								return 0;
+							}
+						});
 	}
+
 	return $answers;
-}
-
-/**
- * Returns an array of key answer titles indexed by their node ids
- * @return array [key answer node id] #weight=> 1, #title = key answer title
- */
-/* TOREMOVE */
-function pi_sort_key_answers_get_options() {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
-	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_key_answers');
-
-	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
-	foreach (array_keys($items) as $nid) {
-		$items[$nid]['#weight'] = 0;
-	}
-	return $items;
-}
-
-function pi_sort_key_answers_get_answers() {
-	return pi_activity_get_children_content_nids_for_sort_activity_type('pi_sort_key_answers');
 }

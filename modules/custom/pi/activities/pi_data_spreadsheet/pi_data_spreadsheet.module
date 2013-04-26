@@ -70,9 +70,7 @@ function pi_data_spreadsheet_link_alter(&$links, $node) {
 function pi_data_spreadsheet_view($node, $teaser = FALSE, $page = FALSE) {
 	if (isset($_SERVER['REDIRECT_URL']) && strpos($_SERVER['REDIRECT_URL'], 'undefined') === FALSE) {
 		if (!$teaser) {
-			$access_data = pi_inquiry_groupings_get_access_data();
-
-			$spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node);
+			$spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node, FALSE);
 			$output .= theme('pi_data_spreadsheet_grid', $spreadsheet);
 		} else {
 			$output = t('Enter the activity to view the spreadsheet.');
@@ -87,6 +85,12 @@ function pi_data_spreadsheet_view($node, $teaser = FALSE, $page = FALSE) {
 	}
 
 	return $node;
+}
+
+function pi_data_spreadsheet_edit_page($node) {
+	$spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node, TRUE);
+	$output .= theme('pi_data_spreadsheet_grid', $spreadsheet);
+	return $output;
 }
 
 /**
@@ -104,7 +108,7 @@ function pi_data_spreadsheet_theme() {
 
 function theme_pi_data_spreadsheet_grid($spreadsheet) {
 
-	_pi_data_spreadsheet_generate_spreadsheet_data_javascript($spreadsheet['sessionKey'], $spreadsheet['bookName']);
+	_pi_data_spreadsheet_generate_spreadsheet_data_javascript($spreadsheet['sessionKey'], $spreadsheet['bookName'], $spreadsheet['readonly'] ? 'true' : 'false');
 
 	nquire_commons_load_javascript_support();
 	drupal_add_js(drupal_get_path('module', 'pi_data_spreadsheet') . '/js/pi_data_spreadsheet_grid.js');
@@ -117,38 +121,30 @@ function theme_pi_data_spreadsheet_grid($spreadsheet) {
 
 	$output = '<div id="pi_data_spreadsheet_grid_container" style="height: 600px; width: 100%;" ></div>';
 
+
 	return $output;
 }
 
-function _pi_data_spreadsheet_get_spreadsheet(&$node, $editable = FALSE) {
-	if ($editable) {
-		$key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/editgrid_api_app_key'));
-		if (_pi_data_spreadsheet_create_spreadsheet($node, $key)) {
-			_pi_data_spreadsheet_update_data($key, $node->body);
-			$result = array(
-					'sessionKey' => $key,
-					'bookName' => $node->body,
-			);
-			return $result;
-		}
-	} else {
-		$result = array(
-				'bookName' => $node->body,
-		);
-		return $result;
+function _pi_data_spreadsheet_get_spreadsheet(&$node, $editable) {
+	$key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/' . ($editable ? 'editgrid_api_app_key' : 'editgrid_api_app_ro_key')));
+	if (_pi_data_spreadsheet_create_spreadsheet($node, $key)) {
+		_pi_data_spreadsheet_update_data($key, $node->body);
 	}
 
-	return FALSE;
+	$result = array(
+			'sessionKey' => $key,
+			'bookName' => $node->body,
+			'readonly' => !$editable,
+	);
+	return $result;
 }
 
-function _pi_data_spreadsheet_generate_spreadsheet_data_javascript($session_key, $book_name) {
+function _pi_data_spreadsheet_generate_spreadsheet_data_javascript($session_key, $book_name, $readonly) {
 	$module = "{"
-					. "  init: function() {";
-	if ($session_key) {
-		$module .= "    this.sessionKey = '{$session_key}';";
-	}
-
-	$module .= "    this.bookId = '{$book_name}';"
+					. "  init: function() {"
+					. "    this.sessionKey = '{$session_key}';"
+					. "    this.bookId = '{$book_name}';"
+					. "    this.readonly = $readonly;"
 					. "  }"
 					. "}";
 

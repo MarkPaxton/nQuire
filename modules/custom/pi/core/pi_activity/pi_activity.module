@@ -152,28 +152,18 @@ function pi_activity_menu() {
 }
 
 function pi_activity_tab_view_access_callback($node) {
-	switch ($node->activity_type) {
-		case 'pi_data':
-		case 'pi_available_measures':
-			//case 'pi_key_questions':
-			//case 'pi_key_answers':
-			return FALSE;
-		default:
-			return pi_activity_tabs_access_to_content($node, 'view');
+	if ($node->activity_type === 'pi_data_spreadsheet') {
+		return !pi_activity_tab_edit_access_callback($node) && pi_activity_tabs_access_to_content($node, 'view');
+	} else {
+		return pi_activity_tabs_access_to_content($node, 'view');
 	}
 }
 
 function pi_activity_tab_edit_access_callback($node) {
-	switch ($node->activity_type) {
-		case 'pi_read_information':
-		case 'pi_sort_data':
-		//case 'pi_sort_key_questions':
-		case 'pi_sort_key_answers':
-		case 'pi_data_spreadsheet':
-		case 'pi_explore_tool':
-			return FALSE;
-		default:
-			return pi_activity_tabs_access_to_content($node, 'edit');
+	if ($node->activity_type === 'pi_sort_data' || $node->activity_type === 'pi_sort_key_answers') {
+		return FALSE;
+	} else {
+		return pi_activity_tabs_access_to_content($node, 'edit');
 	}
 }
 
@@ -256,8 +246,6 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 		}
 	}
 }
-
-
 
 /**
  * hook_load from Drupal API
@@ -363,7 +351,7 @@ function pi_activity_theme() {
 
 function pi_activity_teaser($activity) {
 	include_once 'pi_activity.activity.inc';
-	
+
 	return pi_activity_content_view($activity, 'view', TRUE);
 }
 
@@ -472,7 +460,6 @@ function pi_activity_nodeapi(&$node, $op) {
 
 // ---------------------------------------------------------------------------
 
-
 /**
  * Return the activity_id of an "Add $whatever"n activity for a given "Sort $whatever" function, if not return NULL
  * @param unknown_type $inquiry_nid The inquiry id that the activity belongs to
@@ -548,7 +535,6 @@ function pi_activity_map_fields_from_nids($nids, $field_mapping) {
 	}
 	return $result;
 }
-
 
 /**
  * This function uses hook_form_alter() to set the redirect when adding/editing

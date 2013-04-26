@@ -54,12 +54,17 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 		if ($arg_node_function === 'view') {
 			$content_output .= $content_node ? node_view($content_node, $teaser, TRUE, TRUE) : FALSE;
 		} else if ($arg_node_function === 'edit') {
-			if (!$content_node) {
-				$content_node = new stdClass;
-				$content_node->uid = $access_data->get_uid();
-				$content_node->type = $activity_node->activity_type;
+			$lternative_edit_page_function = "{$activity_node->activity_type}_edit_page";
+			if (function_exists($lternative_edit_page_function)) {
+				$content_output = $lternative_edit_page_function($content_node);
+			} else {
+				if (!$content_node) {
+					$content_node = new stdClass;
+					$content_node->uid = $access_data->get_uid();
+					$content_node->type = $activity_node->activity_type;
+				}
+				$content_output .= node_page_edit($content_node);
 			}
-			$content_output .= node_page_edit($content_node);
 		}
 
 		if ($content_output) {
