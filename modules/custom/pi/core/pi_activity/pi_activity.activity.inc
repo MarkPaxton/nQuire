@@ -80,3 +80,63 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 	return $output;
 }
 
+function pi_activity_shared_content_list_view($activity_node) {
+
+
+	$content_list = pi_activity_get_shared_content_for_activity_nid($activity_node->nid);
+	$output = '';
+
+	foreach ($content_list as $list_type => $nids) {
+		switch ($list_type) {
+			case 'groupmates':
+				$intro = t('Content shared by members of my group:');
+				break;
+			case 'participants':
+				$intro = t('Content shared by inquiry participants:');
+				break;
+			case 'groups':
+				$intro = t('Content shared by other groups:');
+				break;
+		}
+
+		$output .= '<p><b>' . $intro . '</b></p>';
+
+		foreach ($nids as $actor_id => $nid) {
+			$output .= pi_activity_display_shared_content_node($activity_node, $actor_id, node_load($nid), TRUE);
+		}
+	}
+
+	return $output;
+}
+
+function pi_activity_display_shared_content_node($activity_node, $actor_id, $node, $teaser) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$activity_data = $access_data->get_activity($activity_node->nid);
+	if ($activity_data['collaboration'] === 'individual') {
+		$user = user_load($actor_id);
+		$actor_title = $user->name;
+	} else {
+		$group = node_load($actor_id);
+		$actor_title = $group->title;
+	}
+
+	include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+
+	if ($teaser) {
+		$actor_text = l($actor_title, 'activity/' . $activity_node->nid . '/shared/' . $actor_id);
+	} else {
+		$actor_text = t('Content shared by @actor:', array('@actor' => $actor_title));
+	}
+
+	$output = $actor_text
+					. '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
+					. ($node ? node_view($node, $teaser, TRUE, TRUE) : '')
+					. '</div>';
+
+	return $output;
+}
+
+function pi_activity_shared_content_view($activity_node, $actor_id, $teaser = FALSE) {
+	$node = node_load(pi_activity_get_content_nid_for_activity_and_actor($activity_node->nid, $actor_id));
+	return pi_activity_display_shared_content_node($activity_node, $actor_id, $node, $teaser);
+}

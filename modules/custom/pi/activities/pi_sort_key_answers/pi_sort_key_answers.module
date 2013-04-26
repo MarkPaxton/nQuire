@@ -144,15 +144,20 @@ function pi_sort_key_answers_load($node) {
 }
 
 function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+
 	$parent_activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
 	$node = node_prepare($node, $teaser);
 
-	$sorted_key_questions = pi_sort_key_questions_get_questions();
+	$questions_activity_data = $access_data->get_activity_by_type('pi_sort_key_questions');
+	$questions_activity_nid = pi_activity_get_content_nid_for_activity($questions_activity_data['node']->nid, FALSE);
+	$sorted_key_questions = pi_sort_key_questions_get_questions_for_nid($questions_activity_nid);
+
 	$sorted_key_questions_nodes = array_map(function($nid) {
 						return node_load($nid);
 					}, $sorted_key_questions);
-	$sorted_key_answers = pi_sort_key_answers_get_answers();
+	$sorted_key_answers = pi_sort_key_answers_get_answers($node);
 	$sorted_key_answers_nodes = array_map(function($nid) {
 						return node_load($nid);
 					}, $sorted_key_answers);
@@ -202,8 +207,7 @@ function theme_pi_sort_key_answers($node, $teaser, $key_questions_to_show) {
 }
 
 function theme_pi_sort_key_answers_node_form($form) {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
+	$access_data = pi_inquiry_groupings_get_access_data();
 
 	// Add the sorted key questions if they exist and then add unsorted ones
 	$sorted_key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
@@ -213,13 +217,13 @@ function theme_pi_sort_key_answers_node_form($form) {
 	} else {
 		$sorted_key_questions = array();
 	}
-	
-	
 
-	$key_questions = pi_sort_key_questions_get_questions();
+
+	
+	$sorted_key_questions = pi_sort_key_questions_get_questions_for_nid($sorted_key_questions_nid);
 
 	$rows = array();
-	
+
 	if (count($key_questions) > 0) {
 		foreach ($key_questions as $key_question_nid) {
 			$key_question_node = node_load($key_question_nid);
@@ -275,12 +279,8 @@ function theme_pi_sort_key_answers_node_form($form) {
 	return $output;
 }
 
-
-
-
-
-function pi_sort_key_answers_get_answers($node = NULL) {
-	$answers =  pi_activity_get_children_content_nids_for_sort_activity_type('pi_sort_key_answers');
+function pi_sort_key_answers_get_answers($node) {
+	$answers = pi_activity_get_children_content_nids_for_content_nid($node->nid);
 	if (!$node) {
 		$access_data = pi_inquiry_groupings_get_access_data();
 		$activity_data = $access_data->get_activity_by_type('pi_sort_key_answers');

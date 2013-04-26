@@ -59,7 +59,7 @@ function pi_sort_key_questions_form(&$node) {
 			'#tree' => TRUE,
 	);
 
-	$questions = pi_sort_key_questions_get_questions($node);
+	$questions = pi_sort_key_questions_get_questions_for_node($node);
 
 	// set $tree to point to the above $form['onepageprofile_categories'] object
 	$key_question_elements = &$form['onepageprofile_categories'];
@@ -87,7 +87,7 @@ function pi_sort_key_questions_insert($node) {
 	if (isset($node->onepageprofile_categories)) {
 		db_query("DELETE FROM {pi_sort_key_questions} WHERE vid=%d", $node->vid);
 		$query = "INSERT INTO {pi_sort_key_questions} (nid, vid, key_question, weight) VALUES (%d, %d, %d, %d)";
-		
+
 		//$min = min($node->onepageprofile_categories);
 		foreach ($node->onepageprofile_categories as $question_nid => $question_weight) {
 			db_query($query, $node->nid, $node->vid, $question_nid, $question_weight['weight']);
@@ -137,7 +137,7 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 	}
 
 
-	$key_questions = pi_sort_key_questions_get_questions();
+	$key_questions = pi_sort_key_questions_get_questions_for_node($node);
 
 	$key_questions_to_show = array();
 	foreach ($key_questions as $sorted_key_question_nid) {
@@ -219,8 +219,12 @@ function theme_pi_sort_key_questions_node_form($form) {
 	return $output;
 }
 
-function pi_sort_key_questions_get_questions($node = NULL) {
-	$questions = pi_activity_get_children_content_nids_for_sort_activity_type('pi_sort_key_questions');
+function pi_sort_key_questions_get_questions_for_nid($nid) {
+	return pi_sort_key_questions_get_questions_for_node(node_load($nid));
+}
+
+function pi_sort_key_questions_get_questions_for_node($node) {
+	$questions = pi_activity_get_children_content_nids_for_content_nid($node->nid);
 
 	if (!$node) {
 		$access_data = pi_inquiry_groupings_get_access_data();
