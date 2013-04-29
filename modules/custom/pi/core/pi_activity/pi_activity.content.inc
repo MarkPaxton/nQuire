@@ -71,7 +71,7 @@ function _pi_activity_get_children_content_nids_for_activity_and_actor($activity
 	return $nids;
 }
 
-function ___pi_activity_get_children_content_nids_for_content_nid($parent_content_nid) {
+function pi_activity_get_children_content_nids_for_content_nid($parent_content_nid) {
 	$query = "SELECT activity_id, collaboration, actor FROM {pi_activity_node} WHERE nid=%d";
 	$row = db_fetch_array(db_query($query, $parent_content_nid));
 	if ($row) {
@@ -170,39 +170,114 @@ function pi_activity_get_shared_content_for_activity_nid($activity_nid) {
 	}
 }
 
-function pi_activity_aggregate_children_for_parent_activity_nid_for_use_in_content_nid($content_nid, $parent_activity_nid) {
-	$query = "SELECT actor FROM pi_activity_node WHERE nid=%d";
-	$actor_row = db_fetch_array(db_query($query, $content_nid));
-	if ($actor_row) {
-		$using_actor = $actor_row['actor'];
-		$access_data = pi_inquiry_groupings_get_access_data();
+function pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($content_nid, $parent_activity_nid, $content_type) {
+	$access_data = pi_inquiry_groupings_get_access_data();
 
+	if (!$content_nid) { // node is being created
+		$using_activity_nid = $access_data->get_current_activity_nid();
+		$using_activity_data = $access_data->get_activity($using_activity_nid);
+		switch ($using_activity_data['collaboration']) {
+			case 'individual':
+				$using_actor = $access_data->get_uid();
+				break;
+			case 'group':
+				$using_actor = $access_data->get_subgroup();
+				break;
+			default:
+				$using_actor = $access_data->get_inquiry_node()->actor_gid;
+				break;
+		}
+	} else {
 		$using_activity_nid = pi_activity_get_activity_nid_for_content_nid($content_nid);
 		$using_activity_data = $access_data->get_activity($using_activity_nid);
+		$query = "SELECT actor FROM pi_activity_node WHERE nid=%d";
+		$actor_row = db_fetch_array(db_query($query, $content_nid));
+		$using_actor = $actor_row ? $actor_row['actor'] : FALSE;
+	}
 
+
+	if ($using_actor) {
 		$parent_activity_data = $access_data->get_activity($parent_activity_nid);
-		
+
 		if ($using_activity_data['collaboration'] === $parent_activity_data['collaboration']) {
-			$single_children_actor = $using_actor;
+			$mode = 'single_actor';
+			$same_actor = $using_actor;
 		} else if ($parent_activity_data['collaboration'] === 'all') {
-			$single_children_actor = $access_data->get_inquiry_node()->actor_gid;
+			$mode = 'single_actor';
+			$same_actor = $access_data->get_inquiry_node()->actor_gid;
 		} else if ($using_activity_data['collaboration'] === 'individual' && $parent_activity_data['collaboration'] === 'group') {
-			$single_children_actor = $access_data->get_subgroup();
+			$mode = 'single_actor';
+			$same_actor = $access_data->get_subgroup();
 		} else if ($using_activity_data['collaboration'] === 'group' && $parent_activity_data['collaboration'] === 'individual') {
-			$single_children_actor = $using_actor;
-			$group_mates = nquire_group_get_member_uids($access_data->get_subgroup(), TRUE);
-		} else if ($using_activity_data['collaboration'] === 'inquiry' && $parent_activity_data['collaboration'] === 'individual') {
+			$mode = 'shared_within_group';
+			$group_members = nquire_group_get_member_uids($access_data->get_subgroup(), TRUE);
+		} else if ($using_activity_data['collaboration'] === 'all' && $parent_activity_data['collaboration'] === 'individual') {
+			$mode = 'shared_with_inquiry';
 			$all_share_requisite = 'individual_all';
-		} else if ($using_activity_data['collaboration'] === 'inquiry' && $parent_activity_data['collaboration'] === 'group') {
+		} else if ($using_activity_data['collaboration'] === 'all' && $parent_activity_data['collaboration'] === 'group') {
+			$mode = 'shared_with_inquiry';
 			$all_share_requisite = 'group_all';
 		}
-		
+
+
+
+		$sharing_actors = array();
+		switch ($mode) {
+			case 'single_actor';
+				$sharing_actors[] = $same_actor;
+				break;
+			case 'shared_within_group';
+				$share_query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
+				foreach ($group_members as $uid) {
+					$row = db_fetch_array(db_query($share_query, $parent_activity_nid, $uid));
+					$share = !$row || $row['share'] !== 'individual_no';
+					if ($share) {
+						$sharing_actors[] = $uid;
+					}
+				}
+				break;
+			case 'shared_with_inquiry':
+				$share_query = "SELECT actor FROM pi_activity_share WHERE activity_id=%d AND share='%s'";
+				$result = db_query($share_query, $parent_activity_nid, $all_share_requisite);
+				while ($row = db_fetch_array($result)) {
+					$sharing_actors[] = $row['actor'];
+				}
+		}
+
 		$nids = array();
-		
-			
+
+		if ($content_type === 'parent') {
+			$query = "SELECT filtered_pi_activity_node.nid FROM "
+							. "(SELECT * FROM pi_activity_node WHERE actor=%d) AS filtered_pi_activity_node "
+							. "INNER JOIN (SELECT node.nid as activity_node_nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE pi_activity.nid=%d) AS activity_node_table "
+							. "ON filtered_pi_activity_node.activity_id=activity_node_table.activity_node_nid ";
+			foreach ($sharing_actors as $actor) {
+				$result = db_query($query, $actor, $parent_activity_nid);
+				while ($row = db_fetch_array($result)) {
+					$nids[] = $row['nid'];
+				}
+			}
+		} else {
+			$parent_type = $parent_activity_data['node']->activity_type;
+			$type_data = node_get_types('type', $parent_type);
+			$child_type = $type_data->add_node_type;
+
+			$query = "SELECT filtered_pi_activity_node.nid FROM "
+							. "(SELECT * FROM pi_activity_node WHERE actor=%d) AS filtered_pi_activity_node "
+							. "INNER JOIN (SELECT node.nid as activity_node_nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE pi_activity.script_activity=0 AND pi_activity.parent_activity=%d AND pi_activity.activity_type='%s') AS activity_node_table "
+							. "ON filtered_pi_activity_node.activity_id=activity_node_table.activity_node_nid ";
+
+			foreach ($sharing_actors as $actor) {
+				$result = db_query($query, $actor, $parent_activity_nid, $child_type);
+				while ($row = db_fetch_array($result)) {
+					$nids[] = $row['nid'];
+				}
+			}
+		}
+
 		return $nids;
 	}
-	
+
 	return NULL;
 }
 

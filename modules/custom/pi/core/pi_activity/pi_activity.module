@@ -325,8 +325,6 @@ function pi_activity_shared_content_list($activity) {
  * @param $op
  */
 function pi_activity_nodeapi(&$node, $op) {
-	/* FIX (eloy) */
-	//if ($node->type != 'image')
 	if ($node->type != 'image' && $node->type != 'pi_activity') {
 		if (in_array($op, array('insert', 'update', 'delete'))) {
 			// If this is a node, check whether it's part of an activity
@@ -404,6 +402,8 @@ function pi_activity_nodeapi(&$node, $op) {
 						if (pi_check_node_exists_and_is_of_type($activity->parent_activity, 'pi_activity')) {
 							node_delete($activity_nid);
 						}
+						
+						db_query('DELETE FROM pi_activity_node WHERE nid=%d', $node->nid);
 						break;
 				}
 			}

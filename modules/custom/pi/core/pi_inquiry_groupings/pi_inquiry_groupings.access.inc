@@ -88,7 +88,7 @@ class PiInquiryGroupingAccess {
 
 		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry['nid']);
 		foreach ($phase_nids as $nid) {
-			$access = 'view';
+			$access = 'edit';
 			if ($this->inquiry['access'] && $this->current_stage && isset($this->current_stage->phases[$nid])) {
 				$access = $this->current_stage->phases[$nid] === 'hidden' ? FALSE : $this->current_stage->phases[$nid];
 			}

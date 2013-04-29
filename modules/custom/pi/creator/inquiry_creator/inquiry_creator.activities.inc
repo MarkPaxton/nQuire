@@ -163,6 +163,8 @@ function _inquiry_creator_activity_delete_node($activity_nid) {
   global $user;
 
   $activity = node_load($activity_nid);
+	
+	inquiry_deployer_activity_will_be_deleted($activity_nid);
 
   if ($activity && $activity->type === 'inquiry_activity' && $activity->uid == $user->uid) {
     inquiry_available_features_invoke('activity', 'delete', $activity);

@@ -128,7 +128,7 @@ function theme_pi_data_spreadsheet_grid($spreadsheet) {
 function _pi_data_spreadsheet_get_spreadsheet(&$node, $editable) {
 	$key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/' . ($editable ? 'editgrid_api_app_key' : 'editgrid_api_app_ro_key')));
 	if (_pi_data_spreadsheet_create_spreadsheet($node, $key)) {
-		_pi_data_spreadsheet_update_data($key, $node->body);
+		_pi_data_spreadsheet_update_data($node, $key, $node->body);
 	}
 
 	$result = array(
@@ -186,7 +186,7 @@ function _pi_data_spreadsheet_create_spreadsheet(&$node, $key) {
 	return TRUE;
 }
 
-function _pi_data_spreadsheet_update_data($session_key, $book_name) {
+function _pi_data_spreadsheet_update_data($node, $session_key, $book_name) {
 	include_once 'CellRequest.php';
 
 	$client = new EditGrid(NULL);
@@ -214,29 +214,29 @@ function _pi_data_spreadsheet_update_data($session_key, $book_name) {
 
 		$cells->addCell(0, 0, t('Data for activity: @title', array('@title' => $activity_data['node']->title)));
 		$cells->addCell(0, 1, t('This sheet is created automatically, Please do not modify it!'));
-		
-		$sort_data_content = pi_activity_get_content_nid_for_activity($activity_data['node']->nid, FALSE);
-		$data_nids = pi_sort_data_get_data_for_sort_node_nid($sort_data_content);
+
+		$data_nids = pi_sort_data_get_all_data_for_use_in_content_nid($node->nid, $activity_data['node']->nid);
 		$data = array_map(function($nid) {
 							return node_load($nid);
 						}, $data_nids);
 
-		$measure_nids = pi_methodology_get_measures($activity_data['node']->nid, 'key_dependent');
+
+		$measure_nids = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_data['node']->nid);
 
 		$x = 0;
-		foreach ($measure_nids as $measure_data) {
-			$nid = $measure_data['nid'];
-			$measure = node_load($nid);
+		foreach ($measure_nids as $measure_nid => $required) {
+			$measure = node_load($measure_nid);
 			$submeasures = pi_data_tools_measure_plugin_get_submeasure_keys($measure);
 			if (!$submeasures) {
-				$submeasures = array($nid);
+				$submeasures = array($measure_nid);
 			}
+
 			foreach ($submeasures as $submeasure_key) {
-				$cells->addCell($x, 3, pi_data_tools_measure_plugin_submeasure_get_title_for_chart($submeasure_key));
+				$cells->addCell($x, 3, pi_data_tools_measure_plugin_submeasure_get_title_for_chart($submeasure_key) . ($required ? '*' : ''));
 
 				foreach ($data as $j => $datum) {
-					if (isset($datum->values[$nid])) {
-						$value = $datum->values[$nid];
+					if (isset($datum->values[$measure_nid])) {
+						$value = $datum->values[$measure_nid];
 						pi_data_tools_measure_plugin_submeasure_get_value_for_chart($submeasure_key, $value);
 						$cells->addCell($x, 4 + $j, $value);
 					}

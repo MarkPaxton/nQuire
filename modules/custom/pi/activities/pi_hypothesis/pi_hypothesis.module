@@ -154,7 +154,10 @@ function pi_hypothesis_theme() {
 	return array(
 			'pi_hypothesis' => array(
 					'arguments' => array('node', 'teaser'),
-			)
+			),
+			'pi_hypothesis_to_support_activities' => array(
+					'arguments' => array('list' => NULL),
+			),
 	);
 }
 
@@ -165,6 +168,29 @@ function pi_hypothesis_theme() {
  * @return string HTML for the page content added for hypothesis data
  */
 function theme_pi_hypothesis($node, $teaser = NULL) {
-	$output = '<strong>Hypothesis:</strong> ' . nl2br($node->hypothesis);
+	$output = '<strong>Hypothesis:</strong> ' . nl2br(check_plain($node->hypothesis));
 	return $output;
+}
+
+function pi_hypothesis_get_hypothesis_nids_for_use_in($content_node_nid) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$activity_data = $access_data->get_activity_by_type('pi_hypothesis');
+	if ($activity_data) {
+		return pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($content_node_nid, $activity_data['node']->nid, 'parent');
+	}
+	return FALSE;
+}
+
+function theme_pi_hypothesis_to_support_activities($hypothesis_nids) {
+	if (!$hypothesis_nids || count($hypothesis_nids) === 0) {
+		drupal_set_message(t("No hypothesis found"), "error");
+		return '';
+	} else {
+		$output = '<b>' . t('Hypothesis: ') . '</b>';
+		$output .= theme('item_list', array_map(function($nid) {
+											$node = node_load($nid);
+											return nl2br(check_plain($node->hypothesis));
+										}, $hypothesis_nids));
+		return $output;
+	}
 }

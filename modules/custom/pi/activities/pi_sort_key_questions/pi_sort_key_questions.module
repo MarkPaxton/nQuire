@@ -113,27 +113,16 @@ function pi_sort_key_questions_load($node) {
 }
 
 function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
-	$data_access = pi_inquiry_groupings_get_access_data();
 	$parent_activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
 	$node = node_prepare($node, $teaser);
 
 	if (!$teaser) {
-		$no_hypothesis = TRUE;
-		$hypothesis_activity = $data_access->get_activity_by_type('pi_hypothesis');
-		if ($hypothesis_activity) {
-			$hypothesis_node = node_load(pi_activity_get_content_nid_for_activity($hypothesis_activity['node']->nid));
-			if ($hypothesis_node) {
-				$node->content['pi_key_questions_hypothesis'] = array(
-						'#value' => node_view($hypothesis_node, TRUE, TRUE),
-						'#weight' => -2
-				);
-				$no_hypothesis = FALSE;
-			}
-		}
-		if ($no_hypothesis) {
-			drupal_set_message("No hypothesis found", "error");
-		}
+		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+		$node->content['pi_key_questions_hypothesis'] = array(
+				'#value' => theme('pi_hypothesis_to_support_activities', $hypothesis_nids),
+				'#weight' => -2
+		);
 	}
 
 
@@ -219,41 +208,39 @@ function theme_pi_sort_key_questions_node_form($form) {
 	return $output;
 }
 
-function pi_sort_key_questions_get_questions_for_nid($nid) {
-	return pi_sort_key_questions_get_questions_for_node(node_load($nid));
+function pi_sort_key_questions_get_questions_use_in_content_nid($content_nid) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$activity_data = $access_data->get_activity_by_type('pi_sort_key_questions');
+	$sort_question_nids = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($content_nid, $activity_data['node']->nid, 'parent');
+	$question_nids = array();
+	foreach($sort_question_nids as $nid) {
+		$question_nids = array_merge($question_nids, pi_sort_key_questions_get_questions_for_node(node_load($nid)));
+	}
+	
+	return $question_nids;
 }
 
 function pi_sort_key_questions_get_questions_for_node($node) {
 	$questions = pi_activity_get_children_content_nids_for_content_nid($node->nid);
-
-	if (!$node) {
-		$access_data = pi_inquiry_groupings_get_access_data();
-		$activity_data = $access_data->get_activity_by_type('pi_sort_key_questions');
-
-		$content_nid = pi_activity_get_content_nid_for_activity($activity_data['node']->nid, FALSE);
-		$node = node_load($content_nid);
+	$query = "SELECT key_question, weight FROM {pi_sort_key_questions} WHERE {pi_sort_key_questions}.vid=%d";
+	$result = db_query($query, $node->vid);
+	$weights = array();
+	while ($row = db_fetch_array($result)) {
+		$weights[$row['key_question']] = intval($row['weight']);
 	}
 
-	if ($node) {
-		$query = "SELECT key_question, weight FROM {pi_sort_key_questions} WHERE {pi_sort_key_questions}.vid=%d";
-		$result = db_query($query, $node->vid);
-		$weights = array();
-		while ($row = db_fetch_array($result)) {
-			$weights[$row['key_question']] = intval($row['weight']);
-		}
+	usort($questions, function($a, $b) use($weights) {
+						if (isset($weights[$a]) && isset($weights[$b])) {
+							return $weights[$a] - $weights[$b];
+						} else if (isset($weights[$a])) {
+							return -1;
+						} else if (isset($weights[$b])) {
+							return 1;
+						} else {
+							return 0;
+						}
+					});
 
-		usort($questions, function($a, $b) use($weights) {
-							if (isset($weights[$a]) && isset($weights[$b])) {
-								return $weights[$a] - $weights[$b];
-							} else if (isset($weights[$a])) {
-								return -1;
-							} else if (isset($weights[$b])) {
-								return 1;
-							} else {
-								return 0;
-							}
-						});
-	}
 
 	return $questions;
 }

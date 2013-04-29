@@ -87,10 +87,6 @@ function pi_data_access($op, $node, $account) {
  * hook_form() for pi_data - dynamically generates the add data form based on selected, available measures and their weights
  */
 function pi_data_form(&$node) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_nid = $access_data->get_current_activity_nid();
-	$activity_data = $access_data->get_activity($activity_nid);
-
 	$form = array();
 
 	$form['#attributes'] = array('enctype' => "multipart/form-data");
@@ -108,14 +104,18 @@ function pi_data_form(&$node) {
 	$form['data_form'] = array(
 			'#tree' => TRUE,
 	);
+	
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$activity_data = $access_data->get_activity($access_data->get_current_activity_nid());
+	$sort_data_activity_nid = $activity_data['node']->parent_activity;
+	$sort_data_node_nid = pi_activity_get_content_nid_for_activity($sort_data_activity_nid, FALSE);
+	$measures = pi_methodology_get_measures_for_use_in_content_node($sort_data_node_nid, $sort_data_activity_nid);
 
-	$measures = pi_methodology_get_measures($activity_data['node']->parent_activity, 'key_dependent');
 
-
-	foreach ($measures as $measure) {
-		$value = $node->values[$measure['nid']];
-		$measure_node = node_load($measure['nid']);
-		pi_data_tools_measure_plugin_add_form_item($measure_node, $form, $value, $measure['required']);
+	foreach ($measures as $measure_nid => $required) {
+		$value = $node->values[$measure_nid];
+		$measure_node = node_load($measure_nid);
+		pi_data_tools_measure_plugin_add_form_item($measure_node, $form, $value, $required);
 	}
 
 	return $form;
@@ -345,7 +345,7 @@ function theme_pi_data($node, $teaser) {
 /* AJAX form functions */
 
 function pi_data_ajax_submit() {
-	
+
 	global $user;
 	/* TODO check permissions! */
 

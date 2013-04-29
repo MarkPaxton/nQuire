@@ -69,11 +69,11 @@ function pi_methodology_theme() {
  */
 function pi_methodology_form(&$node) {
 	//global $user;
-	
+
 	$type = node_get_types('type', $node);
-	
+
 	$form = array();
-	
+
 	$form['title'] = array(
 			'#type' => 'hidden',
 			'#value' => $type->name,
@@ -101,7 +101,7 @@ function pi_methodology_form(&$node) {
 				$measure = node_load($measure_nid);
 				$type_name = inquiry_available_features_name('measure', $measure->measure_type);
 				$description = strlen($measure->body) > 0 ? nl2br(check_plain($measure->body)) . ' (' . $type_name . ')' : $type_name;
-				
+
 				$tree[$region][$measure_nid] = array(
 						'title' => array(
 								'#value' => check_plain($measure->title),
@@ -246,37 +246,36 @@ function pi_methodology_load($node) {
 	return $output;
 }
 
-function pi_methodology_get_measures($activity_nid, $type) {
+function pi_methodology_get_measures_for_use_in_content_node($using_content_nid, $sort_data_activity_nid) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+	$methodology_activity_data = $access_data->get_activity_by_type('pi_methodology');
+	
+	$measures = array();
+	if ($methodology_activity_data) {
+		$shared_content = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($using_content_nid, $methodology_activity_data['node']->nid, 'parent');
+	
+		foreach ($shared_content as $methology_content_nid) {
+			$methodology_node = node_load($methology_content_nid);
 
-	$methodology_node = pi_methodology_find_user_content();
-	if ($methodology_node) {
-		$measures = array();
-		switch ($type) {
-			case 'key_dependent':
-				if (isset($methodology_node->measures[$activity_nid]['key'])) {
-					$km = $methodology_node->measures[$activity_nid]['key'];
-					$kmd = array_map(function($nid) {
-										return array('nid' => $nid, 'required' => TRUE);
-									}, $km);
-									
-					$measures = array_merge($measures, $kmd);
+			if (isset($methodology_node->measures[$sort_data_activity_nid]['key'])) {
+				foreach ($methodology_node->measures[$sort_data_activity_nid]['key'] as $measure_nid) {
+					$measures[$measure_nid] = TRUE;
 				}
-				
-				if (isset($methodology_node->measures[$activity_nid]['dependent'])) {
-					$dm = $methodology_node->measures[$activity_nid]['dependent'];
-					$dmd = array_map(function($nid) {
-										return array('nid' => $nid, 'required' => FALSE);
-									}, $dm);
-					$measures = array_merge($measures, $dmd);
+			}
+			if (isset($methodology_node->measures[$sort_data_activity_nid]['dependent'])) {
+				foreach ($methodology_node->measures[$sort_data_activity_nid]['dependent'] as $measure_nid) {
+					if (!isset($measures[$measure_nid])) {
+						$measures[$measure_nid] = FALSE;
+					}
 				}
-				break;
+			}
 		}
 	} else {
-		$measures = array_map(function($nid) {
-							return array('nid' => $nid, 'required' => TRUE);
-						}, pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($activity_nid));
+		foreach(pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) as $measure_nid) {
+			$measures[$measure_nid] = FALSE;
+		}
 	}
-
+	
 	return $measures;
 }
 
@@ -361,8 +360,7 @@ function theme_pi_methodology($node, $teaser) {
 							$label = pi_activity_build_link_for_child($measure_activity->parent_activity, $measure_activity->nid);
 						}
 						$region_section['children'][] = array(
-								
-								'data' => '<b>' . $label . '</b>: ' . 
+								'data' => '<b>' . $label . '</b>: ' .
 								inquiry_available_features_name('measure', $measure_node->measure_type),
 						);
 					}
@@ -432,8 +430,8 @@ function pi_methodology_get_empty_region_label($region) {
  */
 function theme_pi_methodology_node_form($form) {
 	$output = '';
-	
-	
+
+
 	$header = array(array('theading' => t('Measure'), 'class' => ''),
 			array('theading' => t('Description'), 'class' => ''),
 			array('theading' => t('Status'), 'class' => 'measures_theading_status'),
@@ -549,12 +547,6 @@ function pi_methodology_get_options() {
 	return $items;
 }
 
-function pi_methodology_find_user_content() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity_by_type('pi_methodology');
-	$methodology_nid = pi_activity_get_content_nid_for_activity($activity_data['node']->nid);
-	return node_load($methodology_nid);
-}
 
 function _pi_methodology_find_activity_measure_form_attributes($container) {
 	$table_form_items = array();

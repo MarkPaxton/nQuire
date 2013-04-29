@@ -50,13 +50,8 @@ $(function() {
           multiplicity: '*',
           requires: []
         },
-        analysedata: {
-          title: 'Analyse my data',
-          multiplicity: '*',
-          requires: []
-        },
         spreadsheet: {
-          title: 'Data spreadsheet analysis',
+          title: 'Data analysis',
           multiplicity: '*',
           requires: []
         }
@@ -80,7 +75,7 @@ $(function() {
         },
         analysedata: {
           title: 'Data analysis',
-          activities: ['analysedata']
+          activities: ['spreadsheet']
         },
         conclusions: {
           title: 'My conclusions',

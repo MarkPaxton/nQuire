@@ -67,21 +67,8 @@ function pi_key_answers_access($op, $node, $account) {
  * Implementation of hook_form().
  */
 function pi_key_answers_form(&$node) {
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
 
-	// Add the categories of existing nodes and the options list for new nodes
-	$key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-
-	$sorted_key_questions = array();
-	if (isset($key_questions_nid)) {
-		$key_questions_node = node_load($key_questions_nid);
-		if ($key_questions_node) {
-			$sorted_key_questions = $key_questions_node->categories;
-		}
-	}
-
-	$key_questions = pi_sort_key_questions_get_questions_for_nid($key_questions_nid);
+	$key_questions = pi_sort_key_questions_get_questions_use_in_content_nid($node->nid);
 
 	if (count($key_questions) > 0) {
 		$key_question_options = array();
@@ -118,17 +105,9 @@ function pi_key_answers_form(&$node) {
 		);
 	}
 
-	$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($user->uid, $node_details->inquiry_id);
-	if ($hypothesis_nid) {
-		$hypothesis_node = node_load($hypothesis_nid);
-		$hypothesis_activity_nid = pi_activity_get_activity_nid_for_content_nid($hypothesis->nid);
-		if ($hypothesis_activity_nid) {
-			$hypothesis_activity = node_load($hypothesis_activity_nid);
-			if ($hypothesis_activity) {
-				$form['#prefix'] = node_view($hypothesis_node, TRUE, TRUE);
-			}
-		}
-	}
+	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+	$form['#prefix'] = theme('pi_hypothesis_to_support_activities', $hypothesis_nids);
+
 	return $form;
 }
 

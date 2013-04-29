@@ -144,15 +144,11 @@ function pi_sort_key_answers_load($node) {
 }
 
 function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-
 	$parent_activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
 
 	$node = node_prepare($node, $teaser);
 
-	$questions_activity_data = $access_data->get_activity_by_type('pi_sort_key_questions');
-	$questions_activity_nid = pi_activity_get_content_nid_for_activity($questions_activity_data['node']->nid, FALSE);
-	$sorted_key_questions = pi_sort_key_questions_get_questions_for_nid($questions_activity_nid);
+	$sorted_key_questions = pi_sort_key_questions_get_questions_use_in_content_nid($node->nid);
 
 	$sorted_key_questions_nodes = array_map(function($nid) {
 						return node_load($nid);
@@ -207,76 +203,65 @@ function theme_pi_sort_key_answers($node, $teaser, $key_questions_to_show) {
 }
 
 function theme_pi_sort_key_answers_node_form($form) {
-	$access_data = pi_inquiry_groupings_get_access_data();
 
-	// Add the sorted key questions if they exist and then add unsorted ones
-	$sorted_key_questions_nid = find_sort_key_questions_nid_for_uid_and_inquiry($user->uid, $details->inquiry_id);
-	if ($sorted_key_questions_nid) {
-		$sorted_key_questions_node = node_load($sorted_key_questions_nid);
-		$sorted_key_questions = $sorted_key_questions_node->categories;
-	} else {
-		$sorted_key_questions = array();
-	}
+	/* 	
+	  $sorted_key_questions = pi_sort_key_questions_get_questions_use_in_content_nid($form['node']->nid);
 
+	  $rows = array();
 
-	
-	$sorted_key_questions = pi_sort_key_questions_get_questions_for_nid($sorted_key_questions_nid);
+	  if (count($key_questions) > 0) {
+	  foreach ($key_questions as $key_question_nid) {
+	  $key_question_node = node_load($key_question_nid);
+	  if ($key_question_node) {
+	  drupal_add_tabledrag(check_plain('onepageprofile-categories' . $key_question_nid), 'order', 'sibling', 'onepageprofile-element');
+	  $rows[$key_question_nid] = array();
+	  }
+	  }
+	  }
 
-	$rows = array();
+	  // Load all the key answers into the array of arrays
+	  $tree = &$form['onepageprofile_categories'];
+	  foreach (element_children($tree) as $key_answer_nid) {
+	  $tree[$key_answer_nid]['weight']['#attributes']['class'] = 'onepageprofile-element';
 
-	if (count($key_questions) > 0) {
-		foreach ($key_questions as $key_question_nid) {
-			$key_question_node = node_load($key_question_nid);
-			if ($key_question_node) {
-				drupal_add_tabledrag(check_plain('onepageprofile-categories' . $key_question_nid), 'order', 'sibling', 'onepageprofile-element');
-				$rows[$key_question_nid] = array();
-			}
-		}
-	}
-
-	// Load all the key answers into the array of arrays
-	$tree = &$form['onepageprofile_categories'];
-	foreach (element_children($tree) as $key_answer_nid) {
-		$tree[$key_answer_nid]['weight']['#attributes']['class'] = 'onepageprofile-element';
-
-		$row = array();
-		$row[] = drupal_render($tree[$key_answer_nid]['title']);
-		$row[] = drupal_render($tree[$key_answer_nid]['weight']);
+	  $row = array();
+	  $row[] = drupal_render($tree[$key_answer_nid]['title']);
+	  $row[] = drupal_render($tree[$key_answer_nid]['weight']);
 
 
-		$key_answer_node = node_load($key_answer_nid);
-		if ($key_answer_node) {
-			$key_question_id = $key_answer_node->key_question_id;
-			$rows[$key_question_id][$key_answer_nid] = array('data' => $row, 'class' => 'draggable');
-		}
-	}
+	  $key_answer_node = node_load($key_answer_nid);
+	  if ($key_answer_node) {
+	  $key_question_id = $key_answer_node->key_question_id;
+	  $rows[$key_question_id][$key_answer_nid] = array('data' => $row, 'class' => 'draggable');
+	  }
+	  }
 
-	$output .= '<p>' . t('Here you can change the order of your key answers for each key question. Click on the plus sign next to the answer and drag it to where you want it to be.') . '</p>';
-	$answer_flag = 0;
-	if (count($key_questions) > 0) {
-		//Render the array of arrays to make a table listing each key question with answers
-		// using table drag 
-		foreach (array_keys($key_questions) as $key_question_nid) {
-			if (count($rows[$key_question_nid]) > 0) {
-				$answer_flag = 1;
-				$output .= theme('table', array(check_plain($key_questions[$key_question_nid]['#title']), t('Weight')), $rows[$key_question_nid], array('id' => check_plain('onepageprofile-categories' . $key_question_nid)));
-			} else {
-				$output .= '<p><strong>' . $key_questions[$key_question_nid]['#title'] . '</strong><br/> No answers linked to this question</p>';
-			}
-		}
-	} else {
-		$output .= "<p>No key questions are available.</p>";
-	}
+	  $output .= '<p>' . t('Here you can change the order of your key answers for each key question. Click on the plus sign next to the answer and drag it to where you want it to be.') . '</p>';
+	  $answer_flag = 0;
+	  if (count($key_questions) > 0) {
+	  //Render the array of arrays to make a table listing each key question with answers
+	  // using table drag
+	  foreach (array_keys($key_questions) as $key_question_nid) {
+	  if (count($rows[$key_question_nid]) > 0) {
+	  $answer_flag = 1;
+	  $output .= theme('table', array(check_plain($key_questions[$key_question_nid]['#title']), t('Weight')), $rows[$key_question_nid], array('id' => check_plain('onepageprofile-categories' . $key_question_nid)));
+	  } else {
+	  $output .= '<p><strong>' . $key_questions[$key_question_nid]['#title'] . '</strong><br/> No answers linked to this question</p>';
+	  }
+	  }
+	  } else {
+	  $output .= "<p>No key questions are available.</p>";
+	  }
 
-	if ($answer_flag == 0) {
-		$output .= '<p> Press <strong>Save</strong> to start adding your answers.</p>';
-	}
+	  if ($answer_flag == 0) {
+	  $output .= '<p> Press <strong>Save</strong> to start adding your answers.</p>';
+	  }
 
-	//if($answer_flag == 1) {
-	$output .= drupal_render($form);
-	//}
+	  //if($answer_flag == 1) {
+	  $output .= drupal_render($form);
+	  //}
 
-	return $output;
+	  return $output; */
 }
 
 function pi_sort_key_answers_get_answers($node) {

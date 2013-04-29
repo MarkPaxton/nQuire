@@ -69,7 +69,7 @@ function pi_hypothesis_conclusion_theme() {
  */
 function pi_hypothesis_conclusion_form(&$node) {
 	$access_data = pi_inquiry_groupings_get_access_data();
-	
+
 	$type = node_get_types('type', $node);
 	$node_title = $type->name;
 
@@ -93,17 +93,9 @@ function pi_hypothesis_conclusion_form(&$node) {
 			'#weight' => -2
 	);
 
-	$prefix = '';
-	
-	$hypothesis_param = find_hypothesis_nid_for_uid_and_inquiry($access_data->get_uid(), $access_data->get_inquiry_nid());
-	if ($hypothesis_param) {
-		$hypothesis_node = node_load($hypothesis_param);
-		if ($hypothesis_node) {
-			$prefix .= theme('pi_hypothesis', $hypothesis_node);
-		}
-	}
+	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+	$form['#prefix'] = theme('pi_hypothesis_to_support_activities', $hypothesis_nids);
 
-	$form['#prefix'] = $prefix;
 	return $form;
 }
 
@@ -144,19 +136,14 @@ function pi_hypothesis_conclusion_load($node) {
  * Implementation of hook_view().
  */
 function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	
 	$node = node_prepare($node, $teaser);
 
 	if (!$teaser) {
-		$hypothesis_nid = find_hypothesis_nid_for_uid_and_inquiry($access_data->get_uid(), $access_data->get_inquiry_nid());
-		if ($hypothesis_nid) {
-			$hypothesis_node = node_load($hypothesis_nid);
-			$node->content['pi_hypothesis'] = array(
-					'#value' => node_view($hypothesis_node, TRUE, TRUE),
-					'#weight' => 1
-			);
-		}
+		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+		$node->content['pi_hypothesis'] = array(
+				'#value' => theme('pi_hypothesis_to_support_activities', $hypothesis_nids),
+				'#weight' => 1
+		);
 	}
 
 	// Use Drupal's default node view.
@@ -179,9 +166,5 @@ function theme_pi_hypothesis_conclusion($node, $teaser) {
 	return $output;
 
 	return $output;
-}
-
-function find_hypothesis_nid_for_uid_and_inquiry($uid, $inquiry_id) {
-	return find_unique_node_type_for_uid_and_inquiry('pi_hypothesis', $uid, $inquiry_id);
 }
 
