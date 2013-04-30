@@ -128,6 +128,10 @@ function pi_methodology_form(&$node) {
 	return $form;
 }
 
+function pi_methodology_form_pi_methodology_node_form_alter(&$form, &$form_state) {
+	unset($form['buttons']['delete']);
+}
+
 /**
  * hook_insert()
  * @param node object $node new draggable_measures node to insert
@@ -249,11 +253,11 @@ function pi_methodology_load($node) {
 function pi_methodology_get_measures_for_use_in_content_node($using_content_nid, $sort_data_activity_nid) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$methodology_activity_data = $access_data->get_activity_by_type('pi_methodology');
-	
+
 	$measures = array();
 	if ($methodology_activity_data) {
 		$shared_content = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($using_content_nid, $methodology_activity_data['node']->nid, 'parent');
-	
+
 		foreach ($shared_content as $methology_content_nid) {
 			$methodology_node = node_load($methology_content_nid);
 
@@ -271,11 +275,11 @@ function pi_methodology_get_measures_for_use_in_content_node($using_content_nid,
 			}
 		}
 	} else {
-		foreach(pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) as $measure_nid) {
+		foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) as $measure_nid) {
 			$measures[$measure_nid] = FALSE;
 		}
 	}
-	
+
 	return $measures;
 }
 
@@ -546,7 +550,6 @@ function pi_methodology_get_options() {
 	}
 	return $items;
 }
-
 
 function _pi_methodology_find_activity_measure_form_attributes($container) {
 	$table_form_items = array();

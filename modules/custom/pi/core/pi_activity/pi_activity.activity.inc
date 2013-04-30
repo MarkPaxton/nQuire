@@ -80,6 +80,39 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 	return $output;
 }
 
+function pi_activity_content_delete($activity_node) {
+	$content_nid = pi_activity_get_content_nid_for_activity($activity_node->nid);
+	$node = node_load($content_nid);
+	if ($node) {
+		drupal_set_title(t("Delete @title", array('@title' => $node->title)));
+		$output = drupal_get_form('pi_activity_content_delete_form', $activity_node, $node);
+		return $output;
+	}
+}
+
+function pi_activity_content_delete_form(&$form_state, $activity_node, $node) {
+	$form = array();
+
+	$info = t('<h2 class="title">Are you sure to delete <i>@title</i>?</h2>', array('@title' => $node->title))
+					. '<div>' . t('This action cannot be undone.') . '</div>';
+
+	$form['info'] = array(
+			'#value' => $info,
+	);
+
+	nquire_commont_create_form_delete_cancel_buttons($form, 'pi_activity_content_delete_form_submit', 'phase/' . $activity_node->phase_nid);
+
+	return $form;
+}
+
+function pi_activity_content_delete_form_submit($form, $form_state) {
+	$activity_nid = arg(1);
+	$content_nid = pi_activity_get_content_nid_for_activity($activity_nid);
+	node_delete($content_nid);
+	
+	nquire_commons_form_close($form, $form_state);
+}
+
 function pi_activity_shared_content_list_view($activity_node) {
 
 
