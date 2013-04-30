@@ -87,6 +87,43 @@ function inquiry_basic_measures_pi_measure__number_submeasure_is_numeric() {
   return TRUE;
 }
 
+/* * *****************
+ * Date measure *
+ * **************** */
+
+function inquiry_basic_measures_pi_measure__date_create_form_item($measure_node, &$form, $value, $required) {
+  $data = nquire_commons_decode_data($measure_node->data);
+
+  $title = check_plain($measure_node->title);
+  if ($data['units']) {
+    $title .= ' (' . $data['units'] . ')';
+  }
+
+  $form["measure_" . $measure_node->nid] = array(
+      '#type' => 'textfield',
+      '#title' => $title,
+      '#description' => check_plain($measure_node->body),
+      '#default_value' => $value,
+      '#required' => $required,
+  );
+}
+
+function inquiry_basic_measures_pi_measure__date_format_table_value($measure_node, $value) {
+	return check_plain($value);
+}
+
+function inquiry_basic_measures_pi_measure__date_submeasure_get_title($measure_node) {
+  return check_plain($measure_node->title) . t(' (date)');
+}
+
+function inquiry_basic_measures_pi_measure__date_submeasure_get_title_for_chart($measure_node) {
+  return check_plain($measure_node->title);
+}
+
+function inquiry_basic_measures_pi_measure__date_submeasure_is_numeric() {
+  return FALSE;
+}
+
 /* * ****************
  * Options measure *
  * **************** */
