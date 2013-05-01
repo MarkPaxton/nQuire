@@ -37,7 +37,13 @@ function inquiry_creator_main($nid, $op = '', $item = '') {
 			$output .= drupal_get_form('inquiry_creator_groups_form', $design);
 			break;
 		case 'roles':
+			$output .= '<p>' . t('Here you can create roles and assign them different permission for each activity. Later, users will be assigned to concrete roles. In this way you can control what each user can do in the inquiry activities.') . '</p>';
+			$output .= theme('inquiry_creator_show_default_roles', $design);
 			$output .= drupal_get_form('inquiry_creator_roles_form', $design);
+			break;
+		case 'defaultroles':
+			$output .= '<p>' . t('Here you can select the roles that are assigned by default to new inquiry participants.') . '</p>';
+			$output .= drupal_get_form('inquiry_creator_defaultroles_form', $design);
 			break;
 		default: /* other things */
 			break;
@@ -130,6 +136,28 @@ function theme_inquiry_creator_side_form($design, $item, $type, $form) {
 					. $form
 					. '</div></td></tr></table>';
 
+	return $output;
+}
+
+function theme_inquiry_creator_show_default_roles($design) {
+	$output = '';
+	$roles = nquire_commons_decode_data($design->roles, '[]');
+	if (count($roles) > 0) {
+		$default = array();
+		foreach ($roles as $role) {
+			if ($role['default']) {
+				$default[] = $role['title'];
+			}
+		}
+		$output = '<p>';
+		if (count($default) > 0) {
+			$output .= t('The following roles are assigned to participants by default: ') . '<b>' . implode(', ', $default) . '</b>';
+		} else {
+			$output .= t('No roles are assigned to participants by default.');
+		}
+
+		$output .= '<br/>' . nquire_commons_form_submit_link(t('Edit'), 'creator/' . arg(1) . '/defaultroles') . '</p>';
+	}
 	return $output;
 }
 
@@ -255,6 +283,58 @@ function inquiry_creator_roles_form_submit($form, $form_state) {
 		foreach ($roles as $role) {
 			if (!is_numeric($role->id)) {
 				$role->id = ++$id;
+			}
+		}
+
+		$new_roles = json_encode($roles);
+		if ($node->roles !== $new_roles) {
+			$node->roles = $new_roles;
+			$node->revision = TRUE;
+			node_save($node);
+			inquiry_deployer_update_inquiry_node($node);
+		}
+	}
+	nquire_commons_form_close($form, $form_state);
+}
+
+function inquiry_creator_defaultroles_form(&$form_state, $node) {
+	$form = array();
+
+	nquire_commons_form_set_default_link_action($form, 'submit');
+
+	_inquiry_creator_create_inquiry_id_form_item($node, $form);
+	$roles = nquire_commons_decode_data($node->roles);
+	$values = array();
+	$options = array();
+	foreach ($roles as $role) {
+		$options[$role['id']] = check_plain($role['title']);
+		if ($role['default']) {
+			$values[] = $role['id']; // = $role['default'];
+		}
+	}
+
+	$form['defaultroles'] = array(
+			'#type' => 'checkboxes',
+			'#title' => t('Default roles'),
+			'#description' => t('Select the roles that will be assigned by default.'),
+			'#required' => FALSE,
+			'#options' => $options,
+			'#default_value' => $values,
+	);
+
+	nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_defaultroles_form_submit', "creator/{$node->nid}/roles");
+
+	return $form;
+}
+
+function inquiry_creator_defaultroles_form_submit($form, $form_state) {
+	global $user;
+	$node = node_load($form_state['values']['inquiry_design']);
+	if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+		$roles = nquire_commons_decode_data($node->roles);
+		foreach ($roles as &$role) {
+			if (isset($form_state['values']['defaultroles'][$role['id']])) {
+				$role['default'] = $form_state['values']['defaultroles'][$role['id']] ? TRUE : FALSE;
 			}
 		}
 

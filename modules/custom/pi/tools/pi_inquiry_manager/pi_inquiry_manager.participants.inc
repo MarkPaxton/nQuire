@@ -415,29 +415,30 @@ function theme_pi_inquiry_manager_participants_roles($inquiry_node, $group_nid =
 
 		$roles_used = FALSE;
 
-		foreach ($phase_nids as $phase_nid) {
-			$phase = node_load($phase_nid);
+		if (count($phase_nids) > 0) {
+			$roles_used = TRUE;
+			foreach ($phase_nids as $phase_nid) {
+				$phase = node_load($phase_nid);
 
-			$activity_nids = pi_get_activities_for_phase($phase_nid);
-			$activity_titles = array();
-			foreach ($activity_nids as $nid) {
-				$a = node_load($nid);
-				$activity_titles[$nid] = check_plain($a->title);
-			}
+				$activity_nids = pi_get_activities_for_phase($phase_nid);
+				$activity_titles = array();
+				foreach ($activity_nids as $nid) {
+					$a = node_load($nid);
+					$activity_titles[$nid] = check_plain($a->title);
+				}
 
-			foreach ($roles_data as $role) {
-				$activities_for_role = array_filter($activity_nids, function($aid) use($role) {
-									return $role['activities'][$aid] === 'edit';
-								});
-				if (count($activities_for_role) > 0) {
-					$role_phase_activities[$role['id']][$phase_nid] = array(
-							'data' => check_plain($phase->title),
-							'children' => array_map(function($aid) use ($activity_titles) {
-												return $activity_titles[$aid];
-											}, $activities_for_role),
-					);
-
-					$roles_used = TRUE;
+				foreach ($roles_data as $role) {
+					$activities_for_role = array_filter($activity_nids, function($aid) use($role) {
+										return $role['activities'][$aid] === 'edit';
+									});
+					if (count($activities_for_role) > 0) {
+						$role_phase_activities[$role['id']][$phase_nid] = array(
+								'data' => check_plain($phase->title),
+								'children' => array_map(function($aid) use ($activity_titles) {
+													return $activity_titles[$aid];
+												}, $activities_for_role),
+						);
+					}
 				}
 			}
 		}
@@ -679,7 +680,6 @@ function pi_inquiry_manager_participants_group_join_form_submit() {
 	if ($group_check) {
 		global $user;
 		pi_inquiry_groupings_add_user_to_group($group_check, $user->uid, $group_check['group']->selective == OG_OPEN);
-//		nquire_group_add_user_to_group($group_check['gid'], $user->uid, $group_check['group']->selective == OG_OPEN);
 	}
 
 	drupal_goto($_REQUEST['destination']);
