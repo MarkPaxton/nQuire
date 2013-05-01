@@ -1,40 +1,48 @@
 <?php
 
+function inquiry_basic_measures_theme() {
+	return array(
+			'inquiry_basic_measures_date_form_item' => array(
+					'arguments' => array('form' => NULL),
+			),
+	);
+}
+
 /* * ****************
  * Text measure *
  * **************** */
 
 function inquiry_basic_measures_pi_measure__text_create_form_item($measure_node, &$form, $value, $required) {
-  $item = array(
-      '#title' => check_plain($measure_node->title),
-      '#description' => check_plain($measure_node->body),
-      '#default_value' => $value,
-      '#required' => $required,
-  );
+	$item = array(
+			'#title' => check_plain($measure_node->title),
+			'#description' => check_plain($measure_node->body),
+			'#default_value' => $value,
+			'#required' => $required,
+	);
 
-  $data = nquire_commons_decode_data($measure_node->data);
-  $rows = max(1, (int) $data['rows']);
+	$data = nquire_commons_decode_data($measure_node->data);
+	$rows = max(1, (int) $data['rows']);
 
-  if ($rows === 1) {
-    $item['#type'] = 'textfield';
-  } else {
-    $item['#type'] = 'textarea';
-    $item['#rows'] = $rows;
-  }
+	if ($rows === 1) {
+		$item['#type'] = 'textfield';
+	} else {
+		$item['#type'] = 'textarea';
+		$item['#rows'] = $rows;
+	}
 
-  $form["measure_" . $measure_node->nid] = $item;
+	$form["measure_" . $measure_node->nid] = $item;
 }
 
 function inquiry_basic_measures_pi_measure__text_format_table_value($measure_node, $value) {
-  return nl2br(check_plain($value));
+	return nl2br(check_plain($value));
 }
 
 function inquiry_basic_measures_pi_measure__text_submeasure_get_title($measure_node) {
-  return check_plain($measure_node->title) . t(' (text)');
+	return check_plain($measure_node->title) . t(' (text)');
 }
 
 function inquiry_basic_measures_pi_measure__text_get_submeasure_keys() {
-  return array();
+	return array();
 }
 
 /* * *****************
@@ -42,49 +50,49 @@ function inquiry_basic_measures_pi_measure__text_get_submeasure_keys() {
  * **************** */
 
 function inquiry_basic_measures_pi_measure__number_create_form_item($measure_node, &$form, $value, $required) {
-  $data = nquire_commons_decode_data($measure_node->data);
+	$data = nquire_commons_decode_data($measure_node->data);
 
-  $title = check_plain($measure_node->title);
-  if ($data['units']) {
-    $title .= ' (' . $data['units'] . ')';
-  }
+	$title = check_plain($measure_node->title);
+	if ($data['units']) {
+		$title .= ' (' . $data['units'] . ')';
+	}
 
-  $form["measure_" . $measure_node->nid] = array(
-      '#type' => 'textfield',
-      '#title' => $title,
-      '#description' => check_plain($measure_node->body),
-      '#default_value' => $value,
-      '#required' => $required,
-  );
+	$form["measure_" . $measure_node->nid] = array(
+			'#type' => 'textfield',
+			'#title' => $title,
+			'#description' => check_plain($measure_node->body),
+			'#default_value' => $value,
+			'#required' => $required,
+	);
 }
 
 function inquiry_basic_measures_pi_measure__number_validate_form_value($measure_node, $value) {
-  if (strlen($value) > 0) {
-    if (!is_numeric($value)) {
-      form_set_error("measure_{$measure_node->nid}", t("The value of <i>@name</i> must be a number!", array('@name' => $measure_node->title)));
-    }
-  }
+	if (strlen($value) > 0) {
+		if (!is_numeric($value)) {
+			form_set_error("measure_{$measure_node->nid}", t("The value of <i>@name</i> must be a number!", array('@name' => $measure_node->title)));
+		}
+	}
 }
 
 function inquiry_basic_measures_pi_measure__number_format_table_value($measure_node, $value) {
-  $data = nquire_commons_decode_data($measure_node->data);
-  $output = $value;
-  if ($value && strlen($value) > 0 && $data['units']) {
-    $output .= ' ' . $data['units'];
-  }
-  return check_plain($output);
+	$data = nquire_commons_decode_data($measure_node->data);
+	$output = $value;
+	if ($value && strlen($value) > 0 && $data['units']) {
+		$output .= ' ' . $data['units'];
+	}
+	return check_plain($output);
 }
 
 function inquiry_basic_measures_pi_measure__number_submeasure_get_title($measure_node) {
-  return check_plain($measure_node->title) . t(' (number)');
+	return check_plain($measure_node->title) . t(' (number)');
 }
 
 function inquiry_basic_measures_pi_measure__number_submeasure_get_title_for_chart($measure_node) {
-  return check_plain($measure_node->title);
+	return check_plain($measure_node->title);
 }
 
 function inquiry_basic_measures_pi_measure__number_submeasure_is_numeric() {
-  return TRUE;
+	return TRUE;
 }
 
 /* * *****************
@@ -92,36 +100,44 @@ function inquiry_basic_measures_pi_measure__number_submeasure_is_numeric() {
  * **************** */
 
 function inquiry_basic_measures_pi_measure__date_create_form_item($measure_node, &$form, $value, $required) {
-  $data = nquire_commons_decode_data($measure_node->data);
-
-  $title = check_plain($measure_node->title);
-  if ($data['units']) {
-    $title .= ' (' . $data['units'] . ')';
-  }
-
-  $form["measure_" . $measure_node->nid] = array(
-      '#type' => 'textfield',
-      '#title' => $title,
-      '#description' => check_plain($measure_node->body),
-      '#default_value' => $value,
-      '#required' => $required,
-  );
+	$input_element_id = "measure_{$measure_node->nid}";
+	$form[$input_element_id] = array(
+			'#type' => 'textfield',
+			'#title' => check_plain($measure_node->title),
+			'#description' => check_plain($measure_node->body),
+			'#default_value' => $value,
+			'#required' => $required,
+	);
+	$form["{$input_element_id}_complement"] = array(
+			'#theme' => 'inquiry_basic_measures_date_form_item',
+			'#widget_input_id' => $input_element_id,
+	);
 }
 
 function inquiry_basic_measures_pi_measure__date_format_table_value($measure_node, $value) {
 	return check_plain($value);
 }
 
+function theme_inquiry_basic_measures_date_form_item($form) {
+	jquery_ui_add("ui.datepicker");
+	drupal_add_css(libraries_get_path('jquery.ui') . "/themes/base/ui.all.css");
+	nquire_commons_load_javascript_support();
+	drupal_add_js(drupal_get_path('module', 'inquiry_basic_measures') . '/js/dateMeasure.js');
+	
+	$output = '<div measure_type="measure_widget__date" input_element_id="' . $form['#widget_input_id'] . '"></div>';
+	return $output;
+}
+
 function inquiry_basic_measures_pi_measure__date_submeasure_get_title($measure_node) {
-  return check_plain($measure_node->title) . t(' (date)');
+	return check_plain($measure_node->title) . t(' (date)');
 }
 
 function inquiry_basic_measures_pi_measure__date_submeasure_get_title_for_chart($measure_node) {
-  return check_plain($measure_node->title);
+	return check_plain($measure_node->title);
 }
 
 function inquiry_basic_measures_pi_measure__date_submeasure_is_numeric() {
-  return FALSE;
+	return FALSE;
 }
 
 /* * ****************
@@ -129,110 +145,109 @@ function inquiry_basic_measures_pi_measure__date_submeasure_is_numeric() {
  * **************** */
 
 function inquiry_basic_measures_pi_measure__options_create_form_item($measure_node, &$form, $value, $required) {
-  $data = nquire_commons_decode_data($measure_node->data);
+	$data = nquire_commons_decode_data($measure_node->data);
 
-  $type = NULL;
-  $multiple = $data['multiple_options'];
+	$type = NULL;
+	$multiple = $data['multiple_options'];
 
-  if ($data['widget'] === 'menu') {
-    $type = 'select';
-  } else if ($data['widget'] === 'buttons') {
-    if ($multiple) {
-      $type = 'checkboxes';
-      if (!$value) {
-        $value = array();
-      }
-    } else {
-      $type = 'radios';
-    }
-  }
+	if ($data['widget'] === 'menu') {
+		$type = 'select';
+	} else if ($data['widget'] === 'buttons') {
+		if ($multiple) {
+			$type = 'checkboxes';
+			if (!$value) {
+				$value = array();
+			}
+		} else {
+			$type = 'radios';
+		}
+	}
 
-  $form["measure_" . $measure_node->nid] = array(
-      '#type' => $type,
-      '#title' => check_plain($measure_node->title),
-      '#description' => check_plain($measure_node->body),
-      '#multiple' => $multiple,
-      '#default_value' => $value,
-      '#required' => $required,
-      '#options' => $data['options'],
-  );
+	$form["measure_" . $measure_node->nid] = array(
+			'#type' => $type,
+			'#title' => check_plain($measure_node->title),
+			'#description' => check_plain($measure_node->body),
+			'#multiple' => $multiple,
+			'#default_value' => $value,
+			'#required' => $required,
+			'#options' => $data['options'],
+	);
 }
 
 function inquiry_basic_measures_pi_measure__options_format_table_value($measure_node, $value) {
-  $data = nquire_commons_decode_data($measure_node->data);
-  return check_plain(isset($data['options'][$value]) ? $data['options'][$value] : $value);
+	$data = nquire_commons_decode_data($measure_node->data);
+	return check_plain(isset($data['options'][$value]) ? $data['options'][$value] : $value);
 }
 
 function inquiry_basic_measures_pi_measure__options_submeasure_is_numeric($measure_node) {
-  $data = nquire_commons_decode_data($measure_node->data);
-  foreach ($data['options'] as $value) {
-    if (!is_numeric($value)) {
-      return FALSE;
-    }
-  }
-  return TRUE;
+	$data = nquire_commons_decode_data($measure_node->data);
+	foreach ($data['options'] as $value) {
+		if (!is_numeric($value)) {
+			return FALSE;
+		}
+	}
+	return TRUE;
 }
 
 function inquiry_basic_measures_pi_measure__options_submeasure_get_title($measure_node) {
-  return check_plain($measure_node->title) . t(' (selection)');
+	return check_plain($measure_node->title) . t(' (selection)');
 }
 
 function inquiry_basic_measures_pi_measure__options_submeasure_get_title_for_chart($measure_node) {
-  return check_plain($measure_node->title);
+	return check_plain($measure_node->title);
 }
 
 function inquiry_basic_measures_pi_measure__options_submeasure_get_value_for_chart($measure_node, $key, &$value) {
-  $data = nquire_commons_decode_data($measure_node->data);
-  if (isset($data['options'][$value])) {
-    $value = $data['options'][$value];
-  }
+	$data = nquire_commons_decode_data($measure_node->data);
+	if (isset($data['options'][$value])) {
+		$value = $data['options'][$value];
+	}
 }
-
 
 /* * *****************
  * Image measure *
  * **************** */
 
 function inquiry_basic_measures_pi_measure__image_create_form_item($measure_node, &$form, $value) {
-  $form["measure_" . $measure_node->nid] = array(
-      '#type' => 'file',
-      '#title' => check_plain($measure_node->title),
-      '#description' => check_plain($measure_node->body),
-      '#default_value' => $value,
-      '#required' => FALSE,
-  );
+	$form["measure_" . $measure_node->nid] = array(
+			'#type' => 'file',
+			'#title' => check_plain($measure_node->title),
+			'#description' => check_plain($measure_node->body),
+			'#default_value' => $value,
+			'#required' => FALSE,
+	);
 }
 
 function inquiry_basic_measures_pi_measure__image_process_form_value($measure_node, &$value, $old_value) {
-  $id = 'measure_' . $measure_node->nid;
-  $extensions = 'jpeg jpg gif tiff';
-  $size_limit = file_upload_max_size();
-  $validators = array(
-          /* 'my_file_validate_extensions' => array($extensions),
-            'my_file_validate_size' => array($size_limit), */
-  );
-  $dest = file_directory_path() . '/pi_measures_image/';
-  file_check_directory($dest, TRUE);
-  $file = file_save_upload($id, $validators, $dest);
-  if ($file) {
-    file_set_status($file, FILE_STATUS_PERMANENT);
+	$id = 'measure_' . $measure_node->nid;
+	$extensions = 'jpeg jpg gif tiff';
+	$size_limit = file_upload_max_size();
+	$validators = array(
+					/* 'my_file_validate_extensions' => array($extensions),
+					  'my_file_validate_size' => array($size_limit), */
+	);
+	$dest = file_directory_path() . '/pi_measures_image/';
+	file_check_directory($dest, TRUE);
+	$file = file_save_upload($id, $validators, $dest);
+	if ($file) {
+		file_set_status($file, FILE_STATUS_PERMANENT);
 
-    if ($old_value && strlen($old_value) > 0) {
-      file_delete($old_value);
-    }
+		if ($old_value && strlen($old_value) > 0) {
+			file_delete($old_value);
+		}
 
-    $value = $file->filepath;
-  }
+		$value = $file->filepath;
+	}
 }
 
 function inquiry_basic_measures_pi_measure__image_format_table_value($measure_node, $value) {
-  if ($value && strlen($value) > 0) {
-    return '<img style="height: 150px;" src="' . file_create_url($value) . '"></img>';
-  } else {
-    return '';
-  }
+	if ($value && strlen($value) > 0) {
+		return '<img style="height: 150px;" src="' . file_create_url($value) . '"></img>';
+	} else {
+		return '';
+	}
 }
 
 function inquiry_basic_measures_pi_measure__image_get_submeasure_keys() {
-  return array();
+	return array();
 }
