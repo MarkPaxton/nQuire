@@ -104,7 +104,7 @@ function pi_data_form(&$node) {
 	$form['data_form'] = array(
 			'#tree' => TRUE,
 	);
-	
+
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$activity_data = $access_data->get_activity($access_data->get_current_activity_nid());
 	$sort_data_activity_nid = $activity_data['node']->parent_activity;
@@ -119,6 +119,10 @@ function pi_data_form(&$node) {
 	}
 
 	return $form;
+}
+
+function pi_data_form_pi_data_node_form_alter(&$form, $form_state) {
+	nquire_commons_form_replace_delete_button_with_link($form);
 }
 
 /**
@@ -309,8 +313,9 @@ function _pi_data_load_ajax_form_support($sort_data_activity, $form) {
 
 	$data_id = $form['#node']->nid;
 	$data_id_str = $data_id ? "'$data_id'" : 'null';
+	$content_nid = pi_activity_get_content_nid_for_activity($sort_data_activity->nid);
 
-	$data_nids = pi_sort_data_get_item_nids($sort_data_activity->nid);
+	$data_nids = pi_sort_data_get_data_for_sort_node_nid($content_nid);
 	$data_strs = array_map(function($nid) {
 						$data_node = node_load($nid);
 						$output = "$nid: {id:  '$nid'";
@@ -383,4 +388,13 @@ function _pi_data_ajax_get_form_data_node() {
 		}
 	}
 	return NULL;
+}
+
+function pi_data_wrap_content_node_view($activity_node) {
+	$parent_activity = node_load($activity_node->parent_activity);
+	$data = nquire_commons_decode_data($parent_activity->parameters);
+	if (isset($data['tool'])) {
+		return !pi_data_tools_plugin_use_ajax_form($data['tool']);
+	}
+	return TRUE;
 }

@@ -155,25 +155,39 @@ $(function() {
 				};
 			}
 
-			var initialValue = {
-				state: value.type === 'angle' ? 'angle' : 'measure',
-				setInPixels: true,
-				x1: value.x11,
-				x2: value.x12,
-				y1: value.y11,
-				y2: value.y12,
-				altx1: value.x21,
-				altx2: value.x22,
-				alty1: value.y21,
-				alty2: value.y22
-			};
+			if (value.type === 'angle') {
+				var initialValue = {
+					state: 'measure',
+					setInPixels: true,
+					x1: value.x11,
+					x2: value.x12,
+					y1: value.y11,
+					y2: value.y12
+				};
+
+			} else {
+				var initialValue = {
+					state: 'angle',
+					setInPixels: true,
+					x1: value.x11,
+					x2: value.x12,
+					y1: value.y11,
+					y2: value.y12,
+					altx1: value.x21,
+					altx2: value.x22,
+					alty1: value.y21,
+					alty2: value.y22
+				};
+
+			}
+
 
 			this._dependencies.VirtualMicroscopeManager.setMeasureValue(initialValue);
 			this._measureListener = measureManager;
 		},
 		measureMessage: function(value) {
 			console.log(JSON.stringify(value));
-			
+
 			if (this._measureListener) {
 				var type = typeof(value.altx1) === 'undefined' ? 'length' : 'angle';
 				if (type === this._measureListener.getMeasureType()) {

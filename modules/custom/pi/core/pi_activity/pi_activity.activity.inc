@@ -68,8 +68,13 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 		}
 
 		if ($content_output) {
-			$output .= '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
-							. $content_output . '</div>';
+			$content_wrapper_function = "{$activity_node->activity_type}_wrap_content_node_view";
+			if (!function_exists($content_wrapper_function) || $content_wrapper_function($activity_node)) {
+				$output .= '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
+								. $content_output . '</div>';
+			} else {
+				$output .= $content_output;
+			}
 		}
 
 		if (!$teaser) {
@@ -109,7 +114,7 @@ function pi_activity_content_delete_form_submit($form, $form_state) {
 	$activity_nid = arg(1);
 	$content_nid = pi_activity_get_content_nid_for_activity($activity_nid);
 	node_delete($content_nid);
-	
+
 	nquire_commons_form_close($form, $form_state);
 }
 

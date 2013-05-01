@@ -59,19 +59,9 @@ $(function() {
 		},
 		setMeasureValue: function(value) {
 			this._post('set', 'FeatureState', {
-				measure: false,
-				//state: value.state
+				measure: true
 			});
 			this._post('set', 'MeasureMM', value);
-			this._post('set', 'FeatureState', {
-				measure: true,
-				//state: value.state
-			});
-			this._post('set', 'MeasureMM', value);
-			this._post('set', 'FeatureState', {
-				measure: true,
-				//state: value.state
-			});
 		},
 		stopMeasureTool: function() {
 			this._post('set', 'FeatureState', {
