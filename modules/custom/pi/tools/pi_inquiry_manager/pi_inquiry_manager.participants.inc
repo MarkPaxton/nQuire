@@ -77,7 +77,7 @@ function pi_inquiry_manager_participants_edit_inquiry_group_form(&$form_state, $
 			'#type' => 'select',
 			'#title' => t('Who can join this inquiry'),
 			'#description' => t('Select the group of users that may become participants of this inquiry.'),
-			'#options' => array('justme' => t('Just me'), 'group' => t('Members of a group'), 'anyone' => t('Anyone')),
+			'#options' => array('justme' => t('Just me'), /*'group' => t('Members of a group'), */'anyone' => t('Anyone')),
 			'#default_value' => $participants_selection,
 			'#ahah' => array(
 					'path' => ahah_helper_path(array('target_dependent_section')),
