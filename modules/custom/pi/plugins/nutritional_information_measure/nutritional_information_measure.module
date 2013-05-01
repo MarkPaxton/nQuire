@@ -35,29 +35,33 @@ function theme_nutritional_information_measure_form_item($form) {
 					. '<div>'
 					. nquire_commons_create_not_expanding_table_block($table)
 					. '<a class="add_food" href="#">' . t('Add food') . '</a>'
-					. '</div>';
+					. '</div></div>';
 
 	return $output;
 }
 
 function _nutritional_information_measure_load_information() {
-	$data = array(
-			'components' => array(
-					'salt' => array('name' => t('Salt')),
-					'sugar' => array('name' => t('Sugar')),
-					'fats' => array('name' => t('Fats')),
-			),
-			'foods' => array(
-					'burger' => array(
-							'name' => t('Burger'),
-							'values' => array('sugar' => 10, 'fats' => 100),
-					),
-					'salad' => array(
-							'name' => t('Salad'),
-							'values' => array('salt' => 1),
-					),
-			),
-	);
+	static $data = NULL;
+
+	if ($data === NULL) {
+		$data = array(
+				'components' => array(
+						'salt' => array('name' => t('Salt')),
+						'sugar' => array('name' => t('Sugar')),
+						'fats' => array('name' => t('Fats')),
+				),
+				'foods' => array(
+						'burger' => array(
+								'name' => t('Burger'),
+								'values' => array('sugar' => 10, 'fats' => 100),
+						),
+						'salad' => array(
+								'name' => t('Salad'),
+								'values' => array('salt' => 1),
+						),
+				),
+		);
+	}
 
 	return $data;
 }
@@ -90,27 +94,25 @@ function nutritional_information_measure_pi_measure__nutritionalinformation_crea
 	);
 }
 
-function __nutritional_information_measure_pi_measure__nutritionalinformation_format_table_value($measure_node, $value) {
+function nutritional_information_measure_pi_measure__nutritionalinformation_format_table_value($measure_node, $value) {
+	$information = _nutritional_information_measure_load_information();
 	$data = nquire_commons_decode_data($value);
 	$output = '';
-	if (isset($data['latitude']) && isset($data['longitude'])) {
-		$output .= _google_maps_measure_pi_measure_format_degrees($data['latitude'], 'latitude')
-						. t(' and ')
-						. _google_maps_measure_pi_measure_format_degrees($data['longitude'], 'longitude');
+	$foods = array();
+	foreach ($data as $key => $count) {
+		if ($count > 0) {
+			$foods[] = check_plain($count) . ' ' . $information['foods'][$key]['name'];
+		}
 	}
-
-	if (isset($data['altitude'])) {
-		$output .= sprintf(" (%.2fm)", $data['altitude']);
-	}
-
-	return check_plain($output);
+	
+	return implode(', ', $foods);
 }
 
-function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_title($measure_node, $key) {
+function __nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_title($measure_node, $key) {
 	return check_plain($measure_node->title) . t(' (Google map @variable)', array('@variable' => $key));
 }
 
-function nutritional_information_measure_pi_measure__nutritionalinformation_get_submeasure_keys($measure_node) {
+function __nutritional_information_measure_pi_measure__nutritionalinformation_get_submeasure_keys($measure_node) {
 	$data = nquire_commons_decode_data($measure_node->data);
 	$result = array();
 	foreach (array('latitude', 'longitude', 'altitude') as $variable) {
@@ -121,7 +123,7 @@ function nutritional_information_measure_pi_measure__nutritionalinformation_get_
 	return $result;
 }
 
-function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_title_for_chart($measure_node, $key) {
+function __nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_title_for_chart($measure_node, $key) {
 	switch ($key) {
 		case 'latitude':
 			return t('Latitude');
@@ -134,17 +136,13 @@ function nutritional_information_measure_pi_measure__nutritionalinformation_subm
 	}
 }
 
-function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_is_numeric() {
+function __nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_is_numeric() {
 	return TRUE;
 }
 
-function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_value_for_chart($measure_node, $key, &$value) {
+function __nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_value_for_chart($measure_node, $key, &$value) {
 	$data = nquire_commons_decode_data($value);
 	$value = isset($data[$key]) ? $data[$key] : 0;
 	return;
-}
-
-function nutritional_information_measure_pi_measure__nutritionalinformation_process_form_value($measure_node, &$value, $old_value) {
-	
 }
 
