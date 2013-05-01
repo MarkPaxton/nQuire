@@ -1,0 +1,136 @@
+<?php
+
+function nutritional_information_measure_theme() {
+	return array(
+			'nutritional_information_measure_form_item' => array(
+					'arguments' => array('form' => NULL),
+			),
+	);
+}
+
+function theme_nutritional_information_measure_form_item($form) {
+	nquire_commons_load_nquire_dynamic_measure_support();
+	drupal_add_js(drupal_get_path('module', 'nutritional_information_measure') . '/js/NutritionalInformationMeasure.js');
+
+
+	$data = nquire_commons_decode_data($form['#widget_data']);
+	$size = explode('x', $data['size']);
+	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget__nutritionalinformation" input_element_id="' . $form['#widget_input_id'] . '">'
+					. '<div class="map_canvas" style="width:' . $size[0] . 'px;height:' . $size[1] . 'px;"></div>'
+					. '<div>'
+					. '<a class="add_marker" href="#">' . t('Mark centre') . '</a>&nbsp;&nbsp;&nbsp;&nbsp;'
+					. '<a class="forget_marker" href="#">' . t('Forget marker') . '</a>'
+					. '</div></div>';
+
+	return $output;
+}
+
+function _nutritional_information_measure_load_data() {
+	$data = array(
+			'components' => array(
+					'salt' => array('name' => t('Salt')),
+					'sugar' => array('name' => t('Sugar')),
+					'fats' => array('name' => t('Fats')),
+			),
+			'foods' => array(
+					'burger' => array(
+							'name' => t('Burger'),
+							'values' => array('sugar' => 10, 'fats' => 100),
+					),
+					'salad' => array(
+							'name' => t('Salad'),
+							'values' => array('salt' => 1),
+					),
+			),
+	);
+
+	return $data;
+}
+
+function _nutritional_information_measure_inject_javascript_module($data) {
+	$module = "{"
+					. "  init: function() {"
+					. "    this.data = " . json_encode($data) . ";"
+					. "  }"
+					. "}";
+	nquire_commons_inject_inline_javascript_module('NutritionalInformationMeasureData', $module);
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_create_form_item($measure_node, &$form, $value) {
+	$input_element_id = "measure_{$measure_node->nid}";
+	$widget_element_id = "{$input_element_id}_widget";
+
+	$form[$input_element_id] = array(
+			'#type' => 'hidden',
+			'#title' => check_plain($measure_node->title),
+			'#description' => check_plain($measure_node->body),
+			'#default_value' => $value,
+			'#required' => FALSE,
+	);
+
+	$form[$widget_element_id] = array(
+			'#theme' => 'google_maps_measure_form_item',
+			'#widget_data' => $measure_node->data,
+			'#widget_id' => $widget_element_id,
+			'#widget_input_id' => $input_element_id,
+	);
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_format_table_value($measure_node, $value) {
+	$data = nquire_commons_decode_data($value);
+	$output = '';
+	if (isset($data['latitude']) && isset($data['longitude'])) {
+		$output .= _google_maps_measure_pi_measure_format_degrees($data['latitude'], 'latitude')
+						. t(' and ')
+						. _google_maps_measure_pi_measure_format_degrees($data['longitude'], 'longitude');
+	}
+
+	if (isset($data['altitude'])) {
+		$output .= sprintf(" (%.2fm)", $data['altitude']);
+	}
+
+	return check_plain($output);
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_title($measure_node, $key) {
+	return check_plain($measure_node->title) . t(' (Google map @variable)', array('@variable' => $key));
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_get_submeasure_keys($measure_node) {
+	$data = nquire_commons_decode_data($measure_node->data);
+	$result = array();
+	foreach (array('latitude', 'longitude', 'altitude') as $variable) {
+		if ($data[$variable]) {
+			$result[] = "{$measure_node->nid}:{$variable}";
+		}
+	}
+	return $result;
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_title_for_chart($measure_node, $key) {
+	switch ($key) {
+		case 'latitude':
+			return t('Latitude');
+		case 'longitude':
+			return t('Longitude');
+		case 'altitude':
+			return t('Altitude');
+		default:
+			return 'unkwnown';
+	}
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_is_numeric() {
+	return TRUE;
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_submeasure_get_value_for_chart($measure_node, $key, &$value) {
+	$data = nquire_commons_decode_data($value);
+	$value = isset($data[$key]) ? $data[$key] : 0;
+	return;
+}
+
+function nutritional_information_measure_pi_measure__nutritionalinformation_process_form_value($measure_node, &$value, $old_value) {
+	
+}
+

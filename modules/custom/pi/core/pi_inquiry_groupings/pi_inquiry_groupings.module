@@ -105,10 +105,10 @@ function pi_inquiry_groupings_user_is_in_participants_target_group($uid, $inquir
 }
 
 function pi_inquiry_groupings_get_groups_for_user($uid, $group_type) {
-	$groups_query = "SELECT {nquire_group}.nid, {og_uid}.is_active FROM {nquire_group} "
-					. "LEFT JOIN {node} ON {node}.vid={nquire_group}.vid "
-					. "LEFT JOIN {og_uid} ON {og_uid}.nid={nquire_group}.nid "
-					. "WHERE {nquire_group}.group_type=%d AND {og_uid}.uid=%d";
+	$groups_query = "SELECT {nquire_group}.nid, {nquire_group_participant}.active FROM {node} "
+					. "LEFT JOIN {nquire_group} ON {node}.vid={nquire_group}.vid "
+					. "LEFT JOIN {nquire_group_participant} ON {nquire_group_participant}.nid={nquire_group}.nid "
+					. "WHERE {nquire_group}.group_type=%d AND {nquire_group_participant}.uid=%d";
 
 	$user_groups = array(
 			'active' => array(),
@@ -117,7 +117,7 @@ function pi_inquiry_groupings_get_groups_for_user($uid, $group_type) {
 
 	$result = db_query($groups_query, $group_type, $uid);
 	while ($row = db_fetch_array($result)) {
-		$user_groups[$row['is_active'] ? 'active' : 'inactive'][] = $row['nid'];
+		$user_groups[$row['active'] ? 'active' : 'inactive'][] = $row['nid'];
 	}
 
 	return $user_groups;
@@ -126,7 +126,7 @@ function pi_inquiry_groupings_get_groups_for_user($uid, $group_type) {
 function pi_inquiry_groupings_get_inquiries_for_groups($group_nids) {
 	$inquiry_nids = array();
 	if (count($group_nids) > 0) {
-		$query = "SELECT DISTINCT {pi_inquiry}.nid FROM {pi_inquiry} LEFT JOIN {node} ON {node}.vid={pi_inquiry}.vid WHERE ({pi_inquiry}.participants_selection='group' OR {pi_inquiry}.participants_selection='justme') AND {pi_inquiry}.actor_gid IN (" . db_placeholders($group_nids) . ")";
+		$query = "SELECT DISTINCT {pi_inquiry}.nid FROM {node} LEFT JOIN {pi_inquiry} ON {node}.vid={pi_inquiry}.vid WHERE ({pi_inquiry}.participants_selection='group' OR {pi_inquiry}.participants_selection='justme') AND {pi_inquiry}.actor_gid IN (" . db_placeholders($group_nids) . ")";
 		$result = db_query($query, $group_nids);
 		while ($row = db_fetch_array($result)) {
 			$inquiry_nids[] = $row['nid'];
@@ -136,7 +136,7 @@ function pi_inquiry_groupings_get_inquiries_for_groups($group_nids) {
 }
 
 function pi_inquiry_groupings_get_inquiries_for_anyone() {
-	$query = "SELECT DISTINCT {pi_inquiry}.nid FROM {pi_inquiry} LEFT JOIN {node} ON {node}.vid={pi_inquiry}.vid WHERE {pi_inquiry}.participants_selection='anyone'";
+	$query = "SELECT DISTINCT {pi_inquiry}.nid FROM {node} LEFT JOIN {pi_inquiry} ON {node}.vid={pi_inquiry}.vid WHERE {pi_inquiry}.participants_selection='anyone'";
 	$result = db_query($query);
 	$inquiry_nids = array();
 	while ($row = db_fetch_array($result)) {
