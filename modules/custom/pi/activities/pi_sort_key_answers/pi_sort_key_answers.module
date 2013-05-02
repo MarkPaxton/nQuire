@@ -44,64 +44,7 @@ function pi_sort_key_answers_theme() {
  * @param $node the pi_sort_key_answers node if it is to be edited, as per drupal 6 API
  */
 function pi_sort_key_answers_form(&$node) {
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
-	$type = node_get_types('type', $node);
-
-	if (is_numeric($node_details->activity_id)) {
-		$current_activity = node_load($node_details->activity_id);
-	}
-
-	if ($current_activity) {
-		$users_group = get_group_of_type($user->uid, $current_activity->audience, $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-		if ($users_group != false) {
-			$group = node_load($users_group);
-			$sort_for = $group->title;
-		} else {
-			$sort_for = $user->name;
-		}
-		$node_title = check_plain(t('Key answers for ') . $sort_for);
-	} else {
-		$node_title = $type->name;
-	}
-	// Build the form
 	$form = array();
-
-	$form['title'] = array(
-			'#type' => 'hidden',
-			'#value' => $node_title,
-	);
-
-	// onepageprofile_categories and tree used for draggable menu items
-	$form['question_categories'] = array(
-			'#tree' => TRUE,
-	);
-
-	// Add the categories of existing nodes and the options list for new nodes
-	if (isset($node->nid)) {
-		$sorted_key_answers = $node->categories;
-	} else {
-		$sorted_key_answers = array();
-	}
-
-	$key_answers = pi_sort_key_answers_get_answers($node);
-
-	$question_categories = &$form['question_categories'];
-	foreach ($key_answers as $i => $answer_nid) {
-		$key_answer = node_load($answer_nid);
-		if ($key_answer) {
-			// add $tree entries for current category (i.e. $key)
-			$tree[$key]['title'] = array(
-					'#value' => check_plain($key_answer->title),
-			);
-
-			$tree[$key]['weight'] = array(
-					'#type' => 'weight',
-					'#delta' => count($key_answers),
-					'#default_value' => $i,
-			);
-		}
-	}
 	return $form;
 }
 

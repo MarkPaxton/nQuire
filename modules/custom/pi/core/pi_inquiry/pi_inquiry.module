@@ -57,94 +57,10 @@ function pi_inquiry_access($op, $node, $account) {
  * The form for adding/editing an Inquiry
  */
 function pi_inquiry_form($node) {
-  // Get metadata for the node type which is defined in pi_inquiry_info()
-  $type = node_get_types('type', $node);
-
-  $form['title'] = array(
-      '#type' => 'textfield',
-      '#title' => check_plain($type->title_label),
-      '#required' => TRUE,
-      '#default_value' => $node->title,
-  );
-
-  //Show a simple textarea, no input selector required....
-  $form['body_filter']['body'] = array(
-      '#type' => 'textarea',
-      '#title' => check_plain($type->body_label),
-      '#default_value' => $node->body,
-      '#required' => TRUE
-  );
-
-  $inquiry_groups = pi_get_defined_group_nids();
-  $all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
-  //$form['#allowed_phase_actors'] = $all_defined_groups;
-  $group_names['none'] = "Select a group...";
-  $group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
-
-  $inquiry_actor_default_value = 'none';
-
-  $form['actor_gid'] = array(
-      '#type' => 'select',
-      '#title' => t('Who is this inquiry for'),
-      '#description' => t('Select the group that will be see this inquiry'),
-      '#required' => TRUE,
-      '#weight' => 1,
-      '#default_value' => isset($node->actor_gid) ? $node->actor_gid : 'none',
-      '#options' => $group_names,
-      '#allowed_inquiry_actors' => $all_defined_groups,
-      '#element_validate' => array('pi_inquiry_form_actor_gid_validate')
-  );
-
-  $form['layout'] = array(
-      '#type' => 'select',
-      '#title' => t('Layout'),
-      '#weight' => 2,
-      '#default_value' => isset($node->layout) ? $node->layout : 'list',
-      '#options' => array(
-          'list' => t("List"),
-          'pentagon' => t("Pentagon"),
-          'octagon' => t("Plain octagon"),
-          'octagon_icon' => t("Octagon with icons"),
-          'octagon_activity' => t("Octagon with activity counts"),
-          'octagon_icon_activity' => t("Octagon with activity counts and icons"),
-      ),
-  );
-
-  $inquiry_groups = pi_get_defined_group_nids();
-  $all_defined_groups = array_keys(pi_flatten_grouped_item_list($inquiry_groups));
-  $form['#allowed_inquiry_actors'] = $all_defined_groups;
-  $group_names['none'] = "Select a group...";
-  $group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
-
-  $form['activities'] = pi_activity_show_hide_from($node->nid);
-  $form['activities']['#weight'] = 3;
-
+  $form = array();
   return $form;
 }
 
-/**
- * This is the validation function to make sure that pi_inquiry.actor_gid is a valid group
- * @param array $element
- * @param array $form_state
- */
-function pi_inquiry_form_actor_gid_validate($element, $form_state) {
-  if (!in_array($form_state['values']['actor_gid'], $element['#allowed_inquiry_actors'])) {
-    form_error($element, t('The selected inquiry actor group is not valid, please choose a group from the list.'));
-  }
-}
-
-/**
- * hook_form_alter - changes the form to change it from default node layout
- */
-function pi_inquiry_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id == 'pi_inquiry_node_form') {
-    $form['menu']['#weight'] = 3;
-
-    //Remove attachments and comment settings
-    unset($form['attachments']);
-    unset($form['comment_settings']);
-  }
-}
 
 function _pi_inquiry_prepare_participants_to_save($node, &$data_to_write) {
   if (!isset($node->participants_selection)) {

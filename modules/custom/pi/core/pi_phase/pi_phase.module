@@ -58,106 +58,11 @@ function pi_phase_access($op, $node, $account) {
  * The form for adding/editing an Inquiry
  */
 function pi_phase_form($node) {
-  // Get metadata for the node type which is defined in pi_phase_info()
-  $type = node_get_types('type', $node);
-
-  $inquiry_data = array();
-  $inquiry_nids = pi_inquiry_load_nids();
-  $inquiry_data = pi_util_get_names_from_nids($inquiry_nids);
-
-  //$form['#validate'][] = 'pi_phase_form_validate';
-  //print_r( $node );
-
-  if (count($inquiry_data) == 0) {
-    drupal_set_message('There are no inquiries defined, please create an inquiry before defining phases.', 'error');
-  }
-
-  $form['title'] = array(
-      '#type' => 'textfield',
-      '#title' => check_plain($type->title_label),
-      '#required' => TRUE,
-      '#weight' => -5,
-      '#default_value' => $node->title,
-  );
-
-  //Show a simple textarea, no input selector required....
-  $form['body_filter']['body'] = array(
-      '#type' => 'textarea',
-      '#title' => check_plain($type->body_label),
-      '#default_value' => $node->body,
-      '#required' => TRUE,
-      '#weight' => -4
-  );
-
-  $form['inquiry_nid'] = array(
-      '#type' => 'select',
-      '#title' => t('Inquiry for phase'),
-      '#required' => TRUE,
-      '#weight' => -10,
-      '#default_value' => isset($node->inquiry_nid) ? $node->inquiry_nid : NULL,
-      '#options' => $inquiry_data,
-      '#allowed_inquiry_nids' => $inquiry_nids,
-      '#element_validate' => array('pi_util_inquiry_nid_validate')
-  );
-
-  $phase_groups = pi_get_defined_group_nids();
-  $all_defined_groups = array_keys(pi_flatten_grouped_item_list($phase_groups));
-  $group_names['none'] = "Select a group...";
-  $group_names = array_replace($group_names, pi_util_get_names_from_nids($all_defined_groups));
-
-  if (isset($node->inquiry_nid)) {
-    $inquiry = node_load($node->inquiry_nid);
-    $phase_actor_default_value = $inquiry->phase_actor;
-  } else {
-    $phase_actor_default_value = 'none';
-  }
-
-
-  $form['phase_actor'] = array(
-      '#type' => 'select',
-      '#title' => t('Who is this phase for'),
-      '#required' => TRUE,
-      '#description' => t('Select the group that will be see this phase'),
-      '#weight' => 2,
-      '#default_value' => isset($node->phase_actor) ? $node->phase_actor : $phase_actor_default_value,
-      '#options' => $group_names,
-      '#allowed_phase_actors' => $all_defined_groups,
-      '#element_validate' => array('pi_phase_form_phase_actor_validate')
-  );
-
-  //pi_debug_message($all_defined_groups);
+	$form = array();
 
   return $form;
 }
 
-/**
- * This is the validation function to make sure that pi_phase_actor.gid is a valid group
- * @param array $element
- * @param array $form_state
- */
-function pi_phase_form_phase_actor_validate($element, $form_state) {
-
-  if (!in_array($form_state['values']['phase_actor'], $element['#allowed_phase_actors'])) {
-    //if(!in_array($element['#value'], $element['#allowed_phase_actors']))
-    form_error($element, t('The selected phase actor group is not valid, please choose a group from the list.'));
-  }
-}
-
-/**
- * hook_form_alter - changes the form to change it from default node layout
- */
-function pi_phase_form_alter(&$form, &$form_state, $form_id) {
-  if ($form_id == 'pi_phase_node_form') {
-    $form['menu']['#weight'] = 5;
-    //unset( $form['menu'] );
-    //Remove attachments and comment settings
-    unset($form['attachments']);
-    unset($form['comment_settings']);
-
-    //Done via variable in module.install
-    //$form['options']['promote']['#default_value'] = FALSE;
-  }
-}
 
 /**
  * hook_insert() - INSERT command for a new inquiry phase

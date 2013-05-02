@@ -271,28 +271,6 @@ function pi_create_grouped_item_list($items, $group_field)
 	return $return_array;
 }
 
-/**
- *
- * This does the opposite of pi_create_grouped_item_list and takes all the elements of $item_list
- * and combines them into one array
- * n.b. if items in the sub-arrays have dupliucate keys, the rturn element will be overwritten by the value of the
- * later sub-list element.
- * @param array(array(),array(),array()) $item_list
- * @return array of contents of the above array elements in a single array
- */
-function pi_flatten_grouped_item_list($item_list)
-{
-	$list = array();
-	$all_defined_groups = array();
-	foreach(array_keys($item_list) as $region)
-	{
-		foreach($item_list[$region] as $key => $item)
-		{
-			$list[$key] = $item;
-		}
-	}
-	return $list;
-}
 
 
 /**
@@ -325,34 +303,6 @@ function pi_db_ensure_unique($table, $id_field, $id)
 		$one_row = $count;
 	}
 	return $one_row;
-}
-
-/**
- *
- * Return an array indexed by nid with value the title of the node, or NULL
- * if the node is not found
- * @param array uint $nids Array of node ids
- * @return  array('nid' => 'title', ...)
- */
-function pi_util_get_names_from_nids($nids)
-{
-	$return_data = array();
-	if(is_array($nids))
-	{
-		foreach($nids as $nid)
-		{
-			$n = node_load($nid);
-			if($n!=NULL)
-			{
-				$return_data[$nid] = $n->title;
-			}
-			else
-			{
-				$return_data[$nid] = NULL;
-			}
-		}
-	}
-	return $return_data;
 }
 
 

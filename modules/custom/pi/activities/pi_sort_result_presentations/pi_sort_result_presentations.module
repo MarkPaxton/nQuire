@@ -46,71 +46,11 @@ function pi_sort_result_presentations_theme() {
  * @param $node the pi_sort_result_presentations node if it is to be edited, as per drupal 6 API
  */
 function pi_sort_result_presentations_form(&$node) {
-	global $user;
-	$node_details = get_inquiry_details_from_current_path();
-	if (is_numeric($node_details->activity_id)) {
-		$current_activity = node_load($node_details->activity_id);
-	}
-
-	if ($current_activity->name) {
-		$users_group = get_group_of_type($user->uid, $current_activity->audience, $node_details->inquiry_id, $node_details->stage_id, $node_details->phase_id, $node_details->activity_id);
-		if ($users_group != false) {
-			$group = node_load($users_group);
-			$sort_for = $group->title;
-		} else {
-			$sort_for = $user->name;
-		}
-		$node_title = check_plain(t('Results for ') . $sort_for);
-	} else {
-		$type = node_get_types('type', $node);
-		$node_title = $type->name;
-	}
-
-	// Add the existing sorted items and add the new new ones to the end
-	if (isset($node->nid)) {
-		$sorted_results = $node->categories;
-	} else {
-		$sorted_results = array();
-	}
-	$all_results = pi_sort_result_presentations_get_options();
-	$results_to_show = pi_merge_content_item_lists($sorted_results, $all_results);
-
-
-	// Build the form
 	$form = array();
-	$form['title'] = array(
-			'#type' => 'hidden',
-			'#value' => $node_title,
-	);
-
-	// All results presentations are collected in this array:
-	$form['onepageprofile_categories'] = array(
-			'#tree' => TRUE,
-	);
-
-	// set $tree to point to the above $form['onepageprofile_categories'] object
-	$tree = &$form['onepageprofile_categories'];
-	foreach ($results_to_show as $results_nid => $results) {
-
-		$result_presentation = node_load($results_nid);
-		if ($result_presentation) {
-			// add $tree entries for current category (i.e. $key)
-			$tree[$results_nid]['title'] = array(
-					'#value' => t($results['#title']),
-			);
-
-			$tree[$results_nid]['weight'] = array(
-					'#type' => 'weight',
-					'#delta' => count($results_to_show),
-					'#default_value' => $results['#weight'],
-			);
-		}
-	}
 	return $form;
 }
 
 function pi_sort_result_presentations_insert($node) {
-	$details = get_inquiry_details_from_current_path();
 	if (count($node->onepageprofile_categories) > 0) {
 		foreach ($node->onepageprofile_categories as $key => $result_presentations) {
 			$query = "INSERT INTO {pi_sort_result_presentations} (nid, vid, result_presentations, weight) VALUES (%d, %d, %d, %d)";
