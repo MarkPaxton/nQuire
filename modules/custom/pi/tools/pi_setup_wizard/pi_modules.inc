@@ -12,7 +12,6 @@ function get_required_pi_modules()
 	$pi_modules[] = 'pi_activity';
 	$pi_modules[] = 'pi_activity_status';
 	$pi_modules[] = 'pi_authoring';
-	$pi_modules[] = 'pi_available_content_types';
 	$pi_modules[] = 'pi_available_measures';
 	$pi_modules[] = 'pi_breadcrumb';
 	$pi_modules[] = 'pi_chart';
@@ -20,10 +19,7 @@ function get_required_pi_modules()
 	$pi_modules[] = 'pi_header';
 	$pi_modules[] = 'pi_hypothesis';
 	$pi_modules[] = 'pi_hypothesis_conclusion';
-	$pi_modules[] = 'pi_information';
 	$pi_modules[] = 'pi_inquiry';
-	$pi_modules[] = 'pi_inquiry_info';
-	//$pi_modules[] = 'pi_install_inquiry';
 	$pi_modules[] = 'pi_key_answers';
 	$pi_modules[] = 'pi_key_questions';
 	$pi_modules[] = 'pi_manage_focus';

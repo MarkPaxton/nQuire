@@ -163,15 +163,11 @@ function pi_phase_form_alter(&$form, &$form_state, $form_id) {
  * hook_insert() - INSERT command for a new inquiry phase
  */
 function pi_phase_insert($node) {
-  // Query the database first to set the weight to place the item at the end of lists.
-  // If the query result is NULL then the the field will to default=0 since the weight
-  // column is defined with NOT NULL DEFAULT 0
-  $initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_phase} WHERE inquiry_nid=%d", $node->inquiry_nid));
   $data_to_write = new stdClass();
   $data_to_write->nid = $node->nid;
   $data_to_write->vid = $node->vid;
   $data_to_write->inquiry_nid = $node->inquiry_nid;
-  $data_to_write->weight = $initial_weight;
+  $data_to_write->weight = $node->weight;
   $data_to_write->collaboration = $node->collaboration;
   $data_to_write->phase_actor = $node->phase_actor;
   $result = drupal_write_record('pi_phase', $data_to_write);
@@ -193,7 +189,7 @@ function pi_phase_update($node) {
     $data_to_write->nid = $node->nid;
     $data_to_write->vid = $node->vid;
     $data_to_write->inquiry_nid = $node->inquiry_nid;
-    $data_to_write->weight = $node->weight ? $node->weight : $initial_weight;
+    $data_to_write->weight = $node->weight;
     $data_to_write->collaboration = $node->collaboration;
     $data_to_write->phase_actor = $node->phase_actor;
     $result = drupal_write_record('pi_phase', $data_to_write, array('nid', 'vid'));
