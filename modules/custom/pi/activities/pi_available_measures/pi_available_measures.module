@@ -37,40 +37,7 @@ function pi_available_measures_perm() {
  * Implementation of pi_available_measures_access().
  */
 function pi_available_measures_access($op, $node, $account) {
-	return TRUE;
-	global $user;
-	$uid = $user->uid;
-
-	/* FIX (eloy) allow delete if we are in Creator */
-	if (arg(0) == 'creator') {
-		return $uid == $node->uid;
-	} else {
-		$details = get_inquiry_details_from_current_path();
-		if (is_numeric($details->activity_id)) {
-
-			if ($op == 'create') {
-				return pi_activity_check_node_function($details->activity_id, $user->uid, 'add');
-			}
-			if ($op == 'update') {
-				return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-			}
-			if ($op == 'delete') {
-				if (arg(0) == 'node' && arg(2) == 'delete') {
-					//get inquiry for session id and activity
-					$nid = arg(1);
-					$activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
-					$inquiry_id = pi_activity_get_inquiry_nid($activity_id);
-					if ($inquiry_id && $activity_id) {
-						return pi_activity_check_node_function($activity_id, $uid, 'edit');
-					} else {
-						return FALSE;
-					}
-				} else {
-					return pi_activity_check_node_function($details->activity_id, $user->uid, 'edit');
-				}
-			}
-		}
-	}
+	return FALSE;
 }
 
 /**

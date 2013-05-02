@@ -1,0 +1,65 @@
+<?php
+
+/*
+ * @file
+ * Filter Messages Module install file
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function disable_messages_install() {
+  variable_set('disable_messages_enable', '1');
+  variable_set('disable_messages_ignore_patterns', '');
+  variable_set('disable_messages_ignore_regex', array());
+  variable_set('disable_messages_ignore_case', '1');
+  variable_set('disable_messages_filter_by_page', 0);
+  variable_set('disable_messages_page_filter_paths', '');
+  variable_set('disable_messages_exclude_users', '');
+  variable_set('disable_messages_enable_debug', '0');
+  variable_set('disable_messages_debug_visible_div', '0');
+  // Add the access message permission to all roles.
+  $result = db_query('SELECT * FROM {role}');
+  while ($role = db_fetch_object($result)) {
+    $perm = db_result(db_query('SELECT p.perm FROM {permission} p WHERE p.rid = %d', $role->rid));
+    if ($perm) {
+      db_query('DELETE FROM {permission} WHERE rid = %d', $role->rid);
+      $perm .= ', ';
+    }
+    // Add view all message permission for all users.
+    $perm .= 'view status messages, view warning messages, view error messages';
+    db_query("INSERT INTO {permission} (rid, perm) VALUES (%d, '%s')", $role->rid, $perm);
+  }
+  drupal_set_message(t('Added view all message types permissions for all roles. You can change this in !link', array('!link' => l('administer permissions', 'admin/user/permissions', array('fragment' => 'module-disable_messages')))));
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function disable_messages_uninstall() {
+  variable_del('disable_messages_enable');
+  variable_del('disable_messages_ignore_patterns');
+  variable_del('disable_messages_ignore_regex');
+  variable_del('disable_messages_ignore_case');
+  variable_del('disable_messages_filter_by_page');
+  variable_del('disable_messages_page_filter_paths');
+  variable_del('disable_messages_exclude_users');
+  variable_del('disable_messages_enable_debug');
+  variable_del('disable_messages_debug_visible_div');
+  // Access the user module to get permissions admin form.
+  module_load_include('inc', 'user', 'user.admin');
+  $form_state = array();
+  $form_id = 'user_admin_perm';
+  // Submit the admin user permissions form to clear out the
+  // permissions added for the disable_messages module.
+  drupal_rebuild_form($form_id, $form_state, array());
+  drupal_execute($form_id, $form_state);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function disable_messages_update_6101() {
+  // Do nothing other than force update of theme registry.
+  return array();
+}
