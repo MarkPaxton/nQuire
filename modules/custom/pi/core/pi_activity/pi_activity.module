@@ -80,7 +80,7 @@ function pi_activity_menu() {
 			'access arguments' => array(1),
 			'type' => MENU_CALLBACK
 	);
-	
+
 	$items['activity/%node/shared/%'] = array(
 			'title' => 'View',
 			'file' => 'pi_activity.activity.inc',
@@ -148,7 +148,7 @@ function pi_activity_tabs_access_to_content($node, $function) {
 			if ($activity_data['script_activity'] || pi_activity_get_content_nid_for_activity($node->nid, FALSE)) {
 				return $activity_data['access'] === 'edit' ||
 								($activity_data['access'] === 'view' && $function === 'view');
-			} 
+			}
 		}
 	}
 
@@ -296,9 +296,26 @@ function _pi_activity_form_data_to_pi_activity_row($node) {
 }
 
 function pi_activity_delete(&$node) {
+	
+	node_delete($node->referenced_content);
+	$content_result = db_query("SELECT nid FROM {pi_activity_node} WHERE activity_id=%d", $node->nid);
+	while($content_row = db_fetch_array($content_result)) {
+		node_delete($content_row['nid']);
+	}
+	
 	db_query("DELETE FROM {pi_activity} WHERE nid = %d AND vid = %d", $node->nid, $node->vid);
 	db_query("DELETE FROM {pi_activity_node} WHERE activity_id = %d", $node->nid);
 	db_query("DELETE FROM {pi_activity_share} WHERE activity_id = %d", $node->nid);
+
+	$children_result = db_query("SELECT {node}.nid FROM {node} LEFT JOIN {pi_activity} ON node.vid=pi_activity.vid WHERE pi_activity.parent_activity=%d", $node->nid);
+	while ($child_row = db_fetch_array($children_result)) {
+		node_delete($child_row['nid']);
+	}
+
+	$custom_delete_function = "{$node->activity_type}_delete_activity";
+	if (function_exists($custom_delete_function)) {
+		$custom_delete_function($node);
+	}
 }
 
 /**
@@ -412,7 +429,7 @@ function pi_activity_nodeapi(&$node, $op) {
 						if (pi_check_node_exists_and_is_of_type($activity->parent_activity, 'pi_activity')) {
 							node_delete($activity_nid);
 						}
-						
+
 						db_query('DELETE FROM pi_activity_node WHERE nid=%d', $node->nid);
 						break;
 				}
