@@ -1,0 +1,116 @@
+<?php
+
+function pi_journal_menu() {
+
+	$items = array();
+
+	$items['journal'] = array(
+			'title' => 'Inquiry results',
+			'page callback' => 'pi_journal_home',
+			'type' => MENU_CALLBACK,
+			'access callback' => 'pi_journal_page_access',
+	);
+
+	$items['journal/%'] = array(
+			'title' => 'Inquiry results',
+			'page callback' => 'pi_journal_results_page',
+			'page arguments' => array(1),
+			'type' => MENU_CALLBACK,
+			'access callback' => 'pi_journal_page_access',
+	);
+
+
+	return $items;
+}
+
+function pi_journal_page_access() {
+	return TRUE;
+}
+
+function pi_journal_home() {
+	return print_r(pi_journal_get_shared_investigations(), TRUE);
+}
+
+function pi_journal_theme() {
+	return array(
+			'pi_journal_list' => array(
+					'arguments' => array('items' => NULL),
+			),
+			'pi_journal_results' => array(
+					'arguments' => array('item' => NULL),
+			),
+			'pi_journal_share_information' => array(
+					'arguments' => array('inquiry_node' => NULL),
+			),
+	);
+}
+
+function pi_journal_edit_share_access($inquiry_node) {
+	global $user;
+	switch (pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid)) {
+		case 'individual':
+			return nquire_group_get_user_status_in_group($inquiry_node->actor_gid, $user->uid) === 'member';
+		case 'group':
+			$subgroup = node_load(pi_inquiry_groupings_get_user_subgroup($inquiry_node, $user->uid));
+			return $subgroup && $subgroup->uid === $user->uid;
+		case 'all':
+			return $inquiry_node->uid === $user->uid;
+		default:
+			return FALSE;
+	}
+}
+
+function pi_journal_edit_share_investigation($inquiry_node, $share) {
+	global $user;
+	if (pi_journal_edit_share_access($inquiry_node)) {
+		$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
+		$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $user->uid);
+
+		if ($share) {
+			$query = "INSERT INTO {pi_journal} (inquiry_id, actor, share) VALUES (%d, %d, 1) ON DUPLICATE KEY UPDATE share=1, collaboration='%s'";
+			$args = array($inquiry_node->nid, $actor, $collaboration);
+		} else {
+			$query = "UPDATE {pi_journal} SET share=0, collaboration='%s' WHERE inquiry_id=%d AND actor=%d";
+			$args = array($collaboration, $inquiry_node->nid, $actor);
+		}
+
+		db_query($query, $args);
+	}
+}
+
+function pi_journal_get_shared_investigations() {
+	$shared = array();
+
+	$query = "SELECT inquiry_id, actor, collaboration FROM {pi_journal} WHERE share=1";
+	$result = db_query($query);
+	while ($row = db_fetch_array($result)) {
+		if (!isset($shared[$row['inquiry_id']])) {
+			$shared[$row['inquiry_id']] = array('collaboration' => pi_inquiry_groupings_get_coarser_collaboration_level($row['inquiry_id']), 'actors' => array());
+		}
+
+		if ($row['collaboratio'] === $shared[$row['inquiry_id']]) {
+			$shared[$row['inquiry_id']]['actors'][] = $row['actor'];
+		}
+	}
+	return $shared;
+}
+
+function theme_pi_journal_share_information($inquiry_node) {
+	global $user;
+
+	$output = '<p>';
+
+	$access = pi_journal_edit_share_access($inquiry_node);
+	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
+	$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $user->uid);
+	
+	$shared_query = "SELECT inquiry_id, actor, collaboration FROM {pi_journal} WHERE share=1";
+	
+	
+	switch($collaboration) {
+		case 'individual':
+			if ($)
+			$output .= t('')
+	}
+	
+}

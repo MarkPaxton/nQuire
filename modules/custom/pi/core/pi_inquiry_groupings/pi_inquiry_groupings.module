@@ -278,15 +278,15 @@ function pi_inquiry_groupings_create_inquiry_subgroup($inquiry_nid, $owner, $tit
 
 function pi_inquiry_groupings_add_user_to_group($group_check, $uid, $active) {
 	nquire_group_add_user_to_group($group_check['gid'], $uid, $active);
-	
+
 	if ($active && $group_check['type'] === 'inquiry') {
 		$roles = nquire_commons_decode_data($group_check['inquiry_node']->roles);
-		foreach($roles as $role) {
+		foreach ($roles as $role) {
 			if ($role['default']) {
 				nquire_group_add_user_role($group_check['gid'], $uid, $role['id']);
 			}
 		}
-		
+
 		if ($group_check['inquiry_node']->group_creation === 'normal') {
 
 			$user = user_load($uid);
@@ -335,4 +335,21 @@ function pi_inquiry_groupings_get_access_data() {
 function pi_inquiry_groupings_alter_access_data_set_activity($current_activity_nid) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$access_data->set_current_activity($current_activity_nid);
+}
+
+function pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $uid) {
+	switch ($collaboration) {
+		case 'individual':
+			$actor = $uid;
+			break;
+		case 'group':
+			$actor = pi_inquiry_groupings_get_user_subgroup($inquiry_node, $uid);
+			break;
+		default:
+			$actor = $inquiry_node->uid;
+	}
+}
+
+function pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_nid) {
+	return '';
 }
