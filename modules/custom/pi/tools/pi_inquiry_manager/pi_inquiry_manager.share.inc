@@ -27,7 +27,7 @@ function pi_inquiry_manager_share_content_form(&$form_state) {
 	if (pi_journal_edit_share_access($access_data->get_inquiry_node())) {
 		$form['publishresults'] = array(
 				'#type' => 'checkbox',
-				'#title' => t('Publish inquiry results'),
+				'#title' => t('Publish investigation'),
 				'#description' => t('Select whether you want your inquiry results to be public in the !link.', array('!link' => l(t('nQuire Journal'), 'journal'))),
 				'#required' => FALSE,
 				'#default_value' => pi_journal_is_shared_for_user($access_data->get_inquiry_node(), $access_data->get_uid()),

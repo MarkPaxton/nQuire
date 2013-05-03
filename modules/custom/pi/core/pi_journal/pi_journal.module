@@ -108,21 +108,19 @@ function theme_pi_journal_share_information($inquiry_node) {
 	global $user;
 
 	$access = pi_journal_edit_share_access($inquiry_node);
-	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
-	$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $user->uid);
-	$shared = pi_journal_is_shared_for_user($inquiry_node, $user->uid);
+	$contribution_node = pi_journal_contribution_find_contribution_node($inquiry_node, $user->uid);
 
-	if ($shared) {
-		$link = '<br/>' . t('Click !here to view it. ', array('!here', l(t('here'), 'journal/' . $inquiry_node->nid . '/' . $actor)));
+	if ($contribution_node->shared) {
+		$link = '<br/>' . t('Click <a href="@url">here</a> to view it. ', array('@url' => url('journal/contribution/' . $contribution_node->nid)));
 	}
 
-	$all = '<br/>' . t('You can see all the published investigations !here. ', array('!here' => l(t('here'), 'journal')));
+	$all = '<br/>' . t('You can see all the published investigations <a href="@url">here</a>. ', array('@url' => url('journal')));
 
 	$output = '<p>';
 
-	switch ($collaboration) {
+	switch ($contribution_node->collaboration) {
 		case 'individual':
-			if ($shared) {
+			if ($contribution_node->shared) {
 				$output .= t('You have published your individual investigation. ') . $link . $all;
 			} else {
 				$output .= t('You have not published you individual investigation. ') . $all;
@@ -130,13 +128,13 @@ function theme_pi_journal_share_information($inquiry_node) {
 			break;
 		case 'group':
 			if ($access) {
-				if ($shared) {
+				if ($contribution_node->shared) {
 					$output .= t('You have published the results of your group investigation. ') . $link . $all;
 				} else {
 					$output .= t('You have not published the results of your group investigation. ') . $all;
 				}
 			} else {
-				if ($shared) {
+				if ($contribution_node->shared) {
 					$output .= t('The group owner has published the results of your investigation. ') . $link . $all;
 				} else {
 					$output .= t('The group owner has not published the results of this investigation. ') . $all;
@@ -145,13 +143,13 @@ function theme_pi_journal_share_information($inquiry_node) {
 			break;
 		case 'all':
 			if ($access) {
-				if ($shared) {
+				if ($contribution_node->shared) {
 					$output .= t('You have published the results of this inquiry. ') . $link . $all;
 				} else {
 					$output .= t('You have not published the results of this inquiry. ') . $all;
 				}
 			} else {
-				if ($shared) {
+				if ($contribution_node->shared) {
 					$output .= t('The inquiry owner has published the results of the investigation. ') . $link . $all;
 				} else {
 					$output .= t('The inquiry owner has not published the results of the investigation. ') . $all;
@@ -169,7 +167,8 @@ function theme_pi_journal_list($items, $inquiry_page_links) {
 	foreach ($items as $inquiry_nid => $contributions_data) {
 		$inquiry = node_load($inquiry_nid);
 		if ($inquiry_page_links) {
-			$inquiry_title_text = t('Investigations for <a href="@url"><i>@inquiry</i></a>:', array('@inquiry' => $inquiry->title, '@url' => url('journal/inquiry/' . $inquiry_nid)));
+			$url = url('journal/inquiry/' . $inquiry_nid, array('absolute' => TRUE));
+			$inquiry_title_text = t('Investigations for <a href="@url"><i>@inquiry</i></a>:', array('@inquiry' => $inquiry->title, '@url' => $url));
 		} else {
 			$inquiry_title_text = t('Investigations for <i>@inquiry</i>:', array('@inquiry' => $inquiry->title));
 		}

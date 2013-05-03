@@ -254,6 +254,19 @@ function pi_activity_insert($node) {
 	}
 }
 
+function pi_activity_theme() {
+	return array(
+			'pi_activity_display_shared_content_node' => array(
+					'arguments' => array('activity_node' => NULL, 'actor_id' => NULL, 'node' => NULL, 'teaser' => FALSE),
+					'file' => 'pi_activity.activity.inc',
+			),
+			'pi_activity_display_contribution_content_node' => array(
+					'arguments' => array('activity_collaboration' => '', 'content_node' => NULL, 'content_actor' => NULL, 'viewer_collaboration' => ''),
+					'file' => 'pi_activity.activity.inc',
+			),
+	);
+}
+
 /**
  *
  * Drupal API hook_update() function for pi_activity
@@ -296,13 +309,13 @@ function _pi_activity_form_data_to_pi_activity_row($node) {
 }
 
 function pi_activity_delete(&$node) {
-	
+
 	node_delete($node->referenced_content);
 	$content_result = db_query("SELECT nid FROM {pi_activity_node} WHERE activity_id=%d", $node->nid);
-	while($content_row = db_fetch_array($content_result)) {
+	while ($content_row = db_fetch_array($content_result)) {
 		node_delete($content_row['nid']);
 	}
-	
+
 	db_query("DELETE FROM {pi_activity} WHERE nid = %d AND vid = %d", $node->nid, $node->vid);
 	db_query("DELETE FROM {pi_activity_node} WHERE activity_id = %d", $node->nid);
 	db_query("DELETE FROM {pi_activity_share} WHERE activity_id = %d", $node->nid);
@@ -316,18 +329,6 @@ function pi_activity_delete(&$node) {
 	if (function_exists($custom_delete_function)) {
 		$custom_delete_function($node);
 	}
-}
-
-/**
- * hook_theme() for pi_activity content
- */
-function pi_activity_theme() {
-	return array(
-			'pi_activity_form_actor_audience_explanation' => array(
-					'arguments' => array('explanation', 'preview'),
-					'file' => 'pi_activity.form.themes.inc'
-			)
-	);
 }
 
 /*

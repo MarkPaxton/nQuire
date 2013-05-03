@@ -275,145 +275,33 @@ function pi_get_activities_for_phase($phase_nid) {
 	return $activities;
 }
 
-/**
- * Get an array of activity ids for a phase and user
- * @param uint phase nid
- * @param uint user id
- * @return array uint activity nids
- */
-/* TOREMOVE */
-function pi_get_activities_for_phase_and_user($phase_nid, $uid) {
+function pi_get_activities_for_phase_and_type($phase_nid, $type) {
 	$activities = array();
+	$query = "SELECT {pi_activity}.`nid`, {pi_activity}.`parent_activity` FROM {node} "
+					. "LEFT JOIN {pi_activity} ON {node}.`vid`={pi_activity}.`vid` "
+					. "WHERE {pi_activity}.`phase_nid`=%d AND {pi_activity}.`activity_type`='%s' "
+					. "ORDER BY {pi_activity}.`weight`";
 
-	if ($phase_nid != null && $uid != null) {
-		$query = "SELECT DISTINCT {pi_activity}.`nid`, {pi_activity}.`parent_activity` FROM {pi_activity} " .
-						"LEFT JOIN {og_uid} ON {pi_activity}.`actor` = {og_uid}.`nid` " .
-						"WHERE {pi_activity}.`phase_nid` = %d " .
-						"AND {og_uid}.`uid` = %d ORDER BY {pi_activity}.`weight`";
-		$result = db_query($query, $phase_nid, $uid);
-		if ($result) {
-			while ($row = db_fetch_array($result)) {
-				/* FIX (eloy) don't add hidden children activities */
-				//$activities[] = $row['nid'];
-				$show = TRUE;
-				if ($row['parent_activity']) {
-					$parent_query = 'SELECT {pi_activity}.`show_children_in_phase` FROM {pi_activity} WHERE {pi_activity}.`nid` = %d';
-					$parent_row = db_fetch_array(db_query($parent_query, $row['parent_activity']));
-					if ($parent_row) {
-						$show = $parent_row['show_children_in_phase'];
-					}
-				}
-				if ($show) {
-					$activities[] = $row['nid'];
-				}
+	$result = db_query($query, $phase_nid, $type);
+	while ($row = db_fetch_array($result)) {
+		$show = TRUE;
+		if ($row['parent_activity']) {
+			$parent_query = 'SELECT {pi_activity}.`show_children_in_phase` FROM {pi_activity} WHERE {pi_activity}.`nid` = %d';
+			$parent_row = db_fetch_array(db_query($parent_query, $row['parent_activity']));
+			if ($parent_row) {
+				$show = $parent_row['show_children_in_phase'];
 			}
 		}
-	} else {
-		if ($phase_nid == null) {
-			drupal_set_message(t("Null value of phase_nid passed to pi_get_activities_for_phase_and_user"), 'error');
-		}
-		if ($uid == null) {
-			drupal_set_message(t("Null value of uid passed to pi_get_activities_for_phase_and_user"), 'error');
+		if ($show) {
+			$activities[] = $row['nid'];
 		}
 	}
+
 	return $activities;
 }
 
-/**
- * Get an array of activity ids for an inquiry and user
- * @param uint inquiry nid
- * @param uint user id
- * @return array uint activity nids
- */
-function pi_get_activities_for_inquiry_and_user($inquiry_nid, $uid) {
-	$activities = array();
 
-	if ($inquiry_nid != null && $uid != null) {
-		$query = "SELECT DISTINCT {pi_activity}.`nid` FROM {pi_activity} " .
-						"LEFT JOIN {og_uid} ON {pi_activity}.`pi_activity_actor` = {og_uid}.`uid` " .
-						"LEFT JOIN {pi_phase} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
-						"WHERE {pi_phase}.`inquiry_nid` = %d " .
-						"AND {og_uid}.`uid` = %d";
-		$result = db_query($query, $inquiry_nid, $uid);
-		if ($result) {
-			while ($row = db_fetch_array($result)) {
-				$activities[] = $row['nid'];
-			}
-		}
-	} else {
-		if ($inquiry_nid == null) {
-			drupal_set_message(t("Null value of inquiry_nid passed to pi_get_activities_for_phase_and_user"), 'error');
-		}
-		if ($uid == null) {
-			drupal_set_message(t("Null value of uid passed to pi_get_activities_for_inquiry_and_user"), 'error');
-		}
-	}
-	return $activities;
-}
 
-/**
- * Get an array of activity ids for a user
- * @param uint user id
- * @return array uint activity nids
- */
-function pi_get_activities_for_user($uid) {
-	$activities = array();
-
-	if ($inquiry_nid != null && $uid != null) {
-		$query = "SELECT DISTINCT {pi_activity}.`nid` FROM {pi_activity} " .
-						"LEFT JOIN {og_uid} ON {pi_activity}.`pi_activity_actor` = {og_uid}.`uid` " .
-						"WHERE {og_uid}.`uid` = %d";
-		$result = db_query($query, $uid);
-		if ($result) {
-			while ($row = db_fetch_array($result)) {
-				$activities[] = $row['nid'];
-			}
-		}
-	} else {
-		if ($uid == null) {
-			drupal_set_message(t("Null value of uid passed to pi_get_activities_for_user"), 'error');
-		}
-	}
-	return $activities;
-}
-
-/**
- * Returns an array containing the activities of the phase in that stage for that user.
- * The activities are ordered by position.
- */
-/* TOREMOVE */
-function get_activities_of_stage_phase_and_user($inquiry_id, $stage_id, $phase_id, $uid) {
-
-	$activities = array();
-	if (($phase_id != null) && ($uid != null)) {
-		$activities = pi_get_activities_for_phase_and_user($phase_id, $uid);
-	} else {
-		if (($inquiry_id != null) && ($uid != null)) {
-			$activities = pi_get_activities_for_inquiry_and_user($inquiry_id, $uid);
-		} else {
-			if ($uid != null) {
-				$activities = pi_get_activities_for_user($uid);
-			} else {
-				drupal_set_message(t("Null values for inquiry, phase and uid passed to get_activities_of_stage_phase_and_user - can't fetch this data"), 'error');
-			}
-		}
-	}
-	return $activities;
-}
-
-//helper function to filter out duplicate activities
-function get_unique_activities($activities) {
-	$unique = array();
-	$temp = array();
-	foreach ($activities as $activity) {
-		$activity_id = $activity->activity_id;
-		if (!(in_array($activity_id, $temp))) {
-			$temp[] = $activity_id;
-			$unique[] = $activity;
-		}
-	}
-	return $unique;
-}
 
 
 function pi_inquiry_inquiry_view_access() {

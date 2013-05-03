@@ -47,6 +47,7 @@ function pi_available_measures_form(&$measure, $form_state) {
 	$form = array();
 	ahah_helper_register($form, $form_state);
 
+	$access_data = pi_inquiry_groupings_get_access_data();
 	if (arg(0) === 'activity') {
 		$form['current_activity_nid'] = array(
 				'#type' => 'hidden',
@@ -58,13 +59,14 @@ function pi_available_measures_form(&$measure, $form_state) {
 				'#type' => 'hidden',
 				'#default_value' => $current_activity_nid,
 		);
-		pi_inquiry_groupings_alter_access_data_set_activity($current_activity_nid);
+		$access_data->set_current_activity($current_activity_nid);
 	}
 
-	$data_activities = pi_sort_data_get_activities();
+	$data_activities = pi_sort_data_get_activities($access_data->get_inquiry_nid());
 	$data_activity_options = array(0 => t('- Select activity'));
-	foreach ($data_activities as $activity_data) {
-		$data_activity_options[$activity_data['node']->nid] = check_plain($activity_data['node']->title);
+	foreach ($data_activities as $activity_nid) {
+		$activity_data = $access_data->get_activity($activity_nid);
+		$data_activity_options[$activity_nid] = check_plain($activity_data['node']->title);
 	}
 
 	//function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {

@@ -105,6 +105,56 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	return $node;
 }
 
+
+function pi_sort_data_create_contribution_view($node, $contribution_data) {
+	global $user;
+	
+	$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
+	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
+	
+	foreach($contribution_data as $phase_data) {
+		foreach($phase_data['activities'] as $activity_data) {
+			if ($activity_data['node']->activity_type === 'pi_methodology') {
+				$selected_measures = pi_methodology_get_measures_from_measure_content_nodes($activity_data['content'], $activity_id_for_this_node);
+				break 2;
+			}
+		}
+	}
+	
+	if (!$selected_measures) {
+		$selected_measures = array();
+	}
+
+	$header = array();
+	$header[] = t('Created:');
+	$measures = array();
+	foreach ($selected_measures as $measure_nid => $required) {
+		$measure = node_load($measure_nid);
+		if (pi_data_tools_measure_plugin_show_in_table($measure)) {
+			$header[] = check_plain($measure->title) . t(':');
+			$measures[] = $measure;
+		}
+	}
+
+
+	$data_rows = array();
+
+	foreach ($data_nids as $nid) {
+		$row = array();
+		$data_item_node = node_load($nid);
+
+		$row[] = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
+						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid)));
+
+		foreach ($measures as $measure) {
+			$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
+		}
+		$data_rows[] = $row;
+	}
+
+	return theme('pi_sort_data', $header, $data_rows);
+}
+
 function theme_pi_sort_data($header, $data_rows) {
 	drupal_add_js(drupal_get_path('module', 'pi_sort_data') . '/js/sorttable.js');
 	drupal_add_css(drupal_get_path('module', 'pi_sort_data') . '/css/sorttable.css');
@@ -114,9 +164,8 @@ function theme_pi_sort_data($header, $data_rows) {
 	));
 }
 
-function pi_sort_data_get_activities() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	return $access_data->get_activities_by_type('pi_sort_data');
+function pi_sort_data_get_activities($inquiry_nid) {
+	return pi_inquiry_get_activities_of_type($inquiry_nid, 'pi_sort_data');
 }
 
 function pi_sort_data_get_data_for_sort_node_nid($sort_data_nid) {

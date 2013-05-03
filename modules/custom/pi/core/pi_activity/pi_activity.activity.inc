@@ -140,14 +140,14 @@ function pi_activity_shared_content_list_view($activity_node) {
 		$output .= '<p><b>' . $intro . '</b></p>';
 
 		foreach ($nids as $actor_id => $nid) {
-			$output .= pi_activity_display_shared_content_node($activity_node, $actor_id, node_load($nid), TRUE);
+			$output .= theme('pi_activity_display_shared_content_node', $activity_node, $actor_id, node_load($nid), TRUE);
 		}
 	}
 
 	return $output;
 }
 
-function pi_activity_display_shared_content_node($activity_node, $actor_id, $node, $teaser) {
+function theme_pi_activity_display_shared_content_node($activity_node, $actor_id, $node, $teaser) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$activity_data = $access_data->get_activity($activity_node->nid);
 	if ($activity_data['collaboration'] === 'individual') {
@@ -174,7 +174,42 @@ function pi_activity_display_shared_content_node($activity_node, $actor_id, $nod
 	return $output;
 }
 
+function theme_pi_activity_display_contribution_content_node($activity_collaboration, $content_node, $content_actor, $viewer_collaboration, $contribution_data) {
+	$output = '';
+
+	if ($content_node) {
+
+		if ($activity_collaboration !== $viewer_collaboration) {
+			if ($activity_collaboration === 'individual') {
+				$user = user_load($content_actor);
+				$actor_title = $user->name;
+			} else if ($activity_collaboration === 'group') {
+				$group = node_load($content_actor);
+				$actor_title = $group->title;
+			}
+
+			if ($actor_title) {
+				$output .= t('Content created by @actor:', array('@actor' => $actor_title));
+			}
+		}
+
+		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+
+		$contribution_content_display_function = "{$content_node->type}_create_contribution_view";
+		if (function_exists($contribution_content_display_function)) {
+			$content_view = $contribution_content_display_function($content_node, $contribution_data);
+		} else {
+			$content_view = node_view($content_node, FALSE, TRUE, TRUE);
+		}
+
+		$output = '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
+						. $content_view
+						. '</div>';
+	}
+	return $output;
+}
+
 function pi_activity_shared_content_view($activity_node, $actor_id, $teaser = FALSE) {
 	$node = node_load(pi_activity_get_content_nid_for_activity_and_actor($activity_node->nid, $actor_id));
-	return pi_activity_display_shared_content_node($activity_node, $actor_id, $node, $teaser);
+	return theme('pi_activity_display_shared_content_node', $activity_node, $actor_id, $node, $teaser);
 }

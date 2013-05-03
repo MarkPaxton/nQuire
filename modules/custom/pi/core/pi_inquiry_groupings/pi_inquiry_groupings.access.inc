@@ -27,7 +27,15 @@ class PiInquiryGroupingAccess {
 
 		$this->load_current_path(get_inquiry_details_from_current_path());
 	}
-
+	
+	public function set_current_inquiry($inquiry_nid) {
+		$path->phase_id = NULL;
+		$path->inquiry_id = $inquiry_nid;
+		$path->activity_id = NULL;
+		
+		$this->load_current_path($path);
+	}
+	
 	public function set_current_activity($activity_nid) {
 		$node = node_load($activity_nid);
 		$phase = node_load($node->phase_nid);

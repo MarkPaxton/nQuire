@@ -84,7 +84,7 @@ function pi_journal_contribution_theme() {
 }
 
 function theme_pi_journal_contribution_teaser($node, $inquiry_node) {
-	$args = array('@url' => 'journal/contribution/' . $node->nid);
+	$args = array('@url' => url('journal/contribution/' . $node->nid));
 
 	switch ($node->collaboration) {
 		case 'individual':
@@ -109,7 +109,7 @@ function theme_pi_journal_contribution_teaser($node, $inquiry_node) {
 function theme_pi_journal_contribution_view($node) {
 	$inquiry_node = node_load($node->inquiry_id);
 	$args = array('@inquiry' => $inquiry_node->title);
-	
+
 	switch ($node->collaboration) {
 		case 'individual':
 			$u = user_load($node->actor);
@@ -125,10 +125,22 @@ function theme_pi_journal_contribution_view($node) {
 			$t = t('Investigation results</a> of inquiry @inquiry', $args);
 			break;
 	}
-	
+
 	drupal_set_title($t);
-	
-	return '';
+
+	$data = pi_activity_aggregate_shared_content_for_contribution($inquiry_node, $node->collaboration, $node->actor);
+
+	$output = '';
+	foreach ($data as $phase_data) {
+		foreach ($phase_data['activities'] as $activity_data) {
+			$output .= '<p><b>' . $activity_data['node']->title . '</b></p>';
+
+			foreach ($activity_data['content'] as $actor_id => $content_nid) {
+				$output .= theme('pi_activity_display_contribution_content_node', $phase_data['node']->collaboration, node_load($content_nid), $actor_id, $node->collaboration, $data);
+			}
+		}
+	}
+	return $output;
 }
 
 function pi_journal_contribution_get_shared_investigations() {
@@ -167,65 +179,4 @@ function pi_journal_contribution_is_shared_for_user($inquiry_node, $uid) {
 	$shared_query = "SELECT shared FROM {pi_journal_contribution} WHERE inquiry_id=%d AND actor=%d AND collaboration='%s'";
 	$row = db_fetch_array(db_query($shared_query, $inquiry_node->nid, $actor, $collaboration));
 	return $row ? $row['shared'] : FALSE;
-}
-
-function theme_pi_journal_contribution_share_information($inquiry_node) {
-	global $user;
-
-
-	$access = pi_journal_contribution_edit_share_access($inquiry_node);
-	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
-	$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $user->uid);
-	$shared = pi_journal_contribution_is_shared_for_user($inquiry_node, $user->uid);
-
-	if ($shared) {
-		$link = '<br/>' . t('Click !here to view it. ', array('!here', l(t('here'), 'journal/' . $inquiry_node->nid . '/' . $actor)));
-	}
-
-	$all = '<br/>' . t('You can see all the published investigations !here. ', array('!here' => l(t('here'), 'journal')));
-
-	$output = '<p>';
-
-	switch ($collaboration) {
-		case 'individual':
-			if ($shared) {
-				$output .= t('You have published your individual investigation. ') . $link . $all;
-			} else {
-				$output .= t('You have not published you individual investigation. ') . $all;
-			}
-			break;
-		case 'group':
-			if ($access) {
-				if ($shared) {
-					$output .= t('You have published the results of your group investigation. ') . $link . $all;
-				} else {
-					$output .= t('You have not published the results of your group investigation. ') . $all;
-				}
-			} else {
-				if ($shared) {
-					$output .= t('The group owner has published the results of your investigation. ') . $link . $all;
-				} else {
-					$output .= t('The group owner has not published the results of this investigation. ') . $all;
-				}
-			}
-			break;
-		case 'all':
-			if ($access) {
-				if ($shared) {
-					$output .= t('You have published the results of this inquiry. ') . $link . $all;
-				} else {
-					$output .= t('You have not published the results of this inquiry. ') . $all;
-				}
-			} else {
-				if ($shared) {
-					$output .= t('The inquiry owner has published the results of the investigation. ') . $link . $all;
-				} else {
-					$output .= t('The inquiry owner has not published the results of the investigation. ') . $all;
-				}
-			}
-			break;
-	}
-
-	$output .= '</p>';
-	return $output;
 }

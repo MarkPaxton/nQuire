@@ -84,11 +84,15 @@ function pi_data_spreadsheet_edit_page($node) {
 	return $output;
 }
 
-/**
- * MISSING
- * 
- * @return multitype:multitype:multitype:string   
- */
+function pi_data_spreadsheet_create_contribution_view($node) {
+	$output = '';
+	if (isset($_SERVER['REDIRECT_URL']) && strpos($_SERVER['REDIRECT_URL'], 'undefined') === FALSE) {
+		$spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node, FALSE);
+		$output .= theme('pi_data_spreadsheet_grid', $spreadsheet);
+	}
+	return $output;
+}
+
 function pi_data_spreadsheet_theme() {
 	return array(
 			'pi_data_spreadsheet_grid' => array(
@@ -118,7 +122,7 @@ function theme_pi_data_spreadsheet_grid($spreadsheet) {
 
 function _pi_data_spreadsheet_get_spreadsheet(&$node, $editable) {
 	$key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/' . ($editable ? 'editgrid_api_app_key' : 'editgrid_api_app_ro_key')));
-	if (_pi_data_spreadsheet_create_spreadsheet($node, $key)) {
+	if ($editable && _pi_data_spreadsheet_create_spreadsheet($node, $key)) {
 		_pi_data_spreadsheet_update_data($node, $key, $node->body);
 	}
 
@@ -183,9 +187,14 @@ function _pi_data_spreadsheet_update_data($node, $session_key, $book_name) {
 	$client = new EditGrid(NULL);
 	$client->setSessionKey($session_key);
 
-	$data_activities = pi_sort_data_get_activities();
+	$inquiry_nid = pi_inquiry_find_inquiry_for_content($node->nid);
+	$data_activities = pi_sort_data_get_activities($inquiry_nid);
 
-	foreach ($data_activities as $i => $activity_data) {
+	$access_data = pi_inquiry_groupings_get_access_data();
+
+	foreach ($data_activities as $i => $activity_nid) {
+		$activity_data = $access_data->get_activity($activity_nid);
+
 		$worksheet_name = 'Data' . ($i + 1);
 
 		$result_list = $client->call("worksheet.get", array('worksheet' => "user/evilfer/$book_name/$worksheet_name"));
@@ -206,13 +215,13 @@ function _pi_data_spreadsheet_update_data($node, $session_key, $book_name) {
 		$cells->addCell(0, 0, t('Data for activity: @title', array('@title' => $activity_data['node']->title)));
 		$cells->addCell(0, 1, t('This sheet is created automatically, Please do not modify it!'));
 
-		$data_nids = pi_sort_data_get_all_data_for_use_in_content_nid($node->nid, $activity_data['node']->nid);
+		$data_nids = pi_sort_data_get_all_data_for_use_in_content_nid($node->nid, $activity_nid);
 		$data = array_map(function($nid) {
 							return node_load($nid);
 						}, $data_nids);
 
 
-		$measure_nids = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_data['node']->nid);
+		$measure_nids = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_nid);
 
 		$x = 0;
 		foreach ($measure_nids as $measure_nid => $required) {

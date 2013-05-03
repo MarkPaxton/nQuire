@@ -197,11 +197,9 @@ function pi_methodology_load($node) {
 	$output->measures = array();
 
 
-	$data_activities = pi_sort_data_get_activities();
+	$data_activities = pi_sort_data_get_activities(pi_inquiry_find_inquiry_for_content($node->nid));
 	$all_measures = array();
-	foreach ($data_activities as $activity_data) {
-		$activity_nid = $activity_data['node']->nid;
-
+	foreach ($data_activities as $activity_nid) {
 		$output->measures[$activity_nid] = array(
 				'key' => array(),
 				'dependent' => array(),
@@ -243,31 +241,36 @@ function pi_methodology_load($node) {
 	return $output;
 }
 
+function pi_methodology_get_measures_from_measure_content_nodes($methodology_nids, $sort_data_activity_nid) {
+	$measures = array();
+	foreach ($methodology_nids as $methology_content_nid) {
+		$methodology_node = node_load($methology_content_nid);
+
+		if (isset($methodology_node->measures[$sort_data_activity_nid]['key'])) {
+			foreach ($methodology_node->measures[$sort_data_activity_nid]['key'] as $measure_nid) {
+				$measures[$measure_nid] = TRUE;
+			}
+		}
+		if (isset($methodology_node->measures[$sort_data_activity_nid]['dependent'])) {
+			foreach ($methodology_node->measures[$sort_data_activity_nid]['dependent'] as $measure_nid) {
+				if (!isset($measures[$measure_nid])) {
+					$measures[$measure_nid] = FALSE;
+				}
+			}
+		}
+	}
+	return $measures;
+}
+
 function pi_methodology_get_measures_for_use_in_content_node($using_content_nid, $sort_data_activity_nid) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$methodology_activity_data = $access_data->get_activity_by_type('pi_methodology');
 
-	$measures = array();
 	if ($methodology_activity_data) {
 		$shared_content = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($using_content_nid, $methodology_activity_data['node']->nid, 'parent');
-
-		foreach ($shared_content as $methology_content_nid) {
-			$methodology_node = node_load($methology_content_nid);
-
-			if (isset($methodology_node->measures[$sort_data_activity_nid]['key'])) {
-				foreach ($methodology_node->measures[$sort_data_activity_nid]['key'] as $measure_nid) {
-					$measures[$measure_nid] = TRUE;
-				}
-			}
-			if (isset($methodology_node->measures[$sort_data_activity_nid]['dependent'])) {
-				foreach ($methodology_node->measures[$sort_data_activity_nid]['dependent'] as $measure_nid) {
-					if (!isset($measures[$measure_nid])) {
-						$measures[$measure_nid] = FALSE;
-					}
-				}
-			}
-		}
+		$measures = pi_methodology_get_measures_from_measure_content_nodes($shared_content, $sort_data_activity_nid);
 	} else {
+		$measures = array();
 		foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) as $measure_nid) {
 			$measures[$measure_nid] = FALSE;
 		}
@@ -315,11 +318,15 @@ function pi_methodology_view($node, $teaser, $page = FALSE) {
 	);
 
 	$node->content['pi_methodology'] = array(
-			'#value' => theme('pi_methodology', $node, $teaser),
+			'#value' => theme('pi_methodology', $node, TRUE),
 			'#weight' => 2
 	);
 
 	return $node;
+}
+
+function pi_methodology_create_contribution_view($node) {
+	return theme('pi_methodology', $node, FALSE);
 }
 
 /**
@@ -327,7 +334,7 @@ function pi_methodology_view($node, $teaser, $page = FALSE) {
  * @param unknown_type $node
  * @return unknown_type
  */
-function theme_pi_methodology($node, $teaser) {
+function theme_pi_methodology($node, $use_links) {
 	$output = '';
 
 	if (is_array($node->measures)) {
@@ -350,7 +357,7 @@ function theme_pi_methodology($node, $teaser) {
 				if (count($list) > 0) {
 					foreach ($list as $measure_nid) {
 						$measure_node = node_load($measure_nid);
-						if ($measure_node->script_measure) {
+						if ($measure_node->script_measure || !$use_links) {
 							$label = check_plain($measure_node->title);
 						} else {
 							$measure_activity = node_load(pi_activity_get_activity_nid_for_content_nid($measure_nid));
