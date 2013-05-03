@@ -348,8 +348,21 @@ function pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $uid)
 		default:
 			$actor = $inquiry_node->uid;
 	}
+	
+	return $actor;
 }
 
 function pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_nid) {
-	return '';
+	$level = 'individual';
+
+	$phases_nid = pi_phase_load_nids_for_inquiry($inquiry_nid);
+	foreach ($phases_nid as $phases_nid) {
+		$phase = node_load($phases_nid);
+		if ($phase->collaboration === 'all') {
+			return 'all';
+		} else if ($phase->collaboration === 'group') {
+			$level = 'group';
+		}
+	}
+	return $level;
 }

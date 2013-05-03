@@ -1,0 +1,231 @@
+<?php
+
+function pi_journal_contribution_node_info() {
+	return array(
+			'pi_journal_contribution' => array(
+					'name' => t('Pi journal contribution'), // Required.
+					'module' => 'pi_journal_contribution', // Required.
+					'description' => t('Pi journal contribution'), // Required.
+					'has_title' => FALSE,
+					'has_body' => FALSE,
+			)
+	);
+}
+
+function pi_journal_contribution_access($op, $node, $account) {
+	return FALSE;
+}
+
+function pi_journal_contribution_load($node) {
+	$query = "SELECT inquiry_id, shared, actor, collaboration FROM {pi_journal_contribution} WHERE nid=%d";
+	return db_fetch_object(db_query($query, $node->nid));
+}
+
+function _pi_journal_contribution_save_data($node) {
+	$query = "INSERT INTO {pi_journal_contribution} (nid, inquiry_id, actor, collaboration, shared) VALUES (%d, %d, %d, '%s', %d) "
+					. "ON DUPLICATE KEY UPDATE inquiry_id=%d, actor=%d, collaboration='%s', shared=%d";
+	db_query($query, $node->nid, $node->inquiry_id, $node->actor, $node->collaboration, $node->shared, $node->inquiry_id, $node->actor, $node->collaboration, $node->shared);
+}
+
+function pi_journal_contribution_insert($node) {
+	_pi_journal_contribution_save_data($node);
+}
+
+function pi_journal_contribution_update($node) {
+	_pi_journal_contribution_save_data($node);
+}
+
+function pi_journal_contribution_delete(&$node) {
+	db_query('DELETE FROM {pi_journal_contribution} WHERE nid=%d', $node->nid);
+}
+
+function pi_journal_contributions_find_all_shared_contributions() {
+	$shared = array();
+
+	$query = "SELECT nid, inquiry_id, collaboration FROM {pi_journal_contribution} WHERE shared=1";
+	$result = db_query($query);
+	while ($row = db_fetch_array($result)) {
+		if (!isset($shared[$row['inquiry_id']])) {
+			$shared[$row['inquiry_id']] = array('collaboration' => pi_inquiry_groupings_get_coarser_collaboration_level($row['inquiry_id']), 'contributions' => array());
+		}
+
+		if ($row['collaboration'] === $shared[$row['inquiry_id']]['collaboration']) {
+			$shared[$row['inquiry_id']]['contributions'][] = node_load($row['nid']);
+		}
+	}
+	return $shared;
+}
+
+function pi_journal_contributions_find_shared_contributions_for_inquiry($inquiry_id) {
+	$shared = array();
+
+	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_id);
+
+	$shared[$inquiry_id] = array('collaboration' => $collaboration, 'contributions' => array());
+
+	$query = "SELECT nid FROM {pi_journal_contribution} WHERE inquiry_id=%d AND shared=1 AND collaboration='%s'";
+	$result = db_query($query, $inquiry_id, $collaboration);
+	while ($row = db_fetch_array($result)) {
+		$shared[$inquiry_id]['contributions'][] = node_load($row['nid']);
+	}
+
+	return $shared;
+}
+
+function pi_journal_contribution_theme() {
+	return array(
+			'pi_journal_contribution_teaser' => array(
+					'arguments' => array('node' => NULL, 'inquiry_node' => NULL),
+			),
+			'pi_journal_contribution_view' => array(
+					'arguments' => array('node' => NULL),
+			),
+	);
+}
+
+function theme_pi_journal_contribution_teaser($node, $inquiry_node) {
+	$args = array('@url' => 'journal/contribution/' . $node->nid);
+
+	switch ($node->collaboration) {
+		case 'individual':
+			$u = user_load($node->actor);
+			$args['@user'] = $u->name;
+			$t = t('View <a href="@url">investigation results</a> of user @user', $args);
+			break;
+		case 'group':
+			$g = node_load($node->actor);
+			$args['@group'] = $g->title;
+			$t = t('View <a href="@url">investigation results</a> of group @gorup', $args);
+			break;
+		case 'all':
+			$args['@inquiry'] = $inquiry_node->title;
+			$t = t('View <a href="@url">investigation results</a> of inquiry @inquiry', $args);
+			break;
+	}
+
+	return $t;
+}
+
+function theme_pi_journal_contribution_view($node) {
+	$inquiry_node = node_load($node->inquiry_id);
+	$args = array('@inquiry' => $inquiry_node->title);
+	
+	switch ($node->collaboration) {
+		case 'individual':
+			$u = user_load($node->actor);
+			$args['@user'] = $u->name;
+			$t = t('Investigation results</a> of user @user in inquiry @inquiry', $args);
+			break;
+		case 'group':
+			$g = node_load($node->actor);
+			$args['@group'] = $g->title;
+			$t = t('Investigation results</a> of group @gorup in inquiry @inquiry', $args);
+			break;
+		case 'all':
+			$t = t('Investigation results</a> of inquiry @inquiry', $args);
+			break;
+	}
+	
+	drupal_set_title($t);
+	
+	return '';
+}
+
+function pi_journal_contribution_get_shared_investigations() {
+	$shared = array();
+
+	$query = "SELECT inquiry_id, actor, collaboration FROM {pi_journal_contribution} WHERE shared=1";
+	$result = db_query($query);
+	while ($row = db_fetch_array($result)) {
+		if (!isset($shared[$row['inquiry_id']])) {
+			$shared[$row['inquiry_id']] = array('collaboration' => pi_inquiry_groupings_get_coarser_collaboration_level($row['inquiry_id']), 'actors' => array());
+		}
+
+		if ($row['collaboration'] === $shared[$row['inquiry_id']]['collaboration']) {
+			$shared[$row['inquiry_id']]['actors'][] = $row['actor'];
+		}
+	}
+	return $shared;
+}
+
+function pi_journal_contribution_find_contribution_node($inquiry_node, $uid) {
+	return node_load(pi_journal_contribution_find_contribution_nid($inquiry_node, $uid));
+}
+
+function pi_journal_contribution_find_contribution_nid($inquiry_node, $uid) {
+	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
+	$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $uid);
+	$query = "SELECT nid FROM {pi_journal_contribution} WHERE inquiry_id=%d AND actor=%d AND collaboration='%s'";
+	$row = db_fetch_array(db_query($query, $inquiry_node->nid, $actor, $collaboration));
+	return $row ? $row['nid'] : FALSE;
+}
+
+function pi_journal_contribution_is_shared_for_user($inquiry_node, $uid) {
+	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
+	$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $uid);
+
+	$shared_query = "SELECT shared FROM {pi_journal_contribution} WHERE inquiry_id=%d AND actor=%d AND collaboration='%s'";
+	$row = db_fetch_array(db_query($shared_query, $inquiry_node->nid, $actor, $collaboration));
+	return $row ? $row['shared'] : FALSE;
+}
+
+function theme_pi_journal_contribution_share_information($inquiry_node) {
+	global $user;
+
+
+	$access = pi_journal_contribution_edit_share_access($inquiry_node);
+	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
+	$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $user->uid);
+	$shared = pi_journal_contribution_is_shared_for_user($inquiry_node, $user->uid);
+
+	if ($shared) {
+		$link = '<br/>' . t('Click !here to view it. ', array('!here', l(t('here'), 'journal/' . $inquiry_node->nid . '/' . $actor)));
+	}
+
+	$all = '<br/>' . t('You can see all the published investigations !here. ', array('!here' => l(t('here'), 'journal')));
+
+	$output = '<p>';
+
+	switch ($collaboration) {
+		case 'individual':
+			if ($shared) {
+				$output .= t('You have published your individual investigation. ') . $link . $all;
+			} else {
+				$output .= t('You have not published you individual investigation. ') . $all;
+			}
+			break;
+		case 'group':
+			if ($access) {
+				if ($shared) {
+					$output .= t('You have published the results of your group investigation. ') . $link . $all;
+				} else {
+					$output .= t('You have not published the results of your group investigation. ') . $all;
+				}
+			} else {
+				if ($shared) {
+					$output .= t('The group owner has published the results of your investigation. ') . $link . $all;
+				} else {
+					$output .= t('The group owner has not published the results of this investigation. ') . $all;
+				}
+			}
+			break;
+		case 'all':
+			if ($access) {
+				if ($shared) {
+					$output .= t('You have published the results of this inquiry. ') . $link . $all;
+				} else {
+					$output .= t('You have not published the results of this inquiry. ') . $all;
+				}
+			} else {
+				if ($shared) {
+					$output .= t('The inquiry owner has published the results of the investigation. ') . $link . $all;
+				} else {
+					$output .= t('The inquiry owner has not published the results of the investigation. ') . $all;
+				}
+			}
+			break;
+	}
+
+	$output .= '</p>';
+	return $output;
+}

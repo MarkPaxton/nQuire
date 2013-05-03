@@ -59,6 +59,10 @@
 			}
 
 			this.structureFeatureTable('_enableSaveButton', false);
+
+			$('.structure_additional_form_item').change(function() {
+				self.structureFeatureTable('_enableSaveButton', true);
+			});
 		},
 		_createLink: function(title, inline) {
 			return $('<a>').html(title).attr('href', '#').addClass(inline ? 'link-button' : 'normal-link');
