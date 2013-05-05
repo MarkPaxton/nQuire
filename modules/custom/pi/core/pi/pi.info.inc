@@ -9,7 +9,7 @@ class PiInfo {
 	function __construct() {
 		$this->path = new PiInquiryPath();
 		$this->inquiries = array();
-		$this->content= array();
+		$this->content = array();
 	}
 
 	function getCurrentPath() {
@@ -23,14 +23,15 @@ class PiInfo {
 
 		return $this->inquiries[$inquiry_id];
 	}
-	
+
 	function getContentManager($inquiry_id) {
 		if (!isset($this->content[$inquiry_id])) {
 			$this->content[$inquiry_id] = new PiInquiryContent($this->getInquiryInfo($inquiry_id));
 		}
-		
+
 		return $this->content[$inquiry_id];
 	}
+
 }
 
 class PiInquiryPath {
@@ -104,22 +105,32 @@ class PiInquiryInfo {
 	public function getPhaseActor($phase_nid, $uid) {
 		$phase = $this->getPhase($phase_nid);
 
+		$group = $this->getSubgroup($uid);
+		$inquiry_actor = $this->inquiry->actor_gid;
+
 		switch ($phase->collaboration) {
 			case 'individual':
 				$actor = $uid;
 				break;
 			case 'group':
-				$actor = $this->getSubgroup($uid);
+				$actor = $group;
 				break;
 			default:
-				$actor = $this->inquiry->actor_gid;
+				$actor = $inquiry_actor;
 				break;
 		}
-		return array('collaboration' => $phase->collaboration, 'actor' => $actor);
+		return array(
+				'collaboration' => $phase->collaboration,
+				'actor' => $actor,
+		);
 	}
 
 	public function getActivityActor($activity_nid, $uid) {
 		return $this->getPhaseActor($this->activity_phase[$activity_nid], $uid);
+	}
+
+	public function getActivityCollaboration($activity_nid) {
+		return $this->phases[$this->activity_phase[$activity_nid]]->collaboration;
 	}
 
 }
@@ -132,7 +143,7 @@ class PiInquiryContent {
 		$this->inquiry_info = $inquiry_info;
 	}
 
-	public function getContent($activity_nid, $uid, $try_to_create = FALSE) {
+	public function getContent($activity_nid, $uid, $try_to_create) {
 
 		$activity = $this->inquiry_info->getActivity($activity_nid);
 		if ($activity->referenced_node) {
@@ -148,12 +159,11 @@ class PiInquiryContent {
 			$nid = $row['nid'];
 			return $nid;
 		} else if ($try_to_create) {
-			$new_node = pi_activity_create_content_on_first_visit($activity_data['node'], $access_data->get_uid());
+			$new_node = $this->createContentOnVisit($activity_nid, $uid);
 			if ($new_node) {
 				return $new_node->nid;
 			}
 		}
-
 
 		return FALSE;
 	}
@@ -199,388 +209,119 @@ class PiInquiryContent {
 		}
 	}
 
+	public function getChildrenContentForContentNid($content_nid) {
+		return $this->getChildrenContentForContentNode(node_load($content_nid));
+	}
+
+	public function getChildrenContentForContentNode($content_node) {
+		$activity_nid = $this->getActivityForContent($content_node->nid);
+		$actor_data = $this->inquiry_info->getActivityActor($activity_nid, $content_node->uid);
+		return $this->getChildrenContentForActivityAndActor($activity_nid, $actor_data);
+	}
+
+	private function getChildrenContentForActivityAndActor($activity_nid, $actor_data) {
+		$query = "SELECT {pi_activity_node}.nid FROM {node} LEFT JOIN {pi_activity} ON {node}.vid={pi_activity}.vid "
+						. "LEFT JOIN {pi_activity_node} ON {pi_activity}.nid={pi_activity_node}.activity_id "
+						. "WHERE {pi_activity}.parent_activity=%d AND {pi_activity_node}.collaboration='%s' AND {pi_activity_node}.actor=%d";
+
+		$nids = array();
+		$result = db_query($query, $activity_nid, $actor_data['collaboration'], $actor_data['actor_nid']);
+		while ($row = db_fetch_array($result)) {
+			$nids[] = $row['nid'];
+		}
+
+		return $nids;
+	}
+
 	public function getContentFromFor($activity_nid, $using_activity_id, $using_uid) {
-		
+		$using_actor_data = $this->inquiry_info->getActivityActor($using_activity_id, $using_uid);
+		return $this->getSharedContentForActivityAndActorData($activity_nid, $using_actor_data);
 	}
 
-	public function getSharedContent($activity_nid) {
-		
+	public function getSharedContent($activity_nid, $uid) {
+		$viewer_actor_data = $this->inquiry_info->getActivityActor($activity_nid, $uid);
+		return $this->getSharedContentForActivityAndActorData($activity_nid, $viewer_actor_data);
 	}
 
-	public function getContributionContent($activity_nid) {
-		
+	public function getContributionContent($contribution_node, $activity_nid) {
+		$actor_data = array('collaboration' => $contribution_node->collaboration, 'actor' => $contribution_node->actor);
+		return $this->getSharedContentForActivityAndActorData($activity_nid, $actor_data);
 	}
 
-}
-
-/*
-	private $current_path;
-	private $current_stage;
-	private $all_stages_structure;
-	private $access_values;
-	private $uid;
-	private $inquiry;
-	private $use_groups;
-	private $subgroup;
-	private $subgroup_node;
-	private $roles;
-	private $phases;
-	private $activities;
-	private $share_policy;
-
-	function __construct() {
-		$this->access_values = array(
-				FALSE => 0,
-				'noaccess' => 0,
-				'view' => 1,
-				'comment' => 2,
-				'edit' => 3,
-		);
-
-		$this->load_current_path(get_inquiry_details_from_current_path());
-	}
-	
-	public function set_current_inquiry($inquiry_nid) {
-		$path->phase_id = NULL;
-		$path->inquiry_id = $inquiry_nid;
-		$path->activity_id = NULL;
-		
-		$this->load_current_path($path);
-	}
-	
-	public function set_current_activity($activity_nid) {
-		$node = node_load($activity_nid);
-		$phase = node_load($node->phase_nid);
-
-		$path = new stdClass();
-		$path->phase_id = $node->phase_nid;
-		$path->inquiry_id = $phase->inquiry_nid;
-		$path->activity_id = $node->nid;
-
-		$this->load_current_path($path);
-	}
-
-	private function load_current_path($path) {
-		$this->current_path = $path;
-
-		if ($this->current_path->inquiry_id) {
-			global $user;
-			$this->uid = $user->uid;
-
-			$this->inquiry = array();
-			$this->inquiry['nid'] = $this->current_path->inquiry_id;
-			$this->inquiry['node'] = node_load($this->current_path->inquiry_id);
-			$this->inquiry['access'] = $this->inquiry['node']->uid == $user->uid || nquire_group_get_user_status_in_group($this->inquiry['node']->actor_gid, $this->uid) === 'member';
-			$this->inquiry['roles'] = nquire_commons_decode_data($this->inquiry['node']->roles);
-
-			$this->subgroup = pi_inquiry_groupings_get_user_subgroup($this->inquiry['node'], $this->uid);
-			$this->subgroup_node = node_load($this->subgroup);
-
-			$this->roles = array(
-					'inquiry' => nquire_group_get_user_roles($this->inquiry['node']->actor_gid, $this->uid),
-					'subgroup' => $this->subgroup ? nquire_group_get_user_roles($this->subgroup, $this->uid) : FALSE,
-			);
-
-
-			$this->load_stage();
-			$this->load_phases();
-			$this->load_activities();
-		}
-	}
-
-	private function load_stage() {
-		$query = "SELECT stage_id FROM {pi_stage_current} WHERE inquiry_id=%d";
-		$row = db_fetch_array(db_query($query, $this->inquiry['nid']));
-		if ($row) {
-			$this->current_stage = node_load($row['stage_id']);
-		} else {
-			$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node.vid}={pi_stage}.vid WHERE {pi_stage}.inquiry_nid=%d ORDER BY {pi_stage}.weight ASC LIMIT 1";
-			$row = db_fetch_array(db_query($query, $this->inquiry['nid']));
-			if ($row) {
-				$this->current_stage = node_load($row['nid']);
+	private function getActivityForContent($content_nid) {
+		$query = "SELECT `activity_id` FROM {pi_activity_node} WHERE `nid` = %d";
+		$result = db_fetch_object(db_query($query, $content_nid));
+		if ($result != false) {
+			if (isset($result->activity_id)) {
+				return $result->activity_id;
 			}
 		}
+		return FALSE;
 	}
 
-	private function load_phases() {
-		$this->phases = array();
-		$this->use_groups = FALSE;
+	private function getSharedContentForActivityAndActorData($activity_nid, $viewer_actor_data) {
+		$activity_collaboration = $this->inquiry_info->getActivityCollaboration($activity_nid);
+		$viewer_collaboration = $viewer_actor_data['collaboration'];
 
-		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry['nid']);
-		foreach ($phase_nids as $nid) {
-			$access = 'edit';
-			if ($this->inquiry['access'] && $this->current_stage && isset($this->current_stage->phases[$nid])) {
-				$access = $this->current_stage->phases[$nid] === 'hidden' ? FALSE : $this->current_stage->phases[$nid];
-			}
-
-			$item = array();
-			$item['node'] = node_load($nid);
-			$item['access'] = $access;
-			$item['activities'] = array();
-			$this->phases[$nid] = $item;
-
-			if ($item['node']->collaboration === 'group') {
-				$this->use_groups = TRUE;
-			}
+		if ($viewer_collaboration === $activity_collaboration) {
+			$mode = 'single_actor';
+			$single_actor = $viewer_actor_data['actor'];
+		} else if ($activity_collaboration === 'all') {
+			$mode = 'single_actor';
+			$single_actor = $this->inquiry_info->getInquiryActorGid();
+		} else if ($viewer_collaboration === 'individual' && $activity_collaboration === 'group') {
+			$mode = 'single_actor';
+			$single_actor = $this->inquiry_info->getSubgroup($viewer_actor_data['actor']);
+		} else if ($viewer_collaboration === 'group' && $activity_collaboration === 'individual') {
+			$mode = 'shared_within_group';
+			$group = $this->inquiry_info->getSubgroup($viewer_actor_data['actor']);
+			$group_members = nquire_group_get_member_uids($group, TRUE);
+		} else if ($viewer_collaboration === 'all' && $activity_collaboration === 'individual') {
+			$mode = 'shared_with_inquiry';
+			$all_share_requisite = 'individual_all';
+		} else if ($viewer_collaboration === 'all' && $activity_collaboration === 'group') {
+			$mode = 'shared_with_inquiry';
+			$all_share_requisite = 'group_all';
 		}
-	}
 
-	private function load_activities() {
-		$this->activities = array();
 
-		foreach ($this->phases as $phase_nid => $data) {
-			$activity_nids = pi_get_activities_for_phase($phase_nid);
-			foreach ($activity_nids as $activity_nid) {
-				$item = array();
-				$item['node'] = node_load($activity_nid);
-				$item['collaboration'] = $data['node']->collaboration;
-				$item['phase_nid'] = $data['node']->nid;
-				$item['script_activity'] = TRUE;
-
-				if ($this->inquiry['access']) {
-					switch ($item['collaboration']) {
-						case 'individual':
-							$item['access'] = $data['access'];
-							break;
-						case 'group':
-							$item['access'] = $this->subgroup ? $this->max_access_for_user_roles($this->roles['subgroup'], $activity_nid, $data['access']) : FALSE;
-							break;
-						default:
-							$item['access'] = $this->max_access_for_user_roles($this->roles['inquiry'], $activity_nid, $data['access']);
-							break;
-					}
-				} else {
-					$item['access'] = FALSE;
-				}
-				$this->phases[$phase_nid]['activities'][$activity_nid] = $item;
-				$this->activities[$activity_nid] = $item;
-			}
-		}
-	}
-
-	private function max_access_for_user_roles($user_roles, $activity_nid, $base_access = 'edit') {
-		if (count($this->inquiry['roles']) === 0) {
-			return $base_access;
-		} else {
-			$access = FALSE;
-			foreach ($this->inquiry['roles'] as $role) {
-				if (in_array($role['id'], $user_roles)) {
-					if (isset($role['activities'][$activity_nid])) {
-						$value = $role['activities'][$activity_nid];
-						if ($this->access_values[$value] > $this->access_values[$access]) {
-							$access = $value;
-						}
+		$sharing_actors = array();
+		switch ($mode) {
+			case 'single_actor';
+				$sharing_actors[] = $single_actor;
+				break;
+			case 'shared_within_group';
+				$share_query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
+				foreach ($group_members as $uid) {
+					$row = db_fetch_array(db_query($share_query, $activity_nid, $uid));
+					$share = !$row || $row['share'] !== 'individual_no';
+					if ($share) {
+						$sharing_actors[] = $uid;
 					}
 				}
-			}
-
-			if ($this->access_values[$access] > $this->access_values[$base_access]) {
-				$access = $base_access;
-			}
-
-			return $access;
-		}
-	}
-
-	function get_inquiry_node() {
-		return $this->inquiry['node'];
-	}
-
-	function get_inquiry_nid() {
-		return $this->inquiry['nid'];
-	}
-
-	function has_inquiry_access() {
-		return $this->inquiry['access'];
-	}
-
-	function has_phase_access($phase_nid) {
-		return $this->phases[$phase_nid]['access'];
-	}
-
-	function get_phases() {
-		return $this->phases;
-	}
-
-	function get_phase($nid) {
-		return $this->phases[$nid];
-	}
-
-	function get_activity($nid) {
-		if (!isset($this->activities[$nid])) {
-			$parent_nid = pi_activity_get_parent_activity($nid);
-			if (isset($this->activities[$parent_nid])) {
-				$parent_data = $this->activities[$parent_nid];
-				$activity_node = node_load($nid);
-				$child_data = array(
-						'node' => $activity_node,
-						'collaboration' => $parent_data['collaboration'],
-						'phase_nid' => $parent_data['phase_nid'],
-						'access' => $parent_data['access'],
-						'script_activity' => $activity_node->script_activity,
-				);
-				$this->activities[$nid] = $child_data;
-			}
-		}
-
-		return $this->activities[$nid];
-	}
-
-	function get_use_groups() {
-		return $this->use_groups;
-	}
-
-	function get_subgroup() {
-		return $this->subgroup;
-	}
-
-	function get_uid() {
-		return $this->uid;
-	}
-
-	function get_current_phase_nid() {
-		return $this->current_path->phase_id;
-	}
-
-	function get_current_activity_nid() {
-		return $this->current_path->activity_id;
-	}
-
-	function get_activity_by_type($type) {
-		foreach ($this->phases as $phase_data) {
-			foreach ($phase_data['activities'] as $activity_data) {
-				if ($activity_data['node']->activity_type === $type) {
-					return $activity_data;
+				break;
+			case 'shared_with_inquiry':
+				$share_query = "SELECT actor FROM pi_activity_share WHERE activity_id=%d AND share='%s'";
+				$result = db_query($share_query, $activity_nid, $all_share_requisite);
+				while ($row = db_fetch_array($result)) {
+					$sharing_actors[] = $row['actor'];
 				}
-			}
 		}
 
-		return NULL;
-	}
+		$nids = array();
 
-	function get_activities_by_type($type) {
-		$activities = array();
-		if ($this->phases) {
-			foreach ($this->phases as $phase_data) {
-				foreach ($phase_data['activities'] as $activity_data) {
-					if ($activity_data['node']->activity_type === $type) {
-						$activities[] = $activity_data;
-					}
-				}
-			}
-		}
-
-		return $activities;
-	}
-
-	function get_user_share_policy() {
-		if (!isset($this->share_policy)) {
-			$this->share_policy = array('structure' => array(), 'values' => array());
-			$query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
-
-			foreach ($this->phases as $pnid => $phase_data) {
-				$phase_policy = array(
-						'id' => $pnid,
-						'title' => check_plain($phase_data['node']->title) . ' <small>(' . $phase_data['node']->collaboration . ')</small>',
-						'activities' => array(),
-				);
-
-				$valid = TRUE;
-				switch ($phase_data['node']->collaboration) {
-					case 'individual':
-						$default = $this->use_groups ? 'individual_group' : 'individual_no';
-						$actor = $this->uid;
-						$not_editable = FALSE;
-						break;
-					case 'group':
-						if ($this->subgroup) {
-							$default = 'group_no';
-							$actor = $this->subgroup;
-							$not_editable = !$this->user_is_subgroup_owner();
-						} else {
-							$valid = FALSE;
-						}
-						break;
-					default:
-						$default = 'all_no';
-						$actor = $this->inquiry['node']->actor_gid;
-						$not_editable = !$this->user_is_inquiry_owner();
-						break;
-				}
-
-				foreach ($phase_data['activities'] as $anid => $activity_data) {
-					if ($valid) {
-						$row = db_fetch_array(db_query($query, $anid, $actor));
-						$this->share_policy['values'][$anid] = $row ? $row['share'] : $default;
-					}
-
-					$activity_policy = array(
-							'id' => $anid,
-							'title' => check_plain($activity_data['node']->title),
-							'attributes' => array(
-									'not_editable' => $not_editable || !$valid,
-									'collaboration' => $phase_data['node']->collaboration,
-									'use_groups' => $this->use_groups ? '1' : '0',
-							),
-					);
-
-					$phase_policy['activities'][] = $activity_policy;
-				}
-
-				$this->share_policy['structure'][] = $phase_policy;
-			}
-		}
-
-		return $this->share_policy;
-	}
-
-	function user_is_subgroup_owner() {
-		return $this->subgroup_node && $this->subgroup_node->uid === $this->uid;
-	}
-
-	function user_is_inquiry_owner() {
-		return $this->inquiry && $this->inquiry['node']->uid === $this->uid;
-	}
-
-	function get_all_stages_structure() {
-		if (!isset($this->all_stages_structure)) {
-			$this->all_stages_structure = array('structure' => array(), 'values' => array());
-			$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node}.vid={pi_stage}.vid WHERE inquiry_nid=%d";
-			$result = db_query($query, $this->inquiry['nid']);
+		$query = "SELECT filtered_pi_activity_node.nid FROM "
+						. "(SELECT * FROM pi_activity_node WHERE actor=%d) AS filtered_pi_activity_node "
+						. "INNER JOIN (SELECT node.nid as activity_node_nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE pi_activity.nid=%d) AS activity_node_table "
+						. "ON filtered_pi_activity_node.activity_id=activity_node_table.activity_node_nid ";
+		foreach ($sharing_actors as $actor) {
+			$result = db_query($query, $actor, $activity_nid);
 			while ($row = db_fetch_array($result)) {
-				$stage = node_load($row['nid']);
-				$this->all_stages_structure['values'][] = array(
-						'id' => $stage->nid,
-						'title' => check_plain($stage->title),
-						'values' => $stage->phases,
-				);
-			}
-
-			foreach ($this->phases as $pnid => $phase_data) {
-				$phase_policy = array(
-						'id' => $pnid,
-						'title' => check_plain($phase_data['node']->title),
-						'activities' => array(),
-				);
-
-				foreach ($phase_data['activities'] as $anid => $activity_data) {
-					$activity_policy = array(
-							'id' => $anid,
-							'title' => check_plain($activity_data['node']->title),
-					);
-
-					$phase_policy['activities'][] = $activity_policy;
-				}
-				$this->all_stages_structure['structure'][] = $phase_policy;
+				$nids[] = $row['nid'];
 			}
 		}
 
-		return $this->all_stages_structure;
-	}
-
-	function get_current_stage() {
-		return $this->current_stage;
+		return $nids;
 	}
 
 }
-*/
