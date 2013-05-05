@@ -123,6 +123,25 @@ function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
 	return $node;
 }
 
+function pi_sort_key_answers_create_contribution_view($node) {
+	$sorted_key_answers = pi_sort_key_answers_get_answers($node);
+	$sorted_key_answer_nodes = array_map(function($nid) {
+						return node_load($nid);
+					}, $sorted_key_answers);
+
+	$key_questions = array();
+
+	foreach ($sorted_key_answer_nodes as $answer) {
+		if (!isset($key_questions[$answer->key_question_id])) {
+			$key_question = node_load($answer->key_question_id);
+			$key_questions[$answer->key_question_id] = array('data' => check_plain($key_question->key_question), 'children' => array());
+		}
+		$key_questions[$answer->key_question_id]['children'][] = array('data' => check_plain($answer->key_answer));
+	}
+
+	return theme('pi_sort_key_answers', $node, FALSE, $key_questions);
+}
+
 function theme_pi_sort_key_answers($node, $teaser, $key_questions_to_show) {
 	$output = '';
 
