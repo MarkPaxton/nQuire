@@ -1,42 +1,55 @@
 <?php
 
 class PiInfo {
+
 	private $path;
 	private $inquiries;
-	
+	private $content;
+
 	function __construct() {
 		$this->path = new PiInquiryPath();
 		$this->inquiries = array();
-	}	
-	
+		$this->content= array();
+	}
+
 	function getCurrentPath() {
 		return $this->path;
 	}
-	
+
 	function getInquiryInfo($inquiry_id) {
 		if (!isset($this->inquiries[$inquiry_id])) {
 			$this->inquiries[$inquiry_id] = new PiInquiryInfo($inquiry_id);
 		}
-		
+
 		return $this->inquiries[$inquiry_id];
+	}
+	
+	function getContentManager($inquiry_id) {
+		if (!isset($this->content[$inquiry_id])) {
+			$this->content[$inquiry_id] = new PiInquiryContent($this->getInquiryInfo($inquiry_id));
+		}
+		
+		return $this->content[$inquiry_id];
 	}
 }
 
 class PiInquiryPath {
+
 	private $inquiry_nid;
 	private $phase_nid;
 	private $activity_nid;
-	
+
 	function __construct() {
 		$path = get_inquiry_details_from_current_path();
 		$this->activity_nid = $path->activity_id;
 		$this->phase_nid = $path->phase_id;
 		$this->inquiry_nid = $path->inquiry_id;
 	}
-	
+
 }
 
 class PiInquiryInfo {
+
 	private $inquiry;
 	private $phases;
 	private $phases_activities;
@@ -44,67 +57,160 @@ class PiInquiryInfo {
 	private $activities;
 	private $use_groups;
 	private $collaboration_level;
-	
+
 	function __construct($inquiry_id) {
 		$this->inquiry = node_load($inquiry_id);
-		
+
 		$this->phases = array();
 		$this->activity_phase = array();
 		$this->phases_activities = array();
 		$this->activities = array();
-		
+
 		$this->collaboration_level = 'individual';
-		
+
 		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry['nid']);
 		foreach ($phase_nids as $phase_nid) {
 			$phase = node_load($phase_nid);
-			$this->phases[$phase_nid] = $phase;			
-			
+			$this->phases[$phase_nid] = $phase;
+
 			if ($phase->collaboration === 'group') {
 				$this->use_groups = TRUE;
 				if ($this->collaboration_level === 'individual') {
 					$this->collaboration_level = 'group';
-				} 
+				}
 			} else if ($phase->collaboration === 'all') {
 				$this->collaboration_level = 'all';
 			}
-			
+
 			$this->phases_activities[$phase_nid] = array();
 			$activity_nids = pi_get_activities_for_phase($phase_nid);
-			foreach($activity_nids as $activity_nid) {
+			foreach ($activity_nids as $activity_nid) {
 				$activity = node_load($activity_nid);
 				$this->activities[$activity_nid] = $activity;
 				$this->phases_activities[$phase_nid][$activity_nid] = $activity;
-				$this->activity_phase[$activity_nid] =  $phase_nid;
+				$this->activity_phase[$activity_nid] = $phase_nid;
 			}
-		}		
-	}	
-	
-	
+		}
+	}
+
+	public function getSubgroup($uid) {
+		return pi_inquiry_groupings_get_user_subgroup($this->inquiry, $uid);
+	}
+
+	public function getActivity($activity_nid) {
+		return $this->activities[$activity_nid];
+	}
+
+	public function getPhaseActor($phase_nid, $uid) {
+		$phase = $this->getPhase($phase_nid);
+
+		switch ($phase->collaboration) {
+			case 'individual':
+				$actor = $uid;
+				break;
+			case 'group':
+				$actor = $this->getSubgroup($uid);
+				break;
+			default:
+				$actor = $this->inquiry->actor_gid;
+				break;
+		}
+		return array('collaboration' => $phase->collaboration, 'actor' => $actor);
+	}
+
+	public function getActivityActor($activity_nid, $uid) {
+		return $this->getPhaseActor($this->activity_phase[$activity_nid], $uid);
+	}
+
 }
 
 class PiInquiryContent {
+
 	private $inquiry_info;
-	
+
 	public function __construct($inquiry_info) {
 		$this->inquiry_info = $inquiry_info;
 	}
-	
-	public function getContent($activity_nid, $uid) {
+
+	public function getContent($activity_nid, $uid, $try_to_create = FALSE) {
+
+		$activity = $this->inquiry_info->getActivity($activity_nid);
+		if ($activity->referenced_node) {
+			return $activity->referenced_node;
+		}
+
+		$actor_data = $this->inquiry_info->getActivityActor($activity_nid, $uid);
+		$query = "SELECT nid FROM {pi_activity_node} WHERE activity_id=%d AND collaboration='%s' AND actor=%d";
+
+
+		$row = db_fetch_array(db_query($query, $actor_data['collaboration'], $actor_data['actor']));
+		if ($row) {
+			$nid = $row['nid'];
+			return $nid;
+		} else if ($try_to_create) {
+			$new_node = pi_activity_create_content_on_first_visit($activity_data['node'], $access_data->get_uid());
+			if ($new_node) {
+				return $new_node->nid;
+			}
+		}
+
+
+		return FALSE;
+	}
+
+	private function createContentOnVisit($activity_nid, $uid) {
+		$activity = $this->inquiry_info->getActivity($activity_nid);
+
+		$types = array(
+				'pi_methodology',
+				'pi_data_spreadsheet',
+				'pi_sort_data',
+				'pi_sort_key_answers',
+				'pi_sort_key_questions',
+				'pi_sort_result_presentations',
+		);
+		if (in_array($activity->activity_type, $types)) {
+			$node = new stdClass();
+			$node->uid = $uid;
+			$node->type = $activity->activity_type;
+			$node->body = '';
+			node_save($node);
+
+			$this->linkContentWithActivity($node, $activity_nid, $uid);
+		}
+	}
+
+	public function linkContentWithActivity($content_node, $activity_nid, $uid) {
+		$actor_data = $this->inquiry_info->getActivityActor($activity_nid, $uid);
+
+		$activity_node = array(
+				'activity_id' => $activity_nid,
+				'nid' => $content_node->nid,
+				'collaboration' => $actor_data['collaboration'],
+				'actor' => $actor_data['actor'],
+		);
+
+		drupal_write_record('pi_activity_node', $activity_node);
+
+		$activity = $this->inquiry_info->getActivity($activity_nid);
+		if (!$activity->script_activity) {
+			$query = "UPDATE pi_activity SET referenced_node=%d WHERE nid=%d";
+			db_query($query, $content_node->nid, $activity_nid);
+		}
+	}
+
+	public function getContentFromFor($activity_nid, $using_activity_id, $using_uid) {
 		
 	}
-	
-	public function getContentFrom($activity_nid, $using_activity_id, $using_uid) {
-		
-	}
-	
+
 	public function getSharedContent($activity_nid) {
 		
 	}
-	
+
 	public function getContributionContent($activity_nid) {
 		
 	}
+
 }
 
 /*
