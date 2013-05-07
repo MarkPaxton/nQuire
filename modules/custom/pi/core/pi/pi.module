@@ -70,7 +70,7 @@ function pi_menu() {
 			'access callback' => 'pi_inquiry_phase_view_access',
 			'type' => MENU_CALLBACK,
 	);
-	
+
 	$items['phase/%node/shared'] = array(
 			'title' => 'Phase',
 			'page callback' => 'pi_inquiry_phase_shared_view',
@@ -82,7 +82,6 @@ function pi_menu() {
 	);
 	return $items;
 }
-
 
 function pi_nquire_admin() {
 	$output = '';
@@ -300,10 +299,6 @@ function pi_get_activities_for_phase_and_type($phase_nid, $type) {
 	return $activities;
 }
 
-
-
-
-
 function pi_inquiry_inquiry_view_access() {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	return pi_inquiry_structure_view_access() || $access_data->get_inquiry_node()->participants_selection === 'anyone' ||
@@ -318,4 +313,34 @@ function pi_inquiry_structure_view_access() {
 function pi_inquiry_phase_view_access($phase) {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	return $access_data->has_phase_access($phase->nid);
+}
+
+function pi_info() {
+	static $pi_info = NULL;
+
+	if (!$pi_info) {
+		module_load_include('inc', 'pi', 'pi.info');
+		$pi_info = new PiInfo();
+	}
+
+	return $pi_info;
+}
+
+function pi_access_to_node($op, $node) {
+	global $user;
+	switch ($node->type) {
+		case 'pi_key_questions':
+		case 'pi_key_answers':
+		case 'pi_data':
+		case 'pi_result_presentations':
+			if ($op === 'delete' && $user->uid === $node->uid) {
+				return TRUE;
+			} else {
+				return FALSE;
+			}
+			break;
+		default:
+			return FALSE;
+			break;
+	}
 }

@@ -13,7 +13,7 @@
  */
 function pi_activity_get_sorted_node_type($node_type) {
 	$generated_node_type = null;
-	// Then get the type of data that activity content module provides
+// Then get the type of data that activity content module provides
 	$info_function_name = $node_type . '_node_info';
 	if (function_exists($info_function_name)) {
 		$node_info = $info_function_name();
@@ -34,7 +34,7 @@ function pi_activity_get_phase_nid($activity_nid) {
 	$activity = node_load($activity_nid);
 	if (pi_check_is_node_of_type($activity, 'pi_activity')) {
 		$return_value = $activity->phase_nid;
-		//Check this is a valid phase...
+//Check this is a valid phase...
 		if (!pi_check_node_exists_and_is_of_type($return_value, 'pi_phase')) {
 			drupal_set_message(t("Can't get phase for activity !nid as it does not exist, or is not a valid phase.", array('!nid' => $activity_nid)), 'error');
 		}
@@ -66,11 +66,10 @@ function pi_activity_get_activity_nid_for_content_nid($content_nid) {
 	$activity_nid = null;
 	$query = "SELECT `activity_id` FROM {pi_activity_node} WHERE `nid` = %d";
 	$result = db_fetch_object(db_query($query, $content_nid));
-	if ($result != false) {
-		if (isset($result->activity_id)) {
-			$activity_nid = $result->activity_id;
-		}
+	if ($result) {
+		$activity_nid = $result->activity_id;
 	}
+	
 	return $activity_nid;
 }
 
@@ -187,5 +186,4 @@ function make_add_activity_link($activity_id) {
 		return '';
 	}
 }
-
 ?>

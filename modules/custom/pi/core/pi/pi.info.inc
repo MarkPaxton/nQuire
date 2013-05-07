@@ -5,15 +5,25 @@ class PiInfo {
 	private $path;
 	private $inquiries;
 	private $content;
+	private $access;
 
 	function __construct() {
 		$this->path = new PiInquiryPath();
 		$this->inquiries = array();
 		$this->content = array();
+		$this->access = array();
 	}
 
 	function getCurrentPath() {
 		return $this->path;
+	}
+
+	function getCurrentInquiryInfo() {
+		if ($this->path->inquiry_nid) {
+			return $this->getInquiryInfo($this->path->inquiry_nid);
+		} else {
+			return FALSE;
+		}
 	}
 
 	function getInquiryInfo($inquiry_id) {
@@ -32,13 +42,22 @@ class PiInfo {
 		return $this->content[$inquiry_id];
 	}
 
+	function getAccess($inquiry_nid, $uid) {
+		$key = "{$uid}:{$inquiry_nid}";
+		if (!isset($this->access[$key])) {
+			$this->access[$key] = new PiInquiryAccess($this->getInquiryInfo($inquiry_nid), $uid);
+		}
+
+		return $this->access[$key];
+	}
+
 }
 
 class PiInquiryPath {
 
-	private $inquiry_nid;
-	private $phase_nid;
-	private $activity_nid;
+	public $inquiry_nid;
+	public $phase_nid;
+	public $activity_nid;
 
 	function __construct() {
 		$path = get_inquiry_details_from_current_path();
@@ -53,23 +72,40 @@ class PiInquiryInfo {
 
 	private $inquiry;
 	private $phases;
-	private $phases_activities;
+	private $phase_activities;
 	private $activity_phase;
 	private $activities;
 	private $use_groups;
 	private $collaboration_level;
+	private $stage;
+	private $roles;
 
 	function __construct($inquiry_id) {
 		$this->inquiry = node_load($inquiry_id);
+		$this->roles = nquire_commons_decode_data($this->inquiry->roles);
 
 		$this->phases = array();
 		$this->activity_phase = array();
-		$this->phases_activities = array();
+		$this->phase_activities = array();
 		$this->activities = array();
 
 		$this->collaboration_level = 'individual';
 
-		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry['nid']);
+		$query = "SELECT stage_id FROM {pi_stage_current} WHERE inquiry_id=%d";
+		$row = db_fetch_array(db_query($query, $this->inquiry->nid));
+		$this->stage = FALSE;
+		if ($row) {
+			$this->stage = node_load($row['stage_id']);
+		} else {
+			$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node}.vid={pi_stage}.vid WHERE {pi_stage}.inquiry_nid=%d ORDER BY {pi_stage}.weight ASC LIMIT 1";
+			$row = db_fetch_array(db_query($query, $this->inquiry->nid));
+			if ($row) {
+				$this->stage = node_load($row['nid']);
+			}
+		}
+
+
+		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry->nid);
 		foreach ($phase_nids as $phase_nid) {
 			$phase = node_load($phase_nid);
 			$this->phases[$phase_nid] = $phase;
@@ -83,23 +119,47 @@ class PiInquiryInfo {
 				$this->collaboration_level = 'all';
 			}
 
-			$this->phases_activities[$phase_nid] = array();
+			$this->phase_activities[$phase_nid] = array();
 			$activity_nids = pi_get_activities_for_phase($phase_nid);
 			foreach ($activity_nids as $activity_nid) {
 				$activity = node_load($activity_nid);
 				$this->activities[$activity_nid] = $activity;
-				$this->phases_activities[$phase_nid][$activity_nid] = $activity;
+				$this->phase_activities[$phase_nid][$activity_nid] = $activity;
 				$this->activity_phase[$activity_nid] = $phase_nid;
 			}
 		}
+	}
+	
+	public function getInquiryNid() {
+		return $this->inquiry->nid;
+	}
+	
+	public function getInquiryOwner() {
+		return $this->inquiry->uid;
+	}
+
+	public function getInquiryActorGid() {
+		return $this->inquiry->actor_gid;
 	}
 
 	public function getSubgroup($uid) {
 		return pi_inquiry_groupings_get_user_subgroup($this->inquiry, $uid);
 	}
 
+	public function getCurrentStage() {
+		return $this->stage;
+	}
+
 	public function getActivity($activity_nid) {
 		return $this->activities[$activity_nid];
+	}
+	
+	public function getPhases() {
+		return $this->phases;
+	}
+	
+	public function getActivitiesForPhase($phase_nid) {
+		return $this->phase_activities[$phase_nid];
 	}
 
 	public function getPhaseActor($phase_nid, $uid) {
@@ -322,6 +382,117 @@ class PiInquiryContent {
 		}
 
 		return $nids;
+	}
+
+}
+
+class PiInquiryAccess {
+
+	private $inquiry_info;
+	private $uid;
+	private $inquiry_roles;
+	private $subgroup;
+	private $group_roles;
+	private $inquiry_access;
+	private $item_access;
+
+	public function __construct($inquiry_info, $uid) {
+		$this->inquiry_info = $inquiry_info;
+		$this->uid = $uid;
+
+		$this->inquiry_access = $this->inquiry_info->getInquiryOwner()->uid == $uid || nquire_group_get_user_status_in_group($this->inquiry_info->getInquiryActorGid(), $this->uid) === 'member';
+
+		$this->item_access = array();
+
+		foreach ($this->inquiry_info->getPhases() as $phase_node) {
+			$phase_nid = $phase_node->nid;
+			if ($this->inquiry_access) {
+				$stage = $this->inquiry_info->getCurrentStage();
+				if ($stage && isset($stage->phases[$phase_nid])) {
+					$phase_access = $stage->phases[$phase_nid];
+				} else {
+					$phase_access = 'edit';
+				}
+			} else {
+				$phase_access = 'hidden';
+			}
+			$this->item_access[$phase_nid] = $phase_access;
+
+			foreach ($this->inquiry_info->getActivitiesForPhase($phase_nid) as $activity_node) {
+				$activity_nid = $activity_node->nid;
+				switch ($phase_node->collaboration) {
+					case 'individual';
+						$this->item_access[$activity_nid] = $phase_access;
+						break;
+					case 'group':
+						$this->item_access[$activity_nid] = $this->subgroup ? $this->maxAccessForRoles($this->group_roles, $activity_nid, $phase_access) : 'hidden';
+						break;
+					default:
+						$this->item_access[$activity_nid] = $this->maxAccessForRoles($this->inquiry_roles, $activity_nid, $phase_access);
+						break;
+				}
+			}
+		}
+	}
+	
+	public function getAccess($item_nid) {
+		return $this->item_access[$item_nid];
+	}
+	
+	public function getInquiryRoles() {
+		if (!isset($this->inquiry_roles)) {
+			$this->inquiry_roles = nquire_group_get_user_roles($this->inquiry['node']->actor_gid, $this->uid);
+		}
+		return $this->inquiry_roles;
+	}
+
+	public function getSubgroup() {
+		if (!isset($this->subgroup)) {
+			$this->subgroup = $this->inquiry_info->getSubgroup($this->uid);
+		}
+		return $this->subgroup;
+	}
+
+	public function getGroupRoles() {
+		if (!isset($this->group_roles)) {
+			$this->group_roles = nquire_group_get_user_roles($this->inquiry_info->getInquiryActorGid(), $this->uid);
+		}
+		return $this->group_roles;
+	}
+
+	private function maxAccess($a, $b) {
+		if ($a === 'edit' || $b === 'edit') {
+			return 'edit';
+		} else if ($a === 'view' || $b === 'view') {
+			return 'view';
+		} else {
+			return 'hidden';
+		}
+	}
+
+	private function minAccess($a, $b) {
+		if ($a === 'edit' || $b === 'edit') {
+			return 'edit';
+		} else if ($a === 'view' || $b === 'view') {
+			return 'view';
+		} else {
+			return 'hidden';
+		}
+	}
+
+	private function maxAccessForRoles($user_roles, $activity_nid, $base_access) {
+		if (count($this->inquiry['roles']) === 0) {
+			return $base_access;
+		} else {
+			$access = 'hidden';
+			foreach ($this->inquiry_info->getRoles() as $role) {
+				if (in_array($role['id'], $user_roles) && isset($role['activities'][$activity_nid])) {
+					$access = $this->maxAccess($access, $role['activities'][$activity_nid]);
+				}
+			}
+
+			return $this->minAccess($access, $base_access);
+		}
 	}
 
 }

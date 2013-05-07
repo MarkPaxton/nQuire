@@ -11,118 +11,85 @@
  * Implementation of pi_result_presentations_install().
  */
 function pi_result_presentations_install() {
-  // Create tables.
-  drupal_install_schema('pi_result_presentations');
+	// Create tables.
+	drupal_install_schema('pi_result_presentations');
 
-  variable_set("og_content_type_usage_pi_result_presentations", 'group_post');
-  //Options are status, promote, sticky, revision
-  variable_set("node_options_pi_result_presentations", array('status', 'revision'));
-  variable_set("comment_pi_result_presentations", COMMENT_NODE_DISABLED);
-  variable_set("upload_pi_result_presentations", 0);
+	variable_set("og_content_type_usage_pi_result_presentations", 'group_post');
+	//Options are status, promote, sticky, revision
+	variable_set("node_options_pi_result_presentations", array('status', 'revision'));
+	variable_set("comment_pi_result_presentations", COMMENT_NODE_DISABLED);
+	variable_set("upload_pi_result_presentations", 0);
 
-  $activities = variable_get('pi_activities', array());
-  $activities['pi_result_presentations'] = 'Result presentations';
-  variable_set('pi_activities', $activities);
-
+	$activities = variable_get('pi_activities', array());
+	$activities['pi_result_presentations'] = 'Result presentations';
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_result_presentations_uninstall().
  */
 function pi_result_presentations_uninstall() {
-  // Remove tables.
-  drupal_uninstall_schema('pi_result_presentations');
+	// Remove tables.
+	drupal_uninstall_schema('pi_result_presentations');
 
-  variable_del("og_content_type_usage_pi_result_presentations");
-  variable_del("node_options_pi_result_presentations");
-  variable_del("comment_pi_result_presentations");
-  variable_del("upload_pi_result_presentations");
+	variable_del("og_content_type_usage_pi_result_presentations");
+	variable_del("node_options_pi_result_presentations");
+	variable_del("comment_pi_result_presentations");
+	variable_del("upload_pi_result_presentations");
 
-  $activities = variable_get('pi_activities', array());
-  unset($activities['pi_result_presentations']);
-  variable_set('pi_activities', $activities);
-
+	$activities = variable_get('pi_activities', array());
+	unset($activities['pi_result_presentations']);
+	variable_set('pi_activities', $activities);
 }
 
 /**
  * Implementation of pi_questions_schema().
  */
 function pi_result_presentations_schema() {
-  $schema = array(
-      'pi_result_presentations' => array(
-          'description' => t('PI result presentations'),
-          'fields' => array(
-              'nid' => array(
-                  'type' => 'int',
-                  'unsigned' => TRUE,
-                  'not null' => TRUE,
-                  'default' => 0,
-                  'description' => 'node id'),
-              'vid' => array(
-                  'type' => 'int',
-                  'unsigned' => TRUE,
-                  'not null' => TRUE,
-                  'default' => 0,
-                  'description' => 'The current vid version identifier'),
-              'key_question_id' => array(
-                  'type' => 'int',
-                  'unsigned' => TRUE,
-                  'not null' => TRUE,
-                  'size' => 'small',
-                  'default' => 0,
-                  'description' => 'The nid of the related key question node.'),
-              'data_set_activity_nid' => array(
-                  'type' => 'int',
-                  'unsigned' => TRUE,
-                  'not null' => TRUE,
-                  'size' => 'small',
-                  'default' => 0,
-                  'description' => 'The nid of the pi_sort_data activity that identifies the used data set.'),
-          ),
-          'indexes' => array(
-              'nid' => array('nid'),
-              'vid' => array('vid'),
-          ),
-      ),
-      'pi_result_presentations_measures' => array(
-          'description' => t('PI result presentations measures'),
-          'fields' => array(
-              'nid' => array(
-                  'type' => 'int',
-                  'unsigned' => TRUE,
-                  'not null' => TRUE,
-                  'default' => 0,
-                  'description' => 'node id'),
-              'vid' => array(
-                  'type' => 'int',
-                  'unsigned' => TRUE,
-                  'not null' => TRUE,
-                  'default' => 0,
-                  'description' => 'The current vid version identifier'),
-              'measure_key' => array(
-                  'type' => 'text',
-                  'size' => 'normal',
-                  'not null' => TRUE,
-                  'description' => 'The key of an available measure:submeasure'),
-              'status' => array(
-                  'type' => 'text',
-                  'size' => 'normal',
-                  'not null' => TRUE,
-                  'description' => 'Either selected or unselected'),
-              'weight' => array(
-                  'type' => 'int',
-                  'size' => 'medium',
-                  'unsigned' => FALSE,
-                  'not null' => TRUE,
-                  'default' => 0,
-                  'description' => 'The position of the available measure'),
-          ),
-          'indexes' => array(
-              'nid' => array('nid'),
-              'vid' => array('vid'),
-          ),
-      ),
-  );
 
-  return $schema;
+	$schema['pi_result_presentations'] = array(
+			'description' => t('PI result presentations'),
+			'fields' => array(
+					'nid' => array(
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'default' => 0,
+							'description' => 'node id'),
+					'vid' => array(
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'default' => 0,
+							'description' => 'The current vid version identifier'),
+					'data_activity_nid' => array(
+							'description' => 'The nid of the dat activity.',
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'size' => 'small',
+							'default' => 0),
+					'chart_type' => array(
+							'type' => 'text',
+							'size' => 'small',
+							'not null' => TRUE,
+							'default' => '',
+							'description' => 'Either histogram or line-bar'),
+					'abscissa' => array(
+							'type' => 'text',
+							'size' => 'small',
+							'not null' => TRUE,
+							'default' => '',
+							'description' => 'The nid of the abscissa available measure'),
+					'ordinate' => array(
+							'type' => 'text',
+							'not null' => TRUE,
+							'size' => 'medium',
+							'default' => '',
+							'description' => 'The nids of the ordinate available measures'),
+			),
+			'indexes' => array('nid' => array('nid'), 'vid' => array('vid')),
+	);
+
+	return $schema;
 }

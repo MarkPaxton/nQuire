@@ -103,7 +103,7 @@ function pi_data_spreadsheet_theme() {
 
 function theme_pi_data_spreadsheet_grid($spreadsheet) {
 
-	_pi_data_spreadsheet_generate_spreadsheet_data_javascript($spreadsheet['sessionKey'], $spreadsheet['bookName'], $spreadsheet['readonly'] ? 'true' : 'false');
+	_pi_data_spreadsheet_generate_spreadsheet_data_javascript($spreadsheet);
 
 	nquire_commons_load_javascript_support();
 	drupal_add_js(drupal_get_path('module', 'pi_data_spreadsheet') . '/js/pi_data_spreadsheet_grid.js');
@@ -116,37 +116,38 @@ function theme_pi_data_spreadsheet_grid($spreadsheet) {
 
 	$output = '<div id="pi_data_spreadsheet_grid_container" style="height: 600px; width: 100%;" ></div>';
 
-
 	return $output;
 }
 
 function _pi_data_spreadsheet_get_spreadsheet(&$node, $editable) {
-	$key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/' . ($editable ? 'editgrid_api_app_key' : 'editgrid_api_app_ro_key')));
-	if ($editable && _pi_data_spreadsheet_create_spreadsheet($node, $key)) {
+	$key = trim(file_get_contents(drupal_get_path('module', 'pi_data_spreadsheet') . '/data/editgrid_api_app_key'));
+
+	$bt = _pi_data_spreadsheet_create_spreadsheet_token($node, $key, $editable);
+
+	if ($editable) {
 		_pi_data_spreadsheet_update_data($node, $key, $node->body);
 	}
 
 	$result = array(
 			'sessionKey' => $key,
 			'bookName' => $node->body,
-			'readonly' => !$editable,
+			'bt' => $bt,
 	);
 	return $result;
 }
 
-function _pi_data_spreadsheet_generate_spreadsheet_data_javascript($session_key, $book_name, $readonly) {
+function _pi_data_spreadsheet_generate_spreadsheet_data_javascript($spreadsheet) {
 	$module = "{"
 					. "  init: function() {"
-					. "    this.sessionKey = '{$session_key}';"
-					. "    this.bookId = '{$book_name}';"
-					. "    this.readonly = $readonly;"
+					. "    this.bookAccessToken = '{$spreadsheet['bt']}';"
+					. "    this.bookId = '{$spreadsheet['bookName']}';"
 					. "  }"
 					. "}";
 
 	nquire_commons_inject_inline_javascript_module('PiDataSpreadsheetSessionKey', $module);
 }
 
-function _pi_data_spreadsheet_create_spreadsheet(&$node, $key) {
+function _pi_data_spreadsheet_create_spreadsheet_token(&$node, $key, $editable) {
 
 	include_once 'editgrid/editgrid.php';
 
@@ -178,7 +179,10 @@ function _pi_data_spreadsheet_create_spreadsheet(&$node, $key) {
 		node_save($node);
 	}
 
-	return TRUE;
+	$result4 = $client->call("workbook.createAccessToken", array(workbook => "user/evilfer/$book_name", permission => ($editable ? "read-write" : "read")));
+	$token = $result4->getValue();
+
+	return $token;
 }
 
 function _pi_data_spreadsheet_update_data($node, $session_key, $book_name) {
@@ -233,13 +237,14 @@ function _pi_data_spreadsheet_update_data($node, $session_key, $book_name) {
 
 			foreach ($submeasures as $submeasure_key) {
 				$cells->addCell($x, 3, pi_data_tools_measure_plugin_submeasure_get_title_for_chart($submeasure_key) . ($required ? '*' : ''));
-
-				foreach ($data as $j => $datum) {
+				$y = 4;
+				foreach ($data as $datum) {
 					if (isset($datum->values[$measure_nid])) {
 						$value = $datum->values[$measure_nid];
 						pi_data_tools_measure_plugin_submeasure_get_value_for_chart($submeasure_key, $value);
-						$cells->addCell($x, 4 + $j, $value);
+						$cells->addCell($x, $y, $value);
 					}
+					$y++;
 				}
 				$x++;
 			}

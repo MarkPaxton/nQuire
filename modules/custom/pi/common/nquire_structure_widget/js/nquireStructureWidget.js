@@ -51,10 +51,15 @@ $(function() {
           requires: []
         },
         spreadsheet: {
-          title: 'Data analysis',
+          title: 'Data spreadsheet analysis',
           multiplicity: '*',
           requires: []
-        }
+        },
+				analysedata : {
+          title: 'Data chart analysis',
+          multiplicity: '*',
+          requires: []
+				}
       },
       phase: {
         introduction: {
@@ -73,8 +78,12 @@ $(function() {
           title: 'Data gathering',
           activities: ['collectdata']
         },
-        analysedata: {
-          title: 'Data analysis',
+        chartanalysedata: {
+          title: 'Chart data analysis',
+          activities: ['analysedata']
+        },
+        spreadsheetanalysedata: {
+          title: 'Spreadsheet data analysis',
           activities: ['spreadsheet']
         },
         conclusions: {

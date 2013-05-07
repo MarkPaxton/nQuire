@@ -4,7 +4,6 @@
  * This is the page where the phases will be listed, e.g. with the octagon layout 
  */
 function pi_inquiry_inquiry_view($node) {
-	$access_data = pi_inquiry_groupings_get_access_data();
 	
 	$output = '';
 	
@@ -16,15 +15,20 @@ function pi_inquiry_inquiry_view($node) {
 }
 
 function pi_inquiry_structure_view($node) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-
+	global $user;
+	
+	$output = '';
+					
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	
 	$rows = array();
 
 
-	foreach ($access_data->get_phases() as $phase_nid => $phase_data) {
+	foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
 		$row = array();
-		$phase_title = check_plain($phase_data['node']->title);
-		if ($phase_data['access']) {
+		$phase_title = check_plain($phase_node->title);
+		if ($inquiry_access->getAccess($phase_nid) !== 'hidden') {
 			$row[] = l($phase_title, "phase/" . $phase_nid);
 		} else {
 			$row[] = $phase_title;

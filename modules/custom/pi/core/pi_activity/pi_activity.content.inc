@@ -310,7 +310,7 @@ function _pi_activity_get_shared_content_for_activity($inquiry_node, $activity_n
 		foreach ($sharing_actors as $actor) {
 			$result = db_query($query, $actor, $activity_node->nid, $child_type);
 			while ($row = db_fetch_array($result)) {
-				$nids[$actor] = $row['nid'];
+				$nids[] = $row['nid'];
 			}
 		}
 	}
