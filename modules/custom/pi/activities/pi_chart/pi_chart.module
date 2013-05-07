@@ -62,7 +62,7 @@ function pi_chart_create_png($activity_nid, $node) {
 		$headers[] = pi_data_tools_measure_plugin_submeasure_get_title_for_chart($submeasure_key);
 	}
 
-	$data_nids = pi_sort_data_get_all_data_for_use_in_content_nid($node->nid, $activity_nid);
+	$data_nids = pi_sort_data_get_all_data_for_use_in_content_nid($node->nid, $node->data_activity_nid);
 	$data = array_map(function($nid) {
 						return node_load($nid);
 					}, $data_nids);
@@ -70,9 +70,11 @@ function pi_chart_create_png($activity_nid, $node) {
 	$rows = array();
 	foreach ($data_nids as $nid) {
 		$data = node_load($nid);
+		$row = array();
 		foreach ($measures as $submeasure_key) {
 			$row[] = pi_data_tools_measure_plugin_submeasure_get_value_for_chart_from_data($submeasure_key, $data);
 		}
+		$rows[] = $row;
 	}
 
 	if ($node->chart_type == 'line-bar') {
