@@ -91,8 +91,8 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 	foreach ($charts as $chart_nid) {
 		$result_presentation_activity_id = pi_activity_get_activity_nid_for_content_nid($chart_nid);
 		$activity_link = pi_activity_build_link_for_child($activity_nid, $result_presentation_activity_id);
-		
-		$charts_to_show[$result_presentation_activity_id] = $activity_link;// .theme('pi_result_presentation', $nd);
+
+		$charts_to_show[$result_presentation_activity_id] = $activity_link; // .theme('pi_result_presentation', $nd);
 	}
 
 	$add_link = make_add_activity_link($activity_nid);
@@ -102,10 +102,14 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 	);
 
 	$node->content['pi_sort_result_presentations'] = array(
-			'#value' => theme('item_list', $charts_to_show),
+			'#value' => theme('pi_sort_result_presentations', $charts_to_show),
 			'#weight' => -1
 	);
 	return $node;
+}
+
+function pi_sort_result_presentations_create_contribution_view($node) {
+	return pi_sort_result_presentations_create_shared_view($node);
 }
 
 function pi_sort_result_presentations_create_shared_view($node) {
@@ -116,34 +120,26 @@ function pi_sort_result_presentations_create_shared_view($node) {
 		$result_presentation_activity_id = pi_activity_get_activity_nid_for_content_nid($chart_nid);
 		$activity = node_load($result_presentation_activity_id);
 		$activity_link = check_plain($activity->title);
-		
+
 		$charts_to_show[$result_presentation_activity_id] = $activity_link;
 	}
-	
-	return theme('item_list', $charts_to_show);
+
+	return theme('pi_sort_result_presentations', $charts_to_show);
 }
 
-function theme_pi_sort_result_presentations($node, $teaser, $result_presentations) {
+function theme_pi_sort_result_presentations($charts) {
 
-	$output = '';
-	$output = '<p>' . t('View and organise the presentations of your results.') . '</p>';
-	$list = array();
-
-	foreach ($result_presentations as $results) {
-		$title_for_row = $results['title'];
-		$description_for_row = $results['description'];
-
-		//$rows[] =	'<div style="padding-left:40px; text-indent: -40px;margin-bottom:6px;"><span style="font-size:115%;font-weight:bold;padding-right:10px;">' . $title_for_row . '</span>' .
-		//			'<div>' . $description_for_row . '</div>' .
-		//		'</div>';
-		$rows[] = array('data' => '<span class="heading">' . t($title_for_row) . '</span> ' . t($description_for_row), 'class' => 'activity');
+	$rows = array();
+	foreach ($charts as $nid => $text) {
+		$data = $text . theme('pi_result_presentations_nid', $nid);
+		$rows[] = array('data' => $data);
 	}
 
 	//only display form and submit button if there are some entries
 	if (count($rows) > 0) {
-		$output .= theme('item_list', $rows, NULL, 'ul', array('class' => 'activity'));
+		$output .= theme('item_list', $rows, NULL, 'ul');
 	} else {
-		$output .= "<p>No result presentations are available.</p>";
+		$output .= '<p>' . t('No result presentations are available.') . '</p>';
 	}
 	return $output;
 }

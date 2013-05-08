@@ -53,9 +53,9 @@ function pi_result_presentations_form(&$node, $form_state) {
 	} else {
 		$current_activity_nid = $form_state['values']['current_activity_nid'];
 	}
-	
+
 	$current_activity_node = node_load($current_activity_nid);
-	
+
 	$inquiry_info = pi_info()->getInquiryInfoForActivity($current_activity_nid);
 
 	$form['current_activity_nid'] = array(
@@ -269,19 +269,19 @@ function pi_result_presentations_theme() {
 			'pi_result_presentations' => array(
 					'arguments' => array('node', 'teaser'),
 			),
+			'pi_result_presentations_nid' => array(
+					'arguments' => array('nid'),
+			),
 	);
 }
 
-/**
- * implementation of theme_hook().
- */
-function theme_pi_result_presentations($node, $teaser) {
+function theme_pi_result_presentations_nid($activity_nid) {
+	return "<p><img class='chart_image' src='" . url('activity/' . $activity_nid . '/chart.png') . "'></p>";
+}
+
+function theme_pi_result_presentations($node) {
 	$activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	$output = "";
-
-	$output .= "<p><img class='chart_image' src='" . url('activity/' . $activity_nid . '/chart.png') . "'></p>";
-
-	return $output;
+	return theme('pi_result_presentations_nid', $activity_nid);
 }
 
 /**
