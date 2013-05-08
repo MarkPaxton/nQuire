@@ -63,16 +63,20 @@ function pi_available_measures_form(&$measure, $form_state) {
 	}
 
 	$data_activities = pi_sort_data_get_activities($access_data->get_inquiry_nid());
-	$data_activity_options = array(0 => t('- Select activity'));
+	$data_activity_options = array();
+	$default_activity = FALSE;
 	foreach ($data_activities as $activity_nid) {
 		$activity_data = $access_data->get_activity($activity_nid);
 		$data_activity_options[$activity_nid] = check_plain($activity_data['node']->title);
+		if (!$default_activity) {
+			$default_activity = $activity_nid;
+		}
 	}
 
 	//function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {
 	//nquire_commons_form_set_default_link_action($form, 'submit');
 
-	$data_activity_nid = nquire_commons_form_node_default_value($measure, 'activity_nid', $form_state, 'activity_nid', 0);
+	$data_activity_nid = nquire_commons_form_node_default_value($measure, 'activity_nid', $form_state, 'activity_nid', $default_activity);
 	$form['activity_nid'] = array(
 			'#type' => 'select',
 			'#title' => t('Data gathering activity'),

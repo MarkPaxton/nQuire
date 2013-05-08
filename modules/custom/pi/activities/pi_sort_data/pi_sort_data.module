@@ -106,20 +106,14 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 }
 
 
-function pi_sort_data_create_contribution_view($node, $contribution_data) {
+function pi_sort_data_create_contribution_view($node) {
 	global $user;
 	
 	$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
 	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
 	
-	foreach($contribution_data as $phase_data) {
-		foreach($phase_data['activities'] as $activity_data) {
-			if ($activity_data['node']->activity_type === 'pi_methodology') {
-				$selected_measures = pi_methodology_get_measures_from_measure_content_nodes($activity_data['content'], $activity_id_for_this_node);
-				break 2;
-			}
-		}
-	}
+	$selected_measures = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_id_for_this_node);
+		
 	
 	if (!$selected_measures) {
 		$selected_measures = array();
@@ -172,10 +166,6 @@ function pi_sort_data_get_data_for_sort_node_nid($sort_data_nid) {
 	return pi_activity_get_children_content_nids_for_content_nid($sort_data_nid);
 }
 
-function pi_sort_data_get_sort_data_content_for_use_in_content_nid($using_content_nid, $sort_data_activity) {
-	$nids = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($using_content_nid, $sort_data_activity, 'parent');
-	return $nids;
-}
 
 function pi_sort_data_get_all_data_for_use_in_content_nid($using_content_nid, $sort_data_activity) {
 	$nids = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($using_content_nid, $sort_data_activity, 'children');

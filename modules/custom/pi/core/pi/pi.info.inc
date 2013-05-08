@@ -18,6 +18,10 @@ class PiInfo {
 		return $this->path;
 	}
 
+	/**
+	 * 
+	 * @return \PiInquiryInfo
+	 */
 	function getCurrentInquiryInfo() {
 		if ($this->path->inquiry_nid) {
 			return $this->getInquiryInfo($this->path->inquiry_nid);
@@ -26,6 +30,11 @@ class PiInfo {
 		}
 	}
 
+	/**
+	 * 
+	 * @param type $inquiry_id
+	 * @return \PiInquiryInfo
+	 */
 	function getInquiryInfo($inquiry_id) {
 		if (!isset($this->inquiries[$inquiry_id])) {
 			$this->inquiries[$inquiry_id] = new PiInquiryInfo($inquiry_id);
@@ -34,6 +43,33 @@ class PiInfo {
 		return $this->inquiries[$inquiry_id];
 	}
 
+	/**
+	 * 
+	 * @param type $inquiry_id
+	 * @return \PiInquiryInfo
+	 */
+	function getInquiryInfoForContent($content_nid) {
+		$activity_nid = pi_activity_get_activity_nid_for_content_nid($content_nid);
+		return $this->getInquiryInfoForActivity($activity_nid);
+	}
+	
+	/**
+	 * 
+	 * @param type $inquiry_id
+	 * @return \PiInquiryInfo
+	 */
+	function getInquiryInfoForActivity($activity_nid) {
+		$activity = node_load($activity_nid);
+		$phase = node_load($activity->phase_nid);
+
+		return $this->getInquiryInfo($phase->inquiry_nid);
+	}
+
+	/**
+	 * 
+	 * @param type $inquiry_id
+	 * @return \PiInquiryContent
+	 */
 	function getContentManager($inquiry_id) {
 		if (!isset($this->content[$inquiry_id])) {
 			$this->content[$inquiry_id] = new PiInquiryContent($this->getInquiryInfo($inquiry_id));
@@ -42,6 +78,12 @@ class PiInfo {
 		return $this->content[$inquiry_id];
 	}
 
+	/**
+	 * 
+	 * @param type $inquiry_nid
+	 * @param type $uid
+	 * @return \PiInquiryAccess
+	 */
 	function getAccess($inquiry_nid, $uid) {
 		$key = "{$uid}:{$inquiry_nid}";
 		if (!isset($this->access[$key])) {
@@ -78,6 +120,7 @@ class PiInquiryInfo {
 	private $use_groups;
 	private $collaboration_level;
 	private $stage;
+	private $stage_count;
 	private $roles;
 
 	function __construct($inquiry_id) {
@@ -104,6 +147,9 @@ class PiInquiryInfo {
 			}
 		}
 
+		$stage_count_row = db_fetch_array(db_query("SELECT COUNT({node}.nid) as c FROM {node} LEFT JOIN {pi_stage} ON {node}.vid={pi_stage}.vid WHERE {pi_stage}.inquiry_nid=%d", $this->inquiry->nid));
+		$this->stage_count = $stage_count_row ? $stage_count_row['c'] : 0;
+
 
 		$phase_nids = pi_phase_load_nids_for_inquiry($this->inquiry->nid);
 		foreach ($phase_nids as $phase_nid) {
@@ -129,11 +175,15 @@ class PiInquiryInfo {
 			}
 		}
 	}
-	
+
 	public function getInquiryNid() {
 		return $this->inquiry->nid;
 	}
-	
+
+	public function getInquiryNode() {
+		return $this->inquiry;
+	}
+
 	public function getInquiryOwner() {
 		return $this->inquiry->uid;
 	}
@@ -146,6 +196,10 @@ class PiInquiryInfo {
 		return pi_inquiry_groupings_get_user_subgroup($this->inquiry, $uid);
 	}
 
+	public function hasSeveralStages() {
+		return $this->stage_count > 1;
+	}
+
 	public function getCurrentStage() {
 		return $this->stage;
 	}
@@ -153,11 +207,24 @@ class PiInquiryInfo {
 	public function getActivity($activity_nid) {
 		return $this->activities[$activity_nid];
 	}
-	
+
+	public function getActivityByType($type) {
+		foreach ($this->activities as $activity) {
+			if ($activity->activity_type === $type) {
+				return $activity;
+			}
+		}
+		return FALSE;
+	}
+
+	public function getPhase($phase_nid) {
+		return $this->phases[$phase_nid];
+	}
+
 	public function getPhases() {
 		return $this->phases;
 	}
-	
+
 	public function getActivitiesForPhase($phase_nid) {
 		return $this->phase_activities[$phase_nid];
 	}
@@ -197,10 +264,31 @@ class PiInquiryInfo {
 
 class PiInquiryContent {
 
+	/**
+	 *
+	 * @var \PiInquiryInfo
+	 */
 	private $inquiry_info;
 
 	public function __construct($inquiry_info) {
 		$this->inquiry_info = $inquiry_info;
+	}
+
+	public function getContentForActor($activity_nid, $actor) {
+		$activity = $this->inquiry_info->getActivity($activity_nid);
+		if ($activity->referenced_node) {
+			return $activity->referenced_node;
+		}
+
+		$query = "SELECT nid FROM {pi_activity_node} WHERE activity_id=%d AND actor=%d";
+
+		$row = db_fetch_array(db_query($query, $activity_nid, $actor));
+		if ($row) {
+			$nid = $row['nid'];
+			return $nid;
+		}
+
+		return FALSE;
 	}
 
 	public function getContent($activity_nid, $uid, $try_to_create) {
@@ -293,19 +381,19 @@ class PiInquiryContent {
 		return $nids;
 	}
 
-	public function getContentFromFor($activity_nid, $using_activity_id, $using_uid) {
-		$using_actor_data = $this->inquiry_info->getActivityActor($using_activity_id, $using_uid);
-		return $this->getSharedContentForActivityAndActorData($activity_nid, $using_actor_data);
+	public function getContentFromForUsingContent($activity_nid, $using_content_nid) {
+		$author = $this->getContentAuthor($using_content_nid);
+		return $this->aggregateContentForActivityAndActorData($activity_nid, $author);
 	}
 
-	public function getSharedContent($activity_nid, $uid) {
-		$viewer_actor_data = $this->inquiry_info->getActivityActor($activity_nid, $uid);
-		return $this->getSharedContentForActivityAndActorData($activity_nid, $viewer_actor_data);
+	public function getContentFromForUsingActivityActor($activity_nid, $using_activity_id, $using_uid) {
+		$using_actor_data = $this->inquiry_info->getActivityActor($using_activity_id, $using_uid);
+		return $this->aggregateContentForActivityAndActorData($activity_nid, $using_actor_data);
 	}
 
 	public function getContributionContent($contribution_node, $activity_nid) {
 		$actor_data = array('collaboration' => $contribution_node->collaboration, 'actor' => $contribution_node->actor);
-		return $this->getSharedContentForActivityAndActorData($activity_nid, $actor_data);
+		return $this->aggregateContentForActivityAndActorData($activity_nid, $actor_data);
 	}
 
 	private function getActivityForContent($content_nid) {
@@ -319,7 +407,55 @@ class PiInquiryContent {
 		return FALSE;
 	}
 
-	private function getSharedContentForActivityAndActorData($activity_nid, $viewer_actor_data) {
+	public function getActivitySharedContent($activity_nid, $viewer_uid) {
+		$activity_actor = $this->inquiry_info->getActivityActor($activity_nid, $viewer_uid);
+
+		$query = "SELECT pi_activity_node.nid, pi_activity_share.share, pi_activity_share.actor FROM {pi_activity_node} "
+						. "LEFT JOIN {pi_activity_share} ON (pi_activity_node.activity_id=pi_activity_share.activity_id AND pi_activity_node.actor=pi_activity_share.actor) "
+						. "WHERE {pi_activity_node}.activity_id=%d ";
+
+		switch ($activity_actor['collaboration']) {
+			case 'individual':
+				$subgroup = pi_inquiry_groupings_get_user_subgroup($this->inquiry_info->getInquiryNode(), $viewer_uid);
+				if ($subgroup) {
+					$nids = array('groupmates' => array(), 'participants' => array());
+					$group_mates = nquire_group_get_member_uids($subgroup);
+				} else {
+					$nids = array('participants' => array());
+					$group_mates = NULL;
+				}
+				$query .= "AND pi_activity_node.collaboration='individual' AND pi_activity_share.share!='individual_no'";
+
+				$result = db_query($query, $activity_nid);
+				while ($row = db_fetch_array($result)) {
+					if ($group_mates && in_array($row['actor'], $group_mates)) {
+						$nids['groupmates'][$row['actor']] = $row['nid'];
+					} else if ($row['share'] === 'individual_all') {
+						$nids['participants'][$row['actor']] = $row['nid'];
+					}
+				}
+
+				return $nids;
+			case 'group':
+				$query .= "AND pi_activity_node.collaboration='individual' AND pi_activity_share.share='group_all'";
+				$nids = array('groups' => array());
+				$result = db_query($query, $activity_nid);
+				while ($row = db_fetch_array($result)) {
+					$nids['participants'][$row['actor']] = $row['nid'];
+				}
+
+				break;
+			case 'all':
+				return NULL;
+		}
+	}
+
+	public function getContentAuthor($content_nid) {
+		$query = "SELECT collaboration, actor FROM {pi_activity_node} WHERE `nid` = %d";
+		return db_fetch_array(db_query($query, $content_nid));
+	}
+
+	private function aggregateContentForActivityAndActorData($activity_nid, $viewer_actor_data) {
 		$activity_collaboration = $this->inquiry_info->getActivityCollaboration($activity_nid);
 		$viewer_collaboration = $viewer_actor_data['collaboration'];
 
@@ -434,11 +570,11 @@ class PiInquiryAccess {
 			}
 		}
 	}
-	
+
 	public function getAccess($item_nid) {
 		return $this->item_access[$item_nid];
 	}
-	
+
 	public function getInquiryRoles() {
 		if (!isset($this->inquiry_roles)) {
 			$this->inquiry_roles = nquire_group_get_user_roles($this->inquiry['node']->actor_gid, $this->uid);

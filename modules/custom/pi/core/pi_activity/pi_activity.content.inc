@@ -40,24 +40,6 @@ function pi_activity_get_content_nid_for_activity($activity_nid, $try_to_create 
 	return FALSE;
 }
 
-function pi_activity_get_content_nid_for_activity_and_actor($activity_nid, $actor) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity($activity_nid);
-
-	if ($activity_data['node']->referenced_node) {
-		return $activity_data['node']->referenced_node;
-	}
-
-	$query = "SELECT nid FROM {pi_activity_node} WHERE activity_id=%d AND actor=%d";
-	$row = db_fetch_array(db_query($query, $activity_nid, $actor));
-	if ($row) {
-		$nid = $row['nid'];
-		return $nid;
-	} else {
-		return FALSE;
-	}
-}
-
 function _pi_activity_get_children_content_nids_for_activity_and_actor($activity_nid, $collaboration, $actor_nid) {
 	$query = "SELECT {pi_activity_node}.nid FROM {pi_activity} LEFT JOIN {pi_activity_node} ON {pi_activity}.nid={pi_activity_node}.activity_id "
 					. "WHERE {pi_activity}.parent_activity=%d AND {pi_activity_node}.collaboration='%s' AND {pi_activity_node}.actor=%d";
@@ -127,80 +109,6 @@ function pi_activity_create_content_on_first_visit($activity, $uid) {
 	return NULL;
 }
 
-function pi_activity_get_shared_content_for_activity_nid($activity_nid) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity($activity_nid);
-
-	$query = "SELECT pi_activity_node.nid, pi_activity_share.share, pi_activity_share.actor FROM {pi_activity_node} "
-					. "LEFT JOIN {pi_activity_share} ON (pi_activity_node.activity_id=pi_activity_share.activity_id AND pi_activity_node.actor=pi_activity_share.actor) "
-					. "WHERE {pi_activity_node}.activity_id=%d ";
-
-	switch ($activity_data['collaboration']) {
-		case 'individual':
-			if ($access_data->get_subgroup()) {
-				$nids = array('groupmates' => array(), 'participants' => array());
-				$group_mates = nquire_group_get_member_uids($access_data->get_subgroup());
-			} else {
-				$nids = array('participants' => array());
-				$group_mates = NULL;
-			}
-			$query .= "AND pi_activity_node.collaboration='individual' AND pi_activity_share.share!='individual_no'";
-
-			$result = db_query($query, $activity_nid);
-			while ($row = db_fetch_array($result)) {
-				if ($group_mates && in_array($row['actor'], $group_mates)) {
-					$nids['groupmates'][$row['actor']] = $row['nid'];
-				} else if ($row['share'] === 'individual_all') {
-					$nids['participants'][$row['actor']] = $row['nid'];
-				}
-			}
-
-			return $nids;
-		case 'group':
-			$query .= "AND pi_activity_node.collaboration='individual' AND pi_activity_share.share='group_all'";
-			$nids = array('groups' => array());
-			$result = db_query($query, $activity_nid);
-			while ($row = db_fetch_array($result)) {
-				$nids['participants'][$row['actor']] = $row['nid'];
-			}
-
-			break;
-		case 'all':
-			return NULL;
-	}
-}
-
-/**
- * Used to generate published result views.
- */
-function pi_activity_aggregate_shared_content_for_contribution($inquiry_node, $collaboration, $actor) {
-	$data = array();
-	$phase_nids = pi_phase_load_nids_for_inquiry($inquiry_node->nid);
-	$exclude_types = array('pi_explore_tool', 'pi_read_information');
-
-	foreach ($phase_nids as $phase_nid) {
-		$phase_data = array(
-				'node' => node_load($phase_nid),
-				'activities' => array(),
-		);
-		$activity_nids = pi_get_activities_for_phase($phase_nid);
-		foreach ($activity_nids as $activity_nid) {
-			$activity = node_load($activity_nid);
-			if (!in_array($activity->activity_type, $exclude_types)) {
-				$activity_data = array(
-						'node' => node_load($activity_nid),
-						'content' => _pi_activity_get_shared_content_for_activity($inquiry_node, $activity, $phase_data['node']->collaboration, $collaboration, $actor, 'parent'),
-				);
-
-				$phase_data['activities'][] = $activity_data;
-			}
-		}
-
-		$data[] = $phase_data;
-	}
-
-	return $data;
-}
 
 /*
  * Used by content nodes that depend on other activities. E.g.: key answers depend on key questions.
@@ -318,3 +226,11 @@ function _pi_activity_get_shared_content_for_activity($inquiry_node, $activity_n
 	return $nids;
 }
 
+
+function theme_pi_activity_shared_content_list($content_nids, $display_creator) {
+}
+
+function theme_pi_activity_shared_content_node($content_nid, $display_creator) {
+	
+	
+}

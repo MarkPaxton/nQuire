@@ -21,16 +21,20 @@ function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 						$tools = array();
 
 						$tools[] = l(t('Start'), 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
-						$tools[] = l(t('Stages'), 'inquiry/' . $access_data->get_inquiry_nid() . '/stages');
+						if (pi_info()->getCurrentInquiryInfo()->hasSeveralStages()) {
+							$tools[] = l(t('Stages'), 'inquiry/' . $access_data->get_inquiry_nid() . '/stages');
+						}
+						
 						$tools[] = l(t('Participants'), 'inquiry/' . $access_data->get_inquiry_nid() . '/participants');
+
 						$tools[] = l(t('Share content'), 'inquiry/' . $access_data->get_inquiry_nid() . '/share');
 
-						/*if ($access_data->get_uid() === $access_data->get_inquiry_node()->uid) {
-							$path = inquiry_design_path_to_inquiry_design($access_data->get_inquiry_nid());
-							if ($path) {
-								$tools[] = l(t('Edit inquiry'), $path);
-							}
-						}*/
+						/* if ($access_data->get_uid() === $access_data->get_inquiry_node()->uid) {
+						  $path = inquiry_design_path_to_inquiry_design($access_data->get_inquiry_nid());
+						  if ($path) {
+						  $tools[] = l(t('Edit inquiry'), $path);
+						  }
+						  } */
 
 						$content = t(theme('item_list', $tools, NULL, 'ul', array('class' => 'menu')));
 
@@ -400,42 +404,56 @@ function pi_inquiry_manager_theme() {
 }
 
 function pi_inquiry_manager_participants_access() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	return $access_data->has_inquiry_access();
+	if (user_is_logged_in()) {
+		$access_data = pi_inquiry_groupings_get_access_data();
+		return $access_data->has_inquiry_access();
+	}
+	return FALSE;
 }
 
 function pi_inquiry_manager_share_access() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	return $access_data->has_inquiry_access();
+	if (user_is_logged_in()) {
+		$access_data = pi_inquiry_groupings_get_access_data();
+		return $access_data->has_inquiry_access();
+	}
+	return FALSE;
 }
 
 function pi_inquiry_manager_stage_access() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	return $access_data->has_inquiry_access();
+	if (user_is_logged_in()) {
+		$access_data = pi_inquiry_groupings_get_access_data();
+		return $access_data->has_inquiry_access();
+	}
+	return FALSE;
 }
 
 function pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid) {
-	global $user;
-	$node = node_load($inquiry_nid);
-	return $node->uid === $user->uid;
+	if (user_is_logged_in()) {
+		global $user;
+		$node = node_load($inquiry_nid);
+		return $node->uid === $user->uid;
+	}
+	return FALSE;
 }
 
 /* group operation access */
 
 function pi_inquiry_manager_participants_group_join_access($inquiry_nid, $group_nid = FALSE) {
-	global $user;
+	if (user_is_logged_in()) {
+		global $user;
 
-	$inquiry = node_load($inquiry_nid);
-	if ($inquiry->type === 'pi_inquiry') {
-		$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-		if ($group_check && $group_check['normal_management'] &&
-						($group_check['type'] === 'inquiry' || !pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid))) {
+		$inquiry = node_load($inquiry_nid);
+		if ($inquiry->type === 'pi_inquiry') {
+			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+			if ($group_check && $group_check['normal_management'] &&
+							($group_check['type'] === 'inquiry' || !pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid))) {
 
-			$allowed_participants = $group_nid ? nquire_group_get_member_uids($inquiry->actor_gid) : pi_inquiry_groupings_get_allowed_participants_for_inquiry($inquiry);
+				$allowed_participants = $group_nid ? nquire_group_get_member_uids($inquiry->actor_gid) : pi_inquiry_groupings_get_allowed_participants_for_inquiry($inquiry);
 
-			if (!$allowed_participants || in_array($user->uid, $allowed_participants)) {
-				if ($group_check['group']->og_selective == OG_OPEN || $group_check['group']->og_selective == OG_MODERATED) {
-					return TRUE;
+				if (!$allowed_participants || in_array($user->uid, $allowed_participants)) {
+					if ($group_check['group']->og_selective == OG_OPEN || $group_check['group']->og_selective == OG_MODERATED) {
+						return TRUE;
+					}
 				}
 			}
 		}
@@ -445,14 +463,16 @@ function pi_inquiry_manager_participants_group_join_access($inquiry_nid, $group_
 }
 
 function pi_inquiry_manager_participants_group_acceptinvitation_access($inquiry_nid, $group_nid = FALSE) {
-	global $user;
+	if (user_is_logged_in()) {
+		global $user;
 
-	$inquiry = node_load($inquiry_nid);
-	if ($inquiry->type === 'pi_inquiry') {
-		$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-		if ($group_check && $group_check['normal_management']) {
-			if ($group_check['group']->selective == OG_INVITE_ONLY && nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) === 'awaiting') {
-				return TRUE;
+		$inquiry = node_load($inquiry_nid);
+		if ($inquiry->type === 'pi_inquiry') {
+			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+			if ($group_check && $group_check['normal_management']) {
+				if ($group_check['group']->selective == OG_INVITE_ONLY && nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) === 'awaiting') {
+					return TRUE;
+				}
 			}
 		}
 	}
@@ -461,64 +481,76 @@ function pi_inquiry_manager_participants_group_acceptinvitation_access($inquiry_
 }
 
 function pi_inquiry_manager_participants_group_leave_access($inquiry_nid, $group_nid = FALSE) {
-	global $user;
+	if (user_is_logged_in()) {
+		global $user;
 
-	$inquiry = node_load($inquiry_nid);
-	if ($inquiry->type === 'pi_inquiry') {
-		$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-		if ($group_check && $group_check['normal_management']) {
-			return nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) !== 'none';
+		$inquiry = node_load($inquiry_nid);
+		if ($inquiry->type === 'pi_inquiry') {
+			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+			if ($group_check && $group_check['normal_management']) {
+				return nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) !== 'none';
+			}
 		}
 	}
-
 	return FALSE;
 }
 
 function pi_inquiry_manager_participants_group_manageuser_access($inquiry_nid, $group_nid = FALSE) {
-	global $user;
+	if (user_is_logged_in()) {
+		global $user;
 
-	$inquiry = node_load($inquiry_nid);
-	if ($inquiry->type === 'pi_inquiry') {
-		$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-		if ($group_check) {
-			return $user->uid === $group_check['manager'];
+		$inquiry = node_load($inquiry_nid);
+		if ($inquiry->type === 'pi_inquiry') {
+			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+			if ($group_check) {
+				return $user->uid === $group_check['manager'];
+			}
 		}
 	}
 	return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_edit_policy_access($inquiry_nid) {
-	global $user;
+	if (user_is_logged_in()) {
+		global $user;
 
-	$inquiry = node_load($inquiry_nid);
-	if ($inquiry->type === 'pi_inquiry' && $inquiry->uid === $user->uid) {
-		return pi_inquiry_groupings_has_collaboration_phases($inquiry_nid, 'group');
+		$inquiry = node_load($inquiry_nid);
+		if ($inquiry->type === 'pi_inquiry' && $inquiry->uid === $user->uid) {
+			return pi_inquiry_groupings_has_collaboration_phases($inquiry_nid, 'group');
+		}
 	}
 	return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_view_access($inquiry_nid, $subgroup_nid) {
-	if (pi_inquiry_groupings_check_group(node_load($inquiry_nid), $subgroup_nid)) {
-		return TRUE;
+	if (user_is_logged_in()) {
+		if (pi_inquiry_groupings_check_group(node_load($inquiry_nid), $subgroup_nid)) {
+			return TRUE;
+		}
 	}
-
 	return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_create_access($inquiry_nid) {
-	global $user;
+	if (user_is_logged_in()) {
+		global $user;
 
-	$inquiry = node_load($inquiry_nid);
-	if ($inquiry->type === 'pi_inquiry') {
-		return $user->uid === $inquiry->uid || ($inquiry->group_creation === 'normal' && nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid) === 'member');
+		$inquiry = node_load($inquiry_nid);
+		if ($inquiry->type === 'pi_inquiry') {
+			return $user->uid === $inquiry->uid || ($inquiry->group_creation === 'normal' && nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid) === 'member');
+		}
 	}
 	return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_edit_access($inquiry_nid, $group_nid) {
-	global $user;
+	if (user_is_logged_in()) {
+		global $user;
 
-	$inquiry_node = node_load($inquiry_nid);
-	$group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
-	return $group_check && $group_check['type'] === 'group' && $group_check['manager'] === $user->uid;
+		$inquiry_node = node_load($inquiry_nid);
+		$group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
+		return $group_check && $group_check['type'] === 'group' && $group_check['manager'] === $user->uid;
+	}
+	return FALSE;
 }
+

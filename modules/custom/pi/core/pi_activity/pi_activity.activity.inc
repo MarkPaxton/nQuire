@@ -119,9 +119,11 @@ function pi_activity_content_delete_form_submit($form, $form_state) {
 }
 
 function pi_activity_shared_content_list_view($activity_node) {
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	$inquiry_content = pi_info()->getContentManager($inquiry_info->getInquiryNid());
 
-
-	$content_list = pi_activity_get_shared_content_for_activity_nid($activity_node->nid);
+	$content_list = $inquiry_content->getActivitySharedContent($activity_node->nid, $user->uid);
 	$output = '';
 
 	foreach ($content_list as $list_type => $nids) {
@@ -140,17 +142,34 @@ function pi_activity_shared_content_list_view($activity_node) {
 		$output .= '<p><b>' . $intro . '</b></p>';
 
 		foreach ($nids as $actor_id => $nid) {
-			$output .= theme('pi_activity_display_shared_content_node', $activity_node, $actor_id, node_load($nid), TRUE);
+			$output .= theme('pi_activity_display_shared_content_node', $inquiry_info, $activity_node, $actor_id, $nid, TRUE);
 		}
 	}
 
 	return $output;
 }
 
-function theme_pi_activity_display_shared_content_node($activity_node, $actor_id, $node, $teaser) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity($activity_node->nid);
-	if ($activity_data['collaboration'] === 'individual') {
+function pi_activity_shared_content_view($activity_node, $actor_id, $teaser = FALSE) {
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	$inquiry_content = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+
+	$content_nid = $inquiry_content->getContentForActor($activity_node->nid, $actor_id);
+	return theme('pi_activity_display_shared_content_node', $inquiry_info, $activity_node, $actor_id, $content_nid, $teaser);
+}
+
+/**
+ * 
+ * @param \PiInquiryInfo $inquiry_info
+ * @param type $activity_node
+ * @param type $content_nid
+ * @param type $user_link
+ * @return string
+ */
+function theme_pi_activity_display_shared_content_node($inquiry_info, $activity_node, $actor_id, $content_nid, $teaser) {
+	$node = node_load($content_nid);
+	$collaboration = $inquiry_info->getActivityCollaboration($activity_node->nid);
+
+	if ($collaboration === 'individual') {
 		$user = user_load($actor_id);
 		$actor_title = $user->name;
 	} else {
@@ -166,9 +185,18 @@ function theme_pi_activity_display_shared_content_node($activity_node, $actor_id
 		$actor_text = t('Content shared by @actor:', array('@actor' => $actor_title));
 	}
 
+	if ($node) {
+		$shared_content_display_function = "{$node->type}_create_shared_view";
+		if (function_exists($shared_content_display_function)) {
+			$content_view = $shared_content_display_function($node);
+		} else {
+			$content_view = node_view($node, FALSE, TRUE, TRUE);
+		}
+	}
+
 	$output = $actor_text
 					. '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
-					. ($node ? node_view($node, $teaser, TRUE, TRUE) : '')
+					. ($content_view ? $content_view : '')
 					. '</div>';
 
 	return $output;
@@ -207,9 +235,4 @@ function theme_pi_activity_display_contribution_content_node($activity_collabora
 						. '</div>';
 	}
 	return $output;
-}
-
-function pi_activity_shared_content_view($activity_node, $actor_id, $teaser = FALSE) {
-	$node = node_load(pi_activity_get_content_nid_for_activity_and_actor($activity_node->nid, $actor_id));
-	return theme('pi_activity_display_shared_content_node', $activity_node, $actor_id, $node, $teaser);
 }

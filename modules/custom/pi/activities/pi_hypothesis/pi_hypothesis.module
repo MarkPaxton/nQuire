@@ -166,10 +166,13 @@ function theme_pi_hypothesis($node, $teaser = NULL) {
 }
 
 function pi_hypothesis_get_hypothesis_nids_for_use_in($content_node_nid) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity_by_type('pi_hypothesis');
-	if ($activity_data) {
-		return pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($content_node_nid, $activity_data['node']->nid, 'parent');
+	$inquiry_info = pi_info()->getInquiryInfoForContent($content_node_nid);
+	$content_access = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+	
+	$activity = $inquiry_info->getActivityByType('pi_hypothesis');
+	
+	if ($activity) {
+		return $content_access->getContentFromForUsingContent($activity->nid, $content_node_nid);
 	}
 	return FALSE;
 }

@@ -47,53 +47,11 @@ function pi_sort_result_presentations_theme() {
  */
 function pi_sort_result_presentations_form(&$node) {
 	global $user;
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
-
-	// Add the existing sorted items and add the new new ones to the end
-	if (isset($node->nid)) {
-		$sorted_results = $node->categories;
-	} else {
-		$sorted_results = array();
-	}
-	$all_results = pi_sort_result_presentations_get_charts();
-
-
-	// Build the form
 	$form = array();
-	$form['title'] = array(
-			'#type' => 'hidden',
-			'#value' => $node_title,
-	);
-
-	// All results presentations are collected in this array:
-	$form['onepageprofile_categories'] = array(
-			'#tree' => TRUE,
-	);
-
-	// set $tree to point to the above $form['onepageprofile_categories'] object
-	$tree = &$form['onepageprofile_categories'];
-	foreach ($results_to_show as $results_nid => $results) {
-
-		$result_presentation = node_load($results_nid);
-		if ($result_presentation) {
-			// add $tree entries for current category (i.e. $key)
-			$tree[$results_nid]['title'] = array(
-					'#value' => t($results['#title']),
-			);
-
-			$tree[$results_nid]['weight'] = array(
-					'#type' => 'weight',
-					'#delta' => count($results_to_show),
-					'#default_value' => $results['#weight'],
-			);
-		}
-	}
 	return $form;
 }
 
 function pi_sort_result_presentations_insert($node) {
-	$details = get_inquiry_details_from_current_path();
 	if (count($node->onepageprofile_categories) > 0) {
 		foreach ($node->onepageprofile_categories as $key => $result_presentations) {
 			$query = "INSERT INTO {pi_sort_result_presentations} (nid, vid, result_presentations, weight) VALUES (%d, %d, %d, %d)";
@@ -133,11 +91,12 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 	foreach ($charts as $chart_nid) {
 		$result_presentation_activity_id = pi_activity_get_activity_nid_for_content_nid($chart_nid);
 		$activity_link = pi_activity_build_link_for_child($activity_nid, $result_presentation_activity_id);
-		$charts_to_show[] = $activity_link;
+		
+		$charts_to_show[] = $activity_link;// .theme('pi_result_presentation', $nd);
 	}
 
 	$add_link = make_add_activity_link($activity_nid);
-	$node->content['pi_sort_key_questions_add_key_question_link'] = array(
+	$node->content['pi_sort_result_presentation_add_link'] = array(
 			'#value' => $add_link,
 			'#weight' => -3
 	);

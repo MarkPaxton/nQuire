@@ -46,14 +46,17 @@ function pi_result_presentations_form(&$node, $form_state) {
 	$form = array();
 	ahah_helper_register($form, $form_state);
 
-	$access_data = pi_inquiry_groupings_get_access_data();
+	global $user;
 
 	if (arg(0) === 'activity') {
 		$current_activity_nid = arg(1);
 	} else {
 		$current_activity_nid = $form_state['values']['current_activity_nid'];
-		$access_data->set_current_activity($current_activity_nid);
 	}
+	
+	$current_activity_node = node_load($current_activity_nid);
+	
+	$inquiry_info = pi_info()->getInquiryInfoForActivity($current_activity_nid);
 
 	$form['current_activity_nid'] = array(
 			'#type' => 'hidden',
@@ -71,12 +74,12 @@ function pi_result_presentations_form(&$node, $form_state) {
 	);
 
 
-	$data_activities = pi_sort_data_get_activities($access_data->get_inquiry_nid());
+	$data_activities = pi_sort_data_get_activities($inquiry_info->getInquiryNid());
 	$data_activity_options = array();
 	$default_activity = FALSE;
 	foreach ($data_activities as $activity_nid) {
-		$activity_data = $access_data->get_activity($activity_nid);
-		$data_activity_options[$activity_nid] = check_plain($activity_data['node']->title);
+		$activity_node = $inquiry_info->getActivity($activity_nid);
+		$data_activity_options[$activity_nid] = check_plain($activity_node->title);
 		if (!$default_activity) {
 			$default_activity = $activity_nid;
 		}
@@ -132,7 +135,7 @@ function pi_result_presentations_form(&$node, $form_state) {
 
 
 
-	$measure_nids = pi_methodology_get_measures_for_use_in_content_node($node->nid, $data_activity_nid);
+	$measure_nids = pi_methodology_get_measures_for_use_in_activity($current_activity_node->parent_activity, $user->uid, $data_activity_nid);
 	$x_measure_options = array();
 	$y_measure_options = array();
 

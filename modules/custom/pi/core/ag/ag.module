@@ -19,25 +19,28 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 			$block = array();
 
 			if ($user != null) {
-				$access_data = pi_inquiry_groupings_get_access_data();
-				if (arg(0) == 'phase' || arg(0) == 'activity') {
+				$current_path = pi_info()->getCurrentPath();
+				$inquiry_info = pi_info()->getCurrentInquiryInfo();
+				if ($inquiry_info && (arg(0) == 'phase' || arg(0) == 'activity')) {
+					$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+
 					$phase_menu_items = array();
 
-					foreach ($access_data->get_phases() as $phase_nid => $phase_data) {
-						$is_current_phase = $phase_nid == $access_data->get_current_phase_nid();
+					foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
+						$is_current_phase = $phase_nid == $current_path->phase_nid;
 
-						if (!$phase_data['access']) {
-							$phase_link = check_plain($phase_data['node']->title);
+						if ($inquiry_access->getAccess($phase_nid) === 'hidden') {
+							$phase_link = check_plain($phase_node->title);
 						} else {
-							$phase_link = l($phase_data['node']->title, "phase/" . $phase_nid, array('html' => true));
+							$phase_link = l($phase_node->title, "phase/" . $phase_nid, array('html' => true));
 						}
 
 						$activity_menu_items = array();
 
 						//expand activities of the phase if it is current
 						if ($is_current_phase) {
-							foreach ($phase_data['activities'] as $activity_nid => $activity_data) {
-								$activity_menu_items[] = pi_activity_build_link($activity_nid, $user->uid);
+							foreach ($inquiry_info->getActivitiesForPhase($phase_nid) as $activity_node) {
+								$activity_menu_items[] = pi_activity_build_link($activity_node->nid, $user->uid);
 							}
 						}
 
@@ -52,7 +55,7 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 
 					$block_content = t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')));
 
-					$block['subject'] = l(t('Navigation'), 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
+					$block['subject'] = l(t('Navigation'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure');
 					$block['content'] = "<div class='activity-guide'>" . $block_content . "</div>";
 				}
 			}

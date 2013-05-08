@@ -10,9 +10,8 @@
  * @return String HTML output of the phase
  */
 function pi_inquiry_phase_view($phase) {
+	global $user;
 
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$uid = $access_data->get_uid();
 
 	drupal_set_title($phase->title);
 
@@ -37,19 +36,18 @@ function pi_inquiry_phase_view($phase) {
 	}
 	$output .= '</small>';
 
-	$phase_data = $access_data->get_phase($phase->nid);
-	$activities = $phase_data['activities'];
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	$activities = $inquiry_info->getActivitiesForPhase($phase->nid);
 
 	if (count($activities) > 0) {
 		$list = array();
 
-		foreach ($activities as $activity_nid => $activity_data) {
-			$activity = $activity_data['node'];
+		foreach ($activities as $activity_nid => $activity_node) {
+			$activity_link = pi_activity_build_link($activity_nid, $user->uid);
 
-			$activity_link = pi_activity_build_link($activity_nid, $uid);
-
-			if ($activity_data['access']) {
-				$activity_desc = pi_activity_teaser($activity);
+			if ($inquiry_access->getAccess($activity_nid) !== 'hidden') {
+				$activity_desc = pi_activity_teaser($activity_node);
 			} else {
 				$activity_desc = t('You do not have access to view or edit this activity.');
 			}
@@ -68,10 +66,10 @@ function pi_inquiry_phase_view($phase) {
 }
 
 function pi_inquiry_phase_shared_view($phase) {
-
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$uid = $access_data->get_uid();
-
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	
 	drupal_set_title($phase->title);
 
 	$output = nl2br(check_plain($phase->body));
@@ -94,22 +92,18 @@ function pi_inquiry_phase_shared_view($phase) {
 			break;
 	}
 	$output .= '</small>';
-
-	$phase_data = $access_data->get_phase($phase->nid);
-	$activities = $phase_data['activities'];
+	
+	$activities = $inquiry_info->getActivitiesForPhase($phase->nid);
 
 	if (count($activities) > 0) {
 		$list = array();
 
-		foreach ($activities as $activity_data) {
-			$activity = $activity_data['node'];
-
-			$activity_title = check_plain($activity->title);
-
-			if ($activity_data['access']) {
-				$activity_content = pi_activity_shared_content_list($activity);
+		foreach ($activities as $activity_nid => $activity_node) {
+			$activity_title = check_plain($activity_node->title);
+			if ($inquiry_access->getAccess($activity_nid) !== 'hidden') {
+				$activity_content = pi_activity_shared_content_list($activity_node);
 			} else {
-				$activity_content = t('You do not have access to view or edit this activity.');
+				$activity_content = t('You do not have access to view this activity.');
 			}
 
 			$list[] = array('data' => array($activity_title, $activity_content), 'class' => 'activity');
@@ -124,3 +118,4 @@ function pi_inquiry_phase_shared_view($phase) {
 	}
 	return $output;
 }
+

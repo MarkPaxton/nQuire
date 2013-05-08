@@ -241,7 +241,7 @@ function pi_methodology_load($node) {
 	return $output;
 }
 
-function pi_methodology_get_measures_from_measure_content_nodes($methodology_nids, $sort_data_activity_nid) {
+function _pi_methodology_get_measures_from_measure_content_nodes($methodology_nids, $sort_data_activity_nid) {
 	$measures = array();
 	foreach ($methodology_nids as $methology_content_nid) {
 		$methodology_node = node_load($methology_content_nid);
@@ -263,19 +263,26 @@ function pi_methodology_get_measures_from_measure_content_nodes($methodology_nid
 }
 
 function pi_methodology_get_measures_for_use_in_content_node($using_content_nid, $sort_data_activity_nid) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$methodology_activity_data = $access_data->get_activity_by_type('pi_methodology');
+	$node = node_load($using_content_nid);
+	$using_activity_nid = pi_activity_get_activity_nid_for_content_nid($using_content_nid);
+	return pi_methodology_get_measures_for_use_in_activity($using_activity_nid, $node->uid, $sort_data_activity_nid);
+}
 
-	if ($methodology_activity_data) {
-		$shared_content = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($using_content_nid, $methodology_activity_data['node']->nid, 'parent');
-		$measures = pi_methodology_get_measures_from_measure_content_nodes($shared_content, $sort_data_activity_nid);
+function pi_methodology_get_measures_for_use_in_activity($using_activity_nid, $using_uid, $sort_data_activity_nid) {
+	$inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
+	$content_access = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+
+	$activity = $inquiry_info->getActivityByType('pi_methodology');
+
+	if ($activity) {
+		$measure_content_nids = $content_access->getContentFromForUsingActivityActor($activity->nid, $using_activity_nid, $using_uid);
+		$measures = _pi_methodology_get_measures_from_measure_content_nodes($measure_content_nids, $sort_data_activity_nid);
 	} else {
 		$measures = array();
 		foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) as $measure_nid) {
 			$measures[$measure_nid] = FALSE;
 		}
 	}
-
 	return $measures;
 }
 
