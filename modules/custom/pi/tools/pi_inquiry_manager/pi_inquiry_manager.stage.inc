@@ -1,25 +1,27 @@
 <?php
 
 function pi_inquiry_manager_stage_selector() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	if ($access_data->get_inquiry_node()) {
-		if ($access_data->user_is_inquiry_owner()) {
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		$access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		if ($access->isInquiryOwner()) {
 			$output = drupal_get_form('pi_inquiry_manager_stage_selector_form');
 		} else {
 			$output = pi_inquiry_manager_stage_selector_view();
 		}
-		return $output;
 	}
+	return $output;
 }
 
 function pi_inquiry_manager_stage_selector_view() {
 	$access_data = pi_inquiry_groupings_get_access_data();
 	$all_stages_structure = $access_data->get_all_stages_structure();
-	
+
 	_pi_inquiry_manager_stage_selector_load_javascript($all_stages_structure['values'], $access_data->get_current_stage()->nid);
-		
+
 	$output = theme('nquire_structure_widget_stage_view', 'stageselector', json_encode($all_stages_structure['structure']));
-	
+
 	return $output;
 }
 

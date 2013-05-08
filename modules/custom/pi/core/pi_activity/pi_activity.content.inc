@@ -40,6 +40,17 @@ function pi_activity_get_content_nid_for_activity($activity_nid, $try_to_create 
 	return FALSE;
 }
 
+function pi_activity_get_activity_nid_for_content_nid($content_nid) {
+	$activity_nid = null;
+	$query = "SELECT `activity_id` FROM {pi_activity_node} WHERE `nid` = %d";
+	$result = db_fetch_object(db_query($query, $content_nid));
+	if ($result) {
+		$activity_nid = $result->activity_id;
+	}
+
+	return $activity_nid;
+}
+
 function _pi_activity_get_children_content_nids_for_activity_and_actor($activity_nid, $collaboration, $actor_nid) {
 	$query = "SELECT {pi_activity_node}.nid FROM {pi_activity} LEFT JOIN {pi_activity_node} ON {pi_activity}.nid={pi_activity_node}.activity_id "
 					. "WHERE {pi_activity}.parent_activity=%d AND {pi_activity_node}.collaboration='%s' AND {pi_activity_node}.actor=%d";
@@ -109,13 +120,3 @@ function pi_activity_create_content_on_first_visit($activity, $uid) {
 	return NULL;
 }
 
-
-
-
-function theme_pi_activity_shared_content_list($content_nids, $display_creator) {
-}
-
-function theme_pi_activity_shared_content_node($content_nid, $display_creator) {
-	
-	
-}

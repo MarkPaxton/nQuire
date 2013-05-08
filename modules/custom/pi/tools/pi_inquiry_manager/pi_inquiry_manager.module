@@ -5,6 +5,7 @@ include_once 'pi_inquiry_manager.share.inc';
 include_once 'pi_inquiry_manager.stage.inc';
 
 function pi_inquiry_manager_block($op = 'list', $delta = 0) {
+
 	switch ($op) {
 		case 'list':
 			$blocks = array();
@@ -13,82 +14,81 @@ function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 			return $blocks;
 
 		case 'view':
+			global $user;
 			switch ($delta) {
 				case 0;
-					$access_data = pi_inquiry_groupings_get_access_data();
+					$inquiry_info = pi_info()->getCurrentInquiryInfo();
+					if ($inquiry_info) {
+						$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
 
-					if ($access_data->has_inquiry_access() && (arg(0) !== 'inquiry' || arg(2) === 'structure' || arg(2) === 'participants' || arg(2) === 'share' || arg(2) === 'stages')) {
-						$tools = array();
+						if ($inquiry_access->hasInquiryAccess() && (arg(0) !== 'inquiry' || arg(2) === 'structure' || arg(2) === 'participants' || arg(2) === 'share' || arg(2) === 'stages')) {
+							$tools = array();
 
-						$tools[] = l(t('Start'), 'inquiry/' . $access_data->get_inquiry_nid() . '/structure');
-						if (pi_info()->getCurrentInquiryInfo()->hasSeveralStages()) {
-							$tools[] = l(t('Stages'), 'inquiry/' . $access_data->get_inquiry_nid() . '/stages');
+							$tools[] = l(t('Start'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure');
+							if (pi_info()->getCurrentInquiryInfo()->hasSeveralStages()) {
+								$tools[] = l(t('Stages'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/stages');
+							}
+
+							$tools[] = l(t('Participants'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/participants');
+
+							$tools[] = l(t('Share content'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/share');
+
+							$content = t(theme('item_list', $tools, NULL, 'ul', array('class' => 'menu')));
+
+							return array(
+									'subject' => t('Inquiry management'),
+									'content' => $content
+							);
 						}
-						
-						$tools[] = l(t('Participants'), 'inquiry/' . $access_data->get_inquiry_nid() . '/participants');
-
-						$tools[] = l(t('Share content'), 'inquiry/' . $access_data->get_inquiry_nid() . '/share');
-
-						/* if ($access_data->get_uid() === $access_data->get_inquiry_node()->uid) {
-						  $path = inquiry_design_path_to_inquiry_design($access_data->get_inquiry_nid());
-						  if ($path) {
-						  $tools[] = l(t('Edit inquiry'), $path);
-						  }
-						  } */
-
-						$content = t(theme('item_list', $tools, NULL, 'ul', array('class' => 'menu')));
-
-						return array(
-								'subject' => t('Inquiry management'),
-								'content' => $content
-						);
 					}
 					break;
 				case 1:
-					$access_data = pi_inquiry_groupings_get_access_data();
-					if ($access_data->get_inquiry_nid() && arg(0) === 'inquiry' && !arg(2)) {
-						$status = nquire_group_get_user_status_in_group($access_data->get_inquiry_node()->actor_gid, $access_data->get_uid());
-						$im_owner = $access_data->get_uid() === $access_data->get_inquiry_node()->uid;
-						$group_selective = pi_inquiry_groupings_get_group_selective_type($access_data->get_inquiry_node());
+					$inquiry_info = pi_info()->getCurrentInquiryInfo();
+					if ($inquiry_info && arg(0) === 'inquiry' && !arg(2)) {
+						$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+
+						$status = nquire_group_get_user_status_in_group($inquiry_info->getInquiryActorGid(), $user->uid);
+						$im_owner = $inquiry_access->isInquiryOwner();
+						$group_selective = pi_inquiry_groupings_get_group_selective_type($inquiry_info->getInquiryNode());
 
 						switch ($status) {
 							case 'member':
 								$title = t('Enter inquiry');
 								$intro = $im_owner ? t('You are the owner of this inquiry.') : t('You are a member of this inquiry.');
 								$links = array(
-										l(t('Enter inquiry'), 'inquiry/' . $access_data->get_inquiry_nid() . '/structure'),
-										pi_inquiry_manager_partipants_group_operation_link(t('Leave inquiry'), $access_data->get_inquiry_nid(), FALSE, 'leave')
+										l(t('Enter inquiry'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure'),
+										pi_inquiry_manager_partipants_group_operation_link(t('Leave inquiry'), $inquiry_info->getInquiryNid(), FALSE, 'leave')
 								);
 								break;
 							case 'awaiting':
-								$intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $access_data->get_inquiry_node());
+								$intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry_info->getInquiryNode());
 								if ($group_selective == OG_MODERATED) {
 									$title = t('Awaiting decision');
 									$intro .= ' ' . t('You have requested access to this inquiry.');
 									$links = array(
-											pi_inquiry_manager_partipants_group_operation_link(t('Cancel request'), $access_data->get_inquiry_nid(), FALSE, 'leave'),
+											pi_inquiry_manager_partipants_group_operation_link(t('Cancel request'), $inquiry_info->getInquiryNid(), FALSE, 'leave'),
 									);
 								} else {
 									$title = t('Invitation to inquiry');
 									$intro .= ' ' . t('You have been invited to join this inquiry.');
 									$links = array(
-											pi_inquiry_manager_partipants_group_operation_link(t('Accept invitation'), $access_data->get_inquiry_nid(), FALSE, 'acceptinvitation'),
-											pi_inquiry_manager_partipants_group_operation_link(t('Decline invitation'), $access_data->get_inquiry_nid(), FALSE, 'leave'),
+											pi_inquiry_manager_partipants_group_operation_link(t('Accept invitation'), $inquiry_info->getInquiryNid(), FALSE, 'acceptinvitation'),
+											pi_inquiry_manager_partipants_group_operation_link(t('Decline invitation'), $inquiry_info->getInquiryNid(), FALSE, 'leave'),
 									);
 								}
 								break;
 							case 'none':
 								$title = t('Join inquiry');
-								$intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $access_data->get_inquiry_node());
+								$intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry_info->getInquiryNode());
 								switch ($group_selective) {
 									case OG_OPEN:
 										$links = array(
-												pi_inquiry_manager_partipants_group_operation_link(t('Join inquiry'), $access_data->get_inquiry_nid(), FALSE, 'join'),
+												pi_inquiry_manager_partipants_group_operation_link(t('Join inquiry'), $inquiry_info->getInquiryNid(), FALSE, 'join'),
 										);
 										break;
 									case OG_MODERATED:
 										$links = array(
-												pi_inquiry_manager_partipants_group_operation_link(t('Request access'), $access_data->get_inquiry_nid(), FALSE, 'join'),
+												pi_inquiry_manager_partipants_group_operation_link(t('Request access'), $inquiry_info->getInquiryNid(), FALSE, 'join'),
 										);
 										break;
 									case OG_INVITATION_ONLY:
@@ -405,24 +405,30 @@ function pi_inquiry_manager_theme() {
 
 function pi_inquiry_manager_participants_access() {
 	if (user_is_logged_in()) {
-		$access_data = pi_inquiry_groupings_get_access_data();
-		return $access_data->has_inquiry_access();
+		global $user;
+		$inquiry_info = pi_info()->getCurrentInquiryInfo();
+		$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		return $inquiry_access->hasInquiryAccess();
 	}
 	return FALSE;
 }
 
 function pi_inquiry_manager_share_access() {
 	if (user_is_logged_in()) {
-		$access_data = pi_inquiry_groupings_get_access_data();
-		return $access_data->has_inquiry_access();
+		global $user;
+		$inquiry_info = pi_info()->getCurrentInquiryInfo();
+		$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		return $inquiry_access->hasInquiryAccess();
 	}
 	return FALSE;
 }
 
 function pi_inquiry_manager_stage_access() {
 	if (user_is_logged_in()) {
-		$access_data = pi_inquiry_groupings_get_access_data();
-		return $access_data->has_inquiry_access();
+		global $user;
+		$inquiry_info = pi_info()->getCurrentInquiryInfo();
+		$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		return $inquiry_access->hasInquiryAccess();
 	}
 	return FALSE;
 }

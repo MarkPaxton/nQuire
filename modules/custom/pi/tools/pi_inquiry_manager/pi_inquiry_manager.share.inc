@@ -1,8 +1,7 @@
 <?php
 
 function pi_inquiry_manager_share() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	if ($access_data->get_inquiry_node()) {
+	if (pi_info()->getCurrentPath()->inquiry_nid) {
 		$output = drupal_get_form('pi_inquiry_manager_share_content_form');
 		return $output;
 	}
@@ -42,9 +41,9 @@ function pi_inquiry_manager_share_content_form(&$form_state) {
 }
 
 function pi_inquiry_manager_share_content_form_submit($form, $form_state) {
-		$access_data = pi_inquiry_groupings_get_access_data();
-	
-		$sc = nquire_commons_decode_data($form_state['values']['sharecontent']);
+	$access_data = pi_inquiry_groupings_get_access_data();
+
+	$sc = nquire_commons_decode_data($form_state['values']['sharecontent']);
 	if (isset($sc[0]['values'])) {
 		$query = "INSERT INTO pi_activity_share (activity_id, actor, share) VALUES (%d, %d, '%s') ON DUPLICATE KEY UPDATE share='%s'";
 		foreach ($sc[0]['values'] as $anid => $value) {
@@ -68,10 +67,10 @@ function pi_inquiry_manager_share_content_form_submit($form, $form_state) {
 			}
 		}
 	}
-	
+
 	if (isset($form_state['values']['publishresults']) && pi_journal_edit_share_access($access_data->get_inquiry_node())) {
 		pi_journal_edit_share_investigation($access_data->get_inquiry_node(), $access_data->get_uid(), $form_state['values']['publishresults']);
 	}
-	
+
 	return;
 }

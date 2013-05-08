@@ -14,6 +14,10 @@ class PiInfo {
 		$this->access = array();
 	}
 
+	/**
+	 * 
+	 * @return \PiInquiryPath
+	 */
 	function getCurrentPath() {
 		return $this->path;
 	}
@@ -554,7 +558,7 @@ class PiInquiryAccess {
 		$this->inquiry_info = $inquiry_info;
 		$this->uid = $uid;
 
-		$this->inquiry_access = $this->inquiry_info->getInquiryOwner()->uid == $uid || nquire_group_get_user_status_in_group($this->inquiry_info->getInquiryActorGid(), $this->uid) === 'member';
+		$this->inquiry_access =  $this->isInquiryOwner() || nquire_group_get_user_status_in_group($this->inquiry_info->getInquiryActorGid(), $this->uid) === 'member';
 
 		$this->item_access = array();
 
@@ -588,7 +592,15 @@ class PiInquiryAccess {
 			}
 		}
 	}
+	
+	public function hasInquiryAccess() {
+		return $this->inquiry_access;
+	}
 
+	public function isInquiryOwner() {
+		return $this->inquiry_info->getInquiryOwner()->uid == $this->uid;
+	}
+	
 	public function getAccess($item_nid) {
 		return $this->item_access[$item_nid];
 	}

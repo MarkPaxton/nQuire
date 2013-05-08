@@ -7,32 +7,6 @@
 /* this is  the new non-database workflow rules */
 
 
-function find_unique_node_type_for_uid_and_inquiry($node_type, $uid, $inquiry_id) {
-  $query = "SELECT {node}.`nid` FROM {node} " .
-          "LEFT JOIN {pi_activity_node} ON {pi_activity_node}.`nid` = {node}.`nid` " .
-          "LEFT JOIN {pi_activity} ON {pi_activity_node}.`activity_id` = {pi_activity}.`nid` " .
-          "LEFT JOIN {pi_phase} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
-          "LEFT JOIN {node_access} ON {node_access}.`nid` = {node}.`nid` " .
-          "LEFT JOIN {og_uid} ON {node_access}.`gid` = {og_uid}.`nid` " .
-          "WHERE {node}.`type` = '%s' " .
-          "AND ( {og_uid}.uid = %d OR {node}.uid = %d ) " .
-          "AND {pi_phase}.`inquiry_nid` = %d " .
-          "ORDER BY {node}.`nid` DESC ";
-  $result = db_result(db_query($query, $node_type, $uid, $uid, $inquiry_id));
-  return $result;
-}
-
-
-function update_activity_when_activity_node_updated($node, $activity_title) {
-  global $user;
-  $uid = $user->uid;
-  $details = get_inquiry_details_from_current_path();
-
-  $loaded_activity = node_load($details->activity_id);
-  $loaded_activity->title = $activity_title;
-  node_save($loaded_activity);
-}
-
 /**
  *
  * Add an activity node when an activity content item is created
