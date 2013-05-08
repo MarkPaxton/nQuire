@@ -55,6 +55,11 @@ function pi_key_questions_access($op, $node, $account) {
  * Implementation of hook_form().
  */
 function pi_key_questions_form(&$node) {
+	global $user;
+	$current_path = pi_info()->getCurrentPath();	
+	$child_activity = node_load($current_path->activity_nid);
+	
+	
 	$form['title'] = array(
 			'#type' => 'hidden',
 			'#value' => t('Key question')
@@ -72,7 +77,7 @@ function pi_key_questions_form(&$node) {
 			'#weight' => 0
 	);
 
-	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($child_activity->parent_activity, $user->uid);
 	$form['#prefix'] = theme('pi_hypothesis_to_support_activities', $hypothesis_nids);
 
 	return $form;
@@ -123,7 +128,7 @@ function pi_key_questions_view($node, $teaser = FALSE, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
 
 	if (!$teaser) {
-		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_content($node->nid);
 		$node->content['pi_hypothesis'] = array(
 				'#value' => theme('pi_hypothesis_to_support_activities', $hypothesis_nids),
 				'#weight' => -2

@@ -105,16 +105,15 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	return $node;
 }
 
-
 function pi_sort_data_create_contribution_view($node) {
 	global $user;
-	
+
 	$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
 	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	
+
 	$selected_measures = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_id_for_this_node);
-		
-	
+
+
 	if (!$selected_measures) {
 		$selected_measures = array();
 	}
@@ -159,17 +158,20 @@ function theme_pi_sort_data($header, $data_rows) {
 }
 
 function pi_sort_data_get_activities($inquiry_nid) {
-	return pi_inquiry_get_activities_of_type($inquiry_nid, 'pi_sort_data');
+	$inquiry_info = pi_info()->getInquiryInfo($inquiry_nid);
+	return $inquiry_info->getActivityNidsByType('pi_sort_data');
 }
 
 function pi_sort_data_get_data_for_sort_node_nid($sort_data_nid) {
 	return pi_activity_get_children_content_nids_for_content_nid($sort_data_nid);
 }
 
+function pi_sort_data_get_all_data_for_use_in_content_nid($using_content_nid, $sort_data_activity_nid) {
+	$inquiry_info = pi_info()->getInquiryInfoForActivity($sort_data_activity_nid);
+	$content_access = pi_info()->getContentManager($inquiry_info->getInquiryNid());
 
-function pi_sort_data_get_all_data_for_use_in_content_nid($using_content_nid, $sort_data_activity) {
-	$nids = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($using_content_nid, $sort_data_activity, 'children');
-	return $nids;
+	$sort_data_nids = $content_access->getContentFromForUsingContent($sort_data_activity_nid, $using_content_nid);
+	return $content_access->getChildrenContentForContentNids($sort_data_nids);
 }
 
 function pi_sort_data_delete_activity($activity_node) {

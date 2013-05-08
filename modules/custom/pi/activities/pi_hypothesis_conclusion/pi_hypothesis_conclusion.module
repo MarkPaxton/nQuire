@@ -56,6 +56,9 @@ function pi_hypothesis_conclusion_theme() {
  * Implementation of hook_form() for pi_hypothesis_conclusion
  */
 function pi_hypothesis_conclusion_form(&$node) {
+	global $user;
+	$current_path = pi_info()->getCurrentPath();
+	
 	$type = node_get_types('type', $node);
 	$node_title = $type->name;
 
@@ -79,7 +82,7 @@ function pi_hypothesis_conclusion_form(&$node) {
 			'#weight' => -2
 	);
 
-	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($current_path->activity_nid, $user->uid);
 	$form['#prefix'] = theme('pi_hypothesis_to_support_activities', $hypothesis_nids);
 
 	return $form;
@@ -129,7 +132,7 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
 
 	if (!$teaser) {
-		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_content($node->nid);
 		$node->content['pi_hypothesis'] = array(
 				'#value' => theme('pi_hypothesis_to_support_activities', $hypothesis_nids),
 				'#weight' => 1

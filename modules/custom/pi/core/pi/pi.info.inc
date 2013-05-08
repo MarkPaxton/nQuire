@@ -52,7 +52,7 @@ class PiInfo {
 		$activity_nid = pi_activity_get_activity_nid_for_content_nid($content_nid);
 		return $this->getInquiryInfoForActivity($activity_nid);
 	}
-	
+
 	/**
 	 * 
 	 * @param type $inquiry_id
@@ -217,6 +217,16 @@ class PiInquiryInfo {
 		return FALSE;
 	}
 
+	public function getActivityNidsByType($type) {
+		$nids = array();
+		foreach ($this->activities as $activity_nid => $activity) {
+			if ($activity->activity_type === $type) {
+				$nids[] = $activity_nid;
+			}
+		}
+		return $nids;
+	}
+
 	public function getPhase($phase_nid) {
 		return $this->phases[$phase_nid];
 	}
@@ -357,6 +367,14 @@ class PiInquiryContent {
 		}
 	}
 
+	public function getChildrenContentForContentNids($content_nids) {
+		$nids = array();
+		foreach($content_nids as $nid) {
+			$nids = array_merge($nids, $this->getChildrenContentForContentNid($nid));
+		}
+		return $nids;
+	}
+	
 	public function getChildrenContentForContentNid($content_nid) {
 		return $this->getChildrenContentForContentNode(node_load($content_nid));
 	}
@@ -373,7 +391,7 @@ class PiInquiryContent {
 						. "WHERE {pi_activity}.parent_activity=%d AND {pi_activity_node}.collaboration='%s' AND {pi_activity_node}.actor=%d";
 
 		$nids = array();
-		$result = db_query($query, $activity_nid, $actor_data['collaboration'], $actor_data['actor_nid']);
+		$result = db_query($query, $activity_nid, $actor_data['collaboration'], $actor_data['actor']);
 		while ($row = db_fetch_array($result)) {
 			$nids[] = $row['nid'];
 		}

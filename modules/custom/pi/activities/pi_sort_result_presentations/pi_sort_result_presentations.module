@@ -92,7 +92,7 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 		$result_presentation_activity_id = pi_activity_get_activity_nid_for_content_nid($chart_nid);
 		$activity_link = pi_activity_build_link_for_child($activity_nid, $result_presentation_activity_id);
 		
-		$charts_to_show[] = $activity_link;// .theme('pi_result_presentation', $nd);
+		$charts_to_show[$result_presentation_activity_id] = $activity_link;// .theme('pi_result_presentation', $nd);
 	}
 
 	$add_link = make_add_activity_link($activity_nid);
@@ -106,6 +106,21 @@ function pi_sort_result_presentations_view($node, $teaser, $page = FALSE) {
 			'#weight' => -1
 	);
 	return $node;
+}
+
+function pi_sort_result_presentations_create_shared_view($node) {
+	$charts = pi_sort_result_presentations_get_charts($node);
+
+	$charts_to_show = array();
+	foreach ($charts as $chart_nid) {
+		$result_presentation_activity_id = pi_activity_get_activity_nid_for_content_nid($chart_nid);
+		$activity = node_load($result_presentation_activity_id);
+		$activity_link = check_plain($activity->title);
+		
+		$charts_to_show[$result_presentation_activity_id] = $activity_link;
+	}
+	
+	return theme('item_list', $charts_to_show);
 }
 
 function theme_pi_sort_result_presentations($node, $teaser, $result_presentations) {

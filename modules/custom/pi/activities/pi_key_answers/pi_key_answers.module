@@ -43,8 +43,11 @@ function pi_key_answers_access($op, $node, $account) {
  * Implementation of hook_form().
  */
 function pi_key_answers_form(&$node) {
-
-	$key_questions = pi_sort_key_questions_get_questions_use_in_content_nid($node->nid);
+	global $user;
+	$current_path = pi_info()->getCurrentPath();	
+	$child_activity = node_load($current_path->activity_nid);
+	
+	$key_questions = pi_sort_key_questions_get_questions_use_in_activity_nid($child_activity->parent_activity, $user->uid);
 
 	if (count($key_questions) > 0) {
 		$key_question_options = array();
@@ -81,7 +84,7 @@ function pi_key_answers_form(&$node) {
 		);
 	}
 
-	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($child_activity->parent_activity, $user->uid);
 	$form['#prefix'] = theme('pi_hypothesis_to_support_activities', $hypothesis_nids);
 
 	return $form;

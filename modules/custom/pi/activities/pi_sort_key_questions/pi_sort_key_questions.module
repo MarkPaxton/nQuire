@@ -111,10 +111,10 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
 
 	if (!$teaser) {
-		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in($node->nid);
+		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_content($node->nid);
 		$node->content['pi_key_questions_hypothesis'] = array(
 				'#value' => theme('pi_hypothesis_to_support_activities', $hypothesis_nids),
-				'#weight' => -2
+				'#weight' => 1
 		);
 	}
 
@@ -133,13 +133,19 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 	$link_output = make_add_activity_link($activity_id_for_this_node);
 	$node->content['pi_sort_key_questions_add_key_question_link'] = array(
 			'#value' => $link_output,
-			'#weight' => -3
+			'#weight' => 0
 	);
 
+	if (!$teaser && count($key_questions_to_show) > 0) {
+		$node->content['pi_sort_key_questions_prefix'] = array(
+				'#value' => '<b>' . t('Key questions: ') . '</b>',
+				'#weight' => 2,
+		);
+	}
 
 	$node->content['pi_sort_key_questions'] = array(
 			'#value' => theme('pi_sort_key_questions', $key_questions_to_show),
-			'#weight' => 2
+			'#weight' => 3
 	);
 
 	return $node;
@@ -147,7 +153,7 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 
 function pi_sort_key_questions_create_contribution_view($node) {
 	$key_questions = pi_sort_key_questions_get_questions_for_node($node);
-	
+
 	$key_questions_to_show = array();
 	foreach ($key_questions as $sorted_key_question_nid) {
 		$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($sorted_key_question_nid);
@@ -162,7 +168,7 @@ function pi_sort_key_questions_create_contribution_view($node) {
 
 function pi_sort_key_questions_create_shared_view($node) {
 	$key_questions = pi_sort_key_questions_get_questions_for_node($node);
-	
+
 	$key_questions_to_show = array();
 	foreach ($key_questions as $sorted_key_question_nid) {
 		$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($sorted_key_question_nid);
@@ -231,15 +237,37 @@ function theme_pi_sort_key_questions_node_form($form) {
 	return $output;
 }
 
-function pi_sort_key_questions_get_questions_use_in_content_nid($content_nid) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity_by_type('pi_sort_key_questions');
-	$sort_question_nids = pi_activity_aggregate_shared_content_for_sort_activity_nid_for_use_in_content_nid($content_nid, $activity_data['node']->nid, 'parent');
+function pi_sort_key_questions_get_questions_use_in_activity_nid($using_activity_nid, $using_uid) {
+	$inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
+	$content_access = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+
+	$activity = $inquiry_info->getActivityByType('pi_sort_key_questions');
+
 	$question_nids = array();
-	foreach($sort_question_nids as $nid) {
-		$question_nids = array_merge($question_nids, pi_sort_key_questions_get_questions_for_node(node_load($nid)));
+	if ($activity) {
+		$sort_question_nids = $content_access->getContentFromForUsingActivityActor($activity->nid, $using_activity_nid, $using_uid);
+		foreach ($sort_question_nids as $nid) {
+			$question_nids = array_merge($question_nids, pi_sort_key_questions_get_questions_for_node(node_load($nid)));
+		}
 	}
-	
+
+	return $question_nids;
+}
+
+function pi_sort_key_questions_get_questions_use_in_content_nid($content_nid) {
+	$inquiry_info = pi_info()->getInquiryInfoForContent($content_nid);
+	$content_access = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+
+	$activity = $inquiry_info->getActivityByType('pi_sort_key_questions');
+
+	$question_nids = array();
+	if ($activity) {
+		$sort_question_nids = $content_access->getContentFromForUsingContent($activity->nid, $content_nid);
+		foreach ($sort_question_nids as $nid) {
+			$question_nids = array_merge($question_nids, pi_sort_key_questions_get_questions_for_node(node_load($nid)));
+		}
+	}
+
 	return $question_nids;
 }
 
