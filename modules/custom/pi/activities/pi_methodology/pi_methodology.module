@@ -270,7 +270,7 @@ function pi_methodology_get_measures_for_use_in_content_node($using_content_nid,
 
 function pi_methodology_get_measures_for_use_in_activity($using_activity_nid, $using_uid, $sort_data_activity_nid) {
 	$inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
-	$content_access = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+	$content_access = pi_info()->getContentManager();
 
 	$activity = $inquiry_info->getActivityByType('pi_methodology');
 
@@ -315,14 +315,6 @@ function _pi_methodology_load_default_measures() {
  */
 function pi_methodology_view($node, $teaser, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
-
-	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	$link_output = make_add_activity_link($activity_id_for_this_node);
-
-	$node->content['pi_methodology_add_link'] = array(
-			'#value' => $link_output,
-			'#weight' => -3
-	);
 
 	$node->content['pi_methodology'] = array(
 			'#value' => theme('pi_methodology', $node, TRUE),
@@ -545,22 +537,6 @@ function pi_methodology_display_table($header, $rows, $attributes) {
 	return $output;
 }
 
-/**
- * Get all available measures for the inquiry (derived from current path).
- * @return array of db_fetch_objects() for the measures available in db 
- */
-function pi_methodology_get_options() {
-	global $user;
-	$details = get_inquiry_details_from_current_path();
-
-	$nids = pi_activity_get_available_nids_of_type($user->uid, $details->inquiry_id, 'pi_available_measures');
-	$items = pi_activity_map_fields_from_nids($nids, array('title' => '#title'));
-	foreach (array_keys($items) as $nid) {
-		$items[$nid]['#status'] = 'none';
-		$items[$nid]['#weight'] = 0;
-	}
-	return $items;
-}
 
 function _pi_methodology_find_activity_measure_form_attributes($container) {
 	$table_form_items = array();

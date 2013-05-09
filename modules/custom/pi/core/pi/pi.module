@@ -298,19 +298,33 @@ function pi_get_activities_for_phase_and_type($phase_nid, $type) {
 }
 
 function pi_inquiry_inquiry_view_access() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	return pi_inquiry_structure_view_access() || $access_data->get_inquiry_node()->participants_selection === 'anyone' ||
-					pi_inquiry_groupings_user_is_in_participants_target_group($access_data->get_uid(), $access_data->get_inquiry_node());
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		$inquiry_node = $inquiry_info->getInquiryNode();
+		return pi_inquiry_structure_view_access() || $inquiry_node->participants_selection === 'anyone' ||
+						pi_inquiry_groupings_user_is_in_participants_target_group($user->uid, $inquiry_node);
+	}
+	return FALSE;
 }
 
 function pi_inquiry_structure_view_access() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	return $access_data->has_inquiry_access();
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		$access_data = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		return $access_data->hasInquiryAccess();
+	}
+	return FALSE;
 }
 
 function pi_inquiry_phase_view_access($phase) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	return $access_data->has_phase_access($phase->nid);
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		$access_data = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		return $access_data->getAccess($phase->nid) !== 'hidden';
+	}
 }
 
 /**

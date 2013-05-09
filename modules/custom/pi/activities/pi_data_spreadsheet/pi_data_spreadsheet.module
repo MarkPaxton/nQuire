@@ -194,10 +194,8 @@ function _pi_data_spreadsheet_update_data($node, $session_key, $book_name) {
 	$inquiry_nid = pi_inquiry_find_inquiry_for_content($node->nid);
 	$data_activities = pi_sort_data_get_activities($inquiry_nid);
 
-	$access_data = pi_inquiry_groupings_get_access_data();
-
 	foreach ($data_activities as $i => $activity_nid) {
-		$activity_data = $access_data->get_activity($activity_nid);
+		$activity_node = node_load($activity_nid);
 
 		$worksheet_name = 'Data' . ($i + 1);
 
@@ -216,7 +214,7 @@ function _pi_data_spreadsheet_update_data($node, $session_key, $book_name) {
 
 		$cells = new PiDataSpreadSheetCellRequest();
 
-		$cells->addCell(0, 0, t('Data for activity: @title', array('@title' => $activity_data['node']->title)));
+		$cells->addCell(0, 0, t('Data for activity: @title', array('@title' => $activity_node->title)));
 		$cells->addCell(0, 1, t('This sheet is created automatically, Please do not modify it!'));
 
 		$data_nids = pi_sort_data_get_all_data_for_use_in_content_nid($node->nid, $activity_nid);

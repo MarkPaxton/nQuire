@@ -305,8 +305,10 @@ function theme_nquire_structure_widget_share_content_feature_table($id, $structu
 	$output = '<p>' . t('Here you can select whether to share your content with other inquiry users.') . '<br/>'
 					. t('Please note that for activities carried out in groups or all the participants together, this decision is made by the group and inquiry owners respectively.') . '</p>';
 
-	$access_data = pi_inquiry_groupings_get_access_data();
-	if ($access_data->get_use_groups() && !$access_data->get_subgroup()) {
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+
+	if ($inquiry_info->useSubgroups() && !$inquiry_info->getSubgroup($user->uid)) {
 		$output .= '<p>' . t('You do not belong to any group in this inquiry. Therefore, you cannot change the sharing settings for group activities.') . '<p>';
 	}
 

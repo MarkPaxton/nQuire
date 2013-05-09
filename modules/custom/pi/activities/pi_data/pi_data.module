@@ -84,7 +84,7 @@ function pi_data_form(&$node) {
 
 	global $user;
 	$current_path = pi_info()->getCurrentPath();
-	
+
 	$data_activity = node_load($current_path->activity_nid);
 	$sort_data_activity_nid = $data_activity->parent_activity;
 	$measures = pi_methodology_get_measures_for_use_in_activity($sort_data_activity_nid, $user->uid, $sort_data_activity_nid);
@@ -288,10 +288,11 @@ function theme_pi_data_node_form($form) {
 }
 
 function _pi_data_load_ajax_form_support($sort_data_activity, $form) {
+	global $user;
+	$content_nid = pi_info()->getContentManager()->getContent($sort_data_activity->nid, $user->uid, FALSE);
 
 	$data_id = $form['#node']->nid;
 	$data_id_str = $data_id ? "'$data_id'" : 'null';
-	$content_nid = pi_activity_get_content_nid_for_activity($sort_data_activity->nid);
 
 	$data_nids = pi_sort_data_get_data_for_sort_node_nid($content_nid);
 	$data_strs = array_map(function($nid) {

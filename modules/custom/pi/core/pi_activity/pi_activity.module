@@ -3,9 +3,8 @@
 // $Id: pi_activity.info,  2010/05/21  MCP $
 
 
-module_load_include('inc', 'pi_activity', 'pi_activity.workflow');
 module_load_include('inc', 'pi_activity', 'pi_activity.extra');
-//module_load_include('inc', 'pi_activity', 'pi_activity.status');
+module_load_include('inc', 'pi_activity', 'pi_activity.links');
 module_load_include('inc', 'pi_activity', 'pi_activity.content');
 
 /**
@@ -43,24 +42,7 @@ function pi_activity_perm() {
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
 function pi_activity_access($activity, $op) {
-	return TRUE;
-	
-	$return_value = false;
-	global $user;
-	if (isset($activity->nid)) {
-		$node_function_allowed = pi_activity_check_node_function($activity->nid, $user->uid, $op);
-		if (($node_function_allowed === false) && ($op == 'view')) {
-			$return_value = pi_activity_check_node_function($activity->nid, $user->uid, 'edit');
-		}
-		if (($node_function_allowed === false) && ($op == 'add')) {
-			$possible_add_nid = pi_activity_get_add_activity_for_sort_activity($activity->nid);
-			if ($possible_add_nid !== NULL) {
-				$return_value = true;
-			}
-		}
-	}
-
-	return $return_value;
+	return FALSE;
 }
 
 /**
@@ -123,10 +105,15 @@ function pi_activity_menu() {
 }
 
 function pi_activity_tab_view_access_callback($node) {
-	if ($node->activity_type === 'pi_data_spreadsheet' || $node->activity_type === 'pi_data') {
-		return !pi_activity_tab_edit_access_callback($node) && pi_activity_tabs_access_to_content($node, 'view');
-	} else {
-		return pi_activity_tabs_access_to_content($node, 'view');
+	switch ($node->activity_type) {
+		case 'pi_data_spreadsheet':
+		case 'pi_data':
+		case 'pi_key_questions':
+		case 'pi_key_answers':
+			return !pi_activity_tab_edit_access_callback($node) && pi_activity_tabs_access_to_content($node, 'view');
+
+		default:
+			return pi_activity_tabs_access_to_content($node, 'view');
 	}
 }
 
@@ -145,14 +132,14 @@ function pi_activity_tab_edit_access_callback($node) {
 
 function pi_activity_tabs_access_to_content($node, $function) {
 	if ($node->type === 'pi_activity') {
-		$access_data = pi_inquiry_groupings_get_access_data();
-		$activity_data = $access_data->get_activity($node->nid);
-		if ($activity_data) {
-			if ($activity_data['script_activity'] || pi_activity_get_content_nid_for_activity($node->nid, FALSE)) {
-				return $activity_data['access'] === 'edit' ||
-								($activity_data['access'] === 'view' && $function === 'view');
-			}
-		}
+		global $user;
+
+		$inquiry_info = pi_info()->getInquiryInfoForActivity($node->nid);
+		$access_data = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+
+		$access = $access_data->getAccessToItem($node);
+
+		return ($node->script_activity || pi_info()->getContentManager()->getContent($node->nid, $user->uid, FALSE)) && ($access === 'edit' || ($access === 'view' && $function === 'view'));
 	}
 
 	return FALSE;
@@ -193,19 +180,19 @@ function pi_activity_form(&$node, $form_state) {
  * @param &$form_state
  */
 function pi_activity_form_alter(&$form, &$form_state, $form_id) {
-	// This is for altering the actual activity form
+// This is for altering the actual activity form
 	if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id)
 		pi_activity_form_node_form_alter($form, $form_state);
 
-	// This is for altering the activity CONTENT forms...
-	// Split the string into parts to get the inquiry id if it exists...
+// This is for altering the activity CONTENT forms...
+// Split the string into parts to get the inquiry id if it exists...
 
 	$path_part1 = pi_util_get_path_element(0);
 	if (strcasecmp($path_part1, 'activity') === 0) {
 		if ($form_id != 'pi_activity_node_from') {
-			// Move the menu to the bottom of activity content forms
+// Move the menu to the bottom of activity content forms
 			$form['menu']['#weight'] = 20;
-			// Hide the Group options from activity content forms
+// Hide the Group options from activity content forms
 			$form['og_nodeapi']['#access'] = FALSE;
 
 			$activity_id = pi_util_get_path_element(1);
@@ -243,12 +230,12 @@ function pi_activity_load($node) {
  * @param $node
  */
 function pi_activity_insert($node) {
-	// It is necessary to update the following tables:
-	//   * pi_activity
-	//   * pi_activity_stage_state
-	//   * pi_activity_status
-	//   * pi_activity_node
-	// First update the pi_activity table
+// It is necessary to update the following tables:
+//   * pi_activity
+//   * pi_activity_stage_state
+//   * pi_activity_status
+//   * pi_activity_node
+// First update the pi_activity table
 	$pi_activity_row = _pi_activity_form_data_to_pi_activity_row($node);
 	$write_result = drupal_write_record('pi_activity', $pi_activity_row);
 
@@ -266,6 +253,10 @@ function pi_activity_theme() {
 			'pi_activity_display_contribution_content_node' => array(
 					'arguments' => array('activity_collaboration' => '', 'content_node' => NULL, 'content_actor' => NULL, 'viewer_collaboration' => ''),
 					'file' => 'pi_activity.activity.inc',
+			),
+			'pi_activity_links' => array(
+					'arguments' => array('links' => NULL),
+					'file' => 'pi_activity.links.inc',
 			),
 	);
 }
@@ -358,24 +349,24 @@ function pi_activity_shared_content_list($activity) {
 function pi_activity_nodeapi(&$node, $op) {
 	if ($node->type != 'image' && $node->type != 'pi_activity') {
 		if (in_array($op, array('insert', 'update', 'delete'))) {
-			// If this is a node, check whether it's part of an activity
-			// first check the database, then look at the URL
+// If this is a node, check whether it's part of an activity
+// first check the database, then look at the URL
 			$activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
 			if ($activity_nid == NULL) {
-				//Node not associated to an activity in the database yet, so check url also
-				// Split the string into parts to get the inquiry id if it exists...
+//Node not associated to an activity in the database yet, so check url also
+// Split the string into parts to get the inquiry id if it exists...
 				$path_parts = pi_util_get_drupal_path_parts();
 				if (strcasecmp($path_parts[0], 'activity') === 0) {
 					if (is_numeric($path_parts[1]))
 						$activity_nid = $path_parts[1];
 				}
 			}
-			// Presuming the referred activity id checks out then update it as needed
+// Presuming the referred activity id checks out then update it as needed
 			$activity = node_load($activity_nid);
-			if (pi_check_is_node_of_type($activity, 'pi_activity')) {
-				// Set PI activity node
+			if ($activity->type === 'pi_activity') {
+// Set PI activity node
 				$node_types_to_create_activity_for = array(
-						//'pi_available_measures', // depends on whether the measure is part of the script
+//'pi_available_measures', // depends on whether the measure is part of the script
 						'pi_key_questions',
 						'pi_key_answers',
 						'pi_result_presentations',
@@ -385,7 +376,7 @@ function pi_activity_nodeapi(&$node, $op) {
 
 				switch ($op) {
 					case 'insert':
-						//new content saved
+//new content saved
 						switch ($node->type) {
 							case 'pi_available_measures':
 								break;
@@ -399,11 +390,14 @@ function pi_activity_nodeapi(&$node, $op) {
 								break;
 						}
 
+						global $user;
+						$content_manager = pi_info()->getContentManager();
+
 						if (in_array($node->type, $node_types_to_create_activity_for) ||
 										($node->type === 'pi_available_measures' && !$node->script_measure)) {
-							pi_activity_add_new_activity_for_activity_content_node($node, $activity);
+							$content_manager->createNewActivityForContent($node, $activity, $user->uid);
 						} else {
-							pi_activity_link_content_with_activity($node, $activity->nid);
+							$content_manager->linkContentWithActivity($node, $activity->nid, $user->uid);
 						}
 						break;
 					case 'update':
@@ -429,7 +423,7 @@ function pi_activity_nodeapi(&$node, $op) {
 						}
 						break;
 					case 'delete':
-						//delete existing activity if it's got a parent activity
+//delete existing activity if it's got a parent activity
 						if (!$activity->script_activity) {
 							node_delete($activity_nid);
 						}
@@ -465,59 +459,6 @@ function pi_activity_get_add_activity_for_sort_activity($activity_id) {
 	}
 
 	return NULL;
-	//return $return_value;
-}
-
-/**
- * Returns an array of nids of a node type available
- * to a user for a given inquiry
- * @param uint $uid The user to which the nodes are availeable
- * @param uint $inquiry_id the inquiry id that the nodes belong to
- * @param string $type the node type to search for e.g. 'pi_data'
- *
- */
-function pi_activity_get_available_nids_of_type($uid, $inquiry_id, $node_type) {
-	$return_nids = array();
-
-	$query = "SELECT DISTINCT {node}.`nid` as nid FROM {node} AS node " .
-					"LEFT JOIN {node_access} node_access ON node.`nid` = node_access.`nid` " .
-					"LEFT JOIN {og_uid} og_uid ON node_access.`gid` = og_uid.`nid` " .
-					"LEFT JOIN {pi_activity_node} pi_activity_node ON pi_activity_node.`nid` = node.`nid`  " .
-					"LEFT JOIN {pi_activity} pi_activity ON pi_activity_node.`activity_id` = pi_activity.`nid`  " .
-					"LEFT JOIN {pi_phase} pi_phase ON pi_activity.`phase_nid` = pi_phase.`nid` " .
-					"WHERE TYPE = '%s'  AND pi_phase.`inquiry_nid` = %d " .
-					"AND STATUS = '1' AND ((node.`uid` = %d) OR (og_uid.`uid` = %d) )";
-	$result = db_query($query, $node_type, $inquiry_id, $uid, $uid);
-	while ($row = db_fetch_object($result)) {
-		$return_nids[] = $row->nid;
-	}
-	return $return_nids;
-}
-
-/**
- * This function takes an array of nids, loads the node and then maps the
- * node attributes to fields as per the key and value of $field_maping
- * if the node cann't be loaded it is dropped from the array therefore
- * if this is of concern to you, you should check array_keys($results)
- * with $nids
- * @param $nids array(uint) nids to get data from
- * @param $field_mapping mapping of node attribute to field e.g. array('weight' => '#weight')
- * @return array [nid][{field_mapping_value}] node->{field_mapping_key}
- */
-function pi_activity_map_fields_from_nids($nids, $field_mapping) {
-	$result = array();
-	foreach ($nids as $nid) {
-		$node_fields = NULL;
-		$node = node_load($nid);
-		if ($node != FALSE) {
-			$node_fields = array();
-			foreach ($field_mapping as $field => $mapping) {
-				$node_fields[$mapping] = $node->$field;
-			}
-		}
-		$result[$nid] = $node_fields;
-	}
-	return $result;
 }
 
 /**
@@ -530,26 +471,26 @@ function pi_activity_map_fields_from_nids($nids, $field_mapping) {
  *    -> redirect to /activity/%activity/phase on completion is specified in activity node details
  */
 function pi_activity_form_node_form_alter(&$form, &$form_state) {
-	//Strip the request url of the preceeding drupal stuff base_url and ?q=/
-	// so that it's possible to work out whether the page request was from /inquiry/%inquiry/phase/add
-	// or from /node/%node/edit
+//Strip the request url of the preceeding drupal stuff base_url and ?q=/
+// so that it's possible to work out whether the page request was from /inquiry/%inquiry/phase/add
+// or from /node/%node/edit
 	$path_parts = pi_util_get_drupal_path_parts();
-	//if AHAH helper is used, then redirect is cleared, so reset it here....
+//if AHAH helper is used, then redirect is cleared, so reset it here....
 	if (pi_util_match_url(array('ahah_helper')))
 		$form['#redirect'] = $form_state['storage']['redirect-activity-submit'];
 
-	// Look for /activity/{number}/edit
+// Look for /activity/{number}/edit
 	if (pi_util_match_url(array('activity', NULL, NULL))) {
 		if (is_numeric($path_parts[1])) {
 			$potential_activity_id = $path_parts[1];
 
-			// the last part of the url is a special case since it could be either
-			// /activity/%activity/edit OR
-			// /activity/%activity/edit?some=query&string=too OR
-			// /activity/%activity/edit&some=query&string=too
+// the last part of the url is a special case since it could be either
+// /activity/%activity/edit OR
+// /activity/%activity/edit?some=query&string=too OR
+// /activity/%activity/edit&some=query&string=too
 			$valid_strings = array('edit', 'edit?', 'edit&');
 			if (in_array(strtolower($path_parts[2]), $valid_strings)) {
-				//Set the destination from activity details
+//Set the destination from activity details
 				$activity = node_load($potential_activity_id);
 				if (pi_check_is_node_of_type($activity, 'pi_activity')) {
 					$destination = $activity->destination_after;
@@ -560,13 +501,13 @@ function pi_activity_form_node_form_alter(&$form, &$form_state) {
 					}
 					$form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
 				} else {
-					// It wasn't a valid inquiry node, so fall back to standard phase editing page
+// It wasn't a valid inquiry node, so fall back to standard phase editing page
 					drupal_set_message(t("An activity nid (@nid) was specified for this activity, but the id didn't refer to a valid activity node.", array("@nid" => $potential_activity_id)), 'warning');
 				}
 			}
 		}
 	}
-	// Look for /activity/{number}/edit
+// Look for /activity/{number}/edit
 	if (pi_util_match_url(array('inquiry', NULL, 'activity', 'add')) || pi_util_match_url(array('inquiry', NULL, 'activity', 'edit'))) {
 		$activity = node_load($potential_activity_id);
 		if (pi_check_is_node_of_type($activity, 'pi_activity')) {
@@ -579,15 +520,14 @@ function pi_activity_form_node_form_alter(&$form, &$form_state) {
 function pi_activity_shared_content_view_access($activity_node, $actor) {
 	$access_value = FALSE;
 
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity($activity_node->nid);
-	if ($activity_data) {
+	$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_node->nid);
+	if ($inquiry_info) {
 		$query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
 		$row = db_fetch_array(db_query($query, $activity_node->nid, $actor));
 
 		if ($row) {
 			$access_value = $row['share'];
-		} else if ($activity_data['collaboration'] === 'individual') {
+		} else if ($inquiry_info->getActivityCollaboration($activity_node->nid) === 'individual') {
 			$access_value = 'individual_group';
 		}
 	}
@@ -597,7 +537,8 @@ function pi_activity_shared_content_view_access($activity_node, $actor) {
 		case 'individual_all':
 			return TRUE;
 		case 'individual_group':
-			return in_array($actor, nquire_group_get_member_uids($access_data->get_subgroup()));
+			global $user;
+			return in_array($actor, nquire_group_get_member_uids($inquiry_info->getSubgroup($user->uid)));
 		default:
 			return FALSE;
 	}

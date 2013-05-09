@@ -17,24 +17,23 @@
  * @param $arg_node_function The function to perform on the activity
  */
 function pi_activity_content_view($activity_node, $arg_node_function, $teaser = FALSE) {
+	$output = "";
 
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$activity_data = $access_data->get_activity($activity_node->nid);
-	$content_node = node_load(pi_activity_get_content_nid_for_activity($activity_node->nid));
+	global $user;
+	$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_node->nid);
+	if ($inquiry_info) {
+		$phase_node = $inquiry_info->getPhase($activity_node->phase_nid);
+		$content_manager = pi_info()->getContentManager();
+		$content_nid = $content_manager->getContent($activity_node->nid, $user->uid, TRUE);
+		$content_node = node_load($content_nid);
 
-	if (!$content_node && !$teaser && $arg_node_function === 'view' && $activity_data['access'] === 'edit') {
-		$activity_link = 'activity/' . $activity_node->nid . '/edit';
-		unset($_REQUEST['destination']);
-		unset($_GET['destination']);
-		drupal_goto($activity_link);
-	} else {
+
 		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 
-		$output = "";
 
 		if (!$teaser) {
 			$output .= '<p><small>';
-			switch ($activity_data['collaboration']) {
+			switch ($phase_node->collaboration) {
 				case 'individual':
 					$output .= t('This activity is carried out individually.');
 					break;
@@ -48,9 +47,6 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 			$output .= '</small></p>';
 		}
 
-		$output .= '<p><b>' . nl2br(check_plain($activity_node->body)) . '</b></p>';
-
-
 		if ($arg_node_function === 'view') {
 			$content_output .= $content_node ? node_view($content_node, $teaser, TRUE, TRUE) : FALSE;
 		} else if ($arg_node_function === 'edit') {
@@ -60,7 +56,7 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 			} else {
 				if (!$content_node) {
 					$content_node = new stdClass;
-					$content_node->uid = $access_data->get_uid();
+					$content_node->uid = $user->uid;
 					$content_node->type = $activity_node->activity_type;
 				}
 				$content_output .= node_page_edit($content_node);
@@ -68,6 +64,13 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 		}
 
 		if ($content_output) {
+			if (!$teaser) {
+				if ($activity_node->body) {
+					$output .= '<p>' . nl2br(check_plain($activity_node->body)) . '</p>';
+				}
+				$output .= pi_activity_create_activity_view_activity_links($activity_node);
+			}
+
 			$content_wrapper_function = "{$activity_node->activity_type}_wrap_content_node_view";
 			if (!function_exists($content_wrapper_function) || $content_wrapper_function($activity_node)) {
 				$output .= '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
@@ -81,12 +84,13 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 			drupal_set_title(check_plain($activity_node->title));
 		}
 	}
-
 	return $output;
 }
 
 function pi_activity_content_delete($activity_node) {
-	$content_nid = pi_activity_get_content_nid_for_activity($activity_node->nid);
+	global $user;
+	$content_nid = pi_info()->getContentManager()->getContent($activity_node->nid, $user->uid, FALSE);
+	
 	$node = node_load($content_nid);
 	if ($node) {
 		drupal_set_title(t("Delete @title", array('@title' => $node->title)));
@@ -112,7 +116,10 @@ function pi_activity_content_delete_form(&$form_state, $activity_node, $node) {
 
 function pi_activity_content_delete_form_submit($form, $form_state) {
 	$activity_nid = arg(1);
-	$content_nid = pi_activity_get_content_nid_for_activity($activity_nid);
+	
+	global $user;
+	$content_nid = pi_info()->getContentManager()->getContent($activity_nid, $user->uid, FALSE);
+	
 	node_delete($content_nid);
 
 	nquire_commons_form_close($form, $form_state);
@@ -121,7 +128,7 @@ function pi_activity_content_delete_form_submit($form, $form_state) {
 function pi_activity_shared_content_list_view($activity_node) {
 	global $user;
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	$inquiry_content = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+	$inquiry_content = pi_info()->getContentManager();
 
 	$content_list = $inquiry_content->getActivitySharedContent($activity_node->nid, $user->uid);
 	$output = '';
@@ -151,7 +158,7 @@ function pi_activity_shared_content_list_view($activity_node) {
 
 function pi_activity_shared_content_view($activity_node, $actor_id, $teaser = FALSE) {
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	$inquiry_content = pi_info()->getContentManager($inquiry_info->getInquiryNid());
+	$inquiry_content = pi_info()->getContentManager();
 
 	$content_nid = $inquiry_content->getContentForActor($activity_node->nid, $actor_id);
 	return theme('pi_activity_display_shared_content_node', $inquiry_info, $activity_node, $actor_id, $content_nid, $teaser);

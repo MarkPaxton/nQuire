@@ -25,13 +25,16 @@ function pi_inquiry_phase_view($phase) {
 		case 'individual':
 			$output .= t('Activities in this phase are carried out individually. ')
 							. t('Click !link to see what other participants are doing.', array('!link' => $link));
+			$work_header = t('My work');
 			break;
 		case 'group':
 			$output .= t('Activities in this phase are carried out in groups.')
 							. t('Click !link to see what other groups are doing.', array('!link' => $link));
+			$work_header = t('My group\' work');
 			break;
 		default:
 			$output .= t('Activities in this phase are done by all inquiry participants working together.');
+			$work_header = t('Our work');
 			break;
 	}
 	$output .= '</small>';
@@ -44,20 +47,24 @@ function pi_inquiry_phase_view($phase) {
 		$list = array();
 
 		foreach ($activities as $activity_nid => $activity_node) {
-			$activity_link = pi_activity_build_link($activity_nid, $user->uid);
-
-			if ($inquiry_access->getAccess($activity_nid) !== 'hidden') {
-				$activity_desc = pi_activity_teaser($activity_node);
+			$activity_intro = '<h4>' . check_plain($activity_node->title) . '</h4>';
+			$access = $inquiry_access->getAccess($activity_nid) !== 'hidden';
+			
+			if ($access && $activity_node->body) {
+				$activity_intro .= '<p>' . nl2br(check_plain($activity_node->body)) . '</p>';
+			}
+			if ($access) {
+				$activity_content = pi_activity_create_phase_view_activity_links($activity_node) . pi_activity_teaser($activity_node);
 			} else {
-				$activity_desc = t('You do not have access to view or edit this activity.');
+				$activity_content = t('You do not have access to this activity.');
 			}
 
-			$list[] = array('data' => array($activity_link, $activity_desc), 'class' => 'activity');
+			$list[] = array('data' => array($activity_intro, $activity_content), 'class' => 'activity');
 		}
 
 		$attributes = array('class' => 'activity');
 
-		$header = array(t('Activity'), t('Description'));
+		$header = array(t('Activity'), $work_header);
 		$output .= theme_table($header, $list, $attributes);
 	} else {
 		drupal_set_message(t('No activities are available in this phase at this stage.'));
