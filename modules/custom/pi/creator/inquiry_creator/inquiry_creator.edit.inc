@@ -272,8 +272,15 @@ function inquiry_creator_roles_form_submit($form, $form_state) {
 	global $user;
 	$node = node_load($form_state['values']['inquiry_design']);
 	if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+		$old_roles = json_decode($node->roles);
+		$default_roles = array();
+		foreach ($old_roles as $role) {
+			$default_roles[$role->id] = $role->default ? true : false;
+		}
+
 		$roles = json_decode($form_state['values']['roles']);
 		$id = 0;
+
 		foreach ($roles as $role) {
 			if (is_numeric($role->id)) {
 				$id = max($id, $role->id);
@@ -284,6 +291,8 @@ function inquiry_creator_roles_form_submit($form, $form_state) {
 			if (!is_numeric($role->id)) {
 				$role->id = ++$id;
 			}
+
+			$role->default = isset($default_roles[$role->id]) ? $default_roles[$role->id] : FALSE;
 		}
 
 		$new_roles = json_encode($roles);
