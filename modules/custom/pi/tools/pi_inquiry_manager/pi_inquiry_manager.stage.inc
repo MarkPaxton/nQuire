@@ -52,10 +52,14 @@ function _pi_inquiry_manager_stage_selector_load_javascript($stage_phase_values,
 }
 
 function pi_inquiry_manager_stage_selector_form_submit($form, $form_state) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	if ($access_data->user_is_inquiry_owner()) {
-		$value = $form_state['values']['stageselector'];
-		$query = "INSERT INTO pi_stage_current (inquiry_id, stage_id) VALUES (%d, %d) ON DUPLICATE KEY UPDATE stage_id=%d";
-		db_query($query, $access_data->get_inquiry_nid(), $value, $value);
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		global $user;
+		$access_data = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		if ($access_data->isInquiryOwner()) {
+			$value = $form_state['values']['stageselector'];
+			$query = "INSERT INTO pi_stage_current (inquiry_id, stage_id) VALUES (%d, %d) ON DUPLICATE KEY UPDATE stage_id=%d";
+			db_query($query, $inquiry_info->getInquiryNid(), $value, $value);
+		}
 	}
 }

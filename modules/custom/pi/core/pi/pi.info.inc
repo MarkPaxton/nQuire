@@ -592,6 +592,7 @@ class PiInquiryAccess {
 	private $inquiry_roles;
 	private $subgroup;
 	private $group_roles;
+	private $is_group_owner;
 	private $is_owner;
 	private $inquiry_access;
 	private $item_access;
@@ -600,7 +601,7 @@ class PiInquiryAccess {
 		$this->inquiry_info = $inquiry_info;
 		$this->uid = $uid;
 
-		$this->is_owner = $this->inquiry_info->getInquiryOwner()->uid == $this->uid;
+		$this->is_owner = $this->inquiry_info->getInquiryOwner() == $this->uid;
 
 		$this->inquiry_access = $this->is_owner || nquire_group_get_user_status_in_group($this->inquiry_info->getInquiryActorGid(), $this->uid) === 'member';
 
@@ -644,7 +645,16 @@ class PiInquiryAccess {
 	public function isInquiryOwner() {
 		return $this->is_owner;
 	}
-	
+
+	public function isGroupOwner() {
+		if (!isset($this->is_group_owner)) {
+			$group_nid = $this->getSubgroup();
+			$group_node = node_load($group_nid);
+			$this->is_group_owner = $group_node === $this->uid;
+		}
+		return $this->is_group_owner;
+	}
+
 	public function getAccessToItem($item) {
 		if (isset($this->item_access[$item->nid])) {
 			return $this->item_access[$item->nid];
@@ -652,7 +662,7 @@ class PiInquiryAccess {
 			return $this->getAccess($item->parent_activity);
 		}
 	}
-	
+
 	public function getAccess($item_nid) {
 		return $this->item_access[$item_nid];
 	}

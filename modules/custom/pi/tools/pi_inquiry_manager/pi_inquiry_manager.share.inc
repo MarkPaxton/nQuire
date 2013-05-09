@@ -41,26 +41,28 @@ function pi_inquiry_manager_share_content_form(&$form_state) {
 }
 
 function pi_inquiry_manager_share_content_form_submit($form, $form_state) {
-	$access_data = pi_inquiry_groupings_get_access_data();
-
+	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	$access_manager = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	
 	$sc = nquire_commons_decode_data($form_state['values']['sharecontent']);
 	if (isset($sc[0]['values'])) {
 		$query = "INSERT INTO pi_activity_share (activity_id, actor, share) VALUES (%d, %d, '%s') ON DUPLICATE KEY UPDATE share='%s'";
 		foreach ($sc[0]['values'] as $anid => $value) {
-			$activity_data = $access_data->get_activity($anid);
-			if ($activity_data) {
-				switch ($activity_data['collaboration']) {
+			$activity = $inquiry_info->getActivity($anid);
+			if ($activity) {
+				switch ($inquiry_info->getActivityCollaboration($anid)) {
 					case 'individual':
-						db_query($query, $anid, $access_data->get_uid(), $value, $value);
+						db_query($query, $anid, $user->uid, $value, $value);
 						break;
 					case 'group':
-						if ($access_data->user_is_subgroup_owner()) {
-							db_query($query, $anid, $access_data->get_subgroup(), $value, $value);
+						if ($access_manager->isGroupOwner()) {
+							db_query($query, $anid, $access_manager->getSubgroup(), $value, $value);
 						}
 						break;
 					default:
-						if ($access_data->user_is_inquiry_owner()) {
-							db_query($query, $anid, $access_data->get_inquiry_node()->actor_gid, $value, $value);
+						if ($access_manager->isInquiryOwner()) {
+							db_query($query, $anid, $inquiry_info->getInquiryActorGid(), $value, $value);
 						}
 						break;
 				}
@@ -68,8 +70,8 @@ function pi_inquiry_manager_share_content_form_submit($form, $form_state) {
 		}
 	}
 
-	if (isset($form_state['values']['publishresults']) && pi_journal_edit_share_access($access_data->get_inquiry_node())) {
-		pi_journal_edit_share_investigation($access_data->get_inquiry_node(), $access_data->get_uid(), $form_state['values']['publishresults']);
+	if (isset($form_state['values']['publishresults']) && pi_journal_edit_share_access($inquiry_info->getInquiryNode())) {
+		pi_journal_edit_share_investigation($inquiry_info->getInquiryNode(), $user->uid, $form_state['values']['publishresults']);
 	}
 
 	return;
