@@ -22,14 +22,14 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 				$current_path = pi_info()->getCurrentPath();
 				$inquiry_info = pi_info()->getCurrentInquiryInfo();
 				if ($inquiry_info && (arg(0) == 'phase' || arg(0) == 'activity')) {
-					$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+					$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
 					$phase_menu_items = array();
 
 					foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
 						$is_current_phase = $phase_nid == $current_path->phase_nid;
 
-						if ($inquiry_access->getAccess($phase_nid) === 'hidden') {
+						if ($inquiry_access->getAccessToItem($phase_node) === 'hidden') {
 							$phase_link = check_plain($phase_node->title);
 						} else {
 							$phase_link = l($phase_node->title, "phase/" . $phase_nid, array('html' => true));

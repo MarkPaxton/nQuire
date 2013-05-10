@@ -46,6 +46,10 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 			}
 			$output .= '</small></p>';
 		}
+		
+		if ($arg_node_function === 'edit' && pi_activity_edit_as_view_mode($activity_node)) {
+			$arg_node_function = 'view';
+		}
 
 		if ($arg_node_function === 'view') {
 			$content_output .= $content_node ? node_view($content_node, $teaser, TRUE, TRUE) : FALSE;
@@ -90,7 +94,7 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 function pi_activity_content_delete($activity_node) {
 	global $user;
 	$content_nid = pi_info()->getContentManager()->getContent($activity_node->nid, $user->uid, FALSE);
-	
+
 	$node = node_load($content_nid);
 	if ($node) {
 		drupal_set_title(t("Delete @title", array('@title' => $node->title)));
@@ -116,10 +120,10 @@ function pi_activity_content_delete_form(&$form_state, $activity_node, $node) {
 
 function pi_activity_content_delete_form_submit($form, $form_state) {
 	$activity_nid = arg(1);
-	
+
 	global $user;
 	$content_nid = pi_info()->getContentManager()->getContent($activity_nid, $user->uid, FALSE);
-	
+
 	node_delete($content_nid);
 
 	nquire_commons_form_close($form, $form_state);
@@ -241,5 +245,72 @@ function theme_pi_activity_display_contribution_content_node($activity_collabora
 						. $content_view
 						. '</div>';
 	}
+	return $output;
+}
+
+function theme_pi_activity_access_explanation($access, $reason, $inquiry_nid) {
+
+	switch ($reason) {
+		case 'no_inquiry_access':
+			$text = $reason;
+			break;
+		case 'inquiry_roles':
+			switch ($access) {
+				case 'edit':
+					$text = t('Given your roles in this inquiry, you can edit this activity.');
+					break;
+				case 'view':
+					$text = t('Given your roles in this inquiry, you can view this activity, but not edit it.');
+					break;
+				default:
+					$text = t('Given your roles in this inquiry, you cannot access this activity.');
+					break;
+			}
+			break;
+		case 'group_roles':
+			switch ($access) {
+				case 'edit':
+					$text = t('Given your roles in your group, you can edit this activity.');
+					break;
+				case 'view':
+					$text = t('Given your roles in your group, you can view this activity, but not edit it.');
+					break;
+				default:
+					$text = t('Given your roles in your group, you cannot access this activity.');
+					break;
+			}
+			break;
+		case 'no_group':
+			$url = url('inquiry/' . $inquiry_nid . '/participants');
+			$text = t('This is a group activity, but you do not belong to any group. Click <a href="!url">here</a> to create or join a group.', array('!url' => $url));
+			break;
+		case 'stage':
+			switch ($access) {
+				case 'edit':
+					$text = t('At this stage, you can edit this activity.');
+					break;
+				case 'view':
+					$text = t('At this stage, you can view this activity, but not edit it.');
+					break;
+				default:
+					$text = t('At this stage, you cannot access this activity.');
+					break;
+			}
+			break;
+		case 'none':
+			switch ($access) {
+				case 'edit':
+					$text = t('You can edit this activity.');
+					break;
+				case 'view':
+					$text = t('You can view this activity.');
+					break;
+				default:
+					$text = t('You cannot access this activity.');
+					break;
+			}
+			break;
+	}
+	$output = "<p>$text</p>";
 	return $output;
 }

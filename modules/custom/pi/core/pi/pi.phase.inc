@@ -40,24 +40,22 @@ function pi_inquiry_phase_view($phase) {
 	$output .= '</small>';
 
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 	$activities = $inquiry_info->getActivitiesForPhase($phase->nid);
 
 	if (count($activities) > 0) {
 		$list = array();
 
-		foreach ($activities as $activity_nid => $activity_node) {
+		foreach ($activities as $activity_node) {
 			$activity_intro = '<h4>' . check_plain($activity_node->title) . '</h4>';
-			$access = $inquiry_access->getAccess($activity_nid) !== 'hidden';
+			$access = $inquiry_access->getAccessToItem($activity_node);
+			$reason = $inquiry_access->getAccessReason($activity_node);
 			
-			if ($access && $activity_node->body) {
+			if ($activity_node->body) {
 				$activity_intro .= '<p>' . nl2br(check_plain($activity_node->body)) . '</p>';
 			}
-			if ($access) {
-				$activity_content = pi_activity_create_phase_view_activity_links($activity_node) . pi_activity_teaser($activity_node);
-			} else {
-				$activity_content = t('You do not have access to this activity.');
-			}
+			
+			$activity_content = theme('pi_activity_access_explanation', $access, $reason, $inquiry_info->getInquiryNid()) . pi_activity_create_phase_view_activity_links($activity_node);
 
 			$list[] = array('data' => array($activity_intro, $activity_content), 'class' => 'activity');
 		}
@@ -75,7 +73,7 @@ function pi_inquiry_phase_view($phase) {
 function pi_inquiry_phase_shared_view($phase) {
 	global $user;
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 	
 	drupal_set_title($phase->title);
 
@@ -105,9 +103,9 @@ function pi_inquiry_phase_shared_view($phase) {
 	if (count($activities) > 0) {
 		$list = array();
 
-		foreach ($activities as $activity_nid => $activity_node) {
+		foreach ($activities as $activity_node) {
 			$activity_title = check_plain($activity_node->title);
-			if ($inquiry_access->getAccess($activity_nid) !== 'hidden') {
+			if ($inquiry_access->getAccessToItem($activity_node) !== 'hidden') {
 				$activity_content = pi_activity_shared_content_list($activity_node);
 			} else {
 				$activity_content = t('You do not have access to view this activity.');

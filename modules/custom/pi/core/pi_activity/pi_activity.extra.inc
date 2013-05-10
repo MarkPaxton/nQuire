@@ -19,14 +19,14 @@ function pi_activity_get_parent_activity($child_nid) {
 	return $row ? $row['parent_activity'] : FALSE;
 }
 
-function pi_activity_build_link_for_child($parent_activity_nid, $child_activity_nid) {
+function pi_activity_build_link_for_child($child_activity_nid) {
 	global $user;
-	$content_manager = pi_info()->getContentManager();
-	$access_manager = pi_info()->getAccess(pi_info()->getInquiryInfoForActivity($parent_activity_nid)->getInquiryNid(), $user->uid);
-	
 	$child_activity_node = node_load($child_activity_nid);
+	$content_manager = pi_info()->getContentManager();
+	$access_manager = pi_info()->getAccessManager(pi_info()->getInquiryInfoForActivity($child_activity_node->parent_activity)->getInquiryNid(), $user->uid);
+	
 
-	$access = $access_manager->getAccess($parent_activity_nid);
+	$access = $access_manager->getAccessToItem($child_activity_node);
 	if ($access === 'hidden') {
 		$image = 'unavailable.png';
 	} else if ($content_manager->getContent($child_activity_nid, $user->uid, FALSE)) {
@@ -59,12 +59,12 @@ function pi_activity_build_link($activity_nid) {
 	global $user;
 	$content_manager = pi_info()->getContentManager();
 	$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
-	$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 	$activity_node = $inquiry_info->getActivity($activity_nid);
 	
 	$content_exists = $content_manager->getContent($activity_nid, $user->uid, FALSE);
 	
-	$access = $inquiry_access->getAccess($activity_nid);
+	$access = $inquiry_access->getAccessToItem($activity_node);
 	switch ($access) {
 		case 'edit':
 			$image = 'editable.png';

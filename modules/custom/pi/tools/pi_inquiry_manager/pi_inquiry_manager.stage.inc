@@ -4,7 +4,7 @@ function pi_inquiry_manager_stage_selector() {
 	global $user;
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	if ($inquiry_info) {
-		$access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		$access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 		if ($access->isInquiryOwner()) {
 			$output = drupal_get_form('pi_inquiry_manager_stage_selector_form');
 		} else {
@@ -62,7 +62,7 @@ function pi_inquiry_manager_stage_selector_form_submit($form, $form_state) {
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	if ($inquiry_info) {
 		global $user;
-		$access_data = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		$access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 		if ($access_data->isInquiryOwner()) {
 			$value = $form_state['values']['stageselector'];
 			$query = "INSERT INTO pi_stage_current (inquiry_id, stage_id) VALUES (%d, %d) ON DUPLICATE KEY UPDATE stage_id=%d";

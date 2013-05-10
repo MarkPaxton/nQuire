@@ -46,7 +46,7 @@ function pi_inquiry_manager_share_content_form(&$form_state) {
 function pi_inquiry_manager_share_content_form_submit($form, $form_state) {
 	global $user;
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	$access_manager = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	$access_manager = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
 	$sc = nquire_commons_decode_data($form_state['values']['sharecontent']);
 	if (isset($sc[0]['values'])) {

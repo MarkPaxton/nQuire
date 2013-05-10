@@ -20,7 +20,7 @@ function pi_inquiry_structure_view($node) {
 	$output = '';
 					
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	$inquiry_access = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 	
 	$rows = array();
 
@@ -28,7 +28,7 @@ function pi_inquiry_structure_view($node) {
 	foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
 		$row = array();
 		$phase_title = check_plain($phase_node->title);
-		if ($inquiry_access->getAccess($phase_nid) !== 'hidden') {
+		if ($inquiry_access->getAccessToItem($phase_node) !== 'hidden') {
 			$row[] = l($phase_title, "phase/" . $phase_nid);
 		} else {
 			$row[] = $phase_title;

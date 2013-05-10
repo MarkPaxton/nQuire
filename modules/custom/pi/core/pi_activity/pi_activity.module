@@ -110,24 +110,37 @@ function pi_activity_tab_view_access_callback($node) {
 		case 'pi_data':
 		case 'pi_key_questions':
 		case 'pi_key_answers':
+		case 'pi_available_measures':
 			return !pi_activity_tab_edit_access_callback($node) && pi_activity_tabs_access_to_content($node, 'view');
 
 		default:
-			return pi_activity_tabs_access_to_content($node, 'view');
+			return pi_activity_tabs_access_to_content($node, 'view') && !(pi_activity_edit_as_view_mode($node) && pi_activity_tab_edit_access_callback($node));
+	}
+}
+
+function pi_activity_edit_as_view_mode($node) {
+	switch ($node->activity_type) {
+		case 'pi_sort_data':
+		case 'pi_sort_key_answers':
+		case 'pi_sort_result_presentations':
+			return TRUE;
+		default:
+			return FALSE;
+	}
+}
+
+function pi_activity_is_editable($node) {
+	switch ($node->activity_type) {
+		case 'pi_read_information':
+		case 'pi_explore_tool':
+			return FALSE;
+		default:
+			return TRUE;
 	}
 }
 
 function pi_activity_tab_edit_access_callback($node) {
-	switch ($node->activity_type) {
-		case 'pi_sort_data':
-		case 'pi_sort_key_answers':
-		case 'pi_read_information':
-		case 'pi_sort_result_presentations':
-		case 'pi_explore_tool':
-			return FALSE;
-		default:
-			return pi_activity_tabs_access_to_content($node, 'edit');
-	}
+	return pi_activity_is_editable($node) && pi_activity_tabs_access_to_content($node, 'edit');
 }
 
 function pi_activity_tabs_access_to_content($node, $function) {
@@ -135,7 +148,7 @@ function pi_activity_tabs_access_to_content($node, $function) {
 		global $user;
 
 		$inquiry_info = pi_info()->getInquiryInfoForActivity($node->nid);
-		$access_data = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
+		$access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
 		$access = $access_data->getAccessToItem($node);
 
@@ -258,6 +271,10 @@ function pi_activity_theme() {
 					'arguments' => array('links' => NULL),
 					'file' => 'pi_activity.links.inc',
 			),
+			'pi_activity_access_explanation' => array(
+					'arguments' => array('access' => '', 'reason' => '', 'inquiry_nid' => 0),
+					'file' => 'pi_activity.activity.inc',
+			),
 	);
 }
 
@@ -323,15 +340,6 @@ function pi_activity_delete(&$node) {
 	if (function_exists($custom_delete_function)) {
 		$custom_delete_function($node);
 	}
-}
-
-/*
- * activity teaser
- */
-
-function pi_activity_teaser($activity) {
-	include_once 'pi_activity.activity.inc';
-	return pi_activity_content_view($activity, 'view', TRUE);
 }
 
 function pi_activity_shared_content_list($activity) {
