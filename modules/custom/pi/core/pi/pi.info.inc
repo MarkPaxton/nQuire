@@ -126,6 +126,7 @@ class PiInquiryInfo {
 	private $stage;
 	private $stage_count;
 	private $roles;
+	private $all_stages_structure;
 
 	function __construct($inquiry_id) {
 		$this->inquiry = node_load($inquiry_id);
@@ -289,6 +290,108 @@ class PiInquiryInfo {
 
 	public function getActivityCollaboration($activity_nid) {
 		return $this->getPhaseForActivity($activity_nid)->collaboration;
+	}
+
+	public function getStageStructure() {
+		if (!isset($this->all_stages_structure)) {
+			$this->all_stages_structure = array('structure' => array(), 'values' => array());
+			$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node}.vid={pi_stage}.vid WHERE inquiry_nid=%d";
+			$result = db_query($query, $this->inquiry->nid);
+			while ($row = db_fetch_array($result)) {
+				$stage = node_load($row['nid']);
+				foreach ($this->phases as $pnid => $phase_node) {
+					if (!isset($stage->phases[$pnid])) {
+						$stage->phases[$pnid] = 'edit';
+					}
+				}
+
+				$this->all_stages_structure['values'][] = array(
+						'id' => $stage->nid,
+						'title' => check_plain($stage->title),
+						'values' => $stage->phases,
+				);
+			}
+
+			foreach ($this->phases as $pnid => $phase_node) {
+				$phase_policy = array(
+						'id' => $pnid,
+						'title' => check_plain($phase_node->title),
+						'activities' => array(),
+				);
+
+				foreach ($this->getActivitiesForPhase($pnid) as $anid => $activity_node) {
+					$activity_policy = array(
+							'id' => $anid,
+							'title' => check_plain($activity_node->title),
+					);
+
+					$phase_policy['activities'][] = $activity_policy;
+				}
+				$this->all_stages_structure['structure'][] = $phase_policy;
+			}
+		}
+
+		return $this->all_stages_structure;
+	}
+
+	public function getUserSharePolicy($uid) {
+		$share_policy = array('structure' => array(), 'values' => array());
+		$query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
+
+		foreach ($this->phases as $pnid => $phase_node) {
+			$phase_policy = array(
+					'id' => $pnid,
+					'title' => check_plain($phase_node->title) . ' <small>(' . $phase_node->collaboration . ')</small>',
+					'activities' => array(),
+			);
+
+			$valid = TRUE;
+			switch ($phase_node->collaboration) {
+				case 'individual':
+					$default = $this->use_groups ? 'individual_group' : 'individual_no';
+					$actor = $uid;
+					$not_editable = FALSE;
+					break;
+				case 'group':
+					$actor = $this->getSubgroup($uid);
+					$group = node_load($actor);
+					if ($group) {
+						$default = 'group_no';
+						$not_editable = $group->uid != $uid;
+					} else {
+						$valid = FALSE;
+					}
+					break;
+				default:
+					$default = 'all_no';
+					$actor = $this->inquiry->actor_gid;
+					$not_editable = $this->inquiry->uid != $uid;
+					break;
+			}
+
+			foreach ($this->getActivitiesForPhase($pnid) as $anid => $activity_node) {
+				if ($valid) {
+					$row = db_fetch_array(db_query($query, $anid, $actor));
+					$share_policy['values'][$anid] = $row ? $row['share'] : $default;
+				}
+
+				$activity_policy = array(
+						'id' => $anid,
+						'title' => check_plain($activity_node->title),
+						'attributes' => array(
+								'not_editable' => $not_editable || !$valid,
+								'collaboration' => $phase_node->collaboration,
+								'use_groups' => $this->use_groups ? '1' : '0',
+						),
+				);
+
+				$phase_policy['activities'][] = $activity_policy;
+			}
+
+			$share_policy['structure'][] = $phase_policy;
+		}
+
+		return $share_policy;
 	}
 
 }

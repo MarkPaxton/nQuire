@@ -15,27 +15,34 @@ function pi_inquiry_manager_stage_selector() {
 }
 
 function pi_inquiry_manager_stage_selector_view() {
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$all_stages_structure = $access_data->get_all_stages_structure();
+	$output = '';
 
-	_pi_inquiry_manager_stage_selector_load_javascript($all_stages_structure['values'], $access_data->get_current_stage()->nid);
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		$all_stages_structure = $inquiry_info->getStageStructure();
+		$current_stage = $inquiry_info->getCurrentStage()->nid;
 
-	$output = theme('nquire_structure_widget_stage_view', 'stageselector', json_encode($all_stages_structure['structure']));
+		_pi_inquiry_manager_stage_selector_load_javascript($all_stages_structure['values'], $current_stage);
 
+		$output .= theme('nquire_structure_widget_stage_view', 'stageselector', json_encode($all_stages_structure['structure']));
+	}
 	return $output;
 }
 
 function pi_inquiry_manager_stage_selector_form(&$form_state) {
 	$form = array();
 
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$all_stages_structure = $access_data->get_all_stages_structure();
-	$value = $access_data->get_current_stage()->nid;
-	nquire_structure_widget_stage_selector_create_form_item($form, 'stageselector', json_encode($all_stages_structure['structure']), $value);
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		$all_stages_structure = $inquiry_info->getStageStructure();
+		$current_stage = $inquiry_info->getCurrentStage()->nid;
 
-	_pi_inquiry_manager_stage_selector_load_javascript($all_stages_structure['values']);
+		nquire_structure_widget_stage_selector_create_form_item($form, 'stageselector', json_encode($all_stages_structure['structure']), $current_stage);
 
-	nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_stage_selector_form_submit', 'inquiry/' . $access_data->get_inquiry_nid() . '/share');
+		_pi_inquiry_manager_stage_selector_load_javascript($all_stages_structure['values']);
+
+		nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_stage_selector_form_submit', 'inquiry/' . $inquiry_info->getInquiryNid() . '/share');
+	}
 
 	return $form;
 }

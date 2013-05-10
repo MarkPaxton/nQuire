@@ -48,6 +48,7 @@
 			var cellContainer = $('<div>').addClass('feature-title').appendTo(headCell);
 
 			if (options.selection !== 'none') {
+				var label = $('<label>');
 				var button = $('<input type="radio" name="column" value="' + column.id + '"/>');
 				if (checked) {
 					button.attr('checked', 'checked');
@@ -58,10 +59,11 @@
 					self.structureFeatureSelector('_dataModified', $(this).attr('value'));
 				});
 
-				cellContainer.append(button);
+				label.append(button).append(column.title);
+				cellContainer.append(label);
+			} else {
+				cellContainer.append(column.title);
 			}
-
-			cellContainer.append(column.title);
 
 			this.find('tr.structure-feature-list').append(headCell);
 

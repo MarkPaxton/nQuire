@@ -10,33 +10,36 @@ function pi_inquiry_manager_share() {
 function pi_inquiry_manager_share_content_form(&$form_state) {
 	$form = array();
 
-	$access_data = pi_inquiry_groupings_get_access_data();
-	$share_policy = $access_data->get_user_share_policy();
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	if ($inquiry_info) {
+		global $user;
 
-	$form['introinquiry'] = array(
-			'#value' => '<h3>' . t('Share content with inquiry participants') . '</h3>',
-	);
+		$share_policy = $inquiry_info->getUserSharePolicy($user->uid);
 
-	nquire_structure_widget_share_content_table_create_form_item($form, 'sharecontent', json_encode($share_policy['structure']), json_encode(array(array('id' => 'share', 'title' => t('Share with'), 'values' => $share_policy['values']))));
-
-	$form['introsystem'] = array(
-			'#value' => '<h3>' . t('Publish investigation results in nQuire') . '</h3>' . theme('pi_journal_share_information', $access_data->get_inquiry_node()),
-	);
-
-	if (pi_journal_edit_share_access($access_data->get_inquiry_node())) {
-		$form['publishresults'] = array(
-				'#type' => 'checkbox',
-				'#title' => t('Publish investigation'),
-				'#description' => t('Select whether you want your inquiry results to be public in the !link.', array('!link' => l(t('nQuire Journal'), 'journal'))),
-				'#required' => FALSE,
-				'#default_value' => pi_journal_is_shared_for_user($access_data->get_inquiry_node(), $access_data->get_uid()),
-				'#attributes' => array('class' => 'structure_additional_form_item'),
+		$form['introinquiry'] = array(
+				'#value' => '<h3>' . t('Share content with inquiry participants') . '</h3>',
 		);
+
+		nquire_structure_widget_share_content_table_create_form_item($form, 'sharecontent', json_encode($share_policy['structure']), json_encode(array(array('id' => 'share', 'title' => t('Share with'), 'values' => $share_policy['values']))));
+
+		$form['introsystem'] = array(
+				'#value' => '<h3>' . t('Publish investigation results in nQuire') . '</h3>' . theme('pi_journal_share_information', $inquiry_info->getInquiryNode()),
+		);
+
+		if (pi_journal_edit_share_access($inquiry_info->getInquiryNode())) {
+			$form['publishresults'] = array(
+					'#type' => 'checkbox',
+					'#title' => t('Publish investigation'),
+					'#description' => t('Select whether you want your inquiry results to be public in the !link.', array('!link' => l(t('nQuire Journal'), 'journal'))),
+					'#required' => FALSE,
+					'#default_value' => pi_journal_is_shared_for_user($inquiry_info->getInquiryNode(), $user->uid),
+					'#attributes' => array('class' => 'structure_additional_form_item'),
+			);
+		}
+
+
+		nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_share_content_form_submit', 'inquiry/' . $inquiry_info->getInquiryNid() . '/share');
 	}
-
-
-	nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_share_content_form_submit', 'inquiry/' . $access_data->get_inquiry_nid() . '/share');
-
 	return $form;
 }
 
@@ -44,7 +47,7 @@ function pi_inquiry_manager_share_content_form_submit($form, $form_state) {
 	global $user;
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	$access_manager = pi_info()->getAccess($inquiry_info->getInquiryNid(), $user->uid);
-	
+
 	$sc = nquire_commons_decode_data($form_state['values']['sharecontent']);
 	if (isset($sc[0]['values'])) {
 		$query = "INSERT INTO pi_activity_share (activity_id, actor, share) VALUES (%d, %d, '%s') ON DUPLICATE KEY UPDATE share='%s'";
