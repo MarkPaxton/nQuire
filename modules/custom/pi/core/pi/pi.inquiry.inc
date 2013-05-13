@@ -77,7 +77,8 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
 
 	drupal_add_css(drupal_get_path('module', 'pi') . '/pi_phase.css');
 
-	$output = "";
+	$output = '<h1>' . t('Steps of the Inquiry Process') . '</h1>';
+	
 	$image_path = drupal_get_path('module', 'pi') . '/images/';
 
 	if ($layout == 'octagon') {
@@ -167,7 +168,8 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
  */
 function display_phases_box($icon_url, $title, $activity_count, $new_activity_count, $show_icon = false, $show_activities = false, $layout = 'list') {
 	$output = '';
-
+	
+	
 	if ($show_icon === true) {
 		$output .= display_phases_icon_box($icon_url, $show_icon);
 	}

@@ -409,26 +409,34 @@ function pi_activity_nodeapi(&$node, $op) {
 						}
 						break;
 					case 'update':
+						$save = FALSE;
 						switch ($node->type) {
 							case 'pi_available_measures':
-								pi_util_set_node_title($activity, $node->title);
+								$activity->title = pi_util_trim_text($node->title);
+								$save = TRUE;
 								break;
 							case 'pi_key_answers':
-								$node->title = pi_util_trim_text($node->key_answer);
 								$activity->title = pi_util_trim_text($node->key_answer);
+								$save = TRUE;
 								break;
 							case 'pi_key_questions':
-
-								pi_util_set_node_title($activity, $node->key_question);
-
+								$activity->title = pi_util_trim_text($node->key_question);
+								$save = TRUE;
 								break;
 							case 'pi_result_presentations':
 								$activity->title = pi_util_trim_text($node->title);
+								$save = TRUE;
 								break;
 							case 'pi_data':
 								$activity->title = pi_util_trim_text($node->title);
+								$save = TRUE;
 								break;
 						}
+						
+						if ($save) {
+							node_save($activity);
+						}
+						
 						break;
 					case 'delete':
 //delete existing activity if it's got a parent activity
