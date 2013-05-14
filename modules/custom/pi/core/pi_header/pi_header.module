@@ -22,11 +22,19 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
 
 			//$block['subject'] = "nQuire";
 			if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
-				$inquiry_node = node_load($details->inquiry_id);
-				$image = $inquiry_node->layout === 'hexagon' ? 'hexagon.png' : 'octagon.png';
+				$home_icon = '';
+
+				if ($inquiry->image) {
+					$home_icon .= '<div>'
+									. l('<img src="' . file_create_url($inquiry->image) . '" height="50px"></img>', "inquiry/{$inquiry->nid}", array('html' => TRUE))
+									. '</div>';
+				}
+
+				$image = $inquiry->layout === 'hexagon' ? 'hexagon.png' : 'octagon.png';
 				$image_url = url("$image_path/$image");
-				$url = "inquiry/{$details->inquiry_id}/structure";
-				$home_icon = l('<img src="' . $image_url . '" height="50px" >', $url, array('html' => TRUE));
+				$home_icon .= '<div>'
+								. l('<img src="' . $image_url . '" height="50px" style="border: 1px solid gray;" >', "inquiry/{$inquiry->nid}/structure", array('html' => TRUE))
+								. '</div>';
 			} else {
 				$image_url = base_path() . $image_path . '/logo.png';
 				$url = 'http://www.nquire.org.uk';
@@ -38,19 +46,14 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
 			$output .= "<div class='nquire_home'>" . $home_icon . "</div>";
 
 			$output .= "<div class='nquire'>";
-			if ($inquiry != null) {
-				if (isset($inquiry->title)) {
-					$output .= "<div style='float: left;'><h1 class='nquire'>" . check_plain($inquiry->title) . '</h1></div>';
-				}
+			if ($inquiry != null && !$inquiry->image && isset($inquiry->title)) {
+				$output .= "<div style='float: left;'><h1 class='nquire'>" . check_plain($inquiry->title) . '</h1></div>';
 			}
+
 			if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage') {
 				$output .= "<div style='clear: both;'>" . pi_stage_bar() . '</div>';
 			}
 			$output .= "</div>";
-
-			if (NQUIRE_VERSION) {
-				$output .= "<div style='float:right;clear:right;'>" . t('Version ID') . ':&nbsp;' . NQUIRE_VERSION . "</div>";
-			}
 
 			if ($user->uid) {
 				$output .= "<div style='float:right;clear:right;'>";
@@ -71,7 +74,7 @@ function pi_stage_bar() {
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	if ($inquiry_info && $inquiry_info->hasSeveralStages()) {
 		$stage = $inquiry_info->getCurrentStage();
-		
+
 		if ($stage) {
 			$output .= '<p><strong>' . t('Current stage: ') . '</strong>' . check_plain($stage->title) . '</p>';
 		}
