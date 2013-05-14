@@ -46,7 +46,7 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 			}
 			$output .= '</small></p>';
 		}
-		
+
 		if ($arg_node_function === 'edit' && pi_activity_edit_as_view_mode($activity_node)) {
 			$arg_node_function = 'view';
 		}
@@ -113,7 +113,10 @@ function pi_activity_content_delete_form(&$form_state, $activity_node, $node) {
 			'#value' => $info,
 	);
 
-	nquire_commont_create_form_delete_cancel_buttons($form, 'pi_activity_content_delete_form_submit', 'phase/' . $activity_node->phase_nid);
+	$path = $activity_node->parent_activity ? "activity/{$activity_node->parent_activity}/view" : "activity/{$activity_node->nid}/view";
+	$form['#redirect'] = $form_state['redirect'] = $path;
+	nquire_commont_create_form_delete_cancel_buttons($form, 'pi_activity_content_delete_form_submit', $path);
+
 
 	return $form;
 }
@@ -125,6 +128,7 @@ function pi_activity_content_delete_form_submit($form, $form_state) {
 	$content_nid = pi_info()->getContentManager()->getContent($activity_nid, $user->uid, FALSE);
 
 	node_delete($content_nid);
+
 
 	nquire_commons_form_close($form, $form_state);
 }

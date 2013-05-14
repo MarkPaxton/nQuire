@@ -47,7 +47,6 @@ function pi_available_measures_form(&$measure, $form_state) {
 	$form = array();
 	ahah_helper_register($form, $form_state);
 
-	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 
 	if (arg(0) === 'activity') {
 		$current_activity_nid = arg(1);
@@ -59,6 +58,9 @@ function pi_available_measures_form(&$measure, $form_state) {
 			'#type' => 'hidden',
 			'#default_value' => $current_activity_nid,
 	);
+
+	$inquiry_info = pi_info()->getInquiryInfoForActivity($current_activity_nid);
+
 
 	$data_activities = pi_sort_data_get_activities($inquiry_info->getInquiryNid());
 	$data_activity_options = array();
@@ -171,14 +173,7 @@ function pi_available_measures_form(&$measure, $form_state) {
 }
 
 function pi_available_measures_form_pi_available_measures_node_form_alter(&$form, &$form_state) {
-	$form['buttons']['submit']['#submit'][] = '_pi_available_measures_form_redirect';
 	nquire_commons_form_replace_delete_button_with_link($form);
-}
-
-function _pi_available_measures_form_redirect($form, &$form_state) {
-	$measure_activity_id = $form_state['values']['current_activity_nid'];
-	$measure_activity = node_load($measure_activity_id);
-	$form_state['redirect'] = 'activity/' . $measure_activity->parent_activity;
 }
 
 /**

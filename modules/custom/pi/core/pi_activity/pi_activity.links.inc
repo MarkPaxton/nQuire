@@ -5,15 +5,26 @@ function pi_activity_create_phase_view_activity_links($activity_node) {
 	if ($inquiry_info) {
 		global $user;
 		$access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+		$content_manager = pi_info()->getContentManager();
 
+		$has_content = $content_manager->getContent($activity_node->nid, $user->uid, FALSE);
 		$activity_access = $access_data->getAccessToItem($activity_node);
+		$can_view = pi_activity_tab_view_access_callback($activity_node) && (($activity_access === 'edit' && !pi_activity_edit_as_view_mode($activity_node)) || $activity_access === 'view');
+		$can_edit = pi_activity_tab_edit_access_callback($activity_node) && $activity_access === 'edit';
+
 		$links = array();
-		if (pi_activity_tab_view_access_callback($activity_node) && (($activity_access === 'edit' && !pi_activity_edit_as_view_mode($activity_node)) || $activity_access === 'view')) {
+		if ($can_view && $has_content) {
 			$links[] = array('url' => url("activity/{$activity_node->nid}/view"), 'label' => t('View'), 'image' => 'viewable.png');
 		}
 
-		if (pi_activity_tab_edit_access_callback($activity_node) && $activity_access === 'edit') {
-			$links[] = array('url' => url("activity/{$activity_node->nid}/edit"), 'label' => t('Edit'), 'image' => 'editable.png');
+		if ($can_edit) {
+			if ($has_content) {
+				$links[] = array('url' => url("activity/{$activity_node->nid}/edit"), 'label' => t('Edit'), 'image' => 'editable.png');
+			} else {
+				$type = node_get_types('type', $activity_node->activity_type);
+				$node_function = isset($type->add_node_type) ? 'view' : 'edit';
+				$links[] = array('url' => url("activity/{$activity_node->nid}/$node_function"), 'label' => t('Create'), 'image' => 'editable.png');
+			}
 		}
 	}
 

@@ -469,6 +469,8 @@ class PiInquiryContent {
 			node_save($node);
 
 			$this->linkContentWithActivity($node, $activity_nid, $uid);
+			
+			return $node;
 		}
 	}
 

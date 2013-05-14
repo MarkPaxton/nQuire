@@ -193,31 +193,16 @@ function pi_activity_form(&$node, $form_state) {
  * @param &$form_state
  */
 function pi_activity_form_alter(&$form, &$form_state, $form_id) {
-// This is for altering the actual activity form
-	if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id)
-		pi_activity_form_node_form_alter($form, $form_state);
+	if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id) {
+		if (arg(0) === 'activity') {
+			$activity_node = node_load(arg(1));
+		} else {
+			$activity_node = node_load($form_state['values']['current_activity_nid']);
+		}
 
-// This is for altering the activity CONTENT forms...
-// Split the string into parts to get the inquiry id if it exists...
-
-	$path_part1 = pi_util_get_path_element(0);
-	if (strcasecmp($path_part1, 'activity') === 0) {
-		if ($form_id != 'pi_activity_node_from') {
-// Move the menu to the bottom of activity content forms
-			$form['menu']['#weight'] = 20;
-// Hide the Group options from activity content forms
-			$form['og_nodeapi']['#access'] = FALSE;
-
-			$activity_id = pi_util_get_path_element(1);
-			$target_activity = node_load($activity_id);
-			if (pi_check_is_node_of_type($target_activity, 'pi_activity')) {
-				$redirect_destination = 'phase'; //$target_activity->destination_after;
-				if ($redirect_destination == 'phase')
-					$form['#redirect'] = 'phase/' . $target_activity->phase_nid;
-				elseif ($redirect_destination == 'self')
-					$form['#redirect'] = "activity/$activity_id";
-				$form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
-			}
+		if ($activity_node) {
+			$path = $activity_node->parent_activity ? "activity/{$activity_node->parent_activity}/view" : "activity/{$activity_node->nid}/view";
+			$form['#redirect'] = $form_state['redirect'] = $path;
 		}
 	}
 }
@@ -432,11 +417,11 @@ function pi_activity_nodeapi(&$node, $op) {
 								$save = TRUE;
 								break;
 						}
-						
+
 						if ($save) {
 							node_save($activity);
 						}
-						
+
 						break;
 					case 'delete':
 //delete existing activity if it's got a parent activity
@@ -486,52 +471,53 @@ function pi_activity_get_add_activity_for_sort_activity($activity_id) {
  *  (2) Adding/Editing Activity Content  via /activity/%activity/edit
  *    -> redirect to /activity/%activity/phase on completion is specified in activity node details
  */
-function pi_activity_form_node_form_alter(&$form, &$form_state) {
-//Strip the request url of the preceeding drupal stuff base_url and ?q=/
-// so that it's possible to work out whether the page request was from /inquiry/%inquiry/phase/add
-// or from /node/%node/edit
-	$path_parts = pi_util_get_drupal_path_parts();
-//if AHAH helper is used, then redirect is cleared, so reset it here....
-	if (pi_util_match_url(array('ahah_helper')))
-		$form['#redirect'] = $form_state['storage']['redirect-activity-submit'];
+/* function pi_activity_form_node_form_alter(&$form, &$form_state) {
+  //Strip the request url of the preceeding drupal stuff base_url and ?q=/
+  // so that it's possible to work out whether the page request was from /inquiry/%inquiry/phase/add
+  // or from /node/%node/edit
+  $path_parts = pi_util_get_drupal_path_parts();
+  //if AHAH helper is used, then redirect is cleared, so reset it here....
+  if (pi_util_match_url(array('ahah_helper')))
+  $form['#redirect'] = $form_state['storage']['redirect-activity-submit'];
 
-// Look for /activity/{number}/edit
-	if (pi_util_match_url(array('activity', NULL, NULL))) {
-		if (is_numeric($path_parts[1])) {
-			$potential_activity_id = $path_parts[1];
+  // Look for /activity/{number}/edit
+  if (pi_util_match_url(array('activity', NULL, NULL))) {
+  if (is_numeric($path_parts[1])) {
+  $potential_activity_id = $path_parts[1];
 
-// the last part of the url is a special case since it could be either
-// /activity/%activity/edit OR
-// /activity/%activity/edit?some=query&string=too OR
-// /activity/%activity/edit&some=query&string=too
-			$valid_strings = array('edit', 'edit?', 'edit&');
-			if (in_array(strtolower($path_parts[2]), $valid_strings)) {
-//Set the destination from activity details
-				$activity = node_load($potential_activity_id);
-				if (pi_check_is_node_of_type($activity, 'pi_activity')) {
-					$destination = $activity->destination_after;
-					if ($destination == 'phase') {
-						$form['#redirect'] = "phase/" . $activity->phase_nid;
-					} elseif ($destination == 'self') {
-						$form['#redirect'] = "activity/$potential_activity_id";
-					}
-					$form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
-				} else {
-// It wasn't a valid inquiry node, so fall back to standard phase editing page
-					drupal_set_message(t("An activity nid (@nid) was specified for this activity, but the id didn't refer to a valid activity node.", array("@nid" => $potential_activity_id)), 'warning');
-				}
-			}
-		}
-	}
-// Look for /activity/{number}/edit
-	if (pi_util_match_url(array('inquiry', NULL, 'activity', 'add')) || pi_util_match_url(array('inquiry', NULL, 'activity', 'edit'))) {
-		$activity = node_load($potential_activity_id);
-		if (pi_check_is_node_of_type($activity, 'pi_activity')) {
-			
-		}
-		$form['#redirect'] = "activity/";
-	}
-}
+  // the last part of the url is a special case since it could be either
+  // /activity/%activity/edit OR
+  // /activity/%activity/edit?some=query&string=too OR
+  // /activity/%activity/edit&some=query&string=too
+  $valid_strings = array('edit', 'edit?', 'edit&');
+  if (in_array(strtolower($path_parts[2]), $valid_strings)) {
+  //Set the destination from activity details
+  $activity = node_load($potential_activity_id);
+  if (pi_check_is_node_of_type($activity, 'pi_activity')) {
+  $destination = $activity->destination_after;
+  if ($destination == 'phase') {
+  $form['#redirect'] = "phase/" . $activity->phase_nid;
+  } elseif ($destination == 'self') {
+  $form['#redirect'] = "activity/$potential_activity_id";
+  }
+  $form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
+  } else {
+  // It wasn't a valid inquiry node, so fall back to standard phase editing page
+  drupal_set_message(t("An activity nid (@nid) was specified for this activity, but the id didn't refer to a valid activity node.", array("@nid" => $potential_activity_id)), 'warning');
+  }
+  }
+  }
+  }
+  // Look for /activity/{number}/edit
+  if (pi_util_match_url(array('inquiry', NULL, 'activity', 'add')) || pi_util_match_url(array('inquiry', NULL, 'activity', 'edit'))) {
+  $activity = node_load($potential_activity_id);
+  if (pi_check_is_node_of_type($activity, 'pi_activity')) {
+
+  }
+  $form['#redirect'] = "activity/";
+  }
+  }
+ */
 
 function pi_activity_shared_content_view_access($activity_node, $actor) {
 	$access_value = FALSE;
