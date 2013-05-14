@@ -42,6 +42,7 @@ $(function() {
 
 	NumberMeasureManager.prototype.initMeasureValue = function(value) {
 		this._value = value && value.length > 0 ? JSON.parse(value) : null;
+		this._measureManager.setPaintValue(this._value);
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._updateDisplayValue();
 	};
@@ -49,6 +50,7 @@ $(function() {
 	NumberMeasureManager.prototype.clearValue = function() {
 		this._value = null;
 		this._serviceDelegate.saveData('');
+		this._measureManager.setPaintValue(null);
 		this._updateDisplayValue();
 	};
 
@@ -83,6 +85,7 @@ $(function() {
 
 	NumberMeasureManager.prototype._saveAndStop = function() {
 		this._value = this._editingInfo;
+		this._measureManager.setPaintValue(this._value);
 		this._serviceDelegate.saveData(JSON.stringify(this._value), true);
 		this._stopInput();
 	};
@@ -92,11 +95,10 @@ $(function() {
 		this._capturing = false;
 		this._eventManager.stopListening();
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
-		this._serviceDelegate.userDelayProcessStopped();
-
 		this._updateDisplayValue();
-		
 		this._measureManager.setInputActive(false);
+
+		this._serviceDelegate.userDelayProcessStopped();
 	};
 
 	NumberMeasureManager.prototype._startInput = function() {
@@ -105,7 +107,7 @@ $(function() {
 		this._serviceDelegate.userDelayProcessStarted();
 		this._element.vmUserInteractionMeasure('setActiveMode', true);
 		this._eventManager.startListening(this);
-		
+
 		this._measureManager.setInputActive(true);
 	};
 

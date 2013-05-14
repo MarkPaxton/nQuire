@@ -229,7 +229,7 @@ $(function() {
       };
 
       if (!this._measuresService.endDataInput(set)) {
-        this.disableDataInput();
+        this._disableDataInput();
       }
     },
     _setButtonsMode: function(mode) {

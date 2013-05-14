@@ -23,6 +23,7 @@ $(function() {
 		this._measureId = measureId;
 		this._dataBrowser = dataBrowser;
 		this._inputActive = false;
+		this._value = null;
 
 		var color = LenghtPainterColors.nextColor();
 
@@ -42,6 +43,10 @@ $(function() {
 		return 'length';
 	};
 
+	LengthPainter.prototype.setPaintValue = function(value) {
+		this._value = value;
+	};
+
 	LengthPainter.prototype.setInputActive = function(inputActive) {
 		if (this._inputActive !== inputActive) {
 			this._inputActive = inputActive;
@@ -54,40 +59,35 @@ $(function() {
 	};
 
 	LengthPainter.prototype.createPaintShape = function(data, options) {
+		if (this._value) {
 
-		if (data[this._measureId]) {
-			try {
-				var value = JSON.parse(data[this._measureId]);
+			var style = this._inputActive ? this._editingStyle : (options.mode === 'hover' ? this._hoverStyle : this._normalStyle);
+			var settings = $.extend({}, this._baseStyle, style);
 
-				var style = this._inputActive ? this._editingStyle : (options.mode === 'hover' ? this._hoverStyle : this._normalStyle);
-				var settings = $.extend({}, this._baseStyle, style);
+			var yl = this._value.y11 - this._value.y12;
+			var xl = this._value.x11 - this._value.x12;
+			var angle = Math.atan2(yl, xl) + .5 * Math.PI;
+			var length = .1 * Math.sqrt(xl * xl + yl * yl);
+			var dx = length * Math.cos(angle);
+			var dy = length * Math.sin(angle);
 
-				var yl = value.y11 - value.y12;
-				var xl = value.x11 - value.x12;
-				var angle = Math.atan2(yl, xl) + .5 * Math.PI;
-				var length = .1 * Math.sqrt(xl*xl + yl*yl);
-				var dx = length * Math.cos(angle);
-				var dy = length * Math.sin(angle);
-
-				var output = {
-					pos: {x: 0, y: 0},
-					shapes: [{
-							type: 'line',
-							points: {x1: value.x11 - dx, y1: value.y11 - dy, x2: value.x11 + dx, y2: value.y11 + dy},
-							settings: settings
-						}, {
-							type: 'line',
-							points: {x1: value.x11, y1: value.y11, x2: value.x12, y2: value.y12},
-							settings: settings
-						}, {
-							type: 'line',
-							points: {x1: value.x12 - dx, y1: value.y12 - dy, x2: value.x12 + dx, y2: value.y12 + dy},
-							settings: settings
-						}]
-				};
-				return output;
-			} catch (e) {
-			}
+			var output = {
+				pos: {x: 0, y: 0},
+				shapes: [{
+						type: 'line',
+						points: {x1: this._value.x11 - dx, y1: this._value.y11 - dy, x2: this._value.x11 + dx, y2: this._value.y11 + dy},
+						settings: settings
+					}, {
+						type: 'line',
+						points: {x1: this._value.x11, y1: this._value.y11, x2: this._value.x12, y2: this._value.y12},
+						settings: settings
+					}, {
+						type: 'line',
+						points: {x1: this._value.x12 - dx, y1: this._value.y12 - dy, x2: this._value.x12 + dx, y2: this._value.y12 + dy},
+						settings: settings
+					}]
+			};
+			return output;
 		}
 
 		return null;

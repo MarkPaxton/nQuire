@@ -29,7 +29,6 @@ $(function() {
 
   SnapshotMeasureManager.prototype.initMeasureValue = function(value) {
     var self = this;
-    this._currentPos = null;
     this._vmIsAdjusting = true;
     clearTimeout(this._vmAdjustTimer);
     this._vmAdjustTimer = setTimeout(function() {
@@ -55,6 +54,8 @@ $(function() {
       var s4end = function() {
         self._serviceDelegate.saveData(JSON.stringify(self._currentPos));
         self._serviceDelegate.randomDelayProcessStopped();
+							console.log(4);
+
       };
 
       var s3drawData = function(imageSize) {
@@ -66,6 +67,9 @@ $(function() {
 
         var code = 'data:image/svg+xml;charset=utf-8,' + $('<div>').append(svg).html();
         self._currentPos.dataImage = code;
+				
+							console.log(3);
+
         s4end();
       };
 
@@ -86,8 +90,11 @@ $(function() {
 
           self._currentPos.vmImage = resizeCanvas.toDataURL();
 
+			console.log(2);
+
           s3drawData(imageSize);
         };
+				
         image.src = snapshot;
       };
 
@@ -97,10 +104,12 @@ $(function() {
       var s1processUrlView = function(viewUrl) {
         var k = viewUrl.lastIndexOf('?');
         self._currentPos.viewQuery = viewUrl.substr(k + 1);
+			console.log(1);
 
         s2getSnapshot();
       };
 
+			console.log(0);
       s1getUrlView();
     }
   };
