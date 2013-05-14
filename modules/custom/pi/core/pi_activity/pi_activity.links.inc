@@ -22,7 +22,7 @@ function pi_activity_create_phase_view_activity_links($activity_node) {
 				$links[] = array('url' => url("activity/{$activity_node->nid}/edit"), 'label' => t('Edit'), 'image' => 'editable.png');
 			} else {
 				$type = node_get_types('type', $activity_node->activity_type);
-				$node_function = isset($type->add_node_type) ? 'view' : 'edit';
+				$node_function = isset($type->add_node_type) && !pi_activity_edit_as_view_mode($activity_node) ? 'view' : 'edit';
 				$links[] = array('url' => url("activity/{$activity_node->nid}/$node_function"), 'label' => t('Create'), 'image' => 'editable.png');
 			}
 		}

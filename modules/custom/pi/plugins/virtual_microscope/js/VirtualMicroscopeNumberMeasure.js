@@ -1,14 +1,14 @@
 /*global jquery, JSON*/
 
 $(function() {
-	var NumberMeasureManager = function(element, eventManager, dataBrowser, measureId, measureType) {
+	var NumberMeasureManager = function(element, eventManager, dataBrowser, measureId, measureManager) {
 		this._element = $(element);
 		this._box = this._element.find('.virtual_microscope_number_measure_box');
 		this._startButton = this._element.find('button');
 		this._measureId = measureId;
 		this._eventManager = eventManager;
 		this._dataBrowser = dataBrowser;
-		this._measureType = measureType;
+		this._measureManager = measureManager;
 
 		this._baseStyleColors = {blue: '#0000ff', red: '#ff0000', yellow: '#ffff00', green: '#00ff00'};
 		this._baseStyle = {fill: 'none', 'stroke-width': 20, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'};
@@ -95,6 +95,8 @@ $(function() {
 		this._serviceDelegate.userDelayProcessStopped();
 
 		this._updateDisplayValue();
+		
+		this._measureManager.setInputActive(false);
 	};
 
 	NumberMeasureManager.prototype._startInput = function() {
@@ -103,10 +105,12 @@ $(function() {
 		this._serviceDelegate.userDelayProcessStarted();
 		this._element.vmUserInteractionMeasure('setActiveMode', true);
 		this._eventManager.startListening(this);
+		
+		this._measureManager.setInputActive(true);
 	};
 
 	NumberMeasureManager.prototype.getMeasureType = function() {
-		return this._measureType;
+		return this._measureManager.getMeasureType();
 	};
 	NumberMeasureManager.prototype.getMeasureValue = function() {
 		return this._value;
@@ -155,39 +159,31 @@ $(function() {
 				};
 			}
 
-			if (value.type === 'angle') {
-				var initialValue = {
-					state: 'measure',
-					setInPixels: true,
-					x1: value.x11,
-					x2: value.x12,
-					y1: value.y11,
-					y2: value.y12
-				};
-
-			} else {
-				var initialValue = {
-					state: 'angle',
-					setInPixels: true,
-					x1: value.x11,
-					x2: value.x12,
-					y1: value.y11,
-					y2: value.y12,
-					altx1: value.x21,
-					altx2: value.x22,
-					alty1: value.y21,
-					alty2: value.y22
-				};
-
-			}
+			var initialValue = value.type === 'angle' ? {
+				state: 'angle',
+				setInPixels: true,
+				x1: value.x11,
+				x2: value.x12,
+				y1: value.y11,
+				y2: value.y12,
+				altx1: value.x21,
+				altx2: value.x22,
+				alty1: value.y21,
+				alty2: value.y22
+			} : {
+				state: 'measure',
+				setInPixels: true,
+				x1: value.x11,
+				x2: value.x12,
+				y1: value.y11,
+				y2: value.y12
+			};
 
 
 			this._dependencies.VirtualMicroscopeManager.setMeasureValue(initialValue);
 			this._measureListener = measureManager;
 		},
 		measureMessage: function(value) {
-			console.log(JSON.stringify(value));
-
 			if (this._measureListener) {
 				var type = typeof(value.altx1) === 'undefined' ? 'length' : 'angle';
 				if (type === this._measureListener.getMeasureType()) {
@@ -215,5 +211,3 @@ $(function() {
 		}
 	}, ['VirtualMicroscopeManager', 'VirtualMicroscopeDataBrowser']);
 });
-
-

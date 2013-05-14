@@ -49,7 +49,7 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 
 		if ($arg_node_function === 'edit' && pi_activity_edit_as_view_mode($activity_node)) {
 			$arg_node_function = 'view';
-		}
+		} 
 
 		if ($arg_node_function === 'view') {
 			$content_output .= $content_node ? node_view($content_node, $teaser, TRUE, TRUE) : FALSE;
