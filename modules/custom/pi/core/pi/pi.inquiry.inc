@@ -4,24 +4,24 @@
  * This is the page where the phases will be listed, e.g. with the octagon layout 
  */
 function pi_inquiry_inquiry_view($node) {
-	
+
 	$output = '';
-	
+
 	if ($node->image) {
 		$output .= '<div><img style="width: 100%" src="' . file_create_url($node->image) . '"></img></div>';
 	}
-	
+
 	return $output;
 }
 
 function pi_inquiry_structure_view($node) {
 	global $user;
-	
+
 	$output = '';
-					
+
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-	
+
 	$rows = array();
 
 
@@ -37,7 +37,7 @@ function pi_inquiry_structure_view($node) {
 	}
 
 	$output .= display_phases($rows, NULL, NULL, $node->layout);
-	
+
 	return $output;
 }
 
@@ -52,6 +52,8 @@ function pi_inquiry_structure_view($node) {
  * @return string $output The HTML code for the "phase view".
  */
 function display_phases($phases, $activity_count, $new_activity_count, $layout) {
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	drupal_set_title(check_plain($inquiry_info->getInquiryNode()->title));
 
 	$show_phase_icons = FALSE;
 	$show_activities = FALSE;
@@ -76,9 +78,15 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
 	}
 
 	drupal_add_css(drupal_get_path('module', 'pi') . '/pi_phase.css');
-
-	$output = '<h1>' . t('Steps of the Inquiry Process') . '</h1>';
 	
+	$output = '<p>' . t('These are the phases of <i>@inquiry</i>. ', array('@inquiry' => $inquiry_info->getInquiryNode()->title));
+	if (count($phases) > 0) {
+		$phase_nodes = $inquiry_info->getPhases();
+		$phase_node = array_shift($phase_nodes);
+		$output .= t(' You can start at <b>@phase</b>.', array('@phase' => $phase_node->title));
+	}
+	$output .= '</p>';
+
 	$image_path = drupal_get_path('module', 'pi') . '/images/';
 
 	if ($layout == 'octagon') {
@@ -168,8 +176,8 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
  */
 function display_phases_box($icon_url, $title, $activity_count, $new_activity_count, $show_icon = false, $show_activities = false, $layout = 'list') {
 	$output = '';
-	
-	
+
+
 	if ($show_icon === true) {
 		$output .= display_phases_icon_box($icon_url, $show_icon);
 	}

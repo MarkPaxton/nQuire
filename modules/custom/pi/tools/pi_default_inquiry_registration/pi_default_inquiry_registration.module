@@ -1,0 +1,70 @@
+<?php
+
+function pi_default_inquiry_registration_menu() {
+	$items = array(
+			'admin/settings/default_inquiry' => array(
+					'title' => t('Default Inquiry Registration'),
+					'page callback' => 'pi_default_inquiry_registration_admin_page',
+					'page arguments' => array(1),
+					'type' => MENU_NORMAL_ITEM,
+					'access arguments' => array('select default inquiry'),
+					'weight' => 1,
+			),
+	);
+
+	return $items;
+}
+
+function pi_default_inquiry_registration_perm() {
+	return array('select default inquiry');
+}
+
+function pi_default_inquiry_registration_admin_page() {
+	$output = drupal_get_form('pi_default_inquiry_registration_form');
+	return $output;
+}
+
+function pi_default_inquiry_registration_form() {
+	$query = "SELECT node.nid FROM node LEFT JOIN pi_inquiry ON node.vid=pi_inquiry.vid WHERE participants_selection='anyone'";
+
+	$inquiries = array(0 => t('-- No default inquiry'));
+	$result = db_query($query);
+	while ($row = db_fetch_array($result)) {
+		$node = node_load($row['nid']);
+		$inquiries[$node->nid] = check_plain($node->title);
+	}
+
+	$default_value = variable_get('pi_default_inquiry_registration', 0);
+
+	$form = array();
+
+	$form['inquiry'] = array(
+			'#type' => 'select',
+			'#title' => t('Select default inquiry'),
+			'#description' => t('When new users register in the platform, they will automatically join the selected inquiry.'),
+			'#options' => $inquiries,
+			'#default_value' => $default_value,
+			'#required' => FALSE,
+	);
+
+	$form['submit'] = array('#type' => 'submit', '#value' => t('Save'));
+
+	return $form;
+}
+
+function pi_default_inquiry_registration_form_submit($form, $form_state) {
+	variable_set('pi_default_inquiry_registration', $form_state['values']['inquiry']);
+}
+
+function pi_default_inquiry_registration_user($op, $edit, $account) {
+	if ($op === 'insert' && $account->uid) {
+		$inquiry = variable_get('pi_default_inquiry_registration', 0);
+		if ($inquiry) {
+			$inquiry_node = node_load($inquiry);
+			$group_check = pi_inquiry_groupings_check_group($inquiry_node);
+			if ($group_check) {
+				pi_inquiry_groupings_add_user_to_group($group_check, $account->uid, TRUE);
+			}
+		}
+	}
+}

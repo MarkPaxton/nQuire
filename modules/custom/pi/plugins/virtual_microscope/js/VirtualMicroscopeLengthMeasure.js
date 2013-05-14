@@ -61,5 +61,3 @@ $(function() {
 		}
 	}, ['VirtualMicroscopeNumberMeasure', 'VirtualMicroscopeDataBrowser', 'DynamicMeasureService']);
 });
-
-

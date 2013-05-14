@@ -152,10 +152,17 @@ function nquire_group_add_user_to_group($gid, $uid, $is_active = FALSE) {
 	}
 }
 
+function nquire_group_user($op, $edit, $account) {
+	if ($op === 'delete') {
+		db_query("DELETE FROM {nquire_group_participant} WHERE uid=%d", $account->uid);
+		db_query("DELETE FROM {nquire_group_participant_role} WHERE uid=%d", $account->uid);
+	}
+}
+
 function nquire_group_delete_user_from_group($gid, $uid) {
 	db_query("DELETE FROM {nquire_group_participant} WHERE nid=%d AND uid=%d", $gid, $uid);
 	db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
-	
+
 	if (count(nquire_group_get_member_uids($gid, TRUE)) === 0) {
 		node_delete($gid);
 	} else {
@@ -203,7 +210,6 @@ function nquire_group_get_user_status_in_group($gid, $uid) {
 	$row = db_fetch_array(db_query($query, $gid, $uid));
 	return $row ? ($row['active'] ? 'member' : 'awaiting') : 'none';
 }
-
 
 function nquire_group_get_member_uids($group_nid, $only_active = FALSE) {
 	$members = array();
