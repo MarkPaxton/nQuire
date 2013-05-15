@@ -106,8 +106,9 @@ Drupal.ahah = function(base, element_settings) {
   // Bind the ajaxSubmit function to the element event.
   $(element_settings.element).bind(element_settings.event, function() {
     if (ahah.in_progress) {
-      shsh.repeat_submit = true;
+      ahah.repeat_submit = true;
     } else {
+			ahah.in_progress = true;
       $(element_settings.element).parents('form').ajaxSubmit(options);
     }
     return false;

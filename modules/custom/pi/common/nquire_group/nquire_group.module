@@ -145,8 +145,8 @@ function nquire_group_get_participants_with_role($gid, $role) {
 }
 
 function nquire_group_add_user_to_group($gid, $uid, $is_active = FALSE) {
-	$query = "REPLACE INTO {nquire_group_participant} (nid, uid, active) VALUES (%d, %d, %d)";
-	db_query($query, $gid, $uid, $is_active);
+	$query = "INSERT INTO nquire_group_participant (nid, uid, active) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE active=%d";
+	db_query($query, $gid, $uid, $is_active, $is_active);
 	if (!$is_active) {
 		db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
 	}
@@ -178,8 +178,12 @@ function nquire_group_delete_user_from_group($gid, $uid) {
 
 function nquire_group_add_user_role($gid, $uid, $role_id) {
 	if (nquire_group_get_user_status_in_group($gid, $uid) === 'member') {
-		$query = "INSERT IGNORE INTO {nquire_group_participant_role} (nid, uid, role) VALUES (%d, %d, '%s')";
-		db_query($query, $gid, $uid, $role_id);
+		$s_query = "SELECT uid FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d AND role='%s'";
+		$row = db_fetch_array(db_query($s_query, $gid, $uid, $role_id));
+		if (!$row) {
+			$query = "INSERT INTO {nquire_group_participant_role} (nid, uid, role) VALUES (%d, %d, '%s')";
+			db_query($query, $gid, $uid, $role_id, $role_id);
+		}
 	}
 }
 
@@ -234,12 +238,11 @@ function nquire_group_set_join_mode($group_nid, $value) {
 		$group->revision = TRUE;
 		node_save($group);
 
-		$roles_query = "DELETE {nquire_group_participant_role} "
-						. "FROM {nquire_group_participant_role} INNER JOIN {nquire_group_participant} ON {nquire_group_participant_role}.uid={nquire_group_participant}.uid "
-						. "WHERE {nquire_group_participant}.active=0";
-		db_query($roles_query);
-		$participants_query = "DELETE FROM {nquire_group_participant} WHERE {nquire_group_participant}.active=0";
-		db_query($participants_query);
+		$query = "SELECT uid FROM {nquire_group_participant} WHERE {nquire_group_participant}.active=0 AND {nquire_group_participant}.nid=%d";
+		$result = db_query($query, $group_nid);
+		while ($row = db_fetch_array($result)) {
+			nquire_group_delete_user_from_group($group_nid, $row['uid']);
+		}
 	}
 }
 

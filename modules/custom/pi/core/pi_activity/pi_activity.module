@@ -200,10 +200,22 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 			$activity_node = node_load($form_state['values']['current_activity_nid']);
 		}
 
+		if (!$form_state['values']['original_action']) {
+			$original_action = $form['#action'];
+			$form['original_action'] = array(
+					'#type' => 'hidden',
+					'#default_value' => $original_action,
+			);
+		} else {
+			$original_action = $form_state['values']['original_action'];
+		}
+
 		if ($activity_node) {
 			$path = $activity_node->parent_activity ? "activity/{$activity_node->parent_activity}/view" : "activity/{$activity_node->nid}/view";
 			$form['#redirect'] = $form_state['redirect'] = $path;
 		}
+
+		$form['#action'] = $original_action;
 	}
 }
 
