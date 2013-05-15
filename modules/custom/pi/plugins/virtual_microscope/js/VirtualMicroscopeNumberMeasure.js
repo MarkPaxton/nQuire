@@ -25,7 +25,7 @@ $(function() {
 				self._startInput();
 			},
 			cancelCallback: function() {
-				self._stopInput();
+				self._cancelInput();
 			},
 			clearCallback: function() {
 
@@ -42,15 +42,17 @@ $(function() {
 
 	NumberMeasureManager.prototype.initMeasureValue = function(value) {
 		this._value = value && value.length > 0 ? JSON.parse(value) : null;
-		this._measureManager.setPaintValue(this._value);
+		this._measureManager.setPaintValueForSave(false, null);
+		this._updatePaint();
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._updateDisplayValue();
 	};
 
 	NumberMeasureManager.prototype.clearValue = function() {
 		this._value = null;
+		this._measureManager.setPaintValueForSave(false, null);
+		this._updatePaint();
 		this._serviceDelegate.saveData('');
-		this._measureManager.setPaintValue(null);
 		this._updateDisplayValue();
 	};
 
@@ -58,24 +60,6 @@ $(function() {
 		this._dataBrowser.updateCurrentDataFeaturePaint(this._measureId);
 	};
 
-	NumberMeasureManager.prototype.createPaintShape = function(data, options) {
-
-		var shapes = (options.mode === 'selected' && this._editingInfo) ? this._editingInfo.shapes : this._parseShapes(data[this._measureId]);
-
-		var output = {
-			pos: {x: 0, y: 0},
-			shapes: []
-		};
-
-		for (var i in shapes) {
-			output.shapes.push({
-				type: 'polyline',
-				points: shapes[i].points,
-				settings: $.extend({}, this._baseStyle, {stroke: this._baseStyleColors[shapes[i].color]})
-			});
-		}
-		return output;
-	};
 
 
 	NumberMeasureManager.prototype.stopUserDelayProcess = function() {
@@ -85,30 +69,44 @@ $(function() {
 
 	NumberMeasureManager.prototype._saveAndStop = function() {
 		this._value = this._editingInfo;
-		this._measureManager.setPaintValue(this._value);
+		this._measureManager.setPaintValueForSave(false, this._value);
 		this._serviceDelegate.saveData(JSON.stringify(this._value), true);
 		this._stopInput();
 	};
 
+	NumberMeasureManager.prototype._cancelInput = function() {
+		this._measureManager.setPaintValueForSave(false, null);
+		this._stopInput();
+	};
+	
 	NumberMeasureManager.prototype._stopInput = function() {
+		console.log('stopping ' + this._measureId);
+		this._updatePaint();
+
 		this._editingInfo = null;
 		this._capturing = false;
 		this._eventManager.stopListening();
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._updateDisplayValue();
-		this._measureManager.setInputActive(false);
-
 		this._serviceDelegate.userDelayProcessStopped();
+		console.log('stopped ' + this._measureId);
 	};
 
 	NumberMeasureManager.prototype._startInput = function() {
-		this._editingInfo = this._value;
-		this._capturing = true;
-		this._serviceDelegate.userDelayProcessStarted();
-		this._element.vmUserInteractionMeasure('setActiveMode', true);
-		this._eventManager.startListening(this);
+		console.log('starting ' + this._measureId);
 
-		this._measureManager.setInputActive(true);
+		var self = this;
+		var callback = function() {
+			self._measureManager.setPaintValueForSave(true, null);
+			self._editingInfo = this._value;
+			self._capturing = true;
+			self._element.vmUserInteractionMeasure('setActiveMode', true);
+			self._eventManager.startListening(self);
+			self._updatePaint();
+			console.log('started ' + self._measureId);
+		};
+
+		this._serviceDelegate.requestUserDelayProcessStart(callback);
 	};
 
 	NumberMeasureManager.prototype.getMeasureType = function() {

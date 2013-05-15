@@ -17,6 +17,7 @@ $(function() {
 			this._vmManager = dependencies.VirtualMicroscopeManager;
 			this._readyListeners = [];
 			this._resizeListeners = [];
+			this._shapes = {};
 
 			var self = this;
 
@@ -48,10 +49,6 @@ $(function() {
 					break;
 				case 'text':
 					obj = this._svg.text(parent, 0, 0, shape.text, shape.settings);
-					/*var box = obj.getBoundingClientRect();
-					 console.log(box);
-					 console.log($(obj).width());
-					 this._svg.change(obj, {x: -.5 * box.width, y: 0});*/
 					break;
 				default:
 					break;

@@ -27,8 +27,8 @@ $(function() {
 		this._service._randomDelayProcessStopped(this._elementId);
 	};
 
-	DynamicMeasureServiceDelegate.prototype.userDelayProcessStarted = function() {
-		this._service._userDelayProcessStarted(this._elementId);
+	DynamicMeasureServiceDelegate.prototype.requestUserDelayProcessStart = function(callback) {
+		this._service._requestUserDelayProcessStart(this._elementId, callback);
 	};
 
 	DynamicMeasureServiceDelegate.prototype.userDelayProcessStopped = function() {
@@ -64,6 +64,8 @@ $(function() {
 		 * @returns {bool} Whether the callback was called immediately
 		 */
 		prepareToSave: function(callback) {
+			this._submitOnProgress = true;
+
 			for (var i in this._measureHandlers) {
 				var mh = this._measureHandlers[i];
 				if (mh.prepareToSave) {
@@ -73,6 +75,18 @@ $(function() {
 
 			return this.endDataInput(callback);
 		},
+		submitComplete: function() {
+			this._submitOnProgress = false;
+			this._checkCanStartUserProcess();
+		},
+		_checkCanStartUserProcess: function() {
+			if (!this._submitOnProgress && this._requestedUserProcess) {
+				var process = this._requestedUserProcess;
+				this._requestProcess = null;
+				this._ongoingUserDelayProcesses[process.elementId] = true;
+				process.callback();
+			}
+		},
 		/**
 		 * 
 		 * @param {callback} callback
@@ -80,6 +94,7 @@ $(function() {
 		 */
 		endDataInput: function(callback) {
 			this.stopUserInputProcesses();
+
 			if (this._randomDelayProcessesActive()) {
 				this._endDataInputCallback = callback;
 				this._checkEndOfDataInput();
@@ -147,9 +162,13 @@ $(function() {
 			this._ongoingRandomDelayProcesses[elementId] = false;
 			this._checkEndOfDataInput();
 		},
-		_userDelayProcessStarted: function(elementId) {
+		_requestUserDelayProcessStart: function(elementId, callback) {
 			this.stopUserInputProcesses();
-			this._ongoingUserDelayProcesses[elementId] = true;
+			this._requestedUserProcess = {
+				elementId: elementId,
+				callback: callback
+			};
+			this._checkCanStartUserProcess();
 		},
 		_userDelayProcessStopped: function(elementId) {
 			this._ongoingUserDelayProcesses[elementId] = false;
