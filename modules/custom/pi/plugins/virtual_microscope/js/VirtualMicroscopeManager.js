@@ -14,30 +14,23 @@ $(function() {
 		_sample: null,
 		_divContainer: null,
 		_iframe: null,
-		_samplesPath: null,
+		_vmData: null,
 		init: function(dependencies) {
 			this._messageListeners = {};
-
 			this._status = false;
 			this._statusListeners = [];
-
 			this._position = null;
 			this._positionListeners = [];
-
 			this._measure = null;
 			this._measureListeners = [];
-
 			this._getViewUrlListeners = [];
 			this._getSnapshotListeners = [];
-
-			this._samplesPath = dependencies.VirtualMicroscopePath.path;
+			this._vmData = dependencies.VirtualMicroscopeData;
 			this._divContainer = $('#virtual_microscope_container');
-
 			var self = this;
 			window.addEventListener("message", function(event) {
 				self._receiveMessage(event);
 			}, false);
-
 			this._captureMessages('monitor', function(msg) {
 				self._monitorMessageReceived(msg);
 			});
@@ -143,7 +136,6 @@ $(function() {
 			if (sample !== this._sample) {
 				this._fireStatusChanged(false);
 				this._sample = sample;
-
 				if (this._iframe) {
 					this._iframe.remove();
 					this._iframe = null;
@@ -151,34 +143,23 @@ $(function() {
 
 				if (sample) {
 					this._iframe = $('<iframe>').addClass('virtual_microscope_iframe').appendTo(this._divContainer);
-					var src = this._samplesPath + sample;
+					var src = this._vmData.path + sample;
 					if (query) {
 						src += "?" + query;
 					}
 					this._iframe.attr('src', src);
-
-					var probing = true;
 					var self = this;
-					this._captureMessages('list', function() {
-						probing = false;
+					this._captureMessages('ready', function(msg) {
 						self._fireStatusChanged(true);
 						console.log('vm ready!');
 					}, true);
-					var schedule = function() {
-						setTimeout(probe, 10);
-					};
-					var probe = function() {
-						if (probing) {
-							console.log('probing...');
-							self._post('list');
-							schedule();
-						}
-					};
-					schedule();
 					return false;
 				}
 			}
 			return true;
+		},
+		getSectionSize: function() {
+			return this._vmData.sizes[this._sample];
 		},
 		setPosition: function(pos) {
 			var content = {
@@ -198,7 +179,6 @@ $(function() {
 		},
 		_fireStatusChanged: function(status) {
 			this._status = status;
-
 			if (status) {
 				this._post('monitor', 'MeasureMM');
 				this._post('monitor', 'PositionPixels');
@@ -244,7 +224,20 @@ $(function() {
 		},
 		_receiveMessage: function(event) {
 			var msg = event.data;
-			var listener = this._messageListeners[msg.action];
+			if (typeof msg === 'string') {
+				try {
+					msg = JSON.parse(msg);
+				} catch (e) {
+				}
+			}
+
+			var listener = null;
+			if (msg.msg === 'VM ready') {
+				listener = this._messageListeners['ready'];
+			} else {
+				listener = this._messageListeners[msg.action];
+			}
+
 			if (listener) {
 				if (listener.justOne) {
 					var c = listener.callback;
@@ -255,5 +248,5 @@ $(function() {
 				}
 			}
 		}
-	}, ['VirtualMicroscopePath']);
+	}, ['VirtualMicroscopeData']);
 });

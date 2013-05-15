@@ -3,7 +3,6 @@
 
 $(function() {
 	nQuireJsSupport.register('VirtualMicroscopeWhiteboard', {
-		_sizes: null,
 		_vmManager: null,
 		_transform: null,
 		_iframe: null,
@@ -13,7 +12,6 @@ $(function() {
 		_pathCaptureCallback: null,
 		init: function(dependencies) {
 			this._parent = $('#virtual_microscope_container');
-			this._sizes = dependencies.VirtualMicroscopeSizeData.data;
 			this._vmManager = dependencies.VirtualMicroscopeManager;
 			this._readyListeners = [];
 			this._resizeListeners = [];
@@ -224,7 +222,7 @@ $(function() {
 		},
 		_initTransform: function() {
 			this._transform = {
-				sectionSize: this._sizes[this._vmManager.getCurrentSample()],
+				sectionSize: this._vmManager.getSectionSize(),
 				frameSize: {},
 				frameCenter: {},
 				viewPos: null,
@@ -290,7 +288,7 @@ $(function() {
 		getCurrentSvg: function() {
 			return this._svg.toSVG();
 		}
-	}, ['VirtualMicroscopeManager', 'VirtualMicroscopeSizeData', 'LayoutManager']);
+	}, ['VirtualMicroscopeManager', 'LayoutManager']);
 });
 
 
