@@ -124,13 +124,17 @@ $(function() {
 				}
 			});
 		},
-		_addDrawableFeature: function(feature, title, handler, first) {
+		_addDrawableFeature: function(feature, title, handler, first, enabled) {
 			this._paintFeatureHandlers[feature] = handler;
 
 			var self = this;
-
+			var input = $('<input>').attr('type', 'checkbox').attr('name', 'feature_' + feature);
+			if (enabled) {
+				input.attr('checked', true);
+			}
+			
 			$('<label>').appendTo($('<div>')[first ? 'prependTo' : 'appendTo']($('.virtual_microscope_view_menu_popup')))
-							.append($('<input>').attr('type', 'checkbox').attr('name', 'feature_' + feature).attr('checked', true)).append(title)
+							.append(input).append(title)
 							.change(function() {
 				if (self._ready) {
 					self._updatePaint();
@@ -155,8 +159,8 @@ $(function() {
 				}
 			};
 
-			this._addDrawableFeature('shadow', 'Shadows', new ShadowPainter(handler, this._whiteboard), true);
-			this._addDrawableFeature('label', 'Labels', new LabelPainter(handler, actionCallbacks), true);
+			this._addDrawableFeature('shadow', 'Shadows', new ShadowPainter(handler, this._whiteboard), true, false);
+			this._addDrawableFeature('label', 'Labels', new LabelPainter(handler, actionCallbacks), true, true);
 
 			var data = this._ajaxService.getCurrentData(this._snapshotMeasure);
 			var viewValue = handler.parseViewFromData(data);
@@ -166,8 +170,8 @@ $(function() {
 				this._pageManager.openSampleView(viewValue);
 			}
 		},
-		registerPaintFeature: function(name, title, handler) {
-			this._addDrawableFeature(name, title, handler);
+		registerPaintFeature: function(name, title, handler, enabled) {
+			this._addDrawableFeature(name, title, handler, false, enabled);
 			if (this._ready) {
 				this._updatePaint();
 			}

@@ -50,7 +50,6 @@ $(function() {
 			this._changeListeners = [];
 		},
 		registerMeasure: function(elementId, handler) {
-			console.log('init measure: ' + elementId);
 			this._measureHandlers[elementId] = handler;
 			handler.setServiceDelegate(new DynamicMeasureServiceDelegate(this, elementId));
 			handler.initMeasureValue(this._getData(elementId));
@@ -82,7 +81,7 @@ $(function() {
 		_checkCanStartUserProcess: function() {
 			if (!this._submitOnProgress && this._requestedUserProcess) {
 				var process = this._requestedUserProcess;
-				this._requestProcess = null;
+				this._requestedUserProcess = null;
 				this._ongoingUserDelayProcesses[process.elementId] = true;
 				process.callback();
 			}

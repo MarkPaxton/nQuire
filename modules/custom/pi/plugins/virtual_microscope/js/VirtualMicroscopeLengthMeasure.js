@@ -2,31 +2,13 @@
 
 $(function() {
 
-	var LenghtPainterColors = {
-		_n: 0,
-		_colors: [
-			['#aa0000', '#ff0000'],
-			['#00aa00', '#00ff00'],
-			['#0000aa', '#0000ff'],
-			['#aaaa00', '#ffff00'],
-			['#aa00aa', '#ff00ff'],
-			['#00aaaa', '#00ffff']
-		],
-		nextColor: function() {
-			var c = this._colors[this._n % this._colors.length];
-			this._n++;
-			return c;
-		}
-	};
-
-	var LengthPainter = function(measureId, dataBrowser) {
+	var LengthPainter = function(measureId, dataBrowser, color, actionCallbacks) {
 		this._measureId = measureId;
 		this._dataBrowser = dataBrowser;
+		this._actionCallbacks = actionCallbacks;
 
 		this._activeInput = true;
 		this._activeDataValue = null;
-
-		var color = LenghtPainterColors.nextColor();
 
 		this._baseStyle = {
 			fill: 'none',
@@ -35,9 +17,13 @@ $(function() {
 			'stroke-linejoin': 'round',
 			'vector-effect': 'non-scaling-stroke'
 		};
-		this._normalStyle = {stroke: color[0], strokeWidth: 4};
-		this._hoverStyle = {stroke: color[1], strokeWidth: 6};
-		this._editingStyle = {stroke: color[1], strokeWidth: 10, strokeOpacity: .5};
+		
+		var darkColor = color.replace(/f/g, 'a');
+		
+		this._normalStyle = {stroke: darkColor, strokeWidth: 4};
+		this._selectedStyle = {stroke: color, strokeWidth: 4};
+		this._hoverStyle = {stroke: color, strokeWidth: 6};
+		this._editingStyle = {stroke: color, strokeWidth: 10, strokeOpacity: .5};
 	};
 
 	LengthPainter.prototype.getMeasureType = function() {
@@ -50,15 +36,18 @@ $(function() {
 	};
 
 	LengthPainter.prototype.createPaintShape = function(data, options) {
+		var selected = options.mode === 'selected';
+		var hover = options.mode === 'hover';
+
 		try {
-			var value = options.mode === 'selected' && this._activeDataValue ? this._activeDataValue : JSON.parse(data[this._measureId]);
+			var value = selected && this._activeDataValue ? this._activeDataValue : JSON.parse(data[this._measureId]);
 		} catch (e) {
 			value = null;
 		}
 
 		if (value) {
 
-			var style = options.mode === 'selected' && this._activeInput ? this._editingStyle : (options.mode === 'hover' ? this._hoverStyle : this._normalStyle);
+			var style = selected && this._activeInput ? this._editingStyle : (hover ? this._hoverStyle : (selected ? this._selectedStyle : this._normalStyle));
 
 			var settings = $.extend({}, this._baseStyle, style);
 
@@ -69,20 +58,24 @@ $(function() {
 			var dx = length * Math.cos(angle);
 			var dy = length * Math.sin(angle);
 
+
 			var output = {
 				pos: {x: 0, y: 0},
 				shapes: [{
 						type: 'line',
 						points: {x1: value.x11 - dx, y1: value.y11 - dy, x2: value.x11 + dx, y2: value.y11 + dy},
-						settings: settings
+						settings: settings,
+						callbacks: this._actionCallbacks
 					}, {
 						type: 'line',
 						points: {x1: value.x11, y1: value.y11, x2: value.x12, y2: value.y12},
-						settings: settings
+						settings: settings,
+						callbacks: this._actionCallbacks
 					}, {
 						type: 'line',
 						points: {x1: value.x12 - dx, y1: value.y12 - dy, x2: value.x12 + dx, y2: value.y12 + dy},
-						settings: settings
+						settings: settings,
+						callbacks: this._actionCallbacks
 					}]
 			};
 			return output;
@@ -96,12 +89,22 @@ $(function() {
 			$('div[measure_type="measure_widget_vm_length"]').each(function() {
 				var inputElementId = $(this).attr('input_element_id');
 				var inputElementTitle = $(this).attr('input_element_title');
-				var lengthManager = new LengthPainter(inputElementId, dependencies.VirtualMicroscopeDataBrowser);
+				var measureColor = $(this).attr('measure_color');
+				
+				var actionCallbacks = {
+					click: function(featureName) {
+						var id = "" + parseInt(featureName);
+						dependencies.AjaxDataService.setData(id);
+					}
+				};
+
+
+				var lengthManager = new LengthPainter(inputElementId, dependencies.VirtualMicroscopeDataBrowser, measureColor, actionCallbacks);
 
 				var manager = dependencies.VirtualMicroscopeNumberMeasure.createManager(this, inputElementId, lengthManager);
 				dependencies.DynamicMeasureService.registerMeasure(inputElementId, manager);
-				dependencies.VirtualMicroscopeDataBrowser.registerPaintFeature(inputElementId, inputElementTitle, lengthManager);
+				dependencies.VirtualMicroscopeDataBrowser.registerPaintFeature(inputElementId, inputElementTitle, lengthManager, true);
 			});
 		}
-	}, ['VirtualMicroscopeNumberMeasure', 'VirtualMicroscopeDataBrowser', 'DynamicMeasureService']);
+	}, ['VirtualMicroscopeNumberMeasure', 'VirtualMicroscopeDataBrowser', 'DynamicMeasureService', 'AjaxDataService']);
 });

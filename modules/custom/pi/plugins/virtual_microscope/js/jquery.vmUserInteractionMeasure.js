@@ -14,6 +14,14 @@
 				$(this).vmUserInteractionMeasure('_buttonClick', options.startCallback);
 			});
 
+			this.find('.virtual_microscope_measure_edit_button').customMouseInput('click', function() {
+				$(this).vmUserInteractionMeasure('_buttonClick', options.startCallback);
+			});
+
+			this.find('.virtual_microscope_measure_new_button').customMouseInput('click', function() {
+				self.vmUserInteractionMeasure('_newData');
+			});
+
 			this.find('.virtual_microscope_measure_cancel_button').customMouseInput('click', function() {
 				$(this).vmUserInteractionMeasure('_buttonClick', options.cancelCallback);
 			});
@@ -33,17 +41,35 @@
 				callback();
 			}
 		},
+		_newData: function() {
+			var button = this.find('.virtual_microscope_measure_new_button');
+			if (!button.hasClass('virtual_microscope_measure_button_disabled') && !button.hasClass('virtual_microscope_measure_button_hidden')) {
+				var options = this.data('options');
+				if (options.dataService) {
+					var self = this;
+					var callback = /*options.startCallback ? function() {
+						options.startCallback();
+					} : */null;
+					options.dataService.clearDataAndNotify(callback);
+				}
+			}
+		},
 		setActiveMode: function(active) {
 			if (active) {
-				this.find('.virtual_microscope_measure_start_button, .virtual_microscope_measure_clear_button').addClass('virtual_microscope_measure_button_hidden');
+				this.find('.virtual_microscope_measure_start_button, .virtual_microscope_measure_edit_button, .virtual_microscope_measure_new_button, .virtual_microscope_measure_clear_button').addClass('virtual_microscope_measure_button_hidden');
 				this.find('.virtual_microscope_measure_cancel_button, .virtual_microscope_measure_save_button').removeClass('virtual_microscope_measure_button_hidden');
 			} else {
-				this.find('.virtual_microscope_measure_cancel_button, .virtual_microscope_measure_save_button').addClass('virtual_microscope_measure_button_hidden');
-				this.find('.virtual_microscope_measure_start_button, .virtual_microscope_measure_clear_button').removeClass('virtual_microscope_measure_button_hidden');
 				var options = this.data('options');
-				if (options && options.emptyValueCallback && options.emptyValueCallback()) {
+				var empty = options && options.emptyValueCallback && options.emptyValueCallback();
+
+				this.find('.virtual_microscope_measure_cancel_button, .virtual_microscope_measure_save_button').addClass('virtual_microscope_measure_button_hidden');
+				if (empty) {
+					this.find('.virtual_microscope_measure_edit_button, .virtual_microscope_measure_new_button, ').addClass('virtual_microscope_measure_button_hidden');
+					this.find('.virtual_microscope_measure_start_button, .virtual_microscope_measure_clear_button').removeClass('virtual_microscope_measure_button_hidden');
 					this.find('.virtual_microscope_measure_clear_button').addClass('virtual_microscope_measure_button_disabled');
 				} else {
+					this.find('.virtual_microscope_measure_start_button').addClass('virtual_microscope_measure_button_hidden');
+					this.find('.virtual_microscope_measure_edit_button, .virtual_microscope_measure_new_button, .virtual_microscope_measure_clear_button').removeClass('virtual_microscope_measure_button_hidden');
 					this.find('.virtual_microscope_measure_clear_button').removeClass('virtual_microscope_measure_button_disabled');
 				}
 			}

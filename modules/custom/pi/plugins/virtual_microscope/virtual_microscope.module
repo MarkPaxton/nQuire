@@ -362,9 +362,14 @@ function __virtual_microscope_pi_measure_vm_length_format_table_value($measure_n
 }
 
 function theme_virtual_microscope_length_measure_widget($form) {
-	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_length" input_element_id="' . $form['#widget_input_id'] . '" input_element_title="' . $form['#widget_measure_title'] . '">'
-					. '<div class="virtual_microscope_number_measure_box"></div>'
-					. theme('virtual_microscope_user_interaction_measure_buttons', t('measure'))
+	$c = _virtual_microscope_get_measure_color();
+	$bc = str_replace('0', 'a', $c);
+
+	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_length" '
+					. 'input_element_id="' . $form['#widget_input_id'] . '" '
+					. 'input_element_title="' . $form['#widget_measure_title'] . '" measure_color="' . $c . '">'
+					. '<div class="virtual_microscope_number_measure_box" style="background: ' . $bc . ';"></div>'
+					. theme('virtual_microscope_user_interaction_measure_buttons', t('measure'), t('new measure'))
 					. '</div>';
 
 
@@ -375,17 +380,25 @@ function theme_virtual_microscope_length_measure_widget($form) {
 	return $output;
 }
 
-function theme_virtual_microscope_user_interaction_measure_buttons($start_label) {
+function theme_virtual_microscope_user_interaction_measure_buttons($start_label, $new_measure) {
 	nquire_commons_load_javascript_custom_mouse_input();
 	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/jquery.vmUserInteractionMeasure.js');
 	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_user_interaction_measure.css');
 
 	$output = '<div class="virtual_microscope_measure_button_row">'
 					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_start_button virtual_microscope_measure_button_hidden">' . $start_label . '</div>'
+					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_edit_button virtual_microscope_measure_button_hidden">' . t('edit') . '</div>'
+					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_new_button virtual_microscope_measure_button_hidden">' . $new_measure . '</div>'
 					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_clear_button virtual_microscope_measure_button_hidden">' . t('clear') . '</div>'
 					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_cancel_button virtual_microscope_measure_button_hidden">' . t('cancel') . '</div>'
 					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_save_button virtual_microscope_measure_button_hidden">' . t('save') . '</div>'
 					. '</div>';
 
 	return $output;
+}
+
+function _virtual_microscope_get_measure_color() {
+	static $colors = array('#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff');
+	static $n = 0;
+	return $colors[$n++ % count($colors)];
 }

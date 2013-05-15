@@ -7,7 +7,6 @@ $(function() {
 		_container: null,
 		_overlay: null,
 		_dataListeners: null,
-		
 		init: function(dependencies) {
 			this._measuresService = dependencies.DynamicMeasureService;
 			this._data = dependencies.AjaxDataServiceInitialData;
@@ -35,9 +34,7 @@ $(function() {
 			});
 
 			$('#nquire-data-input-button-createdata').click(function() {
-				self.setData(null, function() {
-					self._fireDataChangeEvent('unselected', null);
-				});
+				self.clearDataAndNotify();
 				return false;
 			});
 
@@ -60,6 +57,15 @@ $(function() {
 					element.change(function() {
 						self._userInputChanged(false);
 					});
+				}
+			});
+		},
+		clearDataAndNotify: function(callback) {
+			var self = this;
+			this.setData(null, function() {
+				self._fireDataChangeEvent('unselected', null);
+				if (callback) {
+					callback();
 				}
 			});
 		},
@@ -153,7 +159,7 @@ $(function() {
 				} else {
 					console.log(data);
 				}
-				
+
 				self._measuresService.submitComplete();
 			};
 			var submit = function() {

@@ -65,6 +65,7 @@ $(function() {
 				}
 
 				if (shape.callbacks.click) {
+					element.addClass('whiteboard-active-element-pointer');
 					element.customMouseInput('click', function() {
 						shape.callbacks.click(name);
 					});

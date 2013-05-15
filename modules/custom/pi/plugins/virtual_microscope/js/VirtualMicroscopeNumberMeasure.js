@@ -1,7 +1,7 @@
 /*global jquery, JSON*/
 
 $(function() {
-	var NumberMeasureManager = function(element, eventManager, dataBrowser, measureId, measureManager) {
+	var NumberMeasureManager = function(element, eventManager, dataBrowser, dataService, measureId, measureManager) {
 		this._element = $(element);
 		this._box = this._element.find('.virtual_microscope_number_measure_box');
 		this._startButton = this._element.find('button');
@@ -10,14 +10,10 @@ $(function() {
 		this._dataBrowser = dataBrowser;
 		this._measureManager = measureManager;
 
-		this._baseStyleColors = {blue: '#0000ff', red: '#ff0000', yellow: '#ffff00', green: '#00ff00'};
-		this._baseStyle = {fill: 'none', 'stroke-width': 20, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'};
-
 		this._value = null;
 		this._capturing = false;
 		this._editingInfo = null;
 
-		//this._dataBrowser.registerPaintFeature(measureId, 'Number', this);
 		var self = this;
 
 		this._element.vmUserInteractionMeasure({
@@ -32,7 +28,11 @@ $(function() {
 			},
 			saveCallback: function() {
 				self._saveAndStop();
-			}
+			},
+			emptyValueCallback: function() {
+				return !self._value;
+			},
+			dataService: dataService
 		});
 	};
 
@@ -45,11 +45,13 @@ $(function() {
 		this._measureManager.setPaintValueForSave(false, null);
 		this._updatePaint();
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
+		console.log('active mode to false');
 		this._updateDisplayValue();
 	};
 
 	NumberMeasureManager.prototype.clearValue = function() {
 		this._value = null;
+		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._measureManager.setPaintValueForSave(false, null);
 		this._updatePaint();
 		this._serviceDelegate.saveData('');
@@ -78,7 +80,7 @@ $(function() {
 		this._measureManager.setPaintValueForSave(false, null);
 		this._stopInput();
 	};
-	
+
 	NumberMeasureManager.prototype._stopInput = function() {
 		console.log('stopping ' + this._measureId);
 		this._updatePaint();
@@ -141,7 +143,7 @@ $(function() {
 			});
 		},
 		createManager: function(element, measureId, measureType) {
-			return new NumberMeasureManager(element, this, this._dependencies.VirtualMicroscopeDataBrowser, measureId, measureType);
+			return new NumberMeasureManager(element, this, this._dependencies.VirtualMicroscopeDataBrowser, this._dependencies.AjaxDataService, measureId, measureType);
 		},
 		stopListening: function(measureManager) {
 			if (this._measureListener === measureManager) {
@@ -209,5 +211,5 @@ $(function() {
 				}
 			}
 		}
-	}, ['VirtualMicroscopeManager', 'VirtualMicroscopeDataBrowser']);
+	}, ['VirtualMicroscopeManager', 'VirtualMicroscopeDataBrowser', 'AjaxDataService']);
 });

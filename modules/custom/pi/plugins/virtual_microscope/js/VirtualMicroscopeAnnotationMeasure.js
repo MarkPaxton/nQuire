@@ -15,7 +15,7 @@ $(function() {
 		this._shapes = [];
 		this._editingInfo = null;
 
-		this._dataBrowser.registerPaintFeature(measureId, 'Annotation', this);
+		this._dataBrowser.registerPaintFeature(measureId, 'Annotation', this, true);
 
 		var self = this;
 		this._startButton.click(function() {
