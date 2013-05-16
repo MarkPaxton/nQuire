@@ -10,18 +10,22 @@ function google_maps_measure_theme() {
 
 function theme_google_maps_measure_form_item($form) {
   nquire_commons_load_nquire_dynamic_measure_support();
+  drupal_add_css(drupal_get_path('module', 'google_maps_measure') . '/css/jquery.autocomplete.css');
+  drupal_add_js(drupal_get_path('module', 'google_maps_measure') . '/js/jquery.autocomplete.js');
   drupal_add_js(drupal_get_path('module', 'google_maps_measure') . '/js/GoogleMapMeasure.js');
-  //$key = file_get_contents(drupal_get_path('module', 'google_maps_measure') . '/data/google_maps_api_key');
 
   $script = '<script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?sensor=true"></script>';
   drupal_set_html_head($script);
 
   $data = nquire_commons_decode_data($form['#widget_data']);
   $size = explode('x', $data['size']);
-  $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget__googlemap" input_element_id="' . $form['#widget_input_id'] . '">'
+  
+	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget__googlemap" input_element_id="' . $form['#widget_input_id'] . '">'
+					. '<div><input class="map_search_box" style="width: ' . $size[0] . 'px;"></input></div>'
           . '<div class="map_canvas" style="width:' . $size[0] . 'px;height:' . $size[1] . 'px;"></div>'
           . '<div>'
           . '<a class="add_marker" href="#">' . t('Mark centre') . '</a>&nbsp;&nbsp;&nbsp;&nbsp;'
+          . '<a class="goto_marker" href="#">' . t('Center on marker') . '</a>&nbsp;&nbsp;&nbsp;&nbsp;'
           . '<a class="forget_marker" href="#">' . t('Forget marker') . '</a>'
           . '</div></div>';
 
@@ -31,7 +35,7 @@ function theme_google_maps_measure_form_item($form) {
 function google_maps_measure_pi_measure__googlemap_create_form_item($measure_node, &$form, $value) {
   $input_element_id = "measure_{$measure_node->nid}";
   $widget_element_id = "{$input_element_id}_widget";
-
+	
   $form[$input_element_id] = array(
       '#type' => 'hidden',
       '#title' => check_plain($measure_node->title),
