@@ -47,7 +47,6 @@ var PiResultPresentations = {
   },
   _updateAvailableValues: function() {
     var abscissa = $('#edit-abscissa').attr('value');
-    console.log("abscissa: " + abscissa);
 
     var needNewSelection = $('#edit-ordinate').val() == abscissa;
 

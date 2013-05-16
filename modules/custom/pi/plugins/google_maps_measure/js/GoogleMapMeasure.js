@@ -117,8 +117,6 @@ $(function() {
 						if (status1 == google.maps.GeocoderStatus.OK) {
 							if (results1[1]) {
 								var result = $.map(results1, function(loc) {
-									console.log(loc.geometry);
-
 									return {
 										result: loc.formatted_address,
 										display: loc.formatted_address,
@@ -134,7 +132,6 @@ $(function() {
 		}, {asynchronousFunction: true});
 
 		this._searchBox.result(function(target, data) {
-			console.log(data[1]);
 			self._map.setZoom(14);
 			
 			if (data[1].bounds) {

@@ -45,7 +45,6 @@ $(function() {
 		this._measureManager.setPaintValueForSave(false, null);
 		this._updatePaint();
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
-		console.log('active mode to false');
 		this._updateDisplayValue();
 	};
 
@@ -82,7 +81,6 @@ $(function() {
 	};
 
 	NumberMeasureManager.prototype._stopInput = function() {
-		console.log('stopping ' + this._measureId);
 		this._updatePaint();
 
 		this._editingInfo = null;
@@ -91,12 +89,9 @@ $(function() {
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._updateDisplayValue();
 		this._serviceDelegate.userDelayProcessStopped();
-		console.log('stopped ' + this._measureId);
 	};
 
 	NumberMeasureManager.prototype._startInput = function() {
-		console.log('starting ' + this._measureId);
-
 		var self = this;
 		var callback = function() {
 			self._measureManager.setPaintValueForSave(true, null);
@@ -105,7 +100,6 @@ $(function() {
 			self._element.vmUserInteractionMeasure('setActiveMode', true);
 			self._eventManager.startListening(self);
 			self._updatePaint();
-			console.log('started ' + self._measureId);
 		};
 
 		this._serviceDelegate.requestUserDelayProcessStart(callback);

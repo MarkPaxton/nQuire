@@ -30,7 +30,6 @@
 		},
 		_initData: function() {
 			var originalData = this.nQuireWidget('getDataValue', 'object');
-			console.log(originalData);
 
 			var status = [];
 			for (var i = 0; i < originalData.length; i++) {

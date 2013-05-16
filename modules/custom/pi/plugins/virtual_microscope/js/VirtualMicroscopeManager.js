@@ -151,7 +151,6 @@ $(function() {
 					var self = this;
 					this._captureMessages('ready', function(msg) {
 						self._fireStatusChanged(true);
-						console.log('vm ready!');
 					}, true);
 					return false;
 				}
