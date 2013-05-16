@@ -211,7 +211,12 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 		}
 
 		if ($activity_node) {
-			$path = $activity_node->parent_activity ? "activity/{$activity_node->parent_activity}/view" : "activity/{$activity_node->nid}/view";
+			if ($activity_node->parent_activity) {
+				$parent = node_load($activity_node->parent_activity);
+				$path = "activity/{$activity_node->parent_activity}/" . (pi_activity_edit_as_view_mode($parent) ? 'edit' : 'view');
+			} else {
+				$path = "activity/{$activity_node->nid}/view";
+			}
 			$form['#redirect'] = $form_state['redirect'] = $path;
 		}
 
@@ -557,3 +562,4 @@ function pi_activity_shared_content_view_access($activity_node, $actor) {
 			return FALSE;
 	}
 }
+
