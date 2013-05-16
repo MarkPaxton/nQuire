@@ -5,6 +5,9 @@ function inquiry_basic_measures_theme() {
 			'inquiry_basic_measures_date_form_item' => array(
 					'arguments' => array('form' => NULL),
 			),
+			'inquiry_basic_measures_image_form_item' => array(
+					'arguments' => array('form' => NULL),
+			),
 	);
 }
 
@@ -213,13 +216,44 @@ function inquiry_basic_measures_pi_measure__options_submeasure_get_value_for_cha
  * **************** */
 
 function inquiry_basic_measures_pi_measure__image_create_form_item($measure_node, &$form, $value) {
-	$form["measure_" . $measure_node->nid] = array(
-			'#type' => 'file',
+	$id = "measure_" . $measure_node->nid;
+	$wrapper = array(
+			'#theme' => 'inquiry_basic_measures_image_form_item',
+			'#measure_item_id' => $id,
 			'#title' => check_plain($measure_node->title),
 			'#description' => check_plain($measure_node->body),
+	);
+
+	$wrapper[$id] = array(
+			'#type' => 'file',
 			'#default_value' => $value,
 			'#required' => FALSE,
 	);
+
+	$form[$id . '_wrapper'] = $wrapper;
+}
+
+function theme_inquiry_basic_measures_image_form_item($form) {
+	drupal_add_css(drupal_get_path('module', 'inquiry_basic_measures') . '/css/imageMeasure.css');
+
+	$form_item = &$form[$form['#measure_item_id']];
+
+	$output = '<div class="nquire_image_measure_wrapper">'
+					. '<div><b>' . $form['#title'] . ':</b></div>';
+
+	if ($form_item['#default_value']) {
+
+		$output .='<div class="nquire_image_measure_image">'
+						. '<div><small>' . t('Current image:') . '</small></div>'
+						. nquire_commons_create_modelbox_image($form_item['#default_value'], "width: 150px;")
+						. '</div>';
+	}
+
+	$output .= drupal_render($form_item)
+					. '<div><small>' . $form['#description'] . '</small></div>'
+					. '</div>';
+
+	return $output;
 }
 
 function inquiry_basic_measures_pi_measure__image_process_form_value($measure_node, &$value, $old_value) {
@@ -246,7 +280,7 @@ function inquiry_basic_measures_pi_measure__image_process_form_value($measure_no
 
 function inquiry_basic_measures_pi_measure__image_format_table_value($measure_node, $value) {
 	if ($value && strlen($value) > 0) {
-		return nquire_commons_create_modelbox_image(file_create_url($value), 'height: 150px;');
+		return nquire_commons_create_modelbox_image($value, 'height: 150px;');
 	} else {
 		return '';
 	}
