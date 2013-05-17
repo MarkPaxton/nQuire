@@ -139,7 +139,7 @@ $(function() {
 		},
 		_saveData: function(elementId, data, automaticSave) {
 			var element = $('input[name="' + elementId + '"]');
-			if (element && element.val() !== data) {
+			if (element && typeof data !== 'undefined' && element.val() !== data) {
 				element.val(data);
 				for (var i in this._changeListeners) {
 					this._changeListeners[i](automaticSave);

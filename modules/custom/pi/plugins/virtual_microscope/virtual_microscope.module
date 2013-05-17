@@ -386,7 +386,7 @@ function theme_virtual_microscope_user_interaction_measure_buttons($start_label,
 	if ($create_save_button) {
 		$output .= '<div class="virtual_microscope_measure_button virtual_microscope_measure_save_button virtual_microscope_measure_button_hidden">' . t('save') . '</div>';
 	}
-	
+
 	$output .= '</div>';
 
 	return $output;
@@ -439,11 +439,147 @@ function theme_virtual_microscope_color_measure_widget($form) {
 					. '<div class="virtual_microscope_color_measure_title">' . $form['#widget_measure_title'] . ':</div>'
 					. '<div class="virtual_microscope_color_measure_box"></div>'
 					. theme('virtual_microscope_user_interaction_measure_buttons', t('select'), t('new data'), FALSE)
-					. '</div>';
+					. '</div>'
+					. _virtual_microscope_color_measure_create_color_picker_image();
 
+
+	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/jquery.rockColorPicker.js');
+	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/rock_color_picker.css');
 
 	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeColorMeasure.js');
 	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_color_measure.css');
+
+	return $output;
+}
+
+function _virtual_microscope_color_measure_create_color_picker_image() {
+	$colors = array();
+	$holes = array();
+
+	$maxrow = 0;
+	$maxcol = 0;
+
+	$fh = fopen(drupal_get_path('module', 'virtual_microscope') . '/data/colors.csv', 'r');
+	$cols = array();
+	$rows = array();
+	while ($line = fgets($fh)) {
+		$parts = explode(',', trim($line));
+		if (count($parts) === 4) {
+			$id = count($colors);
+			
+			$colors[$id] = array(
+					'cid' => $id,
+					'name' => $parts[0],
+					'color' => $parts[3],
+			);
+			$cols[$id] = $parts[1];
+			$rows[$id] = $parts[2];
+			
+			$maxcol = max($maxcol, $cols[$id]);
+			$maxrow = max($maxrow, $rows[$id]);
+			$holes[$cols[$id]][$rows[$id]] = TRUE;
+		}
+	}
+	fclose($fh);
+	
+	$module = "{"
+					. "  init: function() {"
+					. "    this.colors = " . json_encode($colors) . ";"
+					. "  }"
+					. "}";
+	nquire_commons_inject_inline_javascript_module('VirtualMicroscopeColorMeasureData', $module);
+	
+
+	$chipWidth = 30;
+	$chipHeight = 40;
+	$chipVGap = 20;
+	$chipHGap = 10;
+	$margin = 40;
+	$selection_gap = 3;
+
+	$holeRadius = .5 * $chipWidth;
+	$halfVGap = .5 * $chipVGap;
+	$chipArcRadius = $holeRadius - 1;
+
+	$borderCenterVDistance = .5 * $chipVGap;
+	$borderCenterHDistance = sqrt($chipArcRadius * $chipArcRadius - $borderCenterVDistance * $borderCenterVDistance);
+	$borderArcLength = 2 * $borderCenterHDistance;
+	$borderCircleCrossX = .5 * $chipWidth - $borderCenterHDistance;
+
+	$bottomArcPath = "a $chipArcRadius,$chipArcRadius 0 0,1 $borderArcLength,0";
+	$topArcPath = "a $chipArcRadius,$chipArcRadius 0 0,1 -$borderArcLength,0";
+
+	$topChipPath = "v $chipHeight h $borderCircleCrossX $bottomArcPath  h $borderCircleCrossX v -$chipHeight z";
+	$bottomChipPath = "v $chipHeight h $chipWidth v -$chipHeight h -$borderCircleCrossX $topArcPath z";
+	$middleChipPath = "v $chipHeight h $borderCircleCrossX $bottomArcPath  h $borderCircleCrossX v -$chipHeight h -$borderCircleCrossX $topArcPath z";
+
+	$topChipPathNoArc = "m $borderCircleCrossX,$chipHeight h -$borderCircleCrossX v -$chipHeight h $chipWidth v $chipHeight h -$borderCircleCrossX";
+	$bottomChipPathNoArc = "m $borderCircleCrossX,0 h -$borderCircleCrossX v $chipHeight h $chipWidth v -$chipHeight h -$borderCircleCrossX";
+	$middleChipPathNoArc = "m $borderCircleCrossX,0 h -$borderCircleCrossX v $chipHeight h $borderCircleCrossX m $borderArcLength,0  h $borderCircleCrossX v -$chipHeight h -$borderCircleCrossX";
+
+	$selectionHeight = $chipHeight + 2 * $selection_gap;
+	$selectionWidth = $chipWidth + 2 * $selection_gap;
+	$selectionBorderArcLength = $borderArcLength + 2 * $selection_gap;
+
+	$topChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,$selectionHeight h -$borderCircleCrossX v -$selectionHeight h $selectionWidth v $selectionHeight h -$borderCircleCrossX";
+	$bottomChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,0 h -$borderCircleCrossX v $selectionHeight h $selectionWidth v -$selectionHeight h -$borderCircleCrossX";
+	$middleChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,0 h -$borderCircleCrossX v $selectionHeight h $borderCircleCrossX m $selectionBorderArcLength,0  h $borderCircleCrossX v -$selectionHeight h -$borderCircleCrossX";
+
+	$width = 2 * $margin + $maxcol * ($chipWidth + $chipHGap) + $chipWidth;
+	$height = 2 * $margin + $maxrow * ($chipHeight + $chipVGap) + $chipHeight;
+
+	$output = '';
+	$output .= "<div id='rock-color-picker-container' class='hidden' style='width: {$width}px; height: {$height}px;'>";
+	$output .= "<svg id='rock-color-picker-svg' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 $width $height'>";
+	$output .= '<g id="rock-color-picker-svg-group" fill-rule="evenodd" style="font-size: 18px; text-anchor: middle; font-family: serif;">';
+
+	$holesPath = '';
+	$chipElements = '';
+	$holePath = "a $holeRadius,$holeRadius 0 0,0 $chipWidth,0 a $holeRadius,$holeRadius 0 0,0 -$chipWidth,0 z";
+
+	foreach ($colors as $cid => $color) {
+		$path = $rows[$cid] == 0 ? $topChipPath : ($rows[$cid] < $maxrow ? $middleChipPath : $bottomChipPath);
+		$border = $rows[$cid] == 0 ? $topChipPathNoArc : ($rows[$cid] < $maxrow ? $middleChipPathNoArc : $bottomChipPathNoArc);
+		$selectionBorder = $rows[$cid] == 0 ? $topChipPathSelection : ($rows[$cid] < $maxrow ? $middleChipPathSelection : $bottomChipPathSelection);
+
+		$x = $margin + $cols[$cid] * ($chipWidth + $chipHGap);
+		$y = $margin + $rows[$cid] * ($chipHeight + $chipVGap);
+
+		$chipElements .= "<g color-id='{$color['cid']}' class='rock-color-picker-chip'>";
+		$chipElements .= "<path d='M $x,$y $path' fill='{$color['color']}'/>";
+		$chipElements .= "<path class='rock-color-picker-border' d='M $x,$y $border' fill='none' />";
+		$chipElements .= "<path class='rock-color-picker-selection-border' d='M $x,$y $selectionBorder' fill='none' />";
+		$chipElements .= "</g>";
+	}
+
+	for ($j = 0, $y = $margin + $chipHeight + $halfVGap; $j < $maxrow; $j++, $y += $chipHeight + $chipVGap) {
+		for ($i = 0, $x = $margin; $i <= $maxcol; $i++, $x += $chipWidth + $chipHGap) {
+			if ($holes[$i][$j]) {
+				$holesPath .= "M $x,$y $holePath ";
+			}
+		}
+	}
+
+	$output .= "<path d='M 0,0 v $height h $width v -$height z $holesPath' fill='#fafafa' fill-opacity='0.85'></path>";
+	$output .= "<rect x='0' y ='0' width='$width' height='$height' fill-opacity='0' stroke='black' stroke-width='1'></rect>";
+	$output .= $chipElements;
+
+	$pos = 15;
+	$pos2 = $pos + 12;
+	$text_style = "text-anchor='start' font-family='sans-serif' font-size='10' fill='#333'";
+
+	$output .= "<text x='$pos' y='$pos' $text_style>" . t("Drag and zoom in/out this chart to match a colour you see in the sample.") . "</text>"
+					. "<text x='$pos' y='$pos2' $text_style>" . t("Click on a colour to select it.") . "</text>";
+
+	$size = 24;
+	$y = 5;
+	$x = $width - $size - $y;
+	$link = url(drupal_get_path('module', 'virtual_microscope') . '/css/icons/64_close.png');
+	$output .= "<image id='rock-color-picker-close' class='rock-color-picker-close' x='$x' y='$y' width='$size' height='$size' xlink:href='$link' />";
+
+	$output .= "</g>";
+	$output .= "</svg>";
+	$output .= "</div>"; // rock-color-picker-container
 
 	return $output;
 }

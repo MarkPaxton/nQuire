@@ -24,7 +24,7 @@ $(function() {
 				self._cancelInput();
 			},
 			clearCallback: function() {
-
+				self.clearValue();
 			},
 			saveCallback: function() {
 				self._saveAndStop();
@@ -53,7 +53,7 @@ $(function() {
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._measureManager.setPaintValueForSave(false, null);
 		this._updatePaint();
-		this._serviceDelegate.saveData('');
+		this._serviceDelegate.saveData('', true);
 		this._updateDisplayValue();
 	};
 
