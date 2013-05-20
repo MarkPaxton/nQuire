@@ -318,6 +318,6 @@ function theme_pi_activity_access_explanation($access, $reason, $inquiry_nid) {
 			}
 			break;
 	}
-	$output = "<p>$text</p>";
+	$output = "<div><small>$text</small></div>";
 	return $output;
 }

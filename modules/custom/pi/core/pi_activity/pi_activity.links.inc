@@ -9,13 +9,10 @@ function pi_activity_create_phase_view_activity_links($activity_node) {
 
 		$has_content = $content_manager->getContent($activity_node->nid, $user->uid, FALSE);
 		$activity_access = $access_data->getAccessToItem($activity_node);
-		$can_view = pi_activity_tab_view_access_callback($activity_node) && (($activity_access === 'edit' && !pi_activity_edit_as_view_mode($activity_node)) || $activity_access === 'view');
 		$can_edit = pi_activity_tab_edit_access_callback($activity_node) && $activity_access === 'edit';
 
 		$links = array();
-		if ($can_view && $has_content) {
-			$links[] = array('url' => url("activity/{$activity_node->nid}/view"), 'label' => t('View'), 'image' => 'viewable.png');
-		}
+		
 
 		if ($can_edit) {
 			if ($has_content) {
@@ -57,9 +54,7 @@ function _pi_activity_links_format_link($link) {
 
 function theme_pi_activity_links($links) {
 	if ($links && count($links) > 0) {
-		$output = '<p>'
-						. implode('&nbsp;&nbsp;&nbsp;', array_map(_pi_activity_links_format_link, $links))
-						. '</p>';
+		$output = implode('&nbsp;&nbsp;&nbsp;', array_map(_pi_activity_links_format_link, $links));
 	} else {
 		$output = '';
 	}

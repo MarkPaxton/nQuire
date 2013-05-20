@@ -57,9 +57,17 @@ function pi_sort_key_questions_form(&$node) {
 	// set $tree to point to the above $form['onepageprofile_categories'] object
 	$key_question_elements = &$form['onepageprofile_categories'];
 	foreach ($questions as $i => $question_nid) {
-		$question_node = node_load($question_nid);
+
+		$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($question_nid);
+		if ($key_question_activity_id) {
+			$question_label = pi_activity_build_link_for_child($key_question_activity_id);
+		} else {
+			$question_node = node_load($question_nid);
+			$question_label = check_plain($question_node->key_question);
+		}
+
 		$key_question_elements[$question_nid] = array(
-				'title' => array('#value' => check_plain($question_node->key_question)),
+				'title' => array('#value' => $question_label),
 				'weight' => array(
 						'#type' => 'weight',
 						'#delta' => count($questions),
@@ -121,10 +129,8 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 
 	$key_questions_to_show = array();
 	foreach ($key_questions as $sorted_key_question_nid) {
-		$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($sorted_key_question_nid);
-		if ($key_question_activity_id) {
-			$key_questions_to_show[] = array('data' => pi_activity_build_link_for_child($key_question_activity_id));
-		}
+		$question_node = node_load($sorted_key_question_nid);
+		$key_questions_to_show[] = array('data' => $question_node->key_question);
 	}
 
 

@@ -71,14 +71,6 @@ function pi_activity_menu() {
 			'type' => MENU_CALLBACK
 	);
 
-	$items['activity/%node/view'] = array(
-			'title' => 'View',
-			'type' => MENU_DEFAULT_LOCAL_TASK,
-			'weight' => 0,
-			'access callback' => 'pi_activity_tab_view_access_callback',
-			'access arguments' => array(1),
-	);
-
 	$items['activity/%node/edit'] = array(
 			'title' => 'Edit',
 			'file' => 'pi_activity.activity.inc',
@@ -86,7 +78,7 @@ function pi_activity_menu() {
 			'page arguments' => array(1, 2),
 			'access arguments' => array(1),
 			'access callback' => 'pi_activity_tab_edit_access_callback',
-			'type' => MENU_LOCAL_TASK,
+			'type' => MENU_CALLBACK,
 			'weight' => 1
 	);
 
@@ -211,12 +203,13 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 		}
 
 		if ($activity_node) {
-			if ($activity_node->parent_activity) {
+			$path = "phase/{$activity_node->phase_nid}";
+/*			if ($activity_node->parent_activity) {
 				$parent = node_load($activity_node->parent_activity);
 				$path = "activity/{$activity_node->parent_activity}/" . (pi_activity_edit_as_view_mode($parent) ? 'edit' : 'view');
 			} else {
 				$path = "activity/{$activity_node->nid}/view";
-			}
+			}*/
 			$form['#redirect'] = $form_state['redirect'] = $path;
 		}
 
