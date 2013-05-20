@@ -256,14 +256,46 @@ function theme_inquiry_basic_measures_image_form_item($form) {
 	return $output;
 }
 
+function inquiry_basic_measures_pi_measure__image_validate_form_value($measure_node, $value) {
+	$id = 'measure_' . $measure_node->nid;
+	if (isset($_FILES['files']['name'][$id]) && strlen($_FILES['files']['name'][$id]) > 0 && $_FILES['files']['error'][$id]) {
+		$size_limit = file_upload_max_size();
+		form_set_error($id, t('The image size is larget than the maximum allowed: @mi MiB (@b bytes)', array('@mi' => round($size_limit / 1048576), '@b' => $size_limit)));
+	} else {
+		$validators = array(
+				'_inquiry_basic_measures_image_validator_extension' => array(),
+				'_inquiry_basic_measures_image_validator_size' => array(),
+		);
+		$dest = file_directory_path() . '/pi_measures_image/';
+		file_check_directory($dest, TRUE);
+		file_save_upload($id, $validators, $dest);
+	}
+	return;
+}
+
+function _inquiry_basic_measures_image_validator_extension($file) {
+	$errors = array();
+	$k = strrpos($file->filename, '.');
+	$extension = $k > 0 ? substr($file->filename, $k + 1) : FALSE;
+	$valid = array('jpg', 'jpeg', 'gif', 'png');
+	if (!in_array($extension, $valid)) {
+		$errors[] = t('The image must have one of the following extensions: ') . implode(', ', $valid);
+	}
+	return $errors;
+}
+
+function _inquiry_basic_measures_image_validator_size($file) {
+	$errors = array();
+	$size_limit = file_upload_max_size();
+	if ($file->filesize > $size_limit) {
+		$errors[] = t('The image size is larget than the maximum allowed: @mi MiB (@b bytes)', array('@mi' => round($size_limit / 1048576), '@b' => $size_limit));
+	}
+	return $errors;
+}
+
 function inquiry_basic_measures_pi_measure__image_process_form_value($measure_node, &$value, $old_value) {
 	$id = 'measure_' . $measure_node->nid;
-	$extensions = 'jpeg jpg gif tiff';
-	$size_limit = file_upload_max_size();
-	$validators = array(
-					/* 'my_file_validate_extensions' => array($extensions),
-					  'my_file_validate_size' => array($size_limit), */
-	);
+	$validators = array();
 	$dest = file_directory_path() . '/pi_measures_image/';
 	file_check_directory($dest, TRUE);
 	$file = file_save_upload($id, $validators, $dest);

@@ -718,6 +718,7 @@ class PiInquiryAccess {
 		$this->inquiry_access = $this->is_owner || nquire_group_get_user_status_in_group($this->inquiry_info->getInquiryActorGid(), $this->uid) === 'member';
 		$this->item_access = array();
 		$this->use_roles = count($this->inquiry_info->getRoles()) > 0;
+		$this->subgroup = $this->inquiry_info->getSubgroup($this->uid);
 	}
 
 	private function getGroupRoles() {
@@ -829,9 +830,6 @@ class PiInquiryAccess {
 	}
 
 	public function getSubgroup() {
-		if (!isset($this->subgroup)) {
-			$this->subgroup = $this->inquiry_info->getSubgroup($this->uid);
-		}
 		return $this->subgroup;
 	}
 

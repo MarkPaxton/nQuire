@@ -46,6 +46,7 @@ function pi_hypothesis_form_alter(&$form, $form_state, $form_id) {
 function pi_hypothesis_form_pi_hypothesis_node_form_alter(&$form, &$form_state) {
 	nquire_commons_form_replace_delete_button_with_link($form);
 }
+
 /**
  * Implementation of hook_perm().
  */
@@ -168,9 +169,9 @@ function theme_pi_hypothesis($node, $teaser = NULL) {
 function pi_hypothesis_get_hypothesis_nids_for_use_in_content($content_node_nid) {
 	$inquiry_info = pi_info()->getInquiryInfoForContent($content_node_nid);
 	$content_access = pi_info()->getContentManager();
-	
+
 	$activity = $inquiry_info->getActivityByType('pi_hypothesis');
-	
+
 	if ($activity) {
 		return $content_access->getContentFromForUsingContent($activity->nid, $content_node_nid);
 	}
@@ -180,9 +181,9 @@ function pi_hypothesis_get_hypothesis_nids_for_use_in_content($content_node_nid)
 function pi_hypothesis_get_hypothesis_nids_for_use_in_activity($using_activity_nid, $using_uid) {
 	$inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
 	$content_access = pi_info()->getContentManager();
-	
+
 	$activity = $inquiry_info->getActivityByType('pi_hypothesis');
-	
+
 	if ($activity) {
 		return $content_access->getContentFromForUsingActivityActor($activity->nid, $using_activity_nid, $using_uid);
 	}
@@ -190,10 +191,7 @@ function pi_hypothesis_get_hypothesis_nids_for_use_in_activity($using_activity_n
 }
 
 function theme_pi_hypothesis_to_support_activities($hypothesis_nids) {
-	if (!$hypothesis_nids || count($hypothesis_nids) === 0) {
-		drupal_set_message(t("No hypothesis found"), "error");
-		return '';
-	} else {
+	if ($hypothesis_nids) {
 		$output = '<b>' . t('Hypothesis: ') . '</b>';
 		$output .= theme('item_list', array_map(function($nid) {
 											$node = node_load($nid);
