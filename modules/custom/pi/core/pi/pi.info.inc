@@ -678,7 +678,7 @@ class PiInquiryContent {
 
 		$nids = array();
 
-		$query = "SELECT filtered_pi_activity_node.nid FROM "
+		$query = "SELECT DISTINCT filtered_pi_activity_node.nid FROM "
 						. "(SELECT * FROM pi_activity_node WHERE actor=%d) AS filtered_pi_activity_node INNER JOIN "
 						. "(SELECT node.nid as activity_node_nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE pi_activity.nid=%d) AS activity_node_table "
 						. "ON filtered_pi_activity_node.activity_id=activity_node_table.activity_node_nid ";

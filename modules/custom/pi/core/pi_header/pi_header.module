@@ -13,46 +13,33 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
 			return $blocks;
 
 		case 'view':
-			$path = drupal_get_path('module', 'pi_header');
-			$image_path = $path . '/images';
-			drupal_add_css($path . '/pi_header.css');
+			$module_path = drupal_get_path('module', 'pi_header');
+			$image_path = base_path() . $module_path . '/images/';
+			drupal_add_css($module_path . '/pi_header.css');
+
 
 			$details = get_inquiry_details_from_current_path();
 			$inquiry = node_load($details->inquiry_id);
 
-			//$block['subject'] = "nQuire";
-			if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
-				$home_icon = '';
-
-				if ($inquiry->image) {
-					$home_icon .= '<div>'
-									. l('<img src="' . file_create_url($inquiry->image) . '" height="50px"></img>', "inquiry/{$inquiry->nid}", array('html' => TRUE))
-									. '</div>';
-				}
-
-				$image = $inquiry->layout === 'hexagon' ? 'hexagon.png' : 'octagon.png';
-				$image_url = url("$image_path/$image");
-				$home_icon .= '<div>'
-								. l('<img src="' . $image_url . '" height="50px" style="border: 1px solid gray;" >', "inquiry/{$inquiry->nid}/structure", array('html' => TRUE))
-								. '</div>';
-			} else {
-				$image_url = base_path() . $image_path . '/logo.png';
-				$url = 'http://www.nquire.org.uk';
-				$home_icon = l('<img src="' . $image_url . '" height="50px" >', $url, array('html' => TRUE));
-			}
 
 			$output = '';
 
-			$output .= "<div class='nquire_home'>" . $home_icon . "</div>";
+			$output .= "<div class='nquire_home'>" . l('<img src="' . $image_path . 'logo.png" height="50px" >', '/', array('html' => TRUE)) . "</div>";
 
-			$output .= "<div class='nquire'>";
-			if ($inquiry != null && !$inquiry->image && isset($inquiry->title)) {
-				$output .= "<div style='float: left;'><h1 class='nquire'>" . check_plain($inquiry->title) . '</h1></div>';
-			}
+			if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
+				if ($inquiry->image) {
+					$output .= '<div class="nquire_home">'
+									. l('<img src="' . file_create_url($inquiry->image) . '" height="48px" style="border: 1px solid gray;"></img>', "inquiry/{$inquiry->nid}", array('html' => TRUE))
+									. '</div>';
+				} else if (isset($inquiry->title)) {
+					$output .= "<div class='nquire_home'>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
+				}
 
-			if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage') {
-				$output .= "<div style='clear: both;'>" . pi_stage_bar() . '</div>';
+				$output .= '<div class="nquire_home">'
+								. l('<img src="' . $image_path . 'nQuire_diagram_icon.png" height="50px">', "inquiry/{$inquiry->nid}/structure", array('html' => TRUE))
+								. '</div>';
 			}
+				
 			$output .= "</div>";
 
 			if ($user->uid) {

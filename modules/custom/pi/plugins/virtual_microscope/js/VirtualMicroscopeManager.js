@@ -2,6 +2,7 @@
 
 $(function() {
 	nQuireJsSupport.register('VirtualMicroscopeManager', {
+		_iframeOrigin: null,
 		_messageCallbacks: null,
 		_status: null,
 		_statusListeners: null,
@@ -135,6 +136,7 @@ $(function() {
 
 			if (sample !== this._sample) {
 				this._fireStatusChanged(false);
+				this._iframeOrigin = null;
 				this._sample = sample;
 				if (this._iframe) {
 					this._iframe.remove();
@@ -143,7 +145,7 @@ $(function() {
 
 				if (sample) {
 					this._iframe = $('<iframe>').addClass('virtual_microscope_iframe').appendTo(this._divContainer);
-					var src = this._vmData.path + sample;
+					var src = this._vmData.path + sample + '/index.html';
 					if (query) {
 						src += "?" + query;
 					}
@@ -194,11 +196,7 @@ $(function() {
 		_post: function(action, param, value) {
 			try {
 				var iframe = this._iframe[0].contentWindow;
-				if (!iframe.onerror) {
-					iframe.onerror = function() {
-						return true;
-					};
-				}
+				
 				var msg = {
 					action: action
 				};
@@ -211,9 +209,8 @@ $(function() {
 				if (value) {
 					msg.value = value;
 				}
-
-				if (iframe && iframe.postMessage) {
-					iframe.postMessage(msg, location.href);
+				if (iframe && iframe.postMessage && this._iframeOrigin) {
+					iframe.postMessage(msg, this._iframeOrigin);
 				} else {
 					console.log('ERROR: Messaging is not available');
 				}
@@ -230,8 +227,10 @@ $(function() {
 				}
 			}
 
+
 			var listener = null;
 			if (msg.msg === 'VM ready') {
+				this._iframeOrigin = event.origin;
 				listener = this._messageListeners['ready'];
 			} else {
 				listener = this._messageListeners[msg.action];

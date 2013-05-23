@@ -132,12 +132,13 @@ function virtual_microscope_pi_tool_vm_format_explore_page($tool_data) {
 }
 
 function _virtual_microscope_load_vm_data_javascript() {
-	$path = trim(file_get_contents(drupal_get_path('module', 'virtual_microscope') . '/data/vmpath'));
-	$data = file_get_contents($path . "sizedata.txt");
+	$paths = explode(',', trim(file_get_contents(drupal_get_path('module', 'virtual_microscope') . '/data/vmpath')));
+
+	$data = file_get_contents($paths[0] . "sizedata.txt");
 
 	$module = "{"
 					. "  init: function() {"
-					. "    this.path='{$path}HTML5VM/';"
+					. "    this.path='{$paths[1]}';"
 					. "    this.sizes=$data;"
 					. "  }"
 					. "}";
@@ -466,7 +467,7 @@ function _virtual_microscope_color_measure_create_color_picker_image() {
 		$parts = explode(',', trim($line));
 		if (count($parts) === 4) {
 			$id = count($colors);
-			
+
 			$colors[$id] = array(
 					'cid' => $id,
 					'name' => $parts[0],
@@ -474,21 +475,21 @@ function _virtual_microscope_color_measure_create_color_picker_image() {
 			);
 			$cols[$id] = $parts[1];
 			$rows[$id] = $parts[2];
-			
+
 			$maxcol = max($maxcol, $cols[$id]);
 			$maxrow = max($maxrow, $rows[$id]);
 			$holes[$cols[$id]][$rows[$id]] = TRUE;
 		}
 	}
 	fclose($fh);
-	
+
 	$module = "{"
 					. "  init: function() {"
 					. "    this.colors = " . json_encode($colors) . ";"
 					. "  }"
 					. "}";
 	nquire_commons_inject_inline_javascript_module('VirtualMicroscopeColorMeasureData', $module);
-	
+
 
 	$chipWidth = 30;
 	$chipHeight = 40;

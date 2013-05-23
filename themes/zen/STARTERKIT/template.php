@@ -1,6 +1,4 @@
 <?php
-// $Id: template.php,v 1.17.2.1 2009/02/13 06:47:44 johnalbin Exp $
-
 /**
  * @file
  * Contains theme override functions and preprocess functions for the theme.
@@ -63,21 +61,6 @@
  */
 
 
-/*
- * Add any conditional stylesheets you will need for this sub-theme.
- *
- * To add stylesheets that ALWAYS need to be included, you should add them to
- * your .info file instead. Only use this section if you are including
- * stylesheets based on certain conditions.
- */
-/* -- Delete this line if you want to use and modify this code
-// Example: optionally add a fixed width CSS file.
-if (theme_get_setting('STARTERKIT_fixed')) {
-  drupal_add_css(path_to_theme() . '/layout-fixed.css', 'theme', 'all');
-}
-// */
-
-
 /**
  * Implementation of HOOK_theme().
  */
@@ -116,6 +99,9 @@ function STARTERKIT_preprocess(&$vars, $hook) {
 /* -- Delete this line if you want to use this function
 function STARTERKIT_preprocess_page(&$vars, $hook) {
   $vars['sample_variable'] = t('Lorem ipsum.');
+
+  // To remove a class from $classes_array, use array_diff().
+  //$vars['classes_array'] = array_diff($vars['classes_array'], array('class-to-remove'));
 }
 // */
 
@@ -130,6 +116,13 @@ function STARTERKIT_preprocess_page(&$vars, $hook) {
 /* -- Delete this line if you want to use this function
 function STARTERKIT_preprocess_node(&$vars, $hook) {
   $vars['sample_variable'] = t('Lorem ipsum.');
+
+  // Optionally, run node-type-specific preprocess functions, like
+  // STARTERKIT_preprocess_node_page() or STARTERKIT_preprocess_node_story().
+  $function = __FUNCTION__ . '_' . $vars['node']->type;
+  if (function_exists($function)) {
+    $function($vars, $hook);
+  }
 }
 // */
 

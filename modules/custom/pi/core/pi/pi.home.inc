@@ -67,4 +67,3 @@ function pi_home_view() {
 	return $output;
 }
 
-?>

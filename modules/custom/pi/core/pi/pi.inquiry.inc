@@ -15,19 +15,47 @@ function pi_inquiry_inquiry_view($node) {
 }
 
 function pi_inquiry_structure_view($node) {
-	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 
 	$output = '';
+	$output = '<p>' . t('These are the phases of <i>@inquiry</i>. ', array('@inquiry' => $inquiry_info->getInquiryNode()->title));
 
+	$phases = $inquiry_info->getPhases();
+	if (count($phases) > 0) {
+		$phase_nodes = $inquiry_info->getPhases();
+		$phase_node = array_shift($phase_nodes);
+		$output .= t(' You can start at <b>@phase</b>.', array('@phase' => $phase_node->title));
+	}
+	$output .= '</p>';
+
+	$output .= theme('pi_inquiry_structure', $node);
+	
+	return $output;
+}
+
+function theme_pi_inquiry_structure($node) {
+	$output = '';
+
+	global $user;
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+
+	return theme('item_list', array_map(function($phase_node) use ($inquiry_access) {
+										$phase_title = check_plain($phase_node->title);
+										if ($inquiry_access->getAccessToItem($phase_node) !== 'hidden') {
+											return l($phase_title, "phase/" . $phase_node->nid);
+										} else {
+											return $phase_title;
+										}
+									}, $inquiry_info->getPhases()));
+
 
 	$rows = array();
 
 
 	foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
 		$row = array();
-		$phase_title = check_plain($phase_node->title);
+
 		if ($inquiry_access->getAccessToItem($phase_node) !== 'hidden') {
 			$row[] = l($phase_title, "phase/" . $phase_nid);
 		} else {
@@ -78,7 +106,7 @@ function display_phases($phases, $activity_count, $new_activity_count, $layout) 
 	}
 
 	drupal_add_css(drupal_get_path('module', 'pi') . '/pi_phase.css');
-	
+
 	$output = '<p>' . t('These are the phases of <i>@inquiry</i>. ', array('@inquiry' => $inquiry_info->getInquiryNode()->title));
 	if (count($phases) > 0) {
 		$phase_nodes = $inquiry_info->getPhases();

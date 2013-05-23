@@ -25,7 +25,8 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 					$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
 					$phase_menu_items = array();
-
+					$colors_keys = _ag_phase_colors(count($inquiry_info->getPhases()));					
+					$n = 0;
 					foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
 						$is_current_phase = $phase_nid == $current_path->phase_nid;
 
@@ -49,6 +50,8 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 						} else {
 							$phase_class = 'collapsed';
 						}
+						
+						$phase_class .= ' phase_' . $colors_keys[($n++ % strlen($colors_keys))]; 
 
 						$phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
 					}
@@ -63,3 +66,23 @@ function ag_block($op = 'list', $delta = 0, $edit = array()) {
 	}
 }
 
+function _ag_phase_colors($n) {
+	switch($n) {
+		case 1:
+			return 'a';
+		case 2:
+			return 'ag';
+		case 3:
+			return 'acg';
+		case 4:
+			return 'acfg';
+		case 5:
+			return 'acdfg';
+		case 6:
+			return 'acdefg';
+		case 7:
+			return 'abcdefg';
+		default:
+			return 'abcdefgh';
+	}
+}
