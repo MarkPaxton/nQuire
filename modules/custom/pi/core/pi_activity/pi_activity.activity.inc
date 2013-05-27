@@ -22,10 +22,8 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 	global $user;
 	$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_node->nid);
 	if ($inquiry_info) {
+		$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 		$phase_node = $inquiry_info->getPhase($activity_node->phase_nid);
-		$content_manager = pi_info()->getContentManager();
-		$content_nid = $content_manager->getContent($activity_node->nid, $user->uid, TRUE);
-		$content_node = node_load($content_nid);
 
 
 		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
@@ -47,42 +45,15 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 			$output .= '</small></p>';
 		}
 
-		if ($arg_node_function === 'edit' && pi_activity_edit_as_view_mode($activity_node)) {
-			$arg_node_function = 'view';
-		}
+		$arg_node_function = pi_activity_tab_edit_access_callback($activity_node) ? 'edit' : 'view';
 
-		if ($arg_node_function === 'view') {
-			$content_output .= $content_node ? node_view($content_node, $teaser, TRUE, TRUE) : FALSE;
-		} else if ($arg_node_function === 'edit') {
-			$lternative_edit_page_function = "{$activity_node->activity_type}_edit_page";
-			if (function_exists($lternative_edit_page_function)) {
-				$content_output = $lternative_edit_page_function($content_node);
-			} else {
-				if (!$content_node) {
-					$content_node = new stdClass;
-					$content_node->uid = $user->uid;
-					$content_node->type = $activity_node->activity_type;
-				}
-				$content_output .= node_page_edit($content_node);
-			}
-		}
+		$phase_count = count($inquiry_info->getPhases());
+		$phase_index = $inquiry_info->getPhaseIndex($phase_node->nid);
+		$keys = _ag_phase_keys($phase_count);
+		$phase_key = $keys[$phase_index % strlen($keys)];
 
-		if ($content_output) {
-			if (!$teaser) {
-				if ($activity_node->body) {
-					$output .= '<p>' . nl2br(check_plain($activity_node->body)) . '</p>';
-				}
-				$output .= pi_activity_create_activity_view_activity_links($activity_node);
-			}
-
-			$content_wrapper_function = "{$activity_node->activity_type}_wrap_content_node_view";
-			if (!function_exists($content_wrapper_function) || $content_wrapper_function($activity_node)) {
-				$output .= '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
-								. $content_output . '</div>';
-			} else {
-				$output .= $content_output;
-			}
-		}
+		$display_data = pi_activity_display_data($activity_node, $phase_key, $inquiry_info, $inquiry_access, $user, $arg_node_function);
+		$output = $display_data['output'];
 
 		if (!$teaser) {
 			drupal_set_title(check_plain($activity_node->title));
@@ -114,10 +85,9 @@ function pi_activity_content_delete_form(&$form_state, $activity_node, $node) {
 	);
 
 	if ($activity_node->parent_activity) {
-		$parent = node_load($activity_node->parent_activity);
-		$path = "activity/{$activity_node->parent_activity}/" . (pi_activity_edit_as_view_mode($parent) ? 'edit' : 'view');
+		$path = "activity/{$activity_node->parent_activity}";
 	} else {
-		$path = "activity/{$activity_node->nid}/view";
+		$path = "phase/{$activity_node->phase_nid}";
 	}
 
 	$form['#redirect'] = $form_state['redirect'] = $path;
@@ -255,69 +225,3 @@ function theme_pi_activity_display_contribution_content_node($activity_collabora
 	return $output;
 }
 
-function theme_pi_activity_access_explanation($access, $reason, $inquiry_nid) {
-
-	switch ($reason) {
-		case 'no_inquiry_access':
-			$text = $reason;
-			break;
-		case 'inquiry_roles':
-			switch ($access) {
-				case 'edit':
-					$text = t('Given your roles in this inquiry, you can edit this activity.');
-					break;
-				case 'view':
-					$text = t('Given your roles in this inquiry, you can view this activity, but not edit it.');
-					break;
-				default:
-					$text = t('Given your roles in this inquiry, you cannot access this activity.');
-					break;
-			}
-			break;
-		case 'group_roles':
-			switch ($access) {
-				case 'edit':
-					$text = t('Given your roles in your group, you can edit this activity.');
-					break;
-				case 'view':
-					$text = t('Given your roles in your group, you can view this activity, but not edit it.');
-					break;
-				default:
-					$text = t('Given your roles in your group, you cannot access this activity.');
-					break;
-			}
-			break;
-		case 'no_group':
-			$url = url('inquiry/' . $inquiry_nid . '/participants');
-			$text = t('This is a group activity, but you do not belong to any group. Click <a href="!url">here</a> to create or join a group.', array('!url' => $url));
-			break;
-		case 'stage':
-			switch ($access) {
-				case 'edit':
-					$text = t('At this stage, you can edit this activity.');
-					break;
-				case 'view':
-					$text = t('At this stage, you can view this activity, but not edit it.');
-					break;
-				default:
-					$text = t('At this stage, you cannot access this activity.');
-					break;
-			}
-			break;
-		case 'none':
-			switch ($access) {
-				case 'edit':
-					$text = t('You can edit this activity.');
-					break;
-				case 'view':
-					$text = t('You can view this activity.');
-					break;
-				default:
-					$text = t('You cannot access this activity.');
-					break;
-			}
-			break;
-	}
-	$output = "<div><small>$text</small></div>";
-	return $output;
-}

@@ -71,13 +71,13 @@ function pi_activity_menu() {
 			'type' => MENU_CALLBACK
 	);
 
-	$items['activity/%node/edit'] = array(
+	$items['activity/%node'] = array(
 			'title' => 'Edit',
 			'file' => 'pi_activity.activity.inc',
 			'page callback' => 'pi_activity_content_view',
-			'page arguments' => array(1, 2),
+			'page arguments' => array(1),
 			'access arguments' => array(1),
-			'access callback' => 'pi_activity_tab_edit_access_callback',
+			'access callback' => 'pi_activity_access_callback',
 			'type' => MENU_CALLBACK,
 			'weight' => 1
 	);
@@ -106,11 +106,13 @@ function pi_activity_tab_view_access_callback($node) {
 			return !pi_activity_tab_edit_access_callback($node) && pi_activity_tabs_access_to_content($node, 'view');
 
 		default:
-			return pi_activity_tabs_access_to_content($node, 'view') && !(pi_activity_edit_as_view_mode($node) && pi_activity_tab_edit_access_callback($node));
+			return pi_activity_tabs_access_to_content($node, 'view');
 	}
 }
 
-function pi_activity_edit_as_view_mode($node) {
+/* TOREMOVE */
+
+function pi_activity_has_custom_edit_page($node) {
 	switch ($node->activity_type) {
 		case 'pi_sort_data':
 		case 'pi_sort_key_answers':
@@ -133,6 +135,10 @@ function pi_activity_is_editable($node) {
 
 function pi_activity_tab_edit_access_callback($node) {
 	return pi_activity_is_editable($node) && pi_activity_tabs_access_to_content($node, 'edit');
+}
+
+function pi_activity_access_callback($node) {
+	return pi_activity_tab_edit_access_callback($node) || pi_activity_tab_view_access_callback($node);
 }
 
 function pi_activity_tabs_access_to_content($node, $function) {
@@ -204,16 +210,12 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 
 		if ($activity_node) {
 			$path = "phase/{$activity_node->phase_nid}";
-/*			if ($activity_node->parent_activity) {
-				$parent = node_load($activity_node->parent_activity);
-				$path = "activity/{$activity_node->parent_activity}/" . (pi_activity_edit_as_view_mode($parent) ? 'edit' : 'view');
-			} else {
-				$path = "activity/{$activity_node->nid}/view";
-			}*/
 			$form['#redirect'] = $form_state['redirect'] = $path;
 		}
 
 		$form['#action'] = $original_action;
+		
+		nquire_commons_form_replace_delete_button_with_link($form, $activity_node);
 	}
 }
 
@@ -265,10 +267,6 @@ function pi_activity_theme() {
 			'pi_activity_links' => array(
 					'arguments' => array('links' => NULL),
 					'file' => 'pi_activity.links.inc',
-			),
-			'pi_activity_access_explanation' => array(
-					'arguments' => array('access' => '', 'reason' => '', 'inquiry_nid' => 0),
-					'file' => 'pi_activity.activity.inc',
 			),
 	);
 }
@@ -472,63 +470,6 @@ function pi_activity_get_add_activity_for_sort_activity($activity_id) {
 	return NULL;
 }
 
-/**
- * This function uses hook_form_alter() to set the redirect when adding/editing
- *  activity conent via nQuire  (detected via checking the url)
- *  n.b. since hook_form_node_form_alter doesn't work in D6 this is called from
- *  hook_form_alter() above, but here just for conveneince of seperating out things
- * This deas with this curcumstance:
- *  (2) Adding/Editing Activity Content  via /activity/%activity/edit
- *    -> redirect to /activity/%activity/phase on completion is specified in activity node details
- */
-/* function pi_activity_form_node_form_alter(&$form, &$form_state) {
-  //Strip the request url of the preceeding drupal stuff base_url and ?q=/
-  // so that it's possible to work out whether the page request was from /inquiry/%inquiry/phase/add
-  // or from /node/%node/edit
-  $path_parts = pi_util_get_drupal_path_parts();
-  //if AHAH helper is used, then redirect is cleared, so reset it here....
-  if (pi_util_match_url(array('ahah_helper')))
-  $form['#redirect'] = $form_state['storage']['redirect-activity-submit'];
-
-  // Look for /activity/{number}/edit
-  if (pi_util_match_url(array('activity', NULL, NULL))) {
-  if (is_numeric($path_parts[1])) {
-  $potential_activity_id = $path_parts[1];
-
-  // the last part of the url is a special case since it could be either
-  // /activity/%activity/edit OR
-  // /activity/%activity/edit?some=query&string=too OR
-  // /activity/%activity/edit&some=query&string=too
-  $valid_strings = array('edit', 'edit?', 'edit&');
-  if (in_array(strtolower($path_parts[2]), $valid_strings)) {
-  //Set the destination from activity details
-  $activity = node_load($potential_activity_id);
-  if (pi_check_is_node_of_type($activity, 'pi_activity')) {
-  $destination = $activity->destination_after;
-  if ($destination == 'phase') {
-  $form['#redirect'] = "phase/" . $activity->phase_nid;
-  } elseif ($destination == 'self') {
-  $form['#redirect'] = "activity/$potential_activity_id";
-  }
-  $form['redirect-activity-submit'] = array('#type' => 'hidden', '#value' => $form['#redirect']);
-  } else {
-  // It wasn't a valid inquiry node, so fall back to standard phase editing page
-  drupal_set_message(t("An activity nid (@nid) was specified for this activity, but the id didn't refer to a valid activity node.", array("@nid" => $potential_activity_id)), 'warning');
-  }
-  }
-  }
-  }
-  // Look for /activity/{number}/edit
-  if (pi_util_match_url(array('inquiry', NULL, 'activity', 'add')) || pi_util_match_url(array('inquiry', NULL, 'activity', 'edit'))) {
-  $activity = node_load($potential_activity_id);
-  if (pi_check_is_node_of_type($activity, 'pi_activity')) {
-
-  }
-  $form['#redirect'] = "activity/";
-  }
-  }
- */
-
 function pi_activity_shared_content_view_access($activity_node, $actor) {
 	$access_value = FALSE;
 
@@ -554,5 +495,120 @@ function pi_activity_shared_content_view_access($activity_node, $actor) {
 		default:
 			return FALSE;
 	}
+}
+
+function pi_activity_access_get_explanation_text($access, $reason, $inquiry_nid) {
+	switch ($reason) {
+		case 'no_inquiry_access':
+			$text = $reason;
+			break;
+		case 'inquiry_roles':
+			switch ($access) {
+				case 'edit':
+					$text = t('Given your roles in this inquiry, you can edit this activity.');
+					break;
+				case 'view':
+					$text = t('Given your roles in this inquiry, you can view this activity, but not edit it.');
+					break;
+				default:
+					$text = t('Given your roles in this inquiry, you cannot access this activity.');
+					break;
+			}
+			break;
+		case 'group_roles':
+			switch ($access) {
+				case 'edit':
+					$text = t('Given your roles in your group, you can edit this activity.');
+					break;
+				case 'view':
+					$text = t('Given your roles in your group, you can view this activity, but not edit it.');
+					break;
+				default:
+					$text = t('Given your roles in your group, you cannot access this activity.');
+					break;
+			}
+			break;
+		case 'no_group':
+			$url = url('inquiry/' . $inquiry_nid . '/participants');
+			$text = t('This is a group activity, but you do not belong to any group. Click <a href="!url">here</a> to create or join a group.', array('!url' => $url));
+			break;
+		case 'stage':
+			switch ($access) {
+				case 'edit':
+					$text = t('At this stage, you can edit this activity.');
+					break;
+				case 'view':
+					$text = t('At this stage, you can view this activity, but not edit it.');
+					break;
+				default:
+					$text = t('At this stage, you cannot access this activity.');
+					break;
+			}
+			break;
+		case 'none':
+			switch ($access) {
+				case 'edit':
+					$text = t('You can edit this activity.');
+					break;
+				case 'view':
+					$text = t('You can view this activity.');
+					break;
+				default:
+					$text = t('You cannot access this activity.');
+					break;
+			}
+			break;
+	}
+	return $text;
+}
+
+function pi_activity_display_data($activity_node, $phase_key, $inquiry_info, $inquiry_access, $user, $mode) {
+	$access = $inquiry_access->getAccessToItem($activity_node);
+	$reason = $inquiry_access->getAccessReason($activity_node);
+	$inquiry_nid = $inquiry_info->getInquiryNid();
+	$exaplanation = pi_activity_access_get_explanation_text($access, $reason, $inquiry_nid);
+
+	$data = array(
+			'node' => $activity_node,
+			'title' => check_plain($activity_node->title),
+			'description' => nl2br(check_plain($activity_node->body)),
+			'links' => pi_activity_create_edit_links($activity_node, $mode),
+			'access' => $access,
+			'reason' => $reason,
+			'access_explanation' => $exaplanation,
+			'can_view' => $mode === 'edit' ? pi_activity_tab_edit_access_callback($activity_node) : pi_activity_tab_view_access_callback($activity_node),
+	);
+
+	if ($data['can_view']) {
+		$content_manager = pi_info()->getContentManager();
+		$content_nid = $content_manager->getContent($activity_node->nid, $user->uid, TRUE);
+		$content_node = node_load($content_nid);
+
+
+		if ($mode === 'view') {
+			$data['content'] = $content_node ? node_view($content_node, FALSE, TRUE, TRUE) : FALSE;
+		} else if ($mode === 'edit') {
+			$alternative_edit_page_function = "{$activity_node->activity_type}_custom_edit_page";
+			if (function_exists($alternative_edit_page_function)) {
+				$data['content'] = $alternative_edit_page_function($content_node);
+			} else {
+				if (!$content_node) {
+					$content_node = new stdClass;
+					$content_node->uid = $user->uid;
+					$content_node->type = $activity_node->activity_type;
+				}
+				$data['content'] = node_page_edit($content_node);
+			}
+		}
+
+		$content_wrapper_function = "{$activity_node->activity_type}_wrap_content_node_view";
+		if (!function_exists($content_wrapper_function) || $content_wrapper_function($activity_node)) {
+			$data['output'] = theme('pi_inquiry_phase_activity_view', $data, $phase_key);
+		} else {
+			$data['output'] = $data['content'];
+		}
+	}
+	
+	return $data;
 }
 

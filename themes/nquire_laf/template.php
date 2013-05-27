@@ -155,6 +155,24 @@ function nquire_laf_theme(&$existing, $type, $theme, $path) {
   // */
 
 
+$color_scheme = theme_get_setting('nquire_laf_color_scheme');
+drupal_add_css(drupal_get_path('theme', 'nquire_laf') . '/css/color_scheme_' . ($color_scheme ? $color_scheme : 'original') . '.css', 'theme', 'all');
+
+function _nquire_laf_color($key) {
+	static $colors = array(
+'a' => array('#b0b70f', '#eaeccb'),
+ 'b' => array('#0cadaa', '#d7ecea'),
+ 'c' => array('#00ace2', '#d5ebf8'),
+ 'd' => array('#756dab', '#e3e1ef'),
+ 'e' => array('#c4388a', '#f7d2e3'),
+ 'f' => array('#dc1340', '#f7d1c9'),
+ 'g' => array('#ea620d', '#fbd4b5'),
+ 'h' => array('#fcc724', '#feeec8'),
+	);
+
+	return $colors[$key];
+}
+
 function phptemplate_pi_inquiry_structure($node = NULL) {
 	global $user;
 	$inquiry_info = pi_info()->getInquiryInfo($node->nid);
@@ -178,17 +196,7 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 	$inner_diameter = 2 * $inner_radius;
 	$outer_radius = $radius + .5 * $stroke;
 
-	$colors = array(
-			'a' => array('#b0b70f', '#eaeccb'),
-			'b' => array('#0cadaa', '#d7ecea'),
-			'c' => array('#00ace2', '#d5ebf8'),
-			'd' => array('#756dab', '#e3e1ef'),
-			'e' => array('#c4388a', '#f7d2e3'),
-			'f' => array('#dc1340', '#f7d1c9'),
-			'g' => array('#ea620d', '#fbd4b5'),
-			'h' => array('#fcc724', '#feeec8'),
-	);
-	$color_keys = _ag_phase_colors(count($phases));
+	$color_keys = _ag_phase_keys(count($phases));
 
 	$svg = "<svg width='100%' viewBox='0 0 $width $height' xmlns='http://www.w3.org/2000/svg'>";
 
@@ -205,12 +213,15 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 		$lx = $x - $outer_radius * $sin_a;
 		$ly = $y + $outer_radius * $cos_a;
 
+		$label = $inquiry_access->getAccessToItem($phase_node) === 'hidden' ? check_plain($phase_node->title) :
+						l(check_plain($phase_node->title), 'phase/' . $phase_nid, array('attributes' => array('style' => 'color:black')));
+
 		$points[] = array(
 				'x' => $x,
 				'y' => $y,
 				'lx' => $lx,
 				'ly' => $ly,
-				'label' => l(check_plain($phase_node->title), 'phase/' . $phase_nid, array('attributes' => array('style' => 'color:black'))),
+				'label' => $label,
 		);
 		$i++;
 	}
@@ -223,13 +234,13 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 		}
 	}
 
-	
+
 
 	foreach ($points as $i => $point) {
 		$tx = $point['x'] - $inner_radius;
 		$ty = $point['y'] - $inner_radius;
 
-		$cs = $colors[$color_keys[$i % $phase_count]];
+		$cs = _nquire_laf_color($color_keys[$i % $phase_count]);
 		$svg .= "<circle id='circle_phase_{$phase_nid}' r='$radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
 		$svg .= "<foreignObject x='$tx' y='$ty' width='$inner_diameter' height='$inner_diameter'>"
 						. "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_diameter}px;height:{$inner_diameter}px;line-height:{$inner_diameter}px;text-align: center;'>"
@@ -239,7 +250,15 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 						. "</div>"
 						. "</foreignObject>";
 	}
-	
+
+	$arrow_length = 123.5;
+	$arrow_angle = 15.5;
+	$image_origin_x = 15;
+	$image_origin_y = 45;
+	$image_url = url(drupal_get_path('theme', 'nquire_laf') . '/images/nQuire_diagram_arrow.png');
+	$image_width = 144;
+	$image_height = 85;
+
 	for ($i = 0; $i < $phase_count; $i++) {
 		$p1 = $points[$i];
 		$p2 = $points[($i + 1) % $phase_count];
@@ -247,12 +266,57 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 		$p3x = $p2['x'] + $outer_radius * cos($a);
 		$p3y = $p2['y'] - $outer_radius * sin($a);
 
-		$svg .= "<line stroke='red' x1='{$p1['lx']}' y1='{$p1['ly']}' x2='{$p3x}' y2='{$p3y}' stroke-width='4' fill='none'/>";
+		$dx = $p3x - $p1['lx'];
+		$dy = $p3y - $p1['ly'];
+		$d = sqrt($dx * $dx + $dy * $dy);
+		$scale = $d / $arrow_length;
+
+		$final_width = $image_width * $scale;
+		$final_height = $image_height * $scale;
+
+		$rotation = 180 - 180 * $a / PI + $arrow_angle;
+		$image_x = $p1['lx'] - $scale * $image_origin_x;
+		$image_y = $p1['ly'] - $scale * $image_origin_y;
+
+		$svg .= "<image xlink:href='$image_url' height='$final_height' width='$final_width' y='$image_y' x='$image_x' transform='rotate($rotation {$p1['lx']} {$p1['ly']})'/>";
 	}
 
 	$svg .= '</svg>';
 
 	$output = '<div style="text-align: center"><div style="max-width: 900px; max-height:512px;">' . $svg . '</div></div>';
+
+	return $output;
+}
+
+function phptemplate_pi_inquiry_phase_view($phase_data, $activities_data) {
+	drupal_set_title($phase_data['title']);
+
+	$output = "<p>{$phase_data['description']}</p><p><small>{$phase_data['sharing']}</small></p>";
+
+	foreach ($activities_data as $activity_data) {
+		$output .= '<div>' . $activity_data['output'] . '</div>';
+	}
+
+	return $output;
+}
+
+function phptemplate_pi_inquiry_phase_activity_view($activity_data, $phase_key) {
+
+
+
+	$output = '<a name="' . $activity_data['node']->nid . '"></a>'
+					. '<div class="phase_activity phase_activity_' . $phase_key . '">'
+					. '<div class="phase_activity_title">' . $activity_data['title'] . '</div>'
+					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
+					. '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
+					. '<div class="phase_activity_link">' . $activity_data['links'] . '</div>';
+
+
+	if ($activity_data['can_view']) {
+		$output .= '<div class="phase_activity_content">' . $activity_data['content'] . '</div>';
+	}
+
+	$output .= '</div>';
 
 	return $output;
 }

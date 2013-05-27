@@ -95,12 +95,11 @@ function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
 		$answers = array();
 		foreach ($sorted_key_answers_nodes as $answer) {
 			if ($answer->key_question_id == $question->nid) {
-				$key_answer_activity_id = pi_activity_get_activity_nid_for_content_nid($answer->nid);
-				$answers[] = array('data' => pi_activity_build_link_for_child($key_answer_activity_id));
+				$answers[] = array('data' => nl2br(check_plain($answer->key_answer)));
 			}
 		}
 		if (count($answers) === 0) {
-			$answers[] = array('data' => '<small>' . t('There are no answers linked to this question.') . '</small>');
+			$answers[] = array('data' => '<small><i>' . t('There are no answers linked to this question.') . '</i></small>');
 		}
 		$key_questions_to_show[] = array('data' => $title, 'children' => $answers);
 	}
@@ -113,6 +112,39 @@ function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
 	);
 
 	return $node;
+}
+
+
+function pi_sort_key_answers_custom_edit_page($node) {
+
+	$sorted_key_questions = pi_sort_key_questions_get_questions_use_in_content_nid($node->nid);
+
+	$sorted_key_questions_nodes = array_map(function($nid) {
+						return node_load($nid);
+					}, $sorted_key_questions);
+	$sorted_key_answers = pi_sort_key_answers_get_answers($node);
+	$sorted_key_answers_nodes = array_map(function($nid) {
+						return node_load($nid);
+					}, $sorted_key_answers);
+
+	$key_questions_to_show = array();
+	foreach ($sorted_key_questions_nodes as $question) {
+		$title = check_plain($question->key_question);
+		$answers = array();
+		foreach ($sorted_key_answers_nodes as $answer) {
+			if ($answer->key_question_id == $question->nid) {
+				$key_answer_activity_id = pi_activity_get_activity_nid_for_content_nid($answer->nid);
+				$answers[] = array('data' => pi_activity_build_link_for_child($key_answer_activity_id));
+			}
+		}
+		if (count($answers) === 0) {
+			$answers[] = array('data' => '<small>' . t('There are no answers linked to this question.') . '</small>');
+		}
+		$key_questions_to_show[] = array('data' => $title, 'children' => $answers);
+	}
+
+
+	return theme('pi_sort_key_answers', $node, $teaser, $key_questions_to_show);
 }
 
 function pi_sort_key_answers_create_contribution_view($node) {

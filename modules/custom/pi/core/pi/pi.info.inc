@@ -243,6 +243,10 @@ class PiInquiryInfo {
 	public function getPhase($phase_nid) {
 		return $this->phases[$phase_nid];
 	}
+	
+	public function getPhaseIndex($phase_nid) {
+		return array_search($phase_nid, array_keys($this->phases));
+	}
 
 	public function getPhases() {
 		return $this->phases;

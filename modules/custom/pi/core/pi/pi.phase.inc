@@ -11,90 +11,92 @@
  */
 function pi_inquiry_phase_view($phase) {
 	global $user;
+	$inquiry_info = pi_info()->getCurrentInquiryInfo();
+	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
+	$output = _pi_inquiry_phase_view($phase, $inquiry_info, $inquiry_access, $user);
+	return $output;
 
-	drupal_set_title($phase->title);
+	$output .= '</small>';
+}
 
-	$output = nl2br(check_plain($phase->body));
+function _pi_inquiry_phase_view($phase, $inquiry_info, $inquiry_access, $user) {
 
-	$output .= '<br><small>';
+	$phase_count = count($inquiry_info->getPhases());
+	$phase_index = $inquiry_info->getPhaseIndex($phase->nid);
+	$keys = _ag_phase_keys($phase_count);
+	$phase_key = $keys[$phase_index % strlen($keys)];
+
+	$phase_data = array(
+			'phase_key' => $phase_key,
+			'title' => check_plain($phase->title),
+			'description' => nl2br(check_plain($phase->body)),
+	);
 
 	$link = l(t('here'), 'phase/' . $phase->nid . '/shared');
 
 	switch ($phase->collaboration) {
 		case 'individual':
-			$output .= t('Activities in this phase are carried out individually. ')
+			$phase_data['sharing'] .= t('Activities in this phase are carried out individually. ')
 							. t('Click !link to see what other participants are doing.', array('!link' => $link));
-			$work_header = t('My work');
 			break;
 		case 'group':
-			$output .= t('Activities in this phase are carried out in groups.')
+			$phase_data['sharing'] .= t('Activities in this phase are carried out in groups.')
 							. t('Click !link to see what other groups are doing.', array('!link' => $link));
-			$work_header = t('My group\' work');
 			break;
 		default:
-			$output .= t('Activities in this phase are done by all inquiry participants working together.');
-			$work_header = t('Our work');
+			$phase_data['sharing'] .= t('Activities in this phase are done by all inquiry participants working together.');
 			break;
 	}
-	$output .= '</small>';
 
-	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+
 	$activities = $inquiry_info->getActivitiesForPhase($phase->nid);
-
-	if (count($activities) > 0) {
-		$list = array();
-
-		foreach ($activities as $activity_node) {
-			$activity_text = '<div style="margin-bottom:12px;">'
-							. '<span style="font-size:16px;font-weight: bold;padding-right: 20px;">' . check_plain($activity_node->title) . '</span>'
-							. pi_activity_create_phase_view_activity_links($activity_node)
-							. '</div>';
-			$access = $inquiry_access->getAccessToItem($activity_node);
-			$reason = $inquiry_access->getAccessReason($activity_node);
-
-			$activity_text .= '<div style="margin-bottom:12px;">';
-			if ($activity_node->body) {
-				$activity_text .= '<div>' . nl2br(check_plain($activity_node->body)) . '</div>';
-			}
-			$activity_text .= theme('pi_activity_access_explanation', $access, $reason, $inquiry_info->getInquiryNid())
-							. '</div>';
-
-
-			$content_manager = pi_info()->getContentManager();
-			$content_nid = $content_manager->getContent($activity_node->nid, $user->uid, TRUE);
-			$content_node = node_load($content_nid);
-
-
-			$can_view = pi_activity_tab_view_access_callback($activity_node) && ($access === 'edit' || $access === 'view');
-
-
-			if ($can_view && $content_node) {
-				include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-
-				$node_view = node_view($content_node, FALSE, TRUE, TRUE);
-
-				$content_wrapper_function = "{$activity_node->activity_type}_wrap_content_node_view";
-				if (!function_exists($content_wrapper_function) || $content_wrapper_function($activity_node)) {
-					$activity_text .= '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
-									. $node_view . '</div>';
-				} else {
-					$activity_text .= $node_view;
-				}
-			}
-
-			$list[] = array('data' => array($activity_text), 'class' => 'activity');
-		}
-
-		$attributes = array('class' => 'activity');
-
-		$header = array(t('Activity'));
-		$output .= theme_table($header, $list, $attributes);
-	} else {
-		drupal_set_message(t('No activities are available in this phase at this stage.'));
+	$activity_data = array();
+	foreach ($activities as $activity_node) {
+		$activity_data[] = pi_activity_display_data($activity_node, $phase_key, $inquiry_info, $inquiry_access, $user, 'view');
 	}
+
+	$output .= theme('pi_inquiry_phase_view', $phase_data, $activity_data);
+
 	return $output;
+}
+
+function theme_pi_inquiry_phase_view($phase_data, $activities_data) {
+	drupal_set_title($phase_data['title']);
+
+	$output = "<p>{$phase_data['description']}</p><p><small>{$phase_data['sharing']}</small></p>";
+
+	foreach ($activities_data as $activity_data) {
+		$output .= '<div>' . $activity_data['output'] . '</div>';
+	}
+
+	return $output;
+}
+
+function theme_pi_inquiry_phase_activity_view($activity_data) {
+	$activity_text = '<div style="margin-bottom:12px;">'
+					. '<span style="font-size:16px;font-weight: bold;padding-right: 20px;">' . check_plain($activity_data['title']) . '</span>'
+					. $activity_data['links']
+					. '</div>';
+
+	$activity_text .= '<div style="margin-bottom:12px;">'
+					. '<div>' . $activity_data['description'] . '</div>'
+					. '<div>' . $activity_data['access_explanation'] . '</div>'
+					. '</div>';
+
+	if ($activity_data['can_view']) {
+
+		$content_wrapper_function = "{$activity_data['node']->activity_type}_wrap_content_node_view";
+		if (!function_exists($content_wrapper_function) || $content_wrapper_function($activity_data['node'])) {
+			$activity_text .= '<div style="padding: 5px; background: #eee; border: 1px dotted #aaa;">'
+							. $activity_data['content']
+							. '</div>';
+		} else {
+			$activity_text .= $activity_data['content'];
+		}
+	}
+
+	return $activity_text;
 }
 
 function pi_inquiry_phase_shared_view($phase) {

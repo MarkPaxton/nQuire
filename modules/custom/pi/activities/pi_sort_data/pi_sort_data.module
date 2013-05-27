@@ -48,11 +48,8 @@ function pi_sort_data_form(&$node) {
 	return $form;
 }
 
-function pi_sort_data_view($node, $teaser, $page = FALSE) {
+function pi_sort_data_custom_edit_page($node) {
 	global $user;
-	$current_path = pi_info()->getCurrentPath();
-
-	$node = node_prepare($node, $teaser);
 
 	$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
 	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
@@ -81,6 +78,47 @@ function pi_sort_data_view($node, $teaser, $page = FALSE) {
 						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid))) . '<br/>'
 						. l(t('edit'), 'activity/' . $data_item_activity_nid . '/edit') . '&nbsp;&nbsp;&nbsp;'
 						. l(t('delete'), 'activity/' . $data_item_activity_nid . '/delete');
+
+		foreach ($measures as $measure) {
+			$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
+		}
+		$data_rows[] = $row;
+	}
+
+
+	return theme('pi_sort_data', $header, $data_rows);
+}
+
+function pi_sort_data_view($node, $teaser, $page = FALSE) {
+	global $user;
+
+	$node = node_prepare($node, $teaser);
+
+	$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
+	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
+	$selected_measures = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_id_for_this_node);
+
+	$header = array();
+	$header[] = t('Created:');
+	$measures = array();
+	foreach ($selected_measures as $measure_nid => $required) {
+		$measure = node_load($measure_nid);
+		if (pi_data_tools_measure_plugin_show_in_table($measure)) {
+			$header[] = check_plain($measure->title) . t(':');
+			$measures[] = $measure;
+		}
+	}
+
+
+	$data_rows = array();
+
+	foreach ($data_nids as $nid) {
+		$row = array();
+		$data_item_node = node_load($nid);
+		$data_item_activity_nid = pi_activity_get_activity_nid_for_content_nid($nid);
+
+		$row[] = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
+						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid)));
 
 		foreach ($measures as $measure) {
 			$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);

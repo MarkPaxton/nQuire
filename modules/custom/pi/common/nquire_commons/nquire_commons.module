@@ -48,7 +48,7 @@ function nquire_commons_load_jquery_svg() {
 
 function nquire_commons_load_javascript_custom_mouse_input() {
 	jquery_ui_add();
-  drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/jquery.proxy.js');
+	drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/jquery.proxy.js');
 	drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/jquery.mousewheel.js');
 	drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/jquery.customMouseInput.js');
 }
@@ -154,15 +154,31 @@ function nquire_commons_create_form_wrapped_section(&$form, $section_id) {
 	);
 }
 
-function nquire_commons_form_replace_delete_button_with_link(&$form) {
+function nquire_commons_form_replace_delete_button_with_link(&$form, $activity_node) {
 	if (isset($form['buttons']['delete'])) {
 		$weight = $form['buttons']['delete']['#weight'];
+		$sep = TRUE;
 
 		$form['buttons']['delete'] = array(
-				'#value' => l(t('Delete'), 'activity/' . arg(1) . '/delete'),
+				'#value' => l(t('Delete'), 'activity/' . $activity_node->nid . '/delete'),
 				'#weight' => $weight,
 		);
+	} else {
+		$weight = isset($form['buttons']['submit']) ? $form['buttons']['submit']['#weight'] : 0;
+		$sep = FALSE;
 	}
+
+
+	if ($activity_node->parent_activity) {
+		$cancel_link = l(t('Cancel'), "activity/{$activity_node->parent_activity}");
+	} else {
+		$cancel_link = l(t('Cancel'), "phase/{$activity_node->phase_nid}", array('fragment' => $activity_node->nid));
+	}
+
+	$form['buttons']['cancel'] = array(
+			'#value' => ($sep ? '&nbsp;&nbsp;' : '') . $cancel_link,
+			'#weight' => $weight + 1,
+	);
 }
 
 function nquire_commons_read_data_value($data, $path, $default) {
@@ -416,12 +432,11 @@ function nquire_commons_create_not_expanding_table_block($table) {
 	return '<div><div style="display:inline-block;">' . $table . '</div></div>';
 }
 
-
-function nquire_commons_create_modelbox_image($image, $style='') {
+function nquire_commons_create_modelbox_image($image, $style = '') {
 	drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/modelbox_image.css');
 	drupal_add_css(drupal_get_path('module', 'nquire_commons') . '/css/slimbox2/slimbox2.css');
 	drupal_add_js(drupal_get_path('module', 'nquire_commons') . '/js/slimbox2.js');
-	
+
 	$url = file_create_url($image);
 	$output = "<a href='$url' rel='lightbox[dataimages]'><img class='modelbox_image' src='$url' style='$style'></img></a>";
 	return $output;

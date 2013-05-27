@@ -82,15 +82,7 @@ function pi_activity_build_link($activity_nid) {
 	$text = check_plain($activity_node->title) . '&nbsp;' . "<img width='12' src='" . $image_path . "'/>";
 
 	if ($access !== 'hidden') {
-		$node_function = $access;
-
-		if ($node_function === 'edit') {
-			if (pi_activity_tab_view_access_callback($activity_node)) {
-				$node_function = 'view';
-			}
-		}
-		$url = "activity/" . $activity_nid . "/" . $node_function;
-		return l($text, $url, array('html' => TRUE));
+		return l($text, "activity/$activity_nid", array('html' => TRUE));
 	} else {
 		return $text;
 	}
