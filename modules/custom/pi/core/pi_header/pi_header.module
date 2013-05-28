@@ -27,19 +27,21 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
 			$output .= "<div class='nquire_home'>" . l('<img src="' . $image_path . 'logo.png" height="50px" >', '/', array('html' => TRUE)) . "</div>";
 
 			if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
-				if ($inquiry->image) {
+				if (arg(2) === 'structure') {
+					if ($inquiry->image) {
+						$output .= '<div class="nquire_home">'
+										. l('<img src="' . file_create_url($inquiry->image) . '" height="48px" style="border: 1px solid gray;"></img>', "inquiry/{$inquiry->nid}", array('html' => TRUE))
+										. '</div>';
+					} else if (isset($inquiry->title)) {
+						$output .= "<div class='nquire_home'>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
+					}
+				} else {
 					$output .= '<div class="nquire_home">'
-									. l('<img src="' . file_create_url($inquiry->image) . '" height="48px" style="border: 1px solid gray;"></img>', "inquiry/{$inquiry->nid}", array('html' => TRUE))
+									. l('<img src="' . $image_path . 'nQuire_diagram_icon.png" height="50px">', "inquiry/{$inquiry->nid}/structure", array('html' => TRUE))
 									. '</div>';
-				} else if (isset($inquiry->title)) {
-					$output .= "<div class='nquire_home'>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
 				}
-
-				$output .= '<div class="nquire_home">'
-								. l('<img src="' . $image_path . 'nQuire_diagram_icon.png" height="50px">', "inquiry/{$inquiry->nid}/structure", array('html' => TRUE))
-								. '</div>';
 			}
-				
+
 			$output .= "</div>";
 
 			if ($user->uid) {

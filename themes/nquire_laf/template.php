@@ -179,26 +179,41 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 	$phases = $inquiry_info->getPhases();
 	$phase_count = count($phases);
-
-	$width = 800;
-	$height = 700;
-
-	$cx = .5 * $width;
-	$cy = .5 * $height;
-
-	$rx = .7 * $cx;
-	$ry = .7 * $cy;
-
-
-	$radius = 70;
-	$stroke = 8;
-	$inner_radius = $radius - $stroke;
-	$inner_diameter = 2 * $inner_radius;
-	$outer_radius = $radius + .5 * $stroke;
+	
+	if ($phase_count == 0) {
+		return '';
+	}
+	
+	
+	
+	
+	$circle_radius = 60.0;
+	$circle_stroke = 8.0;
+	$circle_distance = 80.0;
+	
+	$aspect_ratio = sqrt(3./4.);
+	$scale = .8;
+	
+	
+	$net_radius = $phase_count * ($circle_radius + .5 * $circle_distance) / PI;
+	$net_vertical_radius = $aspect_ratio * $net_radius;
+	
+	$net_center_x = $net_radius + $circle_radius + $circle_stroke;
+	$net_center_y = $net_vertical_radius + $circle_radius + $circle_stroke;
+	
+	$net_width = 2 * $net_center_x;
+	$net_height = 2 * $net_center_y;
+	
+	$svg_width = $scale * $net_width;
+	$svg_height = $scale * $net_height;
+	
+	$inner_circle_radius = $circle_radius - $circle_stroke;
+	$inner_circle_diameter = 2 * $inner_circle_radius;
+	$outer_circle_radius = $circle_radius + .5 * $circle_stroke;
 
 	$color_keys = _ag_phase_keys(count($phases));
 
-	$svg = "<svg width='100%' viewBox='0 0 $width $height' xmlns='http://www.w3.org/2000/svg'>";
+	$svg = "<svg width='$svg_width' height='$svg_height' viewBox='0 0 $net_width $net_height' xmlns='http://www.w3.org/2000/svg'>";
 
 	$i = 0;
 	$a0 = PI / $phase_count;
@@ -208,13 +223,13 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 		$sin_a = sin($a);
 		$cos_a = cos($a);
 
-		$x = $cx + $rx * $sin_a;
-		$y = $cy - $ry * $cos_a;
-		$lx = $x - $outer_radius * $sin_a;
-		$ly = $y + $outer_radius * $cos_a;
+		$x = $net_center_x + $net_radius * $sin_a;
+		$y = $net_center_y - $net_vertical_radius * $cos_a;
+		$lx = $x - $outer_circle_radius * $sin_a;
+		$ly = $y + $outer_circle_radius * $cos_a;
 
 		$label = $inquiry_access->getAccessToItem($phase_node) === 'hidden' ? check_plain($phase_node->title) :
-						l(check_plain($phase_node->title), 'phase/' . $phase_nid, array('attributes' => array('style' => 'color:black')));
+						l(check_plain($phase_node->title), 'phase/' . $phase_nid, array('attributes' => array('style' => 'color:black;text-decoration@none;')));
 
 		$points[] = array(
 				'x' => $x,
@@ -237,14 +252,14 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 
 
 	foreach ($points as $i => $point) {
-		$tx = $point['x'] - $inner_radius;
-		$ty = $point['y'] - $inner_radius;
+		$tx = $point['x'] - $inner_circle_radius;
+		$ty = $point['y'] - $inner_circle_radius;
 
 		$cs = _nquire_laf_color($color_keys[$i % $phase_count]);
-		$svg .= "<circle id='circle_phase_{$phase_nid}' r='$radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
-		$svg .= "<foreignObject x='$tx' y='$ty' width='$inner_diameter' height='$inner_diameter'>"
-						. "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_diameter}px;height:{$inner_diameter}px;line-height:{$inner_diameter}px;text-align: center;'>"
-						. "<div style='white-space: pre-wrap;max-height: {$inner_diameter}px;font-size:1em;font-weight: bold;border-radius:{$inner_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
+		$svg .= "<circle id='circle_phase_{$phase_nid}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
+		$svg .= "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
+						. "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_circle_diameter}px;height:{$inner_circle_diameter}px;line-height:{$inner_circle_diameter}px;text-align: center;'>"
+						. "<div style='font-family: TiresiasInfofont; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.35em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
 						. $point['label']
 						. "</div>"
 						. "</div>"
@@ -263,8 +278,8 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 		$p1 = $points[$i];
 		$p2 = $points[($i + 1) % $phase_count];
 		$a = atan2($p2['y'] - $p1['ly'], $p1['lx'] - $p2['x']);
-		$p3x = $p2['x'] + $outer_radius * cos($a);
-		$p3y = $p2['y'] - $outer_radius * sin($a);
+		$p3x = $p2['x'] + $outer_circle_radius * cos($a);
+		$p3y = $p2['y'] - $outer_circle_radius * sin($a);
 
 		$dx = $p3x - $p1['lx'];
 		$dy = $p3y - $p1['ly'];
@@ -283,7 +298,7 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 
 	$svg .= '</svg>';
 
-	$output = '<div style="text-align: center"><div style="max-width: 900px; max-height:512px;">' . $svg . '</div></div>';
+	$output = '<div><div style="max-width: 900px; max-height:512px;">' . $svg . '</div></div>';
 
 	return $output;
 }
