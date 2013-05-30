@@ -259,7 +259,7 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 		$svg .= "<circle id='circle_phase_{$phase_nid}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
 		$svg .= "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
 						. "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_circle_diameter}px;height:{$inner_circle_diameter}px;line-height:{$inner_circle_diameter}px;text-align: center;'>"
-						. "<div class='nquire_diagram_text' style='font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.25em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
+						. "<div class='nquire_diagram_text' style='font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.2em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
 						. $point['label']
 						. "</div>"
 						. "</div>"
