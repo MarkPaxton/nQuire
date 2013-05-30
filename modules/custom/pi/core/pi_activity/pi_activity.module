@@ -227,7 +227,7 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
  * @return object from db_fetch_object() for pi_activity table
  */
 function pi_activity_load($node) {
-	$query = "SELECT * FROM {pi_activity} WHERE `nid` = %d";
+	$query = "SELECT * FROM {node} LEFT JOIN {pi_activity} ON node.vid=pi_activity.vid WHERE node.nid=%d";
 	$result = db_query($query, $node->nid);
 	$activity = db_fetch_object($result);
 
@@ -303,6 +303,8 @@ function _pi_activity_form_data_to_pi_activity_row($node) {
 			'parent_activity' => 'parent_activity',
 			'phase_nid' => 'phase_nid',
 			'show_children_in_phase' => 'show_children_in_phase',
+			'weight' => 'weight',
+			'referenced_node' => 'referenced_node',
 	);
 
 	foreach ($property_to_column as $column => $property) {
@@ -612,3 +614,19 @@ function pi_activity_display_data($activity_node, $phase_key, $inquiry_info, $in
 	return $data;
 }
 
+
+
+
+function pi_activity_get_children_activities($parent_nid, $only_script_activities) {
+	$query = "SELECT node.nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE parent_activity=%d";
+	if ($only_script_activities) {
+		$query .= ' AND script_activity=1';
+	}
+	
+	$result = db_query($query, $parent_nid);
+	$nodes = array();
+	while($row = db_fetch_array($result)) {
+		$nodes[] = node_load($row['nid']);
+	}
+	return $nodes;
+}

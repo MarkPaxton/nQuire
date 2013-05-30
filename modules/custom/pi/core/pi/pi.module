@@ -224,28 +224,6 @@ function get_inquiry_details_from_current_path() {
  * Functions in this block are interface where am I stuff
  */
 
-/**
- * This allows you to find out if a phase is visible for a particular user
- * because of a teacher only gid
- * These are flagged in the interface
- * if yes then returns the gid otherwise 0
- */
-function check_teacher_phase_for_inquiry_phase_user($inquiry_id, $phase_id, $uid) {
-	$query = "SELECT {pi_phase}.`phase_actor` FROM {pi_phase} " .
-					"LEFT JOIN {og_uid} ON {og_uid}.`nid` = {pi_phase}.`phase_actor` " .
-					"WHERE ( {pi_phase}.nid = %d ) AND ( {pi_phase}.`phase_actor` = %d )";
-	$result = db_fetch_object(db_query($query, $phase_id, $uid));
-	if ($result->gid) {
-		$gid_node = node_load($result->gid);
-		if ($gid_node->type == "teacher_group") {
-			return $result->gid;
-		} else {
-			return 0;
-		}
-	} elseif ($result->uid) {
-		return 0;
-	}
-}
 
 function pi_get_activities_for_phase($phase_nid) {
 	$activities = array();

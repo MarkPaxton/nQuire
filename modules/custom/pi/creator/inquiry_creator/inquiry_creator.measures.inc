@@ -82,7 +82,7 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
   _inquiry_creator_create_activity_id_form_item($activity, $form);
   _inquiry_creator_create_measure_id_form_item($measure, $form);
 
-  $activity_data = nquire_commons_decode_data($activity->data);
+  $activity_data = nquire_commons_decode_data($activity->parameters);
 
   $tool = nquire_commons_read_data_value($activity_data, 'tool.type', 'none');
 
@@ -166,9 +166,6 @@ function inquiry_creator_measure_form_validate($form, $form_state) {
 function inquiry_creator_measure_form_submit($form, $form_state) {
   global $user;
 
-  $design = node_load($form_state['values']['inquiry_design']);
-  $activity = node_load($form_state['values']['activity_id']);
-
   $measure_nid = $form_state['values']['measure_id'];
   $new = strlen($measure_nid) === 0;
 
@@ -179,9 +176,13 @@ function inquiry_creator_measure_form_submit($form, $form_state) {
   $save = FALSE;
 
   if ($new) {
+		$activity_nid = $form_state['values']['activity_id'];
+		
     $node = new stdClass();
-    $node->type = 'inquiry_measure';
+    $node->type = 'pi_available_measures';
     $node->uid = $user->uid;
+		$node->script_measure = TRUE;
+		$node->activity_nid = $activity_nid;
     $save = TRUE;
   } else {
     $node = node_load($measure_nid);
@@ -202,25 +203,6 @@ function inquiry_creator_measure_form_submit($form, $form_state) {
   if ($save) {
     $node->revision = !$new;
     node_save($node);
-  }
-
-  if ($new) {
-    $data = nquire_commons_decode_data($activity->data);
-    if (!isset($data['measures'])) {
-      $data['measures'] = array();
-    }
-
-    if (!in_array($node->nid, $data['measures'])) {
-      $data['measures'][] = $node->nid;
-      $activity->data = json_encode($data);
-      $activity->revision = TRUE;
-      node_save($activity);
-    }
-  }
-
-  if ($save || $new) {
-		$phase = inquiry_design_load_phase_for_activity($design, $activity->nid);
-    inquiry_deployer_update_activity($design, $phase, $activity);
   }
 
   nquire_commons_form_close($form, $form_state);

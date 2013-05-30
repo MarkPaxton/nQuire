@@ -177,48 +177,74 @@ function inquiry_creator_activities_form(&$form_state, $node) {
 	nquire_commons_form_set_default_link_action($form, 'submit');
 
 	_inquiry_creator_create_inquiry_id_form_item($node, $form);
-	nquire_structure_widget_create_form_item($form, 'structure', $node->structure);
+	$structure = json_encode(inquiry_creator_get_inquiry_structure($node->nid));
+	nquire_structure_widget_create_form_item($form, 'structure', $structure);
 	nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_activities_form_submit', "creator/{$node->nid}/");
 
 	return $form;
 }
 
 function inquiry_creator_activities_form_submit($form, $form_state) {
-	module_load_include('inc', 'inquiry_creator', 'inquiry_creator.phases');
-	module_load_include('inc', 'inquiry_creator', 'inquiry_creator.activities');
 
 	global $user;
 	$node = node_load($form_state['values']['inquiry_design']);
 
 	$new_ids = array('phase' => array(), 'activity' => array());
 
-	if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
-		$phases = json_decode($form_state['values']['structure']);
+	if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
+		$current_phases = inquiry_creator_get_inquiry_structure($node->nid);
 
-		foreach ($phases as $phase) {
-			if (!is_numeric($phase->id)) {
-				$phase_node = inquiry_creator_create_phase_stub($phase->title);
+		$activity_phases = array();
+		$weights = array();
+
+		foreach ($current_phases as $i => $phase) {
+			$weights[$phase->id] = $i;
+			foreach ($phase->activities as $j => $activity) {
+				$weights[$activity->id] = $j;
+				$activity_phases[$activity->id] = $phase->id;
+			}
+		}
+
+		$new_phases = json_decode($form_state['values']['structure']);
+
+		foreach ($new_phases as $i => $phase) {
+			if (isset($weights[$phase->id])) {
+				$phase_node = node_load($phase->id);
+				if ($i != $weights[$phase->id]) {
+					$phase_node->weight = $i;
+					$phase_node->revision = TRUE;
+					node_save($phase_node);
+				}
+			} else {
+				$phase_node = inquiry_creator_create_phase_stub($node->nid, $phase->title, $i);
 				$new_ids['phase'][$phase->id] = $phase_node->nid;
-				$phase->id = $phase_node->nid;
 			}
 
-			foreach ($phase->activities as $activity) {
-				if (!is_numeric($activity->id)) {
-					$activity_node = inquiry_creator_create_activity_stub($activity->type, $activity->title);
+			foreach ($phase->activities as $j => $activity) {
+				if (isset($weights[$activity->id])) {
+					$activity_node = node_load($activity->id);
+					$change = FALSE;
+					if ($j != $weights[$activity->id]) {
+						$activity_node->weight = $j;
+						$change = TRUE;
+					}
+
+					if ($activity_node->phase_nid != $phase_node->nid) {
+						$activity_node->phase_nid = $phase_node->nid;
+						inquiry_creator_update_children_activities_phase($activity_node->nid, $phase_node->nid);
+						$change = TRUE;						
+					}
+					
+					if ($change) {
+						$activity_node->revision = TRUE;
+						node_save($activity_node);
+					}
+				} else {
+					$activity_node = inquiry_creator_create_activity_stub($phase_node->nid, $activity->type, $activity->title, $j);
 					$new_ids['activity'][$activity->id] = $activity_node->nid;
-					$activity->id = $activity_node->nid;
 				}
 			}
 		}
-
-		$new_structure = json_encode($phases);
-		if ($node->structure !== $new_structure) {
-			$node->structure = $new_structure;
-			$node->revision = TRUE;
-			node_save($node);
-		}
-
-		inquiry_deployer_update_inquiry_phases($node);
 	}
 
 	$destination_parts = explode('/', $form_state['values']['form_destination']);
@@ -497,13 +523,11 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
 		$stage = inquiry_creator_create_stage_stub(t('Stage 1'));
 
 		$node = new stdClass();
-		$node->type = 'inquiry_design';
+		$node->type = 'pi_inquiry';
 		$node->uid = $user->uid;
 		$node->title = $form_state['values']['title'];
 		$node->body = $form_state['values']['body'];
 
-		$node->structure = json_encode(array());
-		$node->stages = json_encode(array($stage->nid));
 		$node->roles = json_encode(array());
 
 		node_save($node);
@@ -511,11 +535,9 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
 		if (_pi_inquiry_creator_metadata_save_image_file($node, $form, $form_state)) {
 			node_save($node);
 		}
-
-		inquiry_deployer_update_inquiry_node($node);
 	} else {
 		$node = node_load($node_nid);
-		if ($node && $node->type === 'inquiry_design' && $node->uid === $user->uid) {
+		if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
 			$save = FALSE;
 
 			if ($node->title !== $form_state['values']['title']) {

@@ -12,18 +12,7 @@ function inquiry_creator_activity_edit($design_nid, $activity_nid) {
   return $output;
 }
 
-function inquiry_creator_create_activity_stub($type, $title) {
-  global $user;
 
-  $node = new stdClass();
-  $node->type = 'inquiry_activity';
-  $node->activity_type = $type;
-  $node->title = $title;
-  $node->uid = $user->uid;
-
-  node_save($node);
-  return $node;
-}
 
 function _inquiry_creator_create_activity_id_form_item($activity, &$form) {
   $form['activity_id'] = array(
@@ -99,7 +88,6 @@ function inquiry_creator_activity_form_submit($form, $form_state) {
       node_save($activity);
       
 			$phase = inquiry_design_load_phase_for_activity($design, $activity->nid);
-      inquiry_deployer_update_activity($design, $phase, $activity);
     }
 
     if ($design_changed) {

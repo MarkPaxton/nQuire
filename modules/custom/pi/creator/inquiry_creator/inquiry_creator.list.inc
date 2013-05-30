@@ -4,7 +4,7 @@ function inquiry_creator_home() {
 
   global $user;
 
-  $designs = nquire_commons_nodes_by_type_and_user('inquiry_design', $user->uid);
+  $designs = nquire_commons_nodes_by_type_and_user('pi_inquiry', $user->uid);
 
   return theme('inquiry_creator_design_list', $designs);
 }

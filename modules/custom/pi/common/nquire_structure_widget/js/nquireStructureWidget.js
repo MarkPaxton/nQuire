@@ -5,57 +5,57 @@ $(function() {
   nQuireJsSupport.register('nquireStructureWidget', {
     activityTypes: {
       activity: {
-        information: {
+        pi_read_information: {
           title: 'Information',
           multiplicity: '*',
           requires: []
         },
-        notes: {
+        pi_wiki_notes: {
           title: 'My notes',
           multiplicity: '*',
           requires: []
         },
-        hypothesis: {
+        pi_hypothesis: {
           title: 'My hypothesis',
           multiplicity: '1',
           requires: []
         },
-        hypothesisconclusion: {
+        pi_hypothesis_conclusion: {
           title: 'My hypothesis conclusion',
           multiplicity: '1',
           requires: ['hypothesis']
         },
-        keyquestions: {
+        pi_sort_key_questions: {
           title: 'My key questions',
           multiplicity: '1',
           requires: []
         },
-        keyanswers: {
+        pi_sort_key_answers: {
           title: 'My key answers',
           multiplicity: '1',
           requires: ['keyquestions']
         },
-        methodology: {
+        pi_methodology: {
           title: 'Decide my methodology',
           multiplicity: '*',
           requires: []
         },
-        collectdata: {
+        pi_sort_data: {
           title: 'Collect my data',
           multiplicity: '*',
           requires: []
         },
-        exploretool: {
+        pi_explore_tool: {
           title: 'Explore a scientific instrument',
           multiplicity: '*',
           requires: []
         },
-        spreadsheet: {
+        pi_data_spreadsheet: {
           title: 'Data spreadsheet analysis',
           multiplicity: '*',
           requires: []
         },
-				analysedata : {
+				pi_sort_result_presentations : {
           title: 'Data chart analysis',
           multiplicity: '*',
           requires: []
@@ -64,31 +64,31 @@ $(function() {
       phase: {
         introduction: {
           title: 'Introduction',
-          activities: ['notes']
+          activities: ['pi_wiki_notes']
         },
         questions: {
           title: 'My hypothesis',
-          activities: ['hypothesis', 'keyquestions']
+          activities: ['pihypothesis', 'pi_sort_key_questions']
         },
         methodology: {
           title: 'Methodology',
-          activities: ['methodology']
+          activities: ['pi_methodology']
         },
         collectdata: {
           title: 'Data gathering',
-          activities: ['collectdata']
+          activities: ['pi_sort_data']
         },
         chartanalysedata: {
           title: 'Chart data analysis',
-          activities: ['analysedata']
+          activities: ['pi_sort_result_presentations']
         },
         spreadsheetanalysedata: {
           title: 'Spreadsheet data analysis',
-          activities: ['spreadsheet']
+          activities: ['pi_data_spreadsheet']
         },
         conclusions: {
           title: 'My conclusions',
-          activities: ['hypothesisconclusion', 'keyanswers']
+          activities: ['pi_sort_key_answers', 'pi_hypothesis_conclusion']
         },
         empty: {
           title: 'Empty phase',

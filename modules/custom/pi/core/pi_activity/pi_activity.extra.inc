@@ -6,18 +6,7 @@
  *  mostly done, but some are still out of date/lacking checks
  */
 
-/**
- * Returns the activity nid for a content item, if it has one.
- * Assumes only one activivity nid per item
- * @param uint $content_nid
- * @returns uint of an node id (unverified if it exits though) or NULL if no activity node found
- */
-/* TOREMOVE */
-function pi_activity_get_parent_activity($child_nid) {
-	$query = "SELECT `parent_activity` FROM {pi_activity} WHERE `nid`=%d";
-	$row = db_fetch_array(db_query($query, $child_nid));
-	return $row ? $row['parent_activity'] : FALSE;
-}
+
 
 function pi_activity_build_link_for_child($child_activity_nid) {
 	global $user;

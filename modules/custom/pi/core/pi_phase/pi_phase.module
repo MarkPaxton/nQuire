@@ -74,7 +74,6 @@ function pi_phase_insert($node) {
   $data_to_write->inquiry_nid = $node->inquiry_nid;
   $data_to_write->weight = $node->weight;
   $data_to_write->collaboration = $node->collaboration;
-  $data_to_write->phase_actor = $node->phase_actor;
   $result = drupal_write_record('pi_phase', $data_to_write);
   if ($result != SAVED_NEW) {
     $result_string = _pi_write_record_result_string($result);
@@ -96,32 +95,11 @@ function pi_phase_update($node) {
     $data_to_write->inquiry_nid = $node->inquiry_nid;
     $data_to_write->weight = $node->weight;
     $data_to_write->collaboration = $node->collaboration;
-    $data_to_write->phase_actor = $node->phase_actor;
     $result = drupal_write_record('pi_phase', $data_to_write, array('nid', 'vid'));
     if ($result != SAVED_UPDATED) {
       $result_string = _pi_write_record_result_string($result);
       drupal_set_message(t('Problem saving Phase data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
     }
-  }
-}
-
-/**
- *
- * Insert or update phase actor
- * @param uint $phase_id nid
- * @param uint $actor_id nid of an og/nquire group
- */
-function pi_phase_set_actor($phase_id, $actor_id) {
-  $phase = $node_load($phase_id);
-  if ($phase) {
-    if ($phase->type == 'pi_phase') {
-      $phase->phase_actor = $actor_id;
-      node_save($phase);
-    } else {
-      drupal_set_message(t("Trying to update phase actor for node that isn't a phase %nid - it is of type %type.", array('%nid' => $phase_id, '%type' => $phase->type)), 'error');
-    }
-  } else {
-    drupal_set_message(t("Trying to update phase actor for none existant node %nid", array('%nid' => $phase_id)), 'error');
   }
 }
 
@@ -154,7 +132,7 @@ function pi_phase_delete(&$node) {
  * Custom loader for phase type (called when %phase is specified in a menu parameter)
  */
 function pi_phase_load($node) {
-  $return = db_fetch_object(db_query('SELECT `inquiry_nid`, `weight`, `collaboration`, `phase_actor` FROM {pi_phase} WHERE vid = %d', $node->vid));
+  $return = db_fetch_object(db_query('SELECT `inquiry_nid`, `weight`, `collaboration` FROM {pi_phase} WHERE vid = %d', $node->vid));
   return $return;
 }
 
@@ -190,31 +168,6 @@ function pi_phase_load_nids_for_inquiry_and_collaboration_type($inquiry_nid, $co
           . "WHERE inquiry_nid = %d AND collaboration = '%s' ORDER BY weight";
 
   $result = db_query($query, $inquiry_nid, $collaboration_type);
-  $phase_nodes = array();
-  while ($nid = db_result($result)) {
-    $phase_nodes[] = $nid;
-  }
-  return $phase_nodes;
-}
-
-/**
- * Queries the node database to provide a list of nids referring to phases in an
- * inquiry given by $inquiry_nid, with user a member of the phase actor groups
- * Use node_load($nid) to then access the phase details
- * @param uint $inquiry_nid the nid of the inquiry to load the phases for
- * @param uint $unid The uid of the user to load the phases for
- * @return array of nids referring to pi_phase nodes in the given inquiry
- */
-function pi_phase_load_nids_for_inquiry_for_user($inquiry_nid, $uid) {
-  //@TODO FIXME Added ORDER BY weight to get phases in right order....
-  /* FIX (eloy) node join pi_phase to get the right vids from pi_phase */
-  $query = "SELECT DISTINCT {pi_phase}.`nid` AS nid FROM {node} " .
-          "LEFT JOIN {pi_phase} ON node.`vid`=pi_phase.`vid` " .
-          "LEFT JOIN {og_uid} AS og_uid ON og_uid.`nid` = pi_phase.`phase_actor` " .
-          "WHERE pi_phase.`inquiry_nid` = %d " .
-          "AND og_uid.`uid` = %d ORDER BY pi_phase.`weight` ASC";
-	
-  $result = db_query($query, $inquiry_nid, $uid);
   $phase_nodes = array();
   while ($nid = db_result($result)) {
     $phase_nodes[] = $nid;
