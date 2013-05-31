@@ -243,7 +243,7 @@ class PiInquiryInfo {
 	public function getPhase($phase_nid) {
 		return $this->phases[$phase_nid];
 	}
-	
+
 	public function getPhaseIndex($phase_nid) {
 		return array_search($phase_nid, array_keys($this->phases));
 	}
@@ -300,13 +300,21 @@ class PiInquiryInfo {
 		return $this->getPhaseForActivity($activity_nid)->collaboration;
 	}
 
+	public function getStageNodes() {
+		$nodes = array();
+		$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node}.vid={pi_stage}.vid WHERE inquiry_nid=%d";
+		$result = db_query($query, $this->inquiry->nid);
+		while ($row = db_fetch_array($result)) {
+			$nodes[$row['nid']] = node_load($row['nid']);
+		}
+		return $nodes;
+	}
+
 	public function getStageStructure() {
 		if (!isset($this->all_stages_structure)) {
 			$this->all_stages_structure = array('structure' => array(), 'values' => array());
-			$query = "SELECT {node}.nid FROM {node} LEFT JOIN {pi_stage} ON {node}.vid={pi_stage}.vid WHERE inquiry_nid=%d";
-			$result = db_query($query, $this->inquiry->nid);
-			while ($row = db_fetch_array($result)) {
-				$stage = node_load($row['nid']);
+			
+			foreach($this->getStageNodes() as $stage) {
 				foreach ($this->phases as $pnid => $phase_node) {
 					if (!isset($stage->phases[$pnid])) {
 						$stage->phases[$pnid] = 'edit';
@@ -473,7 +481,7 @@ class PiInquiryContent {
 			node_save($node);
 
 			$this->linkContentWithActivity($node, $activity_nid, $uid);
-			
+
 			return $node;
 		}
 	}
@@ -816,7 +824,7 @@ class PiInquiryAccess {
 
 							break;
 					}
-					
+
 					if ($access['access'] === 'edit' && !pi_activity_is_editable($item)) {
 						$access['access'] = 'view';
 						$access['reason'] = 'none';

@@ -86,8 +86,6 @@ function inquiry_creator_activity_form_submit($form, $form_state) {
     if ($changed || $data_changed) {
       $activity->revision = TRUE;
       node_save($activity);
-      
-			$phase = inquiry_design_load_phase_for_activity($design, $activity->nid);
     }
 
     if ($design_changed) {
@@ -130,20 +128,8 @@ function inquiry_creator_activity_delete_form(&$form_state, $design, $node) {
 }
 
 function inquiry_creator_activity_delete_form_submit($form, $form_state) {
-  global $user;
-
   $activity_nid = $form_state['values']['activity_id'];
-
-  if (_inquiry_creator_activity_delete_node($activity_nid)) {
-    $design = node_load($form_state['values']['inquiry_design']);
-    if ($design && $design->type === 'inquiry_design' && $design->uid == $user->uid) {
-      if (inquiry_design_remove_structure_item($design, $activity_nid)) {
-        $design->revision = TRUE;
-        node_save($design);
-      }
-    }
-  }
-
+  _inquiry_creator_activity_delete_node($activity_nid);
   nquire_commons_form_close($form, $form_state);
 }
 
@@ -152,8 +138,6 @@ function _inquiry_creator_activity_delete_node($activity_nid) {
 
   $activity = node_load($activity_nid);
 	
-	inquiry_deployer_activity_will_be_deleted($activity_nid);
-
   if ($activity && $activity->type === 'inquiry_activity' && $activity->uid == $user->uid) {
     inquiry_available_features_invoke('activity', 'delete', $activity);
     node_delete($activity_nid);

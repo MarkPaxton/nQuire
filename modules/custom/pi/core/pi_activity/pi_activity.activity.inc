@@ -14,9 +14,8 @@
  *  If the user is the admin user, then redirect to the activity content admin page instead as admin
  *  can't create Activity Content (due to being in all og groups)
  * @param uint $activity_id The id of the pi_activity to work with
- * @param $arg_node_function The function to perform on the activity
  */
-function pi_activity_content_view($activity_node, $arg_node_function, $teaser = FALSE) {
+function pi_activity_content_view($activity_node) {
 	$output = "";
 
 	global $user;
@@ -29,21 +28,19 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 
 
-		if (!$teaser) {
-			$output .= '<p><small>';
-			switch ($phase_node->collaboration) {
-				case 'individual':
-					$output .= t('This activity is carried out individually.');
-					break;
-				case 'group':
-					$output .= t('This activity is carried out in groups.');
-					break;
-				default:
-					$output .= t('This activity is done by all inquiry participants working together.');
-					break;
-			}
-			$output .= '</small></p>';
+		$output .= '<p><small>';
+		switch ($phase_node->collaboration) {
+			case 'individual':
+				$output .= t('This activity is carried out individually.');
+				break;
+			case 'group':
+				$output .= t('This activity is carried out in groups.');
+				break;
+			default:
+				$output .= t('This activity is done by all inquiry participants working together.');
+				break;
 		}
+		$output .= '</small></p>';
 
 		$arg_node_function = pi_activity_tab_edit_access_callback($activity_node) ? 'edit' : 'view';
 
@@ -55,9 +52,7 @@ function pi_activity_content_view($activity_node, $arg_node_function, $teaser = 
 		$display_data = pi_activity_display_data($activity_node, $phase_key, $inquiry_info, $inquiry_access, $user, $arg_node_function);
 		$output = $display_data['output'];
 
-		if (!$teaser) {
-			drupal_set_title(check_plain($activity_node->title));
-		}
+		drupal_set_title(check_plain($activity_node->title));
 	}
 	return $output;
 }

@@ -14,7 +14,6 @@ $(function() {
       values: {
         noaccess: 'No access',
         view: 'View',
-        comment: 'Comment',
         edit: 'Edit'
       },
       forItemType: 'activity'
@@ -27,4 +26,3 @@ $(function() {
     }
   });
 });
-

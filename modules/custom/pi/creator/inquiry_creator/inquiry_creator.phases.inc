@@ -136,12 +136,7 @@ function inquiry_creator_phase_delete_form_submit($form, $form_state) {
 			_inquiry_creator_activity_delete_node($activity_def['id']);
 		}
 
-		inquiry_deployer_phase_will_be_deleted($phase_nid);
 		node_delete($phase_nid);
-
-		if (inquiry_design_remove_structure_item($design, $phase_nid)) {
-			node_save($design);
-		}
 	}
 
 	nquire_commons_form_close($form, $form_state);
