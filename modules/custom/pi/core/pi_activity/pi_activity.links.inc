@@ -1,6 +1,6 @@
 <?php
 
-function pi_activity_create_edit_links($activity_node, $from_mode) {
+function pi_activity_create_edit_links($activity_node, $edit_view) {
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	if ($inquiry_info) {
 		global $user;
@@ -13,19 +13,21 @@ function pi_activity_create_edit_links($activity_node, $from_mode) {
 
 		$links = array();
 
-		if ($from_mode === 'view') {
-			if ($can_edit) {
-				if ($has_content) {
-					$links[] = array('url' => url("activity/{$activity_node->nid}/edit"), 'label' => t('Edit'), 'image' => 'editable.png');
-				} else {
-					$links[] = array('url' => url("activity/{$activity_node->nid}"), 'label' => t('Create'), 'image' => 'editable.png');
+		$add_activity_nid = pi_activity_get_add_activity_for_sort_activity($activity_node->nid);
+
+		if ($can_edit) {
+			if ($has_content) {
+				if (!$edit_view) {
+					$label = $add_activity_nid ? t('Sort') : t('Edit');
+					$links[] = array('url' => url("activity/{$activity_node->nid}"), 'label' => $label, 'image' => 'editable.png');
 				}
-			}
-		} else {
-			$add_activity_nid = pi_activity_get_add_activity_for_sort_activity($activity_node->nid);
-			if ($add_activity_nid && $activity_access === 'edit') {
-				$add_activity = node_load($add_activity_nid);
-				$links[] = array('url' => url("activity/$add_activity_nid/edit"), 'label' => check_plain($add_activity->title), 'image' => 'add.png');
+
+				if ($add_activity_nid) {
+					$add_activity = node_load($add_activity_nid);
+					$links[] = array('url' => url("activity/$add_activity_nid"), 'label' => check_plain($add_activity->title), 'image' => 'add.png');
+				}
+			} else {
+				$links[] = array('url' => url("activity/{$activity_node->nid}"), 'label' => t('Create'), 'image' => 'editable.png');
 			}
 		}
 	}

@@ -179,34 +179,34 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 	$phases = $inquiry_info->getPhases();
 	$phase_count = count($phases);
-	
+
 	if ($phase_count == 0) {
 		return '';
 	}
-	
-	
-	
-	
+
+
+
+
 	$circle_radius = 60.0;
 	$circle_stroke = 8.0;
 	$circle_distance = 80.0;
-	
-	$aspect_ratio = sqrt(3./4.);
+
+	$aspect_ratio = sqrt(3. / 4.);
 	$scale = .8;
-	
-	
+
+
 	$net_radius = $phase_count * ($circle_radius + .5 * $circle_distance) / PI;
 	$net_vertical_radius = $aspect_ratio * $net_radius;
-	
+
 	$net_center_x = $net_radius + $circle_radius + $circle_stroke;
 	$net_center_y = $net_vertical_radius + $circle_radius + $circle_stroke;
-	
+
 	$net_width = 2 * $net_center_x;
 	$net_height = 2 * $net_center_y;
-	
+
 	$svg_width = $scale * $net_width;
 	$svg_height = $scale * $net_height;
-	
+
 	$inner_circle_radius = $circle_radius - $circle_stroke;
 	$inner_circle_diameter = 2 * $inner_circle_radius;
 	$outer_circle_radius = $circle_radius + .5 * $circle_stroke;
@@ -303,33 +303,55 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 	return $output;
 }
 
-function phptemplate_pi_inquiry_phase_view($phase_data, $activities_data) {
-	drupal_set_title($phase_data['title']);
+function phptemplate_pi_activities_view_phase($data) {
+	drupal_set_title($data['phase']['title']);
 
-	$output = "<p>{$phase_data['description']}</p><p><small>{$phase_data['sharing']}</small></p>";
+	$output = "<p>{$data['phase']['description']}</p><p><small>{$data['phase']['sharing']}</small></p>";
 
-	foreach ($activities_data as $activity_data) {
-		$output .= '<div>' . $activity_data['output'] . '</div>';
+	foreach ($data['activities'] as $activity_data) {
+		$output .= '<div>' . theme('pi_activities_view_activity', $activity_data) . '</div>';
 	}
 
 	return $output;
 }
 
-function phptemplate_pi_inquiry_phase_activity_view($activity_data, $phase_key) {
-
-
+function phptemplate_pi_activities_view_activity($activity_data) {
 
 	$output = '<a name="' . $activity_data['node']->nid . '"></a>'
-					. '<div class="phase_activity phase_activity_' . $phase_key . '">'
-					. '<div class="phase_activity_title">' . $activity_data['title'] . '</div>'
-					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
-					. '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
-					. '<div class="phase_activity_link">' . $activity_data['links'] . '</div>';
+					. '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
 
+	$output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
-	if ($activity_data['can_view']) {
-		$output .= '<div class="phase_activity_content">' . $activity_data['content'] . '</div>';
+	$output .= '<div class="phase_activity_content_wrapper">'
+					. '<table class="phase_activity_table"><tr ><td class="phase_activity_label">' . t('Activity:') . '</td><td class="phase_activity_description">' . $activity_data['description'] . '</td></tr>';
+
+	if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
+		switch ($activity_data['content']['mode']) {
+			case 'twocolumns':
+				foreach ($activity_data['content']['rows'] as $row) {
+					if ($row[1] === FALSE) {
+						$content_class = 'phase_activity_no_content';
+						$content = '';
+					} else {
+						$content_class = 'phase_activity_content';
+						$content = $row[1];
+					}
+					$output .= '<tr><td class="phase_activity_label">' . $row[0] . '</td><td class="' . $content_class .  '">' . $content . '</td></tr>';
+				}
+
+				$output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
+
+				break;
+		}
 	}
+
+	$output .= '</table></div>';
+
+	/* 					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
+	  . '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
+	  . '<div class="phase_activity_link">' .  . '</div>'; */
+
+
 
 	$output .= '</div>';
 

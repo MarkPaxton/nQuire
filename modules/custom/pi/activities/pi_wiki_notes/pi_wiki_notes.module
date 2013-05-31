@@ -72,7 +72,6 @@ function pi_wiki_notes_form(&$node) {
 	return $form;
 }
 
-
 function pi_wiki_notes_form_pi_wiki_notes_node_form_alter(&$form, &$form_state) {
 	//nquire_commons_form_replace_delete_button_with_link($form);
 }
@@ -110,7 +109,6 @@ function pi_wiki_notes_load($node) {
 	return db_fetch_object(db_query('SELECT * FROM {pi_wiki_notes} WHERE vid = %d', $node->vid));
 }
 
-
 /**
  * Implementation of hook_view().
  */
@@ -124,6 +122,15 @@ function pi_wiki_notes_view($node, $teaser = FALSE, $page = FALSE) {
 	);
 
 	return $node;
+}
+
+function pi_wiki_notes_display_content_in_activity($node) {
+	return array(
+			'mode' => 'twocolumns',
+			'rows' => array(
+					array('Notes:', $node ? nl2br(check_plain($node->notes)) : FALSE),
+			),
+	);
 }
 
 /**
@@ -146,7 +153,7 @@ function pi_wiki_notes_theme() {
  * @return string
  */
 function theme_pi_wiki_notes($node, $teaser) {
-	
+
 	if ($teaser) {
 		$break_position = strpos($node->notes, '<!--break-->');
 		if ($break_position) {
@@ -157,7 +164,7 @@ function theme_pi_wiki_notes($node, $teaser) {
 	} else {
 		$notes = $node->notes;
 	}
-	
+
 	return '<b>' . t('Notes:') . '</b><br/>' . nl2br(check_plain($notes));
 }
 

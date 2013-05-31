@@ -61,17 +61,6 @@ function _pi_inquiry_phase_view($phase, $inquiry_info, $inquiry_access, $user) {
 	return $output;
 }
 
-function theme_pi_inquiry_phase_view($phase_data, $activities_data) {
-	drupal_set_title($phase_data['title']);
-
-	$output = "<p>{$phase_data['description']}</p><p><small>{$phase_data['sharing']}</small></p>";
-
-	foreach ($activities_data as $activity_data) {
-		$output .= '<div>' . $activity_data['output'] . '</div>';
-	}
-
-	return $output;
-}
 
 function theme_pi_inquiry_phase_activity_view($activity_data) {
 	$activity_text = '<div style="margin-bottom:12px;">'
