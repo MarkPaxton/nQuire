@@ -12,31 +12,31 @@
  */
 function pi_read_information_node_info() {
 
-  return array(
-      'pi_read_information' => array(
-          'name' => t('Inquiry information'), // Required.
-          'module' => 'pi_read_information', // Required.
-          'description' => t('Read information about a topic'), // Required.
-          'has_title' => TRUE,
-          'title_label' => t('Information'),
-          'has_body' => TRUE,
-          'body_label' => t('Information'),
-          'locked' => TRUE)
-  );
+	return array(
+			'pi_read_information' => array(
+					'name' => t('Inquiry information'), // Required.
+					'module' => 'pi_read_information', // Required.
+					'description' => t('Read information about a topic'), // Required.
+					'has_title' => TRUE,
+					'title_label' => t('Information'),
+					'has_body' => TRUE,
+					'body_label' => t('Information'),
+					'locked' => TRUE)
+	);
 }
 
 /**
  * Implementation of hook_perm().
  */
 function pi_read_information_perm() {
-  
+	
 }
 
 /**
  * Implementation of hook_access().
  */
 function pi_read_information_access($op, $node, $account) {
-  return FALSE;
+	return FALSE;
 }
 
 /**
@@ -44,105 +44,49 @@ function pi_read_information_access($op, $node, $account) {
  */
 function pi_read_information_form(&$node) {
 
-  // Get metadata for this node type
-  // (we use it for labeling title and body fields).
-  // We defined this in pi_read_information_node_info().
-  $type = node_get_types('type', $node);
-  global $user;
+	// Get metadata for this node type
+	// (we use it for labeling title and body fields).
+	// We defined this in pi_read_information_node_info().
+	$type = node_get_types('type', $node);
 
-  $node_details = get_inquiry_details_from_current_path();
-  if (is_numeric($node_details->activity_id)) {
-    $current_activity = node_load($node_details->activity_id);
-  }
+	$form['title'] = array(
+			'#type' => 'hidden',
+			'#title' => check_plain($type->title_label),
+			'#required' => FALSE,
+			'#default_value' => $type->title_label,
+			'#weight' => -5
+	);
 
-  if ($current_activity->name) {
-    drupal_set_title(t($current_activity->name));
-  }
+	$form['body_filter']['body'] = array(
+			'#type' => 'textarea',
+			'#title' => t('Notes'),
+			'#required' => FALSE,
+			'#default_value' => $node->body,
+			'#description' => t('Type your group notes into the above box and click on the Save button when you are finished'),
+			'#resizable' => TRUE,
+			'#rows' => 8,
+			'#cols' => 40,
+			'#weight' => -2
+	);
 
-  $form['title'] = array(
-      '#type' => 'hidden',
-      '#title' => check_plain($type->title_label),
-      '#required' => FALSE,
-      '#default_value' => $type->title_label,
-      '#weight' => -5
-  );
-
-  $form['body_filter']['body'] = array(
-      '#type' => 'textarea',
-      '#title' => t('Notes'),
-      '#required' => TRUE,
-      '#default_value' => $node->body,
-      '#description' => t('Type your group notes into the above box and click on the Save button when you are finished'),
-      '#resizable' => TRUE,
-      '#rows' => 8,
-      '#cols' => 40,
-      '#weight' => -2
-  );
-
-  $prefix = "";
-  if ($current_activity->description) {
-    $prefix .= "<p>" . check_plain($current_activity->description) . "</p>";
-  }
-
-  $form['#prefix'] = $prefix;
-
-  return $form;
+	return $form;
 }
 
 /**
  * Implementation of hook_view().
  */
 function pi_read_information_view($node, $teaser = FALSE, $page = FALSE) {
-  // Use Drupal's default node view.
-  
-  $node->content['body'] = array(
-      '#value' => theme('pi_read_information', $node, $teaser),
-      '#weight' => 2
-  );
-
-  return $node;
+	$node = node_prepare($node, $teaser);
+	return $node;
 }
 
-/**
- * MISSING
- * 
- * @return multitype:multitype:multitype:string   
- */
-function pi_read_information_theme() {
-  return array(
-      'pi_read_information' => array(
-          'arguments' => array('node', 'teaser'),
-      ),
-  );
+function pi_read_information_show_edit_link() {
+	return FALSE;
 }
 
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @return string
- */
-function theme_pi_read_information($node, $teaser) {
-  $node_details = get_inquiry_details_from_current_path();
-  if (is_numeric($node_details->activity_id)) {
-    $current_activity = node_load($node_details->activity_id);
-  }
-
-  if ($current_activity->title) {
-    drupal_set_title(t($current_activity->title));
-  }
-
-  if ($teaser) {
-    $break_position = strpos($node->body, '<!--break-->');
-    if ($break_position) {
-      $output = substr($node->body, 0, $break_position);
-    } else {
-      $output = $node->body;
-    }
-  } else {
-    $output = $node->body;
-  }
-
-  return $output;
+function pi_read_information_display_content_in_activity($node) {
+	return array(
+			'mode' => 'singleblock',
+			'content' => $node ? $node->body : FALSE,
+	);
 }
-

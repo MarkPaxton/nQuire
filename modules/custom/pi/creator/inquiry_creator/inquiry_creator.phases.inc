@@ -98,7 +98,9 @@ function inquiry_creator_phase_delete_form(&$form_state, $design, $node) {
 	_inquiry_creator_create_phase_id_form_item($node, $form);
 
 	$info = t('<h1 class="title">Are you sure to delete phase <i>@title</i>?</h1>', array('@title' => $node->title));
-	$activities = inquiry_design_get_activities($design, $node->nid);
+
+	$inquiry_info = pi_info()->getInquiryInfo($design->nid);
+	$activities = $inquiry_info->getActivitiesForPhase($node->nid);
 	if ($activities && count($activities > 0)) {
 		$info .= '<p>' . t('The following activities will also be deleted:') . '<ul>';
 		foreach ($activities as $activity) {
@@ -125,15 +127,16 @@ function inquiry_creator_phase_delete_form_submit($form, $form_state) {
 	$design = node_load($form_state['values']['inquiry_design']);
 	$phase = node_load($form_state['values']['phase_id']);
 
-	if ($phase && $phase->type === 'inquiry_phase' && $phase->uid == $user->uid &&
-					$design && $design->type === 'inquiry_design' && $design->uid == $user->uid) {
+	if ($phase && $phase->type === 'pi_phase' && $phase->uid == $user->uid &&
+					$design && $design->type === 'pi_inquiry' && $design->uid == $user->uid) {
 
 		$phase_nid = $phase->nid;
 
-		$activities = inquiry_design_get_activities($design, $phase_nid);
-		foreach ($activities as $activity_def) {
+		$inquiry_info = pi_info()->getInquiryInfo($design->nid);
+		$activities = $inquiry_info->getActivitiesForPhase($phase_nid);
+		foreach ($activities as $activity) {
 			module_load_include('inc', 'inquiry_creator', 'inquiry_creator.activities');
-			_inquiry_creator_activity_delete_node($activity_def['id']);
+			_inquiry_creator_activity_delete_node($activity->nid);
 		}
 
 		node_delete($phase_nid);

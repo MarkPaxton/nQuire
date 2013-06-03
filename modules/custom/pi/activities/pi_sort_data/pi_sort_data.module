@@ -54,9 +54,9 @@ function pi_sort_data_show_edit_link() {
 }
 
 function pi_sort_data_display_content_in_activity($node, $options) {
+	$child_activity_edit = node_load($options['child_activity_edit']);
 
 	if ($options['child_activity_edit'] && !$options['child_activity_delete']) {
-		$child_activity_edit = node_load($options['child_activity_edit']);
 		$label = $child_activity_edit->script_activity ? t('New data:') : t('Edit data:');
 		return array(
 				'mode' => 'twocolumns',
@@ -89,19 +89,21 @@ function pi_sort_data_display_content_in_activity($node, $options) {
 				$data_item_node = node_load($nid);
 				$data_item_activity_nid = pi_activity_get_activity_nid_for_content_nid($nid);
 
-				$first_cell = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
-								. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid)));
-				if ($options['editable']) {
-					$first_cell .= '<br/>' . l(t('edit'), 'activity/' . $data_item_activity_nid) . '&nbsp;&nbsp;&nbsp;'
-									. l(t('delete'), 'activity/' . $data_item_activity_nid . '/delete');
-				}
-				
-				$row[] = $first_cell;
+				if (!$options['child_activity_delete'] || $child_activity_edit->nid == $data_item_activity_nid) {
+					$first_cell = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
+									. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid)));
+					if ($options['editable'] && !$options['child_activity_delete']) {
+						$first_cell .= '<br/>' . l(t('edit'), 'activity/' . $data_item_activity_nid) . '&nbsp;&nbsp;&nbsp;'
+										. l(t('delete'), 'activity/' . $data_item_activity_nid . '/delete');
+					}
 
-				foreach ($measures as $measure) {
-					$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
+					$row[] = $first_cell;
+
+					foreach ($measures as $measure) {
+						$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
+					}
+					$data_rows[] = $row;
 				}
-				$data_rows[] = $row;
 			}
 		} else {
 			$data_rows[] = array(
@@ -110,6 +112,10 @@ function pi_sort_data_display_content_in_activity($node, $options) {
 		}
 
 		$content = theme('pi_sort_data', $header, $data_rows);
+
+		if ($options['child_activity_delete']) {
+			$content .= drupal_get_form('pi_activity_content_delete_form', $child_activity_edit, t('Are you sure you want to delete this data?'));
+		}
 
 		return array(
 				'mode' => 'singleblock',

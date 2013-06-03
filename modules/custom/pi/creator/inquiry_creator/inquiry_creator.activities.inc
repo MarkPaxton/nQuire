@@ -127,7 +127,7 @@ function _inquiry_creator_activity_delete_node($activity_nid) {
 
 	$activity = node_load($activity_nid);
 
-	if ($activity && $activity->type === 'inquiry_activity' && $activity->uid == $user->uid) {
+	if ($activity && $activity->type === 'pi_activity' && $activity->uid == $user->uid) {
 		inquiry_available_features_invoke('activity', 'delete', $activity);
 		node_delete($activity_nid);
 
