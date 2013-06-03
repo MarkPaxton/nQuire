@@ -7,6 +7,9 @@ function pi_activities_page($node) {
 	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
 	if ($node->type === 'pi_activity') {
+		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+
+
 		$phase_nid = $node->phase_nid;
 		$activity_edit = $node->nid;
 
@@ -17,6 +20,7 @@ function pi_activities_page($node) {
 			} else {
 				$mode = 'child_activity_edit';
 				$parent_activity = $node->parent_activity;
+				$child_delete = arg(2) === 'delete';
 			}
 		} else {
 			$mode = 'parent_activity_edit';
@@ -69,10 +73,10 @@ function pi_activities_page($node) {
 	$activities = $mode === 'activity_page' ? array($node->nid => $node) : $inquiry_info->getActivitiesForPhase($phase_nid);
 
 	foreach ($activities as $activity_nid => $activity_node) {
-		$edit = $mode == 'parent_activity_edit' && $activity_edit === $activity_nid;
-		$child_edit = $mode = 'child_activity_edit' && $parent_activity === $activity_nid;
+		$edit = $mode == 'parent_activity_edit' && $activity_edit == $activity_nid;
+		$child_edit = ($mode == 'child_activity_edit' && $parent_activity == $activity_nid) ? $activity_edit : FALSE;
 
-		$data['activities'][$activity_nid] = _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $child_edit);
+		$data['activities'][$activity_nid] = _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $child_edit, $child_delete);
 	}
 
 	$output = theme('pi_activities_view_phase', $data);
@@ -80,50 +84,58 @@ function pi_activities_page($node) {
 	return $output;
 }
 
-function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $edit_child) {
+function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $edit_child, $child_delete) {
 	$access = $inquiry_access->getAccessToItem($activity_node);
 	$reason = $inquiry_access->getAccessReason($activity_node);
 	$inquiry_nid = $inquiry_info->getInquiryNid();
 	$exaplanation = pi_activity_access_get_explanation_text($access, $reason, $inquiry_nid);
 
+	$can_view = $edit ? pi_activity_tab_edit_access_callback($activity_node) : pi_activity_tab_view_access_callback($activity_node);
+
+	if ($can_view) {
+		$content_manager = pi_info()->getContentManager();
+		$content_nid = $content_manager->getContent($activity_node->nid, $user->uid, TRUE);
+		$content_node = node_load($content_nid);
+	}
+
 	$data = array(
 			'node' => $activity_node,
 			'title' => check_plain($activity_node->title),
 			'description' => nl2br(check_plain($activity_node->body)),
-			'links' => $access === 'edit' ? pi_activity_create_edit_links($activity_node, $edit) : NULL,
+			'links' => $access === 'edit' ? pi_activity_create_edit_links($activity_node, $edit, $edit_child) : NULL,
 			'access' => $access,
 			'reason' => $reason,
 			'access_explanation' => $exaplanation,
-			'can_view' => $edit ? pi_activity_tab_edit_access_callback($activity_node) : pi_activity_tab_view_access_callback($activity_node),
+			'can_view' => $can_view,
 			'edit_child' => $edit_child,
 			'edit' => $edit,
 			'phase_key' => $phase_key,
 	);
 
-	if ($data['can_view']) {
-		$content_manager = pi_info()->getContentManager();
-		$content_nid = $content_manager->getContent($activity_node->nid, $user->uid, TRUE);
-		$content_node = node_load($content_nid);
+	if ($can_view) {
+		$options = array(
+				'edit' => $edit,
+				'child_activity_edit' => $edit_child,
+				'child_activity_delete' => $edit_child && $child_delete,
+		);
 
 		if ($edit) {
 			if (!$content_node) {
-				$content_node = new stdClass;
-				$content_node->uid = $user->uid;
+				global $user;
+				$content_node = new stdClass();
 				$content_node->type = $activity_node->activity_type;
+				$content_node->uid = $user->uid;
+
+				$options['new'] = TRUE;
 			}
-			$data['content'] = array(
-					'type' => 'single_form',
-					'form' => node_page_edit($content_node),
-			);
-		} else {
-			$view_f = "{$activity_node->activity_type}_display_content_in_activity";
-			$data['content'] = $view_f($content_node, $edit_child);
 		}
+
+		$view_f = "{$activity_node->activity_type}_display_content_in_activity";
+		$data['content'] = $view_f($content_node, $options);
 	}
 
 	return $data;
 }
-
 
 function theme_pi_activities_view_phase($data) {
 	$output = '';

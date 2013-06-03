@@ -51,15 +51,7 @@ function pi_activity_access($activity, $op) {
  */
 function pi_activity_menu() {
 	$items = array();
-	$items['activity/%node'] = array(
-			'title' => 'View',
-			'file' => 'pi_activity.activity.inc',
-			'page callback' => 'pi_activity_content_view',
-			'page arguments' => array(1, 'view'),
-			'access callback' => 'pi_activity_tab_view_access_callback',
-			'access arguments' => array(1),
-			'type' => MENU_CALLBACK
-	);
+
 
 	$items['activity/%node/shared/%'] = array(
 			'title' => 'View',
@@ -69,18 +61,6 @@ function pi_activity_menu() {
 			'access callback' => 'pi_activity_shared_content_view_access',
 			'access arguments' => array(1, 3),
 			'type' => MENU_CALLBACK
-	);
-
-
-	$items['activity/%node/delete'] = array(
-			'title' => 'Delete',
-			'file' => 'pi_activity.activity.inc',
-			'page callback' => 'pi_activity_content_delete',
-			'page arguments' => array(1),
-			'access arguments' => array(1),
-			'access callback' => 'pi_activity_tab_edit_access_callback',
-			'type' => MENU_CALLBACK,
-			'weight' => 1
 	);
 
 	return $items;
@@ -182,6 +162,9 @@ function pi_activity_form(&$node, $form_state) {
  */
 function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 	if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id) {
+
+		$form['revision_information']['#access'] = FALSE;
+
 		if (arg(0) === 'activity') {
 			$activity_node = node_load(arg(1));
 		} else {
@@ -199,12 +182,16 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
 		}
 
 		if ($activity_node) {
-			$path = $activity_node->parent_activity ? "activity/{$activity_node->parent_activity}" : "phase/{$activity_node->phase_nid}";
+			$path = "phase/{$activity_node->phase_nid}";
+			if ($activity_node->parent_activity) {
+				$path .= url($path, array('fragment' => "{$activity_node->parent_activity}"));
+			}
+
 			$form['#redirect'] = $form_state['redirect'] = $path;
 		}
 
 		$form['#action'] = $original_action;
-		
+
 		nquire_commons_form_replace_delete_button_with_link($form, $activity_node);
 	}
 }
@@ -554,69 +541,58 @@ function pi_activity_access_get_explanation_text($access, $reason, $inquiry_nid)
 	return $text;
 }
 
-function pi_activity_display_data($activity_node, $phase_key, $inquiry_info, $inquiry_access, $user, $mode) {
-	$access = $inquiry_access->getAccessToItem($activity_node);
-	$reason = $inquiry_access->getAccessReason($activity_node);
-	$inquiry_nid = $inquiry_info->getInquiryNid();
-	$exaplanation = pi_activity_access_get_explanation_text($access, $reason, $inquiry_nid);
-
-	$data = array(
-			'node' => $activity_node,
-			'title' => check_plain($activity_node->title),
-			'description' => nl2br(check_plain($activity_node->body)),
-			'links' => pi_activity_create_edit_links($activity_node, $mode),
-			'access' => $access,
-			'reason' => $reason,
-			'access_explanation' => $exaplanation,
-			'can_view' => $mode === 'edit' ? pi_activity_tab_edit_access_callback($activity_node) : pi_activity_tab_view_access_callback($activity_node),
-	);
-
-	if ($data['can_view']) {
-		$content_manager = pi_info()->getContentManager();
-		$content_nid = $content_manager->getContent($activity_node->nid, $user->uid, TRUE);
-		$content_node = node_load($content_nid);
-
-
-		if ($mode === 'view') {
-			$data['content'] = $content_node ? node_view($content_node, FALSE, TRUE, TRUE) : FALSE;
-		} else if ($mode === 'edit') {
-			$alternative_edit_page_function = "{$activity_node->activity_type}_custom_edit_page";
-			if (function_exists($alternative_edit_page_function)) {
-				$data['content'] = $alternative_edit_page_function($content_node);
-			} else {
-				if (!$content_node) {
-					$content_node = new stdClass;
-					$content_node->uid = $user->uid;
-					$content_node->type = $activity_node->activity_type;
-				}
-				$data['content'] = node_page_edit($content_node);
-			}
-		}
-
-		$content_wrapper_function = "{$activity_node->activity_type}_wrap_content_node_view";
-		if (!function_exists($content_wrapper_function) || $content_wrapper_function($activity_node)) {
-			$data['output'] = theme('pi_inquiry_phase_activity_view', $data, $phase_key);
-		} else {
-			$data['output'] = $data['content'];
-		}
-	}
-	
-	return $data;
-}
-
-
-
-
 function pi_activity_get_children_activities($parent_nid, $only_script_activities) {
 	$query = "SELECT node.nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE parent_activity=%d";
 	if ($only_script_activities) {
 		$query .= ' AND script_activity=1';
 	}
-	
+
 	$result = db_query($query, $parent_nid);
 	$nodes = array();
-	while($row = db_fetch_array($result)) {
+	while ($row = db_fetch_array($result)) {
 		$nodes[] = node_load($row['nid']);
 	}
 	return $nodes;
+}
+
+function pi_activity_get_children_activity_edit_form($child_activity) {
+	$node = node_load($child_activity->referenced_node);
+
+	if (!$node) {
+		global $user;
+		$node = new stdClass();
+		$node->type = $child_activity->activity_type;
+		$node->uid = $user->uid;
+	}
+
+	return node_page_edit($node);
+}
+
+function pi_activity_content_delete_form(&$form_state, $activity_node, $title) {
+	$form = array();
+
+	$info = '<p><b>' . $title . '</b><br/>' . t('This action cannot be undone.') . '</p>';
+
+	$form['info'] = array(
+			'#value' => $info,
+	);
+
+	$path = "phase/{$activity_node->phase_nid}";
+
+	$form['#redirect'] = $form_state['redirect'] = url($path, array('fragment' => $activity_node->nid));
+	nquire_commont_create_form_delete_cancel_buttons($form, 'pi_activity_content_delete_form_submit', $path, $activity_node->nid);
+
+
+	return $form;
+}
+
+function pi_activity_content_delete_form_submit($form, $form_state) {
+	$activity_nid = arg(1);
+
+	global $user;
+	$content_nid = pi_info()->getContentManager()->getContent($activity_nid, $user->uid, FALSE);
+
+	node_delete($content_nid);
+	
+	nquire_commons_form_close($form, $form_state);
 }

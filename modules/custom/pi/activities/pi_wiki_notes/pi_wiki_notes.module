@@ -59,7 +59,6 @@ function pi_wiki_notes_form(&$node) {
 
 	$form['body_filter']['notes'] = array(
 			'#type' => 'textarea',
-			'#title' => t('Notes'),
 			'#required' => FALSE,
 			'#default_value' => $node->notes,
 			'#description' => t('Type your group notes into the above box and click on the Save button when you are finished'),
@@ -72,9 +71,6 @@ function pi_wiki_notes_form(&$node) {
 	return $form;
 }
 
-function pi_wiki_notes_form_pi_wiki_notes_node_form_alter(&$form, &$form_state) {
-	//nquire_commons_form_replace_delete_button_with_link($form);
-}
 
 /**
  * Implementation of hook_insert().
@@ -113,58 +109,23 @@ function pi_wiki_notes_load($node) {
  * Implementation of hook_view().
  */
 function pi_wiki_notes_view($node, $teaser = FALSE, $page = FALSE) {
-	// Use Drupal's default node view.
 	$node = node_prepare($node, $teaser);
-
-	$node->content['pi_wiki_notes'] = array(
-			'#value' => theme('pi_wiki_notes', $node, $teaser),
-			'#weight' => 2
-	);
-
 	return $node;
 }
 
-function pi_wiki_notes_display_content_in_activity($node) {
+function pi_wiki_notes_display_content_in_activity($node, $options) {	
+	$content = NULL;
+	if ($options['edit']) {
+		$content = node_page_edit($node);
+	} else {
+		$content = $node ? nl2br(check_plain($node->notes)) : FALSE;
+	}
+	
 	return array(
 			'mode' => 'twocolumns',
 			'rows' => array(
-					array('Notes:', $node ? nl2br(check_plain($node->notes)) : FALSE),
+					array('Notes:', $content),
 			),
 	);
-}
-
-/**
- * MISSING
- * 
- * @return multitype:multitype:multitype:string   
- */
-function pi_wiki_notes_theme() {
-	return array(
-			'pi_wiki_notes' => array(
-					'arguments' => array('node', 'teaser'),
-			),
-	);
-}
-
-/**
- * MISSING
- * 
- * @param unknown_type $node
- * @return string
- */
-function theme_pi_wiki_notes($node, $teaser) {
-
-	if ($teaser) {
-		$break_position = strpos($node->notes, '<!--break-->');
-		if ($break_position) {
-			$notes = substr($node->notes, 0, $break_position);
-		} else {
-			$notes = $node->notes;
-		}
-	} else {
-		$notes = $node->notes;
-	}
-
-	return '<b>' . t('Notes:') . '</b><br/>' . nl2br(check_plain($notes));
 }
 

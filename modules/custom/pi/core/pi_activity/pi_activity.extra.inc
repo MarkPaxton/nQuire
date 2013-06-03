@@ -30,14 +30,7 @@ function pi_activity_build_link_for_child($child_activity_nid) {
 	$text = check_plain($child_activity_node->title) . '&nbsp;' . "<img width='12' src='" . $image_path . "'/>";
 
 	if ($access !== 'hidden') {
-		$node_function = $access;
-
-		if ($node_function === 'edit') {
-			if (pi_activity_tab_view_access_callback($child_activity_node)) {
-				$node_function = 'view';
-			}
-		}
-		$url = "activity/" . $child_activity_nid . "/" . $node_function;
+		$url = "activity/" . $child_activity_nid;
 		return l($text, $url, array('html' => TRUE));
 	} else {
 		return $text;

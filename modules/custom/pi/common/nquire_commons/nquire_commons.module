@@ -169,11 +169,7 @@ function nquire_commons_form_replace_delete_button_with_link(&$form, $activity_n
 	}
 
 
-	if ($activity_node->parent_activity) {
-		$cancel_link = l(t('Cancel'), "activity/{$activity_node->parent_activity}");
-	} else {
-		$cancel_link = l(t('Cancel'), "phase/{$activity_node->phase_nid}", array('fragment' => $activity_node->nid));
-	}
+	$cancel_link = l(t('Cancel'), "phase/{$activity_node->phase_nid}", array('fragment' => $activity_node->nid));
 
 	$form['buttons']['cancel'] = array(
 			'#value' => ($sep ? '&nbsp;&nbsp;' : '') . $cancel_link,
@@ -363,6 +359,7 @@ function nquire_commons_create_form_save_cancel_buttons(&$form, $save_callback, 
 					'type' => 'link',
 					'label' => $cancel_label ? $cancel_label : t('Cancel'),
 					'callback' => $cancel_path,
+					'parameters' => array(),
 			),
 	));
 	nquire_commons_create_form_destination($form, $cancel_path);
@@ -374,12 +371,13 @@ function nquire_commons_create_form_cancel_button(&$form, $cancel_path, $cancel_
 					'type' => 'link',
 					'label' => $cancel_label ? $cancel_label : t('Cancel'),
 					'callback' => $cancel_path,
+					'parameters' => array(),
 			),
 	));
 	nquire_commons_create_form_destination($form, $cancel_path);
 }
 
-function nquire_commont_create_form_delete_cancel_buttons(&$form, $delete_callback, $cancel_path) {
+function nquire_commont_create_form_delete_cancel_buttons(&$form, $delete_callback, $cancel_path, $cancel_path_fragment = NULL) {
 	nquire_commons_create_form_buttons($form, array(
 			'delete' => array(
 					'type' => 'button',
@@ -390,6 +388,7 @@ function nquire_commont_create_form_delete_cancel_buttons(&$form, $delete_callba
 					'type' => 'link',
 					'label' => t('Cancel'),
 					'callback' => $cancel_path,
+					'parameters' => $cancel_path_fragment ? array('fragment' => $cancel_path_fragment) : array(),
 			),
 	));
 	nquire_commons_create_form_destination($form, $cancel_path);
@@ -417,7 +416,7 @@ function nquire_commons_create_form_buttons(&$form, $buttons) {
 			case 'link':
 				$form[$button] = array(
 						'#type' => 'markup',
-						'#value' => l($data['label'], $data['callback']),
+						'#value' => l($data['label'], $data['callback'], $data['parameters']),
 				);
 				break;
 		}

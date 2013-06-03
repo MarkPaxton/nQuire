@@ -323,20 +323,22 @@ function phptemplate_pi_activities_view_activity($activity_data) {
 	$output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
 	$output .= '<div class="phase_activity_content_wrapper">'
-					. '<table class="phase_activity_table"><tr ><td class="phase_activity_label">' . t('Activity:') . '</td><td class="phase_activity_description">' . $activity_data['description'] . '</td></tr>';
+					. '<table class="phase_activity_table"><tr ><td class="phase_activity_label"><div>' . t('Activity:') . '</div></td><td class="phase_activity_content_cell phase_activity_description">' . $activity_data['description'] . '</td></tr>';
 
 	if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
 		switch ($activity_data['content']['mode']) {
 			case 'twocolumns':
 				foreach ($activity_data['content']['rows'] as $row) {
-					if ($row[1] === FALSE) {
-						$content_class = 'phase_activity_no_content';
-						$content = '';
+					if (is_array($row[1])) {
+						$empty = $row[1]['empty'];
+						$content = $row[1]['content'];
 					} else {
-						$content_class = 'phase_activity_content';
-						$content = $row[1];
+						$empty = $row[1] === FALSE;
+						$content = $empty ? '' : $row[1];
 					}
-					$output .= '<tr><td class="phase_activity_label">' . $row[0] . '</td><td class="' . $content_class .  '">' . $content . '</td></tr>';
+					$content_class = $empty ? 'phase_activity_no_content': 'phase_activity_content';
+					
+					$output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class .  '">' . $content . '</div></td></tr>';
 				}
 
 				$output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';

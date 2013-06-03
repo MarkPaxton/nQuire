@@ -18,10 +18,6 @@ function pi_sort_key_questions_node_info() {
 	);
 }
 
-function pi_sort_key_questions_perm() {
-	
-}
-
 function pi_sort_key_questions_access($op, $node, $user) {
 	return FALSE;
 }
@@ -33,9 +29,6 @@ function pi_sort_key_questions_theme() {
 	return array(
 			'pi_sort_key_questions_node_form' => array(
 					'arguments' => array('form'),
-			),
-			'pi_sort_key_questions' => array(
-					'arguments' => array('node', 'teaser', 'key_questions_to_show'),
 			),
 	);
 }
@@ -115,28 +108,6 @@ function pi_sort_key_questions_load($node) {
 
 function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
-
-	$key_questions = pi_sort_key_questions_get_questions_for_node($node);
-
-	$key_questions_to_show = array();
-	foreach ($key_questions as $sorted_key_question_nid) {
-		$question_node = node_load($sorted_key_question_nid);
-		$key_questions_to_show[] = array('data' => $question_node->key_question);
-	}
-
-
-	if (!$teaser && count($key_questions_to_show) > 0) {
-		$node->content['pi_sort_key_questions_prefix'] = array(
-				'#value' => '<b>' . t('Key questions: ') . '</b>',
-				'#weight' => 2,
-		);
-	}
-
-	$node->content['pi_sort_key_questions'] = array(
-			'#value' => theme('pi_sort_key_questions', $key_questions_to_show),
-			'#weight' => 3
-	);
-
 	return $node;
 }
 
@@ -170,8 +141,50 @@ function theme_pi_sort_key_questions($key_questions_to_show) {
 	return $output;
 }
 
-function pi_sort_key_questions_form_pi_sort_key_questions_node_form_alter(&$form) {
-	unset($form['buttons']['delete']);
+function pi_sort_key_questions_display_content_in_activity($node, $options) {
+	$rows = NULL;
+
+	if ($options['edit']) {
+		$rows = array(array(t('Key questions:'), node_page_edit($node)));
+	} else {
+		$child_activity_edit = node_load($options['child_activity_edit']);
+
+		$key_questions = array_map(function($nid) use($child_activity_edit, $options) {
+							$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
+							if ($key_question_activity_id == $child_activity_edit->nid) {
+								if ($options['child_activity_delete']) {
+									return '<p>' . check_plain($child_activity_edit->title) . '</p>'
+													. drupal_get_form('pi_activity_content_delete_form', $child_activity_edit, t('Are you sure you want to delete this key questions?'));
+								} else {
+									return pi_activity_get_children_activity_edit_form($child_activity_edit);
+								}
+							} else {
+								return pi_activity_build_link_for_child($key_question_activity_id);
+							}
+						}, pi_sort_key_questions_get_questions_for_node($node));
+
+
+
+		$rows = array();
+
+		$kq_label = t('Key question:');
+		foreach ($key_questions as $content) {
+			$rows[] = array($kq_label, $content);
+		}
+
+		if ($child_activity_edit->script_activity) {
+			$rows[] = array(t('New key questions:'), pi_activity_get_children_activity_edit_form($child_activity_edit));
+		}
+
+		if (count($rows) === 0) {
+			$rows = array(array(t('Key questions:'), array('content' => t('There are not questions yet.'), 'empty' => TRUE)));
+		}
+	}
+
+	return array(
+			'mode' => 'twocolumns',
+			'rows' => $rows,
+	);
 }
 
 /**
@@ -180,12 +193,6 @@ function pi_sort_key_questions_form_pi_sort_key_questions_node_form_alter(&$form
 function theme_pi_sort_key_questions_node_form($form) {
 
 	drupal_add_tabledrag('onepageprofile-categories', 'order', 'sibling', 'onepageprofile-element');
-
-	// Header
-	$header = array(
-			t('Key question'),
-			t('Weight')
-	);
 
 	// Rows for the tabledrag
 	$rows = array();
@@ -203,7 +210,7 @@ function theme_pi_sort_key_questions_node_form($form) {
 
 	//only display form and submit button if there are some entries
 	if (count($rows) > 0) {
-		$output .= theme('table', $header, $rows, array('id' => 'onepageprofile-categories'));
+		$output .= theme('table', NULL, $rows, array('id' => 'onepageprofile-categories'));
 	} else {
 		if (arg(2) == 'add') {
 			$output .= '<p> Press <strong>Save</strong> to start adding your key questions.</p>';
