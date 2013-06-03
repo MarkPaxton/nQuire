@@ -46,7 +46,7 @@ function pi_sort_data_form(&$node) {
 
 function pi_sort_data_view($node, $teaser, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
-	return $user;
+	return $node;
 }
 
 function pi_sort_data_show_edit_link() {
@@ -56,7 +56,12 @@ function pi_sort_data_show_edit_link() {
 function pi_sort_data_display_content_in_activity($node, $options) {
 	$child_activity_edit = node_load($options['child_activity_edit']);
 
-	if ($options['child_activity_edit'] && !$options['child_activity_delete']) {
+	if ($options['child_activity_edit'] && $options['separate_page']) {
+		return array(
+				'mode' => 'activity_page',
+				'content' => pi_activity_get_children_activity_edit_form($child_activity_edit),
+		);
+	} else if ($options['child_activity_edit'] && !$options['child_activity_delete']) {
 		$label = $child_activity_edit->script_activity ? t('New data:') : t('Edit data:');
 		return array(
 				'mode' => 'twocolumns',
@@ -122,6 +127,19 @@ function pi_sort_data_display_content_in_activity($node, $options) {
 				'content' => $content,
 		);
 	}
+}
+
+function pi_sort_data_edit_child_in_separate_page($activity_node) {
+	$data = nquire_commons_decode_data($activity_node->parameters);
+	return isset($data['tool']);
+}
+
+function pi_sort_data_wrap_content_node_view($activity_node) {
+	$data = nquire_commons_decode_data($activity_node->parameters);
+	if (isset($data['tool'])) {
+		return !pi_data_tools_plugin_use_ajax_form($data['tool']);
+	}
+	return TRUE;
 }
 
 function pi_sort_data_create_contribution_view($node) {

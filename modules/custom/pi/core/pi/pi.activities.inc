@@ -9,22 +9,20 @@ function pi_activities_page($node) {
 	if ($node->type === 'pi_activity') {
 		include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 
-
 		$phase_nid = $node->phase_nid;
 		$activity_edit = $node->nid;
 
 		if ($node->parent_activity) {
-			$separate_f = "{$node->activity_type}_edit_in_separate_page";
-			if (function_exists($separate_f) && $separate_f($node)) {
-				$mode = 'activity_page';
-			} else {
-				$mode = 'child_activity_edit';
-				$parent_activity = $node->parent_activity;
-				$child_delete = arg(2) === 'delete';
-			}
+			$parent_activity = node_load($node->parent_activity);
+			$mode = 'child_activity_edit';
+			$child_delete = arg(2) === 'delete';
+
+			$separate_f = "{$parent_activity->activity_type}_edit_child_in_separate_page";
+			$separate_page = !$child_delete && function_exists($separate_f) && $separate_f($parent_activity);
+
 		} else {
 			$mode = 'parent_activity_edit';
-			$parent_activity = FALSE;
+			$parent_activity = $node;
 		}
 	} else {
 		$phase_nid = $node->nid;
@@ -39,19 +37,18 @@ function pi_activities_page($node) {
 	$phase_node = $mode === 'phase_view' ? $node : $inquiry_info->getPhase($phase_nid);
 
 	$data = array(
-			'in_phase' => $mode !== 'activity_page',
+			'in_phase' => !$separate_page,
 			'phase' => array(
 					'node' => $phase_node,
+					'phase_key' => $phase_key,
+					'title' => check_plain($phase_node->title),
+					'description' => nl2br(check_plain($phase_node->body)),
 			),
 			'activities' => array(),
 	);
 
 
 	if ($data['in_phase']) {
-		$data['phase']['phase_key'] = $phase_key;
-		$data['phase']['title'] = check_plain($phase_node->title);
-		$data['phase']['description'] = nl2br(check_plain($phase_node->body));
-
 		$link = l(t('here'), 'phase/' . $phase_node->nid . '/shared');
 
 		switch ($phase_node->collaboration) {
@@ -70,13 +67,13 @@ function pi_activities_page($node) {
 	}
 
 
-	$activities = $mode === 'activity_page' ? array($node->nid => $node) : $inquiry_info->getActivitiesForPhase($phase_nid);
+	$activities = $mode === 'activity_page' ? array($parent_activity->nid => $parent_activity) : $inquiry_info->getActivitiesForPhase($phase_nid);
 
 	foreach ($activities as $activity_nid => $activity_node) {
 		$edit = $mode == 'parent_activity_edit' && $activity_edit == $activity_nid;
-		$child_edit = ($mode == 'child_activity_edit' && $parent_activity == $activity_nid) ? $activity_edit : FALSE;
+		$child_edit = ($mode == 'child_activity_edit' && $parent_activity->nid == $activity_nid) ? $activity_edit : FALSE;
 
-		$data['activities'][$activity_nid] = _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $child_edit, $child_delete);
+		$data['activities'][$activity_nid] = _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $child_edit, $child_delete, $separate_page);
 	}
 
 	$output = theme('pi_activities_view_phase', $data);
@@ -84,7 +81,7 @@ function pi_activities_page($node) {
 	return $output;
 }
 
-function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $edit_child, $child_delete) {
+function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $edit_child, $child_delete, $separate_page) {
 	$access = $inquiry_access->getAccessToItem($activity_node);
 	$reason = $inquiry_access->getAccessReason($activity_node);
 	$inquiry_nid = $inquiry_info->getInquiryNid();
@@ -119,6 +116,7 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
 				'child_activity_delete' => $edit_child && $child_delete,
 				'editable' => $access === 'edit',
 				'activity_nid' => $activity_node->nid,
+				'separate_page' => $separate_page,
 		);
 
 		if ($edit) {

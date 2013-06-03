@@ -2,39 +2,50 @@
 
 $(function() {
 
-	var LabelPainter = function(viewMeasureHandler, actionCallbacks) {
+	var LabelPainter = function(viewMeasureHandler, whiteboard, actionCallbacks) {
 		this._viewMeasureHandler = viewMeasureHandler;
+		this._whiteboard = whiteboard;
 		this._actionCallbacks = actionCallbacks;
 	};
 	LabelPainter.prototype.createPaintShape = function(data, options) {
-		if (options.mode === 'selected') {
-			return false;
-		} else {
-			var position = this._viewMeasureHandler.parsePositionFromData(data);
-			var shape = {
-				pos: {
-					x: position.x,
-					y: position.y
-				},
-				shapes: [
-					{
-						type: 'circle',
-						r: 12,
-						settings: options.mode === 'hover' ?
-										{fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 2} :
-										{fill: '#FDD017', stroke: '#AF7817', strokeWidth: 2},
-						callbacks: this._actionCallbacks
-					}, {
-						type: 'text',
-						text: "" + (1 + options.index),
-						settings: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'central', 'text-anchor': 'middle'}
-					}
-				],
-				dontScale: true,
-				position: 'front'
-			};
-			return shape;
+
+		var settings = null;
+		switch (options.mode) {
+			case 'selected':
+				settings = {fill: '#37FD60', stroke: '#17AF38', strokeWidth: 2};
+				break
+			case 'hover':
+				settings = {fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 2};
+				break;
+			default:
+				settings = {fill: '#FDD017', stroke: '#AF7817', strokeWidth: 2};
+				break;
 		}
+
+		var position = this._viewMeasureHandler.parsePositionFromData(data);
+		var w = this._whiteboard.getViewWindow(position);
+		var shape = {
+			pos: {
+				x: position.x - .5 * w.w,
+				y: position.y - .5 * w.h
+			},
+			shapes: [
+				{
+					type: 'circle',
+					r: 12,
+					settings: settings,
+					callbacks: this._actionCallbacks
+				}, {
+					type: 'text',
+					text: "" + (1 + options.index),
+					settings: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'central', 'text-anchor': 'middle'}
+				}
+			],
+			dontScale: true,
+			position: 'front'
+		};
+		return shape;
+
 	};
 
 	var ShadowPainter = function(viewMeasureHandler, whiteboard) {
@@ -132,7 +143,7 @@ $(function() {
 			if (enabled) {
 				input.attr('checked', true);
 			}
-			
+
 			$('<label>').appendTo($('<div>')[first ? 'prependTo' : 'appendTo']($('.virtual_microscope_view_menu_popup')))
 							.append(input).append(title)
 							.change(function() {
@@ -160,7 +171,7 @@ $(function() {
 			};
 
 			this._addDrawableFeature('shadow', 'Shadows', new ShadowPainter(handler, this._whiteboard), true, false);
-			this._addDrawableFeature('label', 'Labels', new LabelPainter(handler, actionCallbacks), true, true);
+			this._addDrawableFeature('label', 'Labels', new LabelPainter(handler, this._whiteboard, actionCallbacks), true, true);
 
 			var data = this._ajaxService.getCurrentData(this._snapshotMeasure);
 			var viewValue = handler.parseViewFromData(data);

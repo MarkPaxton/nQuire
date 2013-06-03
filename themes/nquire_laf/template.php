@@ -184,9 +184,6 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 		return '';
 	}
 
-
-
-
 	$circle_radius = 60.0;
 	$circle_stroke = 8.0;
 	$circle_distance = 80.0;
@@ -306,7 +303,9 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 function phptemplate_pi_activities_view_phase($data) {
 	drupal_set_title($data['phase']['title']);
 
-	$output = "<p>{$data['phase']['description']}</p><p><small>{$data['phase']['sharing']}</small></p>";
+	if ($data['in_phase']) {
+		$output = "<p>{$data['phase']['description']}</p><p><small>{$data['phase']['sharing']}</small></p>";
+	}
 
 	foreach ($data['activities'] as $activity_data) {
 		$output .= '<div>' . theme('pi_activities_view_activity', $activity_data) . '</div>';
@@ -317,47 +316,53 @@ function phptemplate_pi_activities_view_phase($data) {
 
 function phptemplate_pi_activities_view_activity($activity_data) {
 
-	$output = '<a name="' . $activity_data['node']->nid . '"></a>'
-					. '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
+	$output = '<a name="' . $activity_data['node']->nid . '"></a>';
 
-	$output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
+	if ($activity_data['content']['mode'] === 'activity_page') {
+		$output .= $activity_data['content']['content'];
+	} else {
 
-	$output .= '<div class="phase_activity_content_wrapper">'
-					. '<table class="phase_activity_table"><tr ><td class="phase_activity_label"><div>' . t('Activity:') . '</div></td><td class="phase_activity_content_cell phase_activity_description">' . $activity_data['description'] . '</td></tr>';
+		$output .= '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
 
-	if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
-		switch ($activity_data['content']['mode']) {
-			case 'twocolumns':
-				foreach ($activity_data['content']['rows'] as $row) {
-					if (is_array($row[1])) {
-						$empty = $row[1]['empty'];
-						$content = $row[1]['content'];
-					} else {
-						$empty = $row[1] === FALSE;
-						$content = $empty ? '' : $row[1];
+		$output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
+
+		$output .= '<div class="phase_activity_content_wrapper">'
+						. '<table class="phase_activity_table"><tr ><td class="phase_activity_label"><div>' . t('Activity:') . '</div></td><td class="phase_activity_content_cell phase_activity_description">' . $activity_data['description'] . '</td></tr>';
+
+		if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
+			switch ($activity_data['content']['mode']) {
+				case 'twocolumns':
+					foreach ($activity_data['content']['rows'] as $row) {
+						if (is_array($row[1])) {
+							$empty = $row[1]['empty'];
+							$content = $row[1]['content'];
+						} else {
+							$empty = $row[1] === FALSE;
+							$content = $empty ? '' : $row[1];
+						}
+						$content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
+
+						$output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
 					}
-					$content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
-
-					$output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
-				}
-				$output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
-				break;
-			case 'singleblock':
-				$output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
-				$output .= '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
-				break;
+					$output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
+					break;
+				case 'singleblock':
+					$output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
+					$output .= '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
+					break;
+			}
 		}
+
+		$output .= '</table></div>';
+
+		/* 					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
+		  . '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
+		  . '<div class="phase_activity_link">' .  . '</div>'; */
+
+
+
+		$output .= '</div>';
 	}
-
-	$output .= '</table></div>';
-
-	/* 					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
-	  . '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
-	  . '<div class="phase_activity_link">' .  . '</div>'; */
-
-
-
-	$output .= '</div>';
-
+	
 	return $output;
 }

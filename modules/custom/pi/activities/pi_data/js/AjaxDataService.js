@@ -170,9 +170,20 @@ $(function() {
 			this._measuresService.prepareToSave(submit);
 		},
 		_ajaxCall: function(op, data, callback) {
-			var urlEnd = location.href.indexOf('?');
-			var url = urlEnd >= 0 ? location.href.substr(0, urlEnd) : location.href;
+			var url = location.href;
+
+			var urlEnd = url.indexOf('?');
+			if (urlEnd >= 0) {
+				var url = url.substr(0, urlEnd);
+			}
+
+			var urlEnd = url.indexOf('#');
+			if (urlEnd >= 0) {
+				var url = url.substr(0, urlEnd);
+			}
+
 			url += '/data/' + op;
+			
 			$.ajax({
 				url: url,
 				type: "POST",
