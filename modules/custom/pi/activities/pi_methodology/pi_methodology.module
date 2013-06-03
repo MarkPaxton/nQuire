@@ -17,16 +17,10 @@ function pi_methodology_node_info() {
 					'has_body' => TRUE,
 					'body_label' => t('Methodology description'),
 					'locked' => TRUE,
-					'add_node_type' => 'pi_available_measures')
+					'add_node_type' => 'pi_available_measures',
+					'edit_action_label' => t('Select measures'),
+			),
 	);
-}
-
-/**
- * Hook node_perm()
- * @return unknown_type
- */
-function pi_methodology_perm() {
-	
 }
 
 /*
@@ -47,9 +41,6 @@ function pi_methodology_theme() {
 			'pi_methodology_node_form' => array(
 					'arguments' => array('form'),
 			),
-			'pi_methodology' => array(
-					'arguments' => array('node', 'teaser'),
-			)
 	);
 }
 
@@ -124,10 +115,6 @@ function pi_methodology_form(&$node) {
 	}
 
 	return $form;
-}
-
-function pi_methodology_form_pi_methodology_node_form_alter(&$form, &$form_state) {
-	unset($form['buttons']['delete']);
 }
 
 /**
@@ -331,63 +318,79 @@ function pi_methodology_view($node, $teaser, $page = FALSE) {
 	return $node;
 }
 
+function pi_methodology_display_content_in_activity($node, $options) {
+	$rows = NULL;
+
+	if ($options['edit']) {
+		$rows = array(array(t('Select measures:'), node_page_edit($node)));
+	} else {
+		$child_activity_edit = node_load($options['child_activity_edit']);
+
+		if ($child_activity_edit) {
+			$label = $child_activity_edit->script_activity ? t('New measure:') : t('Edit measure <i>@measure</i>:', array('@measure' => $child_activity_edit->title));
+			$rows = array(array($label, pi_activity_get_children_activity_edit_form($child_activity_edit)));
+		} else if (is_array($node->measures) && count($node->measures) > 0) {
+			$rows = array();
+			foreach ($node->measures as $activity_nid => $activity_measures) {
+				$activity_node = node_load($activity_nid);
+
+
+				$regions_list = array();
+				foreach ($activity_measures as $region => $list) {
+					$region_title = pi_methodology_get_region_label($region);
+					$region_description = pi_methodology_get_region_description($region);
+
+
+					$region_section = array(
+							'data' => '<b>' . check_plain($region_title) . '</b> - ' . check_plain($region_description),
+							'style' => 'padding-top: 10px;',
+							'children' => array(),
+					);
+
+					if (count($list) > 0) {
+						foreach ($list as $measure_nid) {
+							$measure_node = node_load($measure_nid);
+							if (!$measure_node->script_measure && $options['editable']) {
+								$label = pi_activity_build_link_for_child(pi_activity_get_activity_nid_for_content_nid($measure_node->nid));
+							} else {
+								$label = check_plain($measure_node->title);
+							}
+
+							$region_section['children'][] = array(
+									'data' => '<b>' . $label . '</b>: ' .
+									inquiry_available_features_name('measure', $measure_node->measure_type),
+							);
+						}
+					} else {
+						$region_section['children'][] = array(
+								'data' => '<i><small>' . pi_methodology_get_empty_region_label($region) . '</small></i>',
+								'style' => 'list-style-type: none;',
+						);
+					}
+					$regions_list[] = $region_section;
+				}
+				$label = t('Measures for<br/><i>@activity</i>:', array('@activity' => $activity_node->title));
+				$content = theme('item_list', $regions_list, NULL, 'ul');
+
+				$rows[] = array($label, $content);
+			}
+		} else {
+			$rows[] = array('Measures', array('content' => t('There are not data collection activities to configure.'), 'empty' => TRUE));
+		}
+	}
+
+	return array(
+			'mode' => 'twocolumns',
+			'rows' => $rows,
+	);
+}
+
 function pi_methodology_create_contribution_view($node) {
 	return pi_methodology_create_shared_view($node);
 }
 
 function pi_methodology_create_shared_view($node) {
 	return theme('pi_methodology', $node, FALSE);
-}
-
-/**
- * Theme function
- * @param unknown_type $node
- * @return unknown_type
- */
-function theme_pi_methodology($node, $use_links) {
-	$output = '';
-
-	if (is_array($node->measures)) {
-		foreach ($node->measures as $activity_nid => $activity_measures) {
-			$activity_node = node_load($activity_nid);
-			$output .= '<p>' . t('Selected measures for activity ') . '<b>' . check_plain($activity_node->title) . '</b>:</p>'
-							. '<div style="padding: 0 10px 0 10px; margin-left: 10px; border: 1px solid lightgray; border-radius: 3px;">';
-
-			$regions_list = array();
-			foreach ($activity_measures as $region => $list) {
-				$region_title = pi_methodology_get_region_label($region);
-				$region_description = pi_methodology_get_region_description($region);
-
-				$region_section = array(
-						'data' => '<b>' . check_plain($region_title) . '</b> - ' . check_plain($region_description),
-						'style' => 'padding-top: 10px;',
-						'children' => array(),
-				);
-
-				if (count($list) > 0) {
-					foreach ($list as $measure_nid) {
-						$measure_node = node_load($measure_nid);
-						$label = check_plain($measure_node->title);
-						$region_section['children'][] = array(
-								'data' => '<b>' . $label . '</b>: ' .
-								inquiry_available_features_name('measure', $measure_node->measure_type),
-						);
-					}
-				} else {
-					$region_section['children'][] = array(
-							'data' => '<i><small>' . pi_methodology_get_empty_region_label($region) . '</small></i>',
-							'style' => 'list-style-type: none;',
-					);
-				}
-				$regions_list[] = $region_section;
-			}
-			$output .= theme('item_list', $regions_list, NULL, 'ul');
-
-			$output .= '</div>';
-		}
-	}
-
-	return $output;
 }
 
 /**

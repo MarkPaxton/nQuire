@@ -117,6 +117,8 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
 				'edit' => $edit,
 				'child_activity_edit' => $edit_child,
 				'child_activity_delete' => $edit_child && $child_delete,
+				'editable' => $access === 'edit',
+				'activity_nid' => $activity_node->nid,
 		);
 
 		if ($edit) {

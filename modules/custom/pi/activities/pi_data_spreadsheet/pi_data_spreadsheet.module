@@ -51,34 +51,26 @@ function pi_data_spreadsheet_form(&$node) {
 	return $form;
 }
 
+function pi_data_spreadsheet_display_content_in_activity($node, $options) {
+	if (isset($_SERVER['REDIRECT_URL']) && strpos($_SERVER['REDIRECT_URL'], 'undefined') === FALSE) {
+		$spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node, $options['editable']);
+		$output .= theme('pi_data_spreadsheet_grid', $spreadsheet);
+		
+		return array(
+				'mode' => 'singleblock',
+				'content' => $output,
+		);
+	}
+
+	return NULL;
+}
 
 /**
  * Implementation of hook_view().
  */
 function pi_data_spreadsheet_view($node, $teaser = FALSE, $page = FALSE) {
-	if (isset($_SERVER['REDIRECT_URL']) && strpos($_SERVER['REDIRECT_URL'], 'undefined') === FALSE) {
-		if (!$teaser) {
-			$spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node, FALSE);
-			$output .= theme('pi_data_spreadsheet_grid', $spreadsheet);
-		} else {
-			$output = t('Enter the activity to view the spreadsheet.');
-		}
-
-		$node = node_prepare($node, $teaser);
-
-		$node->content['body'] = array(
-				'#value' => $output,
-				'#weight' => 0
-		);
-	}
-
+	$node = node_prepare($node, $teaser);
 	return $node;
-}
-
-function pi_data_spreadsheet_custom_edit_page($node) {
-	$spreadsheet = _pi_data_spreadsheet_get_spreadsheet($node, TRUE);
-	$output .= theme('pi_data_spreadsheet_grid', $spreadsheet);
-	return $output;
 }
 
 function pi_data_spreadsheet_create_contribution_view($node) {

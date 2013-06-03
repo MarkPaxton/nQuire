@@ -336,13 +336,15 @@ function phptemplate_pi_activities_view_activity($activity_data) {
 						$empty = $row[1] === FALSE;
 						$content = $empty ? '' : $row[1];
 					}
-					$content_class = $empty ? 'phase_activity_no_content': 'phase_activity_content';
-					
-					$output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class .  '">' . $content . '</div></td></tr>';
+					$content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
+
+					$output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
 				}
-
 				$output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
-
+				break;
+			case 'singleblock':
+				$output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
+				$output .= '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
 				break;
 		}
 	}

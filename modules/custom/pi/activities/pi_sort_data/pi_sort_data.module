@@ -18,10 +18,6 @@ function pi_sort_data_node_info() {
 	);
 }
 
-function pi_sort_data_perm() {
-	
-}
-
 function pi_sort_data_access($op, $node, $account) {
 	return FALSE;
 }
@@ -48,91 +44,78 @@ function pi_sort_data_form(&$node) {
 	return $form;
 }
 
-function pi_sort_data_custom_edit_page($node) {
-	global $user;
-
-	$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
-	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	$selected_measures = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_id_for_this_node);
-
-	$header = array();
-	$header[] = t('Created:');
-	$measures = array();
-	foreach ($selected_measures as $measure_nid => $required) {
-		$measure = node_load($measure_nid);
-		if (pi_data_tools_measure_plugin_show_in_table($measure)) {
-			$header[] = check_plain($measure->title) . t(':');
-			$measures[] = $measure;
-		}
-	}
-
-
-	$data_rows = array();
-
-	foreach ($data_nids as $nid) {
-		$row = array();
-		$data_item_node = node_load($nid);
-		$data_item_activity_nid = pi_activity_get_activity_nid_for_content_nid($nid);
-
-		$row[] = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
-						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid))) . '<br/>'
-						. l(t('edit'), 'activity/' . $data_item_activity_nid . '/edit') . '&nbsp;&nbsp;&nbsp;'
-						. l(t('delete'), 'activity/' . $data_item_activity_nid . '/delete');
-
-		foreach ($measures as $measure) {
-			$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
-		}
-		$data_rows[] = $row;
-	}
-
-
-	return theme('pi_sort_data', $header, $data_rows);
+function pi_sort_data_view($node, $teaser, $page = FALSE) {
+	$node = node_prepare($node, $teaser);
+	return $user;
 }
 
-function pi_sort_data_view($node, $teaser, $page = FALSE) {
-	global $user;
+function pi_sort_data_show_edit_link() {
+	return FALSE;
+}
 
-	$node = node_prepare($node, $teaser);
+function pi_sort_data_display_content_in_activity($node, $options) {
 
-	$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
-	$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	$selected_measures = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_id_for_this_node);
+	if ($options['child_activity_edit'] && !$options['child_activity_delete']) {
+		$child_activity_edit = node_load($options['child_activity_edit']);
+		$label = $child_activity_edit->script_activity ? t('New data:') : t('Edit data:');
+		return array(
+				'mode' => 'twocolumns',
+				'rows' => array(array($label, pi_activity_get_children_activity_edit_form($child_activity_edit))),
+		);
+	} else {
+		global $user;
 
-	$header = array();
-	$header[] = t('Created:');
-	$measures = array();
-	foreach ($selected_measures as $measure_nid => $required) {
-		$measure = node_load($measure_nid);
-		if (pi_data_tools_measure_plugin_show_in_table($measure)) {
-			$header[] = check_plain($measure->title) . t(':');
-			$measures[] = $measure;
+		$data_nids = pi_sort_data_get_data_for_sort_node_nid($node->nid);
+		$activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
+		$selected_measures = pi_methodology_get_measures_for_use_in_content_node($node->nid, $activity_id_for_this_node);
+
+		$header = array();
+		$header[] = t('Created:');
+		$measures = array();
+		foreach ($selected_measures as $measure_nid => $required) {
+			$measure = node_load($measure_nid);
+			if (pi_data_tools_measure_plugin_show_in_table($measure)) {
+				$header[] = check_plain($measure->title) . ($required ? '*' : '') . t(':');
+				$measures[] = $measure;
+			}
 		}
-	}
 
 
-	$data_rows = array();
+		$data_rows = array();
 
-	foreach ($data_nids as $nid) {
-		$row = array();
-		$data_item_node = node_load($nid);
-		$data_item_activity_nid = pi_activity_get_activity_nid_for_content_nid($nid);
+		if (count($data_nids) > 0) {
+			foreach ($data_nids as $nid) {
+				$row = array();
+				$data_item_node = node_load($nid);
+				$data_item_activity_nid = pi_activity_get_activity_nid_for_content_nid($nid);
 
-		$row[] = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
-						. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid)));
+				$first_cell = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
+								. t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid)));
+				if ($options['editable']) {
+					$first_cell .= '<br/>' . l(t('edit'), 'activity/' . $data_item_activity_nid) . '&nbsp;&nbsp;&nbsp;'
+									. l(t('delete'), 'activity/' . $data_item_activity_nid . '/delete');
+				}
+				
+				$row[] = $first_cell;
 
-		foreach ($measures as $measure) {
-			$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
+				foreach ($measures as $measure) {
+					$row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
+				}
+				$data_rows[] = $row;
+			}
+		} else {
+			$data_rows[] = array(
+					array('data' => t('<i>No data has been created yet.</i>'), 'colspan' => count($header)),
+			);
 		}
-		$data_rows[] = $row;
+
+		$content = theme('pi_sort_data', $header, $data_rows);
+
+		return array(
+				'mode' => 'singleblock',
+				'content' => $content,
+		);
 	}
-
-
-	$node->content['pi_sort_data'] = array(
-			'#value' => theme('pi_sort_data', $header, $data_rows),
-			'#weight' => 2
-	);
-
-	return $node;
 }
 
 function pi_sort_data_create_contribution_view($node) {
@@ -213,3 +196,4 @@ function pi_sort_data_delete_activity($activity_node) {
 		node_delete($measure_nid);
 	}
 }
+

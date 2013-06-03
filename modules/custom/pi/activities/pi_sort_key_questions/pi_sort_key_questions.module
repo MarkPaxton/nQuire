@@ -159,7 +159,12 @@ function pi_sort_key_questions_display_content_in_activity($node, $options) {
 									return pi_activity_get_children_activity_edit_form($child_activity_edit);
 								}
 							} else {
-								return pi_activity_build_link_for_child($key_question_activity_id);
+								if ($options['editable']) {
+									return pi_activity_build_link_for_child($key_question_activity_id);
+								} else {
+									$question_node = node_load($nid);
+									return check_plain($question_node->key_question);
+								}
 							}
 						}, pi_sort_key_questions_get_questions_for_node($node));
 
@@ -221,6 +226,7 @@ function theme_pi_sort_key_questions_node_form($form) {
 	$output .= drupal_render($form);
 	return $output;
 }
+
 
 function pi_sort_key_questions_get_questions_use_in_activity_nid($using_activity_nid, $using_uid) {
 	$inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);

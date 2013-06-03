@@ -1,5 +1,4 @@
 <?php
-
 // $Id: pi_hypothesis_conclusion.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
@@ -26,30 +25,10 @@ function pi_hypothesis_conclusion_node_info() {
 }
 
 /**
- * Implementation of hook_perm().
- */
-function pi_hypothesis_conclusion_perm() {
-	return array('create pi_hypothesis_conclusion content', 'edit pi_hypothesis_conclusion');
-}
-
-/**
  * Implementation of hook_access().
  */
 function pi_hypothesis_conclusion_access($op, $node, $account) {
 	return FALSE;
-}
-
-/**
- * hook_theme() for pi_hypothesis_conclusion - defines theme function
- * for viewing a pi_hypothesis conclusion
- * @return array as per drupal hook_theme() api.
- */
-function pi_hypothesis_conclusion_theme() {
-	return array(
-			'pi_hypothesis_conclusion' => array(
-					'arguments' => array('node', 'teaser'),
-			),
-	);
 }
 
 /**
@@ -73,7 +52,7 @@ function pi_hypothesis_conclusion_form(&$node) {
 	$form['conclusion'] = array(
 			'#type' => 'textarea',
 			'#title' => $type->body_label,
-			'#required' => TRUE,
+			'#required' => FALSE,
 			'#default_value' => $node->conclusion,
 			'#description' => t('Type your answer into the above box and click on the Save button when you are finished'),
 			'#resizable' => FALSE,
@@ -82,14 +61,7 @@ function pi_hypothesis_conclusion_form(&$node) {
 			'#weight' => -2
 	);
 
-	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($current_path->activity_nid, $user->uid);
-	$form['#prefix'] = theme('pi_hypothesis_to_support_activities', $hypothesis_nids);
-
 	return $form;
-}
-
-function pi_hypothesis_conclusion_form_pi_hypothesis_conclusion_node_form_alter(&$form, &$form_state) {
-	//nquire_commons_form_replace_delete_button_with_link($form);
 }
 
 /**
@@ -125,46 +97,76 @@ function pi_hypothesis_conclusion_load($node) {
 	return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis_conclusion} WHERE vid = %d', $node->vid));
 }
 
-/**
- * Implementation of hook_view().
- */
-function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
-	$node = node_prepare($node, $teaser);
+function pi_hypothesis_conclusion_display_content_in_activity($node, $options) {
+	global $user;
+	
+	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($options['activity_nid'], $user->uid);
 
-	if (!$teaser) {
-		$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_content($node->nid);
-		$node->content['pi_hypothesis'] = array(
-				'#value' => theme('pi_hypothesis_to_support_activities', $hypothesis_nids),
-				'#weight' => 1
-		);
+	$rows = array();
+	
+	if ($hypothesis_nids) {
+		$hypotheses = array_filter(array_map(function($nid) {
+											$node = node_load($nid);
+											return trim(check_plain($node->hypothesis));
+										}, $hypothesis_nids));
+
+		if (count($hypotheses) === 1) {
+			$h_content = $hypotheses[0];
+		} else if (count($hypotheses) > 0) {
+			$h_content = theme('item_list', $hypotheses);
+		} else {
+			$h_content = FALSE;
+		}
+
+		if ($h_content) {
+			$rows[] = array(t('Hypothesis:'), $h_content);
+		}
 	}
 
-	// Use Drupal's default node view.
-	$node->content['pi_hypothesis_conclusion'] = array(
-			'#value' => theme('pi_hypothesis_conclusion', $node, $teaser),
-			'#weight' => 2
-	);
+	if ($options['edit']) {
+		$c_content = node_page_edit($node);
+	} else if ($node) {
+		$c_content = check_plain($node->conclusion);
+	} else {
+		$c_content = FALSE;
+	}
 
+	$rows[] = array(t('Conclusion:'), $c_content);
+	
+	return array(
+			'mode' => 'twocolumns',
+			'rows' => $rows,
+	);
+}
+
+function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
+	$node = node_prepare($node, $teaser);
 	return $node;
 }
 
-/**
- * Theme function to display the pi_hypothesis_conclusion view page (uses drupal theme_hook())
- * @param object(node) $node Drupal node of type pi_hypothesis_conlcusion
- * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
- * @return string HTML for the page content added for hypothesis conclusion data
- */
-function theme_pi_hypothesis_conclusion($node, $teaser) {
-	$output = '<strong>' . t('Conclusion:') . '</strong> ' . nl2br($node->conclusion);
-	return $output;
 
-	return $output;
+
+/**
+* Theme function to display the pi_hypothesis_conclusion view page (uses drupal theme_hook())
+* @param object(node) $node Drupal node of type pi_hypothesis_conlcusion
+* @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
+* @return string HTML for the page content added for hypothesis conclusion data
+*/
+function theme_pi_hypothesis_conclusion($node, $teaser) {
+$output = '< 
+
+
+
+strong>' . t('Conclusion:') . '</strong> ' . nl2br($node->conclusion);
+return $output;
+
+return $output;
 }
 
 function pi_hypothesis_conclusion_create_shared_view($node) {
-	return theme('pi_hypothesis_conclusion', $node, FALSE);
+return theme('pi_hypothesis_conclusion', $node, FALSE);
 }
 
 function pi_hypothesis_conclusion_create_contribution_view($node) {
-	return theme('pi_hypothesis_conclusion', $node, FALSE);
+return theme('pi_hypothesis_conclusion', $node, FALSE);
 }

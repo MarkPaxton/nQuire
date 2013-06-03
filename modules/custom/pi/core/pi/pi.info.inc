@@ -686,6 +686,7 @@ class PiInquiryContent {
 				while ($row = db_fetch_array($result)) {
 					$sharing_actors[] = $row['actor'];
 				}
+				break;
 		}
 
 		$nids = array();

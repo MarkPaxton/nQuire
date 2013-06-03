@@ -17,9 +17,13 @@ function pi_activity_create_edit_links($activity_node, $edit_view, $child_edit) 
 
 		if ($can_edit) {
 			if ($has_content) {
-				if (!$edit_view) {
-					$label = $add_activity_nid ? t('Sort') : t('Edit');
-					$links[] = array('url' => url("activity/{$activity_node->nid}", array('fragment' => $activity_node->nid)), 'label' => $label, 'image' => 'editable.png');
+				if (!($edit_view || $child_edit)) {
+					$show_edit_link_f = "{$activity_node->activity_type}_show_edit_link";
+					if (!function_exists($show_edit_link_f) || $show_edit_link_f()) {
+						$type = node_get_types('type', $activity_node->activity_type);
+						$label = isset($type->edit_action_label) ? $type->edit_action_label : ($add_activity_nid ? t('Sort') : t('Edit'));
+						$links[] = array('url' => url("activity/{$activity_node->nid}", array('fragment' => $activity_node->nid)), 'label' => $label, 'image' => 'editable.png');
+					}
 				}
 
 				if ($add_activity_nid && !$child_edit) {

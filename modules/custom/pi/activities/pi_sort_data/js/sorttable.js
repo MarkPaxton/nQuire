@@ -117,7 +117,7 @@ sorttable = {
 		/** FIX (eloy)
 		 * nasty jquery trick
 		 */
-		$(header).parents('table').find('tr')
+		$(header).parents('table.sortable').find('tr')
 						.filter(':odd').removeClass('even').addClass('odd').end()
 						.filter(':even').removeClass('odd').addClass('even');
 		return;
