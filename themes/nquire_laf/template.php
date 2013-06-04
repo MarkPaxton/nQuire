@@ -327,7 +327,7 @@ function phptemplate_pi_activities_view_activity($activity_data) {
 		$output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
 		$output .= '<div class="phase_activity_content_wrapper">'
-						. '<table class="phase_activity_table"><tr ><td class="phase_activity_label"><div>' . t('Activity:') . '</div></td><td class="phase_activity_content_cell phase_activity_description">' . $activity_data['description'] . '</td></tr>';
+						. '<table class="phase_activity_table"><tr ><td class="phase_activity_label"><div>' . t('Activity:') . '</div></td><td class="phase_activity_content_cell phase_activity_description"><div>' . $activity_data['description'] . '</div></td></tr>';
 
 		if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
 			switch ($activity_data['content']['mode']) {

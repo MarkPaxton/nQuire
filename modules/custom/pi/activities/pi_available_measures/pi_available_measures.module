@@ -78,7 +78,7 @@ function pi_available_measures_form(&$measure, $form_state) {
 
 	$data_activity_nid = nquire_commons_form_node_default_value($measure, 'activity_nid', $form_state, 'activity_nid', $default_activity);
 	$form['activity_nid'] = array(
-			'#type' => 'select',
+			'#type' => count($data_activity_options) === 1 ? 'hidden' : 'select',
 			'#title' => t('Data gathering activity'),
 			'#description' => t('Select the data activity in which the measure will be used.'),
 			'#default_value' => $data_activity_nid,
@@ -120,13 +120,6 @@ function pi_available_measures_form(&$measure, $form_state) {
 				'#default_value' => $title,
 		);
 
-		$activity_dependent_form['description'] = array(
-				'#type' => 'textarea',
-				'#title' => t('Measure description'),
-				'#description' => t('Write here the description of the measure. This could include, for instance, an explanation of how to use this measure.'),
-				'#default_value' => $description,
-				'#required' => FALSE
-		);
 
 		$options = inquiry_available_features_list_measures_for_tool($tool);
 
@@ -155,6 +148,15 @@ function pi_available_measures_form(&$measure, $form_state) {
 						'method' => 'replace',
 						'effect' => 'fade',
 				),
+		);
+		
+		
+		$activity_dependent_form['description'] = array(
+				'#type' => 'textarea',
+				'#title' => t('Measure description'),
+				'#description' => t('Write here the description of the measure. This could include, for instance, an explanation of how to use this measure.'),
+				'#default_value' => $description,
+				'#required' => FALSE
 		);
 
 		nquire_commons_create_form_wrapped_section($activity_dependent_form, 'measures_type_dependent_section');

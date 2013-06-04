@@ -9,7 +9,7 @@ function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 	switch ($op) {
 		case 'list':
 			$blocks = array();
-			$blocks[0]['info'] = t('Inquiry management');
+			$blocks[0]['info'] = t('Manage inquiry');
 			$blocks[1]['info'] = t('Join inquiry');
 			return $blocks;
 
@@ -24,19 +24,22 @@ function pi_inquiry_manager_block($op = 'list', $delta = 0) {
 						if ($inquiry_access->hasInquiryAccess() && (arg(0) !== 'inquiry' || arg(2) === 'structure' || arg(2) === 'participants' || arg(2) === 'share' || arg(2) === 'stages')) {
 							$tools = array();
 
-							$tools[] = l(t('Start'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure');
+							if (arg(2) !== 'structure') {
+								$tools[] = l(t('Start'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure');
+							}
+
 							if (pi_info()->getCurrentInquiryInfo()->hasSeveralStages()) {
 								$tools[] = l(t('Stages'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/stages');
 							}
 
-							$tools[] = l(t('Participants'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/participants');
+							$tools[] = l(t('People and groups'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/participants');
 
 							$tools[] = l(t('Share content'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/share');
 
 							$content = t(theme('item_list', $tools, NULL, 'ul', array('class' => 'menu')));
 
 							return array(
-									'subject' => t('Inquiry management'),
+									'subject' => t('Manage inquiry'),
 									'content' => $content
 							);
 						}

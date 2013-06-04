@@ -37,50 +37,54 @@ function pi_key_answers_access($op, $node, $account) {
  */
 function pi_key_answers_form(&$node) {
 	global $user;
-	$current_path = pi_info()->getCurrentPath();	
+	$current_path = pi_info()->getCurrentPath();
 	$child_activity = node_load($current_path->activity_nid);
-	
-	$key_questions = pi_sort_key_questions_get_questions_use_in_activity_nid($child_activity->parent_activity, $user->uid);
 
-	if (count($key_questions) > 0) {
+
+
+	if ($node->key_question_id) {
+		$form['key_question_id'] = array(
+				'#type' => 'hidden',
+				'#required' => TRUE,
+				'#default_value' => $node->key_question_id,
+		);
+	} else {
+		$key_questions = pi_sort_key_questions_get_questions_use_in_activity_nid($child_activity->parent_activity, $user->uid);
+
 		$key_question_options = array();
 		foreach ($key_questions as $question_nid) {
 			$question = node_load($question_nid);
 			$key_question_options[$question_nid] = $question->key_question;
 		}
-
 		$form['key_question_id'] = array(
 				'#type' => 'select',
-				//'#title' => t('Key question'),
 				'#required' => TRUE,
-				'#default_value' => $node->key_question_id,
 				'#description' => t('Select a key question to answer'),
 				'#options' => $key_question_options,
 				'#weight' => -6
 		);
-
-		$form['title'] = array(
-				'#type' => 'hidden',
-				'#value' => t('Key answer')
-		);
-
-		$form['body_filter']['key_answer'] = array(
-				'#type' => 'textarea',
-				//'#title' => t('Answer'),
-				'#required' => TRUE,
-				'#default_value' => $node->key_answer,
-				'#description' => t('Enter an answer to your selected key question'),
-				'#resizable' => FALSE,
-				'#rows' => 4,
-				'#cols' => 40,
-				'#weight' => -2
-		);
 	}
+
+	$form['title'] = array(
+			'#type' => 'hidden',
+			'#value' => t('Key answer')
+	);
+
+	$form['body_filter']['key_answer'] = array(
+			'#type' => 'textarea',
+			//'#title' => t('Answer'),
+			'#required' => TRUE,
+			'#default_value' => $node->key_answer,
+			'#description' => t('Enter an answer to your selected key question'),
+			'#resizable' => FALSE,
+			'#rows' => 4,
+			'#cols' => 40,
+			'#weight' => -2
+	);
+
 
 	return $form;
 }
-
-
 
 /**
  * Implementation of hook_insert().
