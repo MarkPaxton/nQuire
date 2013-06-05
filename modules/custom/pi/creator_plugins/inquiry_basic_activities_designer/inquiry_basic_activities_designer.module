@@ -105,8 +105,52 @@ function inquiry_basic_activities_designer_nquire_creator_activity_pi_sort_data_
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_sort_data_form_process(&$activity, $design, $form_values) {
+	global $user;
 	module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
-	return _inquiry_basic_activities_designer_tool_form_process($activity, $design, $form_values);
+	$modified = _inquiry_basic_activities_designer_tool_form_process($activity, $design, $form_values);
+	
+	$data = nquire_commons_decode_data($activity->parameters);
+	if (isset($data['tool']['type']) && $data['tool']['type'] !== 'none') {
+		$measures = inquiry_available_features_invoke('tool', 'mandatory_measures', $data['tool']['type'], $data['tool'], $form_values);
+	} 
+	if (!is_array($measures)) {
+		$measures = array();
+	}
+	if (!is_array($data['mandatory_measures'])) {
+		$data['mandatory_measures'] = array();
+	}
+	foreach($data['mandatory_measures'] as $key => $measure_nid) {
+		if (!isset($measures[$key])) {
+			node_delete($measure_nid);
+		}
+	}
+	foreach($measures as $key => $measure_parameters) {
+		if (!isset($data['mandatory_measures'][$key])) {
+			$measure = new stdClass();
+			$measure->type = 'pi_available_measures';
+			$measure->uid = $user->uid;
+			$measure->measure_type = $measure_parameters['type'];
+			$measure->title = $measure_parameters['title'];
+			$measure->script_measure = TRUE;
+			$measure->mandatory = TRUE;
+			$measure->body = $measure_parameters['description'];
+			$measure->data = $measure_parameters['data'];
+			$measure->activity_nid = $activity->nid;
+			
+			node_save($measure);
+			$data['mandatory_measures'][$key] = $measure->nid;			
+		}
+	}
+	
+	$new_data = json_encode($data);
+	if ($new_data !== $activity->parameters) {
+		$activity->parameters = $new_data;
+		$modified = TRUE;
+	}
+	
+	
+	
+	return $modified;	
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_methodology_form($activity, $design, &$form, &$form_state) {
@@ -144,7 +188,7 @@ function inquiry_basic_activities_designer_nquire_creator_activity_pi_methodolog
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_methodology_create_activity(&$stub) {
-	inquiry_creator_create_activity_child($stub, 'hidden_pi_available_measures', t('Add measure'));
+	inquiry_creator_create_activity_child($stub, 'hidden_pi_available_measures', t('Add new measure'));
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_sort_result_presentations_create_activity(&$stub) {

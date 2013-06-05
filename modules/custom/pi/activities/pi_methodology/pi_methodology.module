@@ -18,7 +18,7 @@ function pi_methodology_node_info() {
 					'body_label' => t('Methodology description'),
 					'locked' => TRUE,
 					'add_node_type' => 'pi_available_measures',
-					'edit_action_label' => t('Select measures'),
+					'edit_action_label' => t('Organize measures'),
 			),
 	);
 }
@@ -260,7 +260,7 @@ function _pi_methodology_load_default_measures() {
 
 		foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($activity_nid) as $measure_nid) {
 			$measure = node_load($measure_nid);
-			$region = $measure->mandatory ? 'key' : 'unselected';
+			$region = $measure->mandatory ? 'key' : 'dependent';
 			$output[$activity_nid][$region][] = $measure_nid;
 		}
 	}
@@ -283,7 +283,7 @@ function pi_methodology_display_content_in_activity($node, $options) {
 	$rows = NULL;
 
 	if ($options['edit']) {
-		$rows = array(array(t('Select measures:'), node_page_edit($node)));
+		$rows = array(array(t('Organize<br/>measures:'), node_page_edit($node)));
 	} else {
 		$child_activity_edit = node_load($options['child_activity_edit']);
 
@@ -334,7 +334,11 @@ function _pi_methodology_get_measures_table($node, $editable) {
 						$label = check_plain($measure_node->title);
 					}
 
-					$table .= '<div measure_id="' . $measure_nid . '" class="measure_item nquire_list_item">'
+					$classname = 'measure_item nquire_list_item ' .
+									($measure_node->mandatory ? 'measure_mandatory' : 'measure_selectable');
+
+
+					$table .= '<div measure_id="' . $measure_nid . '" class="' . $classname . '">'
 									. '<div class="measure_item_content"><b>' . $label . '</b>: ' . inquiry_available_features_name('measure', $measure_node->measure_type) . '</div>'
 									. '</div>';
 				}

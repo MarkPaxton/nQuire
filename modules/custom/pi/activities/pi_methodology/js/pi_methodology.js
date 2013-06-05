@@ -22,7 +22,7 @@ $(function() {
 
 			$('.measure_container').each(function() {
 				$(this).sortable({
-					items: '.measure_item',
+					items: '.measure_selectable',
 					connectWith: '.measure_container',
 					revert: 100,
 					start: start,
