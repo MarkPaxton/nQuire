@@ -54,8 +54,8 @@ function _inquiry_basic_activities_designer_tool_form_process(&$activity, $desig
   }
 
   $old_data = nquire_commons_decode_data($activity->parameters);
-  if (isset($old_data['measures'])) {
-    $data['measures'] = $old_data['measures'];
+  if (isset($old_data['mandatory_measures'])) {
+    $data['mandatory_measures'] = $old_data['mandatory_measures'];
   }
 
   $new_data = json_encode($data);

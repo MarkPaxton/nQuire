@@ -24,7 +24,7 @@ $(function() {
 				self._cancelInput();
 			},
 			clearCallback: function() {
-				self.clearValue();
+				self._clearValue();
 			},
 			saveCallback: function() {
 				self._saveAndStop();
@@ -48,12 +48,21 @@ $(function() {
 		this._updateDisplayValue();
 	};
 
-	NumberMeasureManager.prototype.clearValue = function() {
+	NumberMeasureManager.prototype._clearValue = function() {
 		this._value = null;
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._measureManager.setPaintValueForSave(false, null);
 		this._updatePaint();
 		this._serviceDelegate.saveData('', true);
+		this._updateDisplayValue();
+	};
+
+	NumberMeasureManager.prototype.clearValue = function() {
+		this._value = null;
+		this._element.vmUserInteractionMeasure('setActiveMode', false);
+		this._measureManager.setPaintValueForSave(false, null);
+		this._updatePaint();
+		this._serviceDelegate.saveData('');
 		this._updateDisplayValue();
 	};
 
@@ -71,8 +80,8 @@ $(function() {
 	NumberMeasureManager.prototype._saveAndStop = function() {
 		this._value = this._editingInfo;
 		this._measureManager.setPaintValueForSave(false, this._value);
-		this._serviceDelegate.saveData(JSON.stringify(this._value), true);
 		this._stopInput();
+		this._serviceDelegate.saveData(JSON.stringify(this._value), true);
 	};
 
 	NumberMeasureManager.prototype._cancelInput = function() {

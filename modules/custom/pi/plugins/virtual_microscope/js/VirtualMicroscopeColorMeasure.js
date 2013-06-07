@@ -19,7 +19,7 @@ $(function() {
 				self._cancelInput();
 			},
 			clearCallback: function() {
-				self.clearValue();
+				self._clearValue();
 			},
 			emptyValueCallback: function() {
 				return !self._value;
@@ -49,11 +49,19 @@ $(function() {
 		this._updateDisplayValue();
 	};
 
-	ColorMeasureManager.prototype.clearValue = function() {
+	ColorMeasureManager.prototype._clearValue = function() {
 		this._value = null;
 		$('body').rockColorPicker('select', this._value);
 		this._element.vmUserInteractionMeasure('setActiveMode', false);
 		this._serviceDelegate.saveData('', true);
+		this._updateDisplayValue();
+	};
+	
+	ColorMeasureManager.prototype.clearValue = function() {
+		this._value = null;
+		$('body').rockColorPicker('select', this._value);
+		this._element.vmUserInteractionMeasure('setActiveMode', false);
+		this._serviceDelegate.saveData('');
 		this._updateDisplayValue();
 	};
 

@@ -7,6 +7,7 @@ $(function() {
 		_transform: null,
 		_iframe: null,
 		_shapes: null,
+		_ready: false,
 		_readyListeners: null,
 		_resizeListeners: null,
 		_pathCaptureCallback: null,
@@ -14,6 +15,7 @@ $(function() {
 			this._parent = $('#virtual_microscope_container');
 			this._vmManager = dependencies.VirtualMicroscopeManager;
 			this._readyListeners = [];
+			this._ready = false;
 			this._resizeListeners = [];
 			this._shapes = {};
 
@@ -42,11 +44,14 @@ $(function() {
 				case 'polyline':
 					obj = this._svg.polyline(parent, shape.points, shape.settings);
 					break;
+				case 'polygon':
+					obj = this._svg.polygon(parent, shape.points, shape.settings);
+					break;
 				case 'line':
 					obj = this._svg.line(parent, shape.points.x1, shape.points.y1, shape.points.x2, shape.points.y2, shape.settings);
 					break;
 				case 'text':
-					obj = this._svg.text(parent, 0, 0, shape.text, shape.settings);
+					obj = this._svg.text(parent, shape.x, shape.y, shape.text, shape.settings);
 					break;
 				default:
 					break;
@@ -75,34 +80,45 @@ $(function() {
 		draw: function(name, layer, paint) {
 			this.remove(name);
 			if (paint) {
-				var _dontScale = paint.dontScale ? true : false;
-
 				var group = this._svg.group(this._svgLayers[layer]);
 				$(group).attr('transform', 'translate(' + paint.pos.x + ' ' + paint.pos.y + ')').attr('shape-name', name);
 
-				var parent, inverseScaleElement = null;
-				if (_dontScale && paint.shapes) {
-					inverseScaleElement = parent = this._svg.group(group);
-				} else {
-					parent = group;
-				}
-
-				if (paint.shapes) {
-					for (var i in paint.shapes) {
-						this._createSvgElement(parent, paint.shapes[i], name);
+				var hasNoScaleShapes = false;
+				for (var i in paint.shapes) {
+					if (paint.shapes[i].dontScale) {
+						hasNoScaleShapes = true;
 					}
-				} else if (paint.shape) {
-					inverseScaleElement = this._createSvgElement(parent, paint.shape, name);
 				}
 
-				this._shapes[name] = _dontScale ?
+				var inverseScaleElement = null;
+				if (hasNoScaleShapes) {
+					inverseScaleElement = this._svg.group(group);
+				}
+
+				for (var i in paint.shapes) {
+					var shape = paint.shapes[i];
+					var parent = shape.dontScale ? inverseScaleElement : group;
+					this._createSvgElement(parent, shape, name);
+				}
+
+				this._shapes[name] = hasNoScaleShapes ?
 								{group: group, dontScale: true, object: inverseScaleElement} :
 								{group: group, dontScale: false};
 
-				if (_dontScale) {
+				if (hasNoScaleShapes) {
 					$(inverseScaleElement).attr('transform', this._transform.labelTransform);
 				}
 			}
+		},
+		getBoundingBox: function(name) {
+			if (this._shapes[name]) {
+				var box = this._shapes[name].group.getBBox();
+				if (box.x > 0 || box.y > 0 || box.width > 0 || box.height > 0) {
+					return {x0: box.x, y0: box.y, x1: box.x + box.width, y1: box.y + box.height};
+				}
+			}
+
+			return false;
 		},
 		setShapeSettings: function(name, settings) {
 			this._svg.change(this._shapes[name].object, settings);
@@ -142,8 +158,11 @@ $(function() {
 			this._resizeListeners.push(callback);
 		},
 		_fireWhiteboardReadyEvent: function(ready) {
-			for (var i in this._readyListeners) {
-				this._readyListeners[i](ready);
+			if (ready !== this._ready) {
+				this._ready = ready;
+				for (var i in this._readyListeners) {
+					this._readyListeners[i](ready);
+				}
 			}
 		},
 		_fireResizeEvent: function() {
@@ -185,14 +204,11 @@ $(function() {
 						self._vmManager.addPositionListener(function(pos) {
 							if (pos) {
 								self.vmPosChanged(pos.position);
+								self._fireWhiteboardReadyEvent(true);
 							}
 						});
-
-						self._fireWhiteboardReadyEvent(true);
 					}
 				});
-
-
 			} else {
 				$('.virtual-microscope-whiteboard').remove();
 				this._svgElement = null;
@@ -236,6 +252,9 @@ $(function() {
 			var hk = (this._transform.frameSize.height - 70) / this._transform.sectionSize.height;
 			this._transform.zeroZoomScale = Math.min(wk, hk);
 		},
+		getScaleAtZoom: function(zoom) {
+			return 1. / (this._transform.zeroZoomScale + (1 - this._transform.zeroZoomScale) * zoom);
+		},
 		_elementResized: function() {
 			this._transform.frameSize.width = parseFloat(this._parent.width());
 			this._transform.frameSize.height = parseFloat(this._parent.height());
@@ -246,7 +265,7 @@ $(function() {
 			this._svgElement.height(this._transform.frameSize.height - 40);
 		},
 		_updateTransform: function() {
-			this._transform.vm2canvas = this._transform.viewPos.zoom + this._transform.zeroZoomScale * (1 - this._transform.viewPos.zoom);
+			this._transform.vm2canvas = this._transform.zeroZoomScale + (1 - this._transform.zeroZoomScale) * this._transform.viewPos.zoom;
 			this._transform.canvas2vm = 1. / this._transform.vm2canvas;
 			this._transform.svgTransform =
 							'translate(' + (this._transform.frameCenter.x) + ' ' + (this._transform.frameCenter.y) + ') ' +
