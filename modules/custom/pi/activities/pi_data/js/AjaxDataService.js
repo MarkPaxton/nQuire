@@ -44,11 +44,27 @@ $(function() {
 				event.preventDefault();
 				event.stopPropagation();
 
-				self._deleteData();
+				var index = self._data.current && self._data.all[self._data.current] ? self._data.all[self._data.current].index : -1;
 
+				if (index >= 0) {
+					$('<div>Are you sure you want to delete data #' + (index + 1) + '?</div>').dialog({
+						title: 'Delete data',
+						resizable: true,
+						modal: true,
+						buttons: {
+							"Yes": function() {
+								self._deleteData();
+								$(this).dialog("close");
+							},
+							Cancel: function() {
+								$(this).dialog("close"); //close confirmation
+							}
+						}
+					});
+				}
 				return false;
-			});
-
+			}
+			);
 			this._measuresService.addUserChangeListener(function(automaticSave) {
 				self._userInputChanged(automaticSave);
 			});
@@ -150,6 +166,7 @@ $(function() {
 		},
 		_deleteData: function() {
 			if (this._data.current) {
+				this._disableDataInput();
 				var self = this;
 				var processResponse = function(success, data) {
 					if (success && self._data.all[data]) {
@@ -158,6 +175,7 @@ $(function() {
 							self._fireDataChangeEvent('deleted', data);
 						});
 					}
+					this._enableDataInput();
 				};
 
 				self._ajaxCall('delete', {'data_id': this._data.current}, processResponse);
