@@ -90,14 +90,15 @@ $(function() {
 					}
 				}
 
-				var inverseScaleElement = null;
+				var inverseScaleElement = null, normalScaleElement = null;
 				if (hasNoScaleShapes) {
+					normalScaleElement = this._svg.group(group);
 					inverseScaleElement = this._svg.group(group);
 				}
 
 				for (var i in paint.shapes) {
 					var shape = paint.shapes[i];
-					var parent = shape.dontScale ? inverseScaleElement : group;
+					var parent = hasNoScaleShapes ? (shape.dontScale ? inverseScaleElement : normalScaleElement) : group;
 					this._createSvgElement(parent, shape, name);
 				}
 
