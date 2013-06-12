@@ -46,7 +46,7 @@ function pi_journal_inquiry_page($inquiry_id) {
 function pi_journal_contribution_page($node_id) {
 	$node = node_load($node_id);
 	if ($node->type === 'pi_journal_contribution' && $node->shared) {
-		return node_show($node, 0);
+		return theme('pi_journal_contribution_display', $node);
 	}
 }
 
@@ -79,13 +79,13 @@ function pi_journal_edit_share_access($inquiry_node) {
 	}
 }
 
-function pi_journal_edit_share_investigation($inquiry_node, $uid, $shared) {
+function pi_journal_edit_share_investigation($inquiry_node, $uid, $publish, $title, $summary) {
 	$contribution_nid = pi_journal_contribution_find_contribution_nid($inquiry_node, $uid);
 	$node = node_load($contribution_nid);
 	$collaboration = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
 	$actor = pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $uid);
 
-	if (!$node) {
+	if (!$node && $publish) {
 		$node = new stdClass();
 		$node->type = 'pi_journal_contribution';
 		$node->uid = $uid;
@@ -95,14 +95,11 @@ function pi_journal_edit_share_investigation($inquiry_node, $uid, $shared) {
 		$node->comment = COMMENT_NODE_READ_WRITE;
 	}
 
-	$node->shared = $shared;
+	$node->shared = $publish;
+	$node->title = $title;
+	$node->body = $summary;
 
 	node_save($node);
-}
-
-function pi_journal_is_shared_for_user($inquiry_node, $uid) {
-	$node = pi_journal_contribution_find_contribution_node($inquiry_node, $uid);
-	return $node && $node->shared;
 }
 
 function theme_pi_journal_share_information($inquiry_node) {

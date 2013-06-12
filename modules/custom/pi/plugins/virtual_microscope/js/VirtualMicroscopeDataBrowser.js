@@ -40,13 +40,13 @@ $(function() {
 		var settings = null;
 		switch (options.mode) {
 			case 'selected':
-				settings = {fill: 'orange', stroke: 'darkorange', strokeWidth: 2, 'vector-effect': 'non-scaling-stroke'};
+				settings = {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'};
 				break
 			case 'hover':
-				settings = {fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 2, 'vector-effect': 'non-scaling-stroke'};
+				settings = {fill: '#FFFF49', stroke: '#E1AA49', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'};
 				break;
 			default:
-				settings = {fill: '#FDD017', stroke: '#AF7817', strokeWidth: 2, 'vector-effect': 'non-scaling-stroke'};
+				settings = {fill: '#FDD017', stroke: '#AF7817', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'};
 				break;
 		}
 
@@ -55,26 +55,21 @@ $(function() {
 			shapes: [],
 			position: 'front'
 		};
-		
+
 		var labelSize = 24;
-		
+
 
 		if (bbox) {
 			var scale = this._whiteboard.getScaleAtZoom(position.zoom);
 			var labelVmHeight = labelSize * scale;
-		var labelVmWidth = labelSize * this._whiteboard.getScaleAtZoom(0);
+			var labelVmWidth = labelSize * this._whiteboard.getScaleAtZoom(0);
 			var gap = 10 * scale;
-			
+
 			bbox.x0 -= gap;
 			bbox.x1 += gap;
 			bbox.y0 -= gap + labelVmHeight;
 			bbox.y1 += gap;
-			
-			/*if (bbox.x1 - bbox.x0 < labelVmWidth) {
-				var d = .5 * (labelVmWidth - bbox.x1 + bbox.x0);
-				bbox.x0 -= d;
-				bbox.x1 += d;
-			}*/
+
 
 			shape.pos = {x: bbox.x0, y: bbox.y0};
 
@@ -88,7 +83,7 @@ $(function() {
 		} else {
 			shape.pos = position;
 		}
-		
+
 		shape.shapes.push({
 			dontScale: true,
 			type: 'polygon',
@@ -152,6 +147,10 @@ $(function() {
 
 			this._ajaxService = dependencies.AjaxDataService;
 			this._ajaxService.addDataListener(function(event, data) {
+				if (event === 'deleted') {
+					self._deleteDataPaint(data);
+				}
+				
 				self._updatePaint();
 				self._viewButtons.centerOnData[event === 'unselected' ? 'addClass' : 'removeClass']('inactive');
 			});
@@ -265,6 +264,12 @@ $(function() {
 				this._whiteboard.clearTempShapes();
 			}
 		},
+		_deleteDataPaint: function(dataId) {
+			for (var feature in this._paintFeatureHandlers) {
+				var fid = dataId + '-' + feature;
+				this._whiteboard.remove(fid);
+			}
+		},
 		_updateDataPaint: function(data, state, all) {
 			var _state = state ? state : (data.id === this._ajaxService.getCurrentDataId() ? 'selected' : 'normal');
 
@@ -279,7 +284,6 @@ $(function() {
 
 			if (fh) {
 				var fid = data ? data.id + '-' + feature : 'temp';
-				console.log(fid);
 				var remove = true;
 				if (status === 'selected' || (all && $('#virtual_microscope_view_menu').find('.virtual_microscope_view_menu_popup').find('input[name="feature_' + feature + '"]').attr('checked'))) {
 					var shape = fh.createPaintShape(data, {mode: status, index: data ? data.index : -1});

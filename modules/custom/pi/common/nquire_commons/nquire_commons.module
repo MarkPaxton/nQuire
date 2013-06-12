@@ -154,6 +154,24 @@ function nquire_commons_create_form_wrapped_section(&$form, $section_id) {
 	);
 }
 
+function nquire_commons_form_set_cancel_button_link(&$form, $cancel_path) {
+	if (isset($form['cancel'])) {
+		$weight = $form['cancel']['#weight'];
+		$sep = TRUE;
+	} else {
+		$weight = isset($form['submit']) ? $form['submit']['#weight'] : 0;
+		$sep = FALSE;
+	}
+
+
+	$cancel_link = l(t('Cancel'), $cancel_path);
+
+	$form['cancel'] = array(
+			'#value' => ($sep ? '&nbsp;&nbsp;' : '') . $cancel_link,
+			'#weight' => $weight + 1,
+	);
+}
+
 function nquire_commons_form_replace_delete_button_with_link(&$form, $activity_node) {
 	if (isset($form['buttons']['delete'])) {
 		$weight = $form['buttons']['delete']['#weight'];
@@ -300,6 +318,15 @@ function nquire_commons_create_false_block($title, $content, $bottom, $id = NULL
 	return $output;
 }
 
+function nquire_commons_create_not_expanding_false_block($title, $content, $bottom, $id = NULL) {
+	$output = array(
+			'title' => '<div class="nquire-block-title">' . $title . '</div>',
+			'middle' => '<div class="nquire-block-not-expanding-middle-content">' . $content . '</div>',
+			'bottom' => '<div class="nquire-block-bottom-content">' . $bottom . '</div>',
+	);
+	return $output;
+}
+
 function nquire_commons_create_ajax_false_data_block($rendered_form, $id = NULL) {
 	$data_block_title = '<div id="nquire-data-input-header-new">' . t('Add new data') . '</div>'
 					. '<div id="nquire-data-input-header-edit">' . t('Edit data') . '</div>';
@@ -408,6 +435,7 @@ function nquire_commons_create_form_buttons(&$form, $buttons) {
 						'#type' => 'submit',
 						'#value' => $data['label'],
 						'#submit' => array($data['callback']),
+						'#button_type' => isset($data['button_type']) ? $data['button_type'] : '',
 						'#attributes' => array('onclick' => 'this.form.target="_self";return true;'),
 				);
 				break;

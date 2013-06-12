@@ -18,7 +18,7 @@ function pi_inquiry_structure_view($node) {
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 
 	$output = '';
-	$output = '<p>' . t('Click a circle to view each phase of <i>@inquiry</i>. ', array('@inquiry' => $inquiry_info->getInquiryNode()->title));
+	$output = '<p>' . t('Click a circle to view any phase of <i>@inquiry</i>. ', array('@inquiry' => $inquiry_info->getInquiryNode()->title));
 
 	$phases = $inquiry_info->getPhases();
 	if (count($phases) > 0) {

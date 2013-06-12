@@ -8,7 +8,7 @@ function pi_journal_contribution_node_info() {
 					'description' => t('Pi journal contribution'), // Required.
 					'has_title' => TRUE,
 					'title_label' => t('Journal contribution'),
-					'has_body' => FALSE,
+					'has_body' => TRUE,
 					'locked' => TRUE
 			),
 	);
@@ -19,7 +19,7 @@ function pi_journal_contribution_form($node, $form_state) {
 }
 
 function pi_journal_contribution_access($op, $node, $account) {
-				return TRUE;
+	return TRUE;
 	return $op === 'view';
 }
 
@@ -85,7 +85,10 @@ function pi_journal_contribution_theme() {
 			'pi_journal_contribution_teaser' => array(
 					'arguments' => array('node' => NULL, 'inquiry_node' => NULL),
 			),
-			'pi_journal_contribution_view' => array(
+			'pi_journal_contribution_display' => array(
+					'arguments' => array('node' => NULL),
+			),
+			'pi_journal_contribution_summary' => array(
 					'arguments' => array('node' => NULL),
 			),
 	);
@@ -93,73 +96,129 @@ function pi_journal_contribution_theme() {
 
 function pi_journal_contribution_view($node) {
 	$node = node_prepare($node, FALSE);
-	$node->content['contribution'] = array(
-			'#value' => theme('pi_journal_contribution_view', $node),
+	$node->content['title'] = array(
+			'#value' => '',
 			'#weight' => 1,
+	);
+	$node->content['body'] = array(
+			'#value' => theme('pi_journal_contribution_summary', $node),
+			'#weight' => 2,
 	);
 	return $node;
 }
 
-function theme_pi_journal_contribution_teaser($node, $inquiry_node) {
-	$args = array('@url' => url('journal/contribution/' . $node->nid));
+function pi_journal_contribution_form_comment_form_alter(&$form, &$form_state) {
+	$node = node_load($form['nid']['#value']);
+	if ($node && $node->type === 'pi_journal_contribution') {
+		$form['revision_information']['#access'] = FALSE;
 
-	switch ($node->collaboration) {
-		case 'individual':
-			$u = user_load($node->actor);
-			$args['@user'] = $u->name;
-			$t = t('View <a href="@url">investigation results</a> of user @user', $args);
-			break;
-		case 'group':
-			$g = node_load($node->actor);
-			$args['@group'] = $g->title;
-			$t = t('View <a href="@url">investigation results</a> of group @gorup', $args);
-			break;
-		case 'all':
-			$args['@inquiry'] = $inquiry_node->title;
-			$t = t('View <a href="@url">investigation results</a> of inquiry @inquiry', $args);
-			break;
+		$path = "journal/contribution/{$node->nid}";
+		$form['#redirect'] = $form_state['redirect'] = $path;
+
+		nquire_commons_form_set_cancel_button_link($form, $path);
 	}
-
-	return $t;
 }
 
-function theme_pi_journal_contribution_view($node) {
-	$inquiry_node = node_load($node->inquiry_id);
-	$args = array('@inquiry' => $inquiry_node->title);
+function theme_pi_journal_contribution_teaser($node) {
+	drupal_add_css(drupal_get_path('module', 'pi_journal_contribution') . '/css/pi_journal_contribution.css');
+	
+	$title = strlen($node->title) > 0 ? check_plain($node->title) : t('Investigation results');
+	$args = array(
+			'@url' => url('journal/contribution/' . $node->nid),
+			'@title' => $title,
+	);
+	
+	$output = '<div class="pi_journal_contribution_title_section">';
 
 	switch ($node->collaboration) {
 		case 'individual':
 			$u = user_load($node->actor);
 			$args['@user'] = $u->name;
-			$t = t('Investigation results</a> of user @user in inquiry @inquiry', $args);
+			$t = t('<a href="@url"><b>@title</b></a> by @user', $args);
 			break;
 		case 'group':
 			$g = node_load($node->actor);
 			$args['@group'] = $g->title;
-			$t = t('Investigation results</a> of group @gorup in inquiry @inquiry', $args);
+			$t = t('<a href="@url"><b>@title</b></a> by group @group', $args);
 			break;
 		case 'all':
-			$t = t('Investigation results</a> of inquiry @inquiry', $args);
+			$t = t('<a href="@url"><b>@title</b></a>', $args);
 			break;
 	}
+	
+	$output .= $t . check_markup($node->body) . '</div>';
 
-	drupal_set_title($t);
-
-	$data = pi_journal_contribution_get_contributed_content($node);
-
-	$output = '';
-	foreach ($data as $phase_data) {
-		foreach ($phase_data['activities'] as $activity_data) {
-			$output .= '<p><b>' . $activity_data['node']->title . '</b></p>';
-
-			foreach ($activity_data['content'] as $actor_id => $content_nid) {
-				$output .= theme('pi_activity_display_contribution_content_node', $phase_data['node']->collaboration, node_load($content_nid), $actor_id, $node->collaboration, $data);
-			}
-		}
-	}
 	return $output;
 }
 
+function theme_pi_journal_contribution_summary($node) {
+	drupal_add_css(drupal_get_path('module', 'pi_journal_contribution') . '/css/pi_journal_contribution.css');
+
+	$inquiry_node = node_load($node->inquiry_id);
+
+	$title = strlen($node->title) > 0 ? check_plain($node->title) : t('Investigation results');
+	$summary = check_markup($node->body);
+	$subtitle = t('Investigation results of inquiry @inquiry', array('@inquiry' => $inquiry_node->title));
+
+	switch ($node->collaboration) {
+		case 'individual':
+			$u = user_load($node->actor);
+			$author = check_plain($u->name);
+			break;
+		case 'group':
+			$g = node_load($node->actor);
+			$author = check_markup(t("Group @group", array('@group' => $g->title)));
+			break;
+		default:
+			$author = FALSE;
+			break;
+	}
+
+
+	$content = '<div class="pi_journal_contribution_title_section">'
+					.'<div class="pi_journal_contribution_title">' . $title . '</div>';
+	$content .= '<div class="pi_journal_contribution_subtitle">' . $subtitle . '</div>';
+	if ($author) {
+		$content .= '<div class="pi_journal_contribution_author">' . $author . '</div>';
+	}
+
+	if ($summary) {
+		$content .= '<div class="pi_journal_contribution_abstract">' . t('Summary: ') . $summary . '</div>';
+	}
+	
+	$content .= '</div>';
+
+	return $content;
+}
+
+function theme_pi_journal_contribution_display($node) {
+	drupal_add_css(drupal_get_path('module', 'pi_journal_contribution') . '/css/pi_journal_contribution.css');
+
+
+	$content = theme('pi_journal_contribution_summary', $node);
+
+	$activities_data = _pi_journal_contribution_get_contributed_content($node);
+
+	$content .= '<div class="pi_journal_contribution_content">';
+	$content .= theme('pi_activities_view_contribution_content', $activities_data);
+	$content .= '</div>';
+
+	$output = '<table><tr>';
+
+	$output .= '<td style="vertical-align: top;">' . $content . '</td>';
+
+	$comments = '<div class="pi_journal_contribution_comments_block">' 
+					. '<div class="pi_journal_contribution_comments_header">' . t('Comments') . '</div>'
+					. '<p><small>' . l(t('Add Comment'), 'comment/reply/' . $node->nid, array('fragment' => 'comment-form')) . '</small></p>'
+					. comment_render($node)
+					. '</div>';
+	$output .= '<td style="vertical-align: top;">' . $comments . '</td>';
+
+	$output .= '</tr></table>';
+
+
+	return $output;
+}
 
 function pi_journal_contribution_find_contribution_node($inquiry_node, $uid) {
 	return node_load(pi_journal_contribution_find_contribution_nid($inquiry_node, $uid));
@@ -182,31 +241,55 @@ function pi_journal_contribution_is_shared_for_user($inquiry_node, $uid) {
 	return $row ? $row['shared'] : FALSE;
 }
 
-function pi_journal_contribution_get_contributed_content($contribution_node) {
+function _pi_journal_contribution_get_contributed_content($contribution_node) {
 	$inquiry_info = pi_info()->getInquiryInfo($contribution_node->inquiry_id);
 	$inquiry_content = pi_info()->getContentManager();
-	
-	$data = array();
+
 	$exclude_types = array('pi_explore_tool', 'pi_read_information');
 
-	foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
-		$phase_data = array(
-				'node' => $phase_node,
-				'activities' => array(),
-		);
-		
-		foreach ($inquiry_info->getActivitiesForPhase($phase_nid) as $activity_nid => $activity_node) {
-			if (!in_array($activity_node->activity_type, $exclude_types)) {
-				$activity_data = array(
-						'node' => $activity_node,
-						'content' => $inquiry_content->getContributionContent($contribution_node, $activity_nid),
-				);
+	$phase_count = count($inquiry_info->getPhases());
+	$keys = _ag_phase_keys($phase_count);
 
-				$phase_data['activities'][] = $activity_data;
+	$activities = array();
+
+	foreach ($inquiry_info->getPhases() as $phase_node) {
+
+		$phase_index = $inquiry_info->getPhaseIndex($phase_node->nid);
+		$phase_key = $keys[$phase_index % strlen($keys)];
+
+		foreach ($inquiry_info->getActivitiesForPhase($phase_node->nid) as $activity_nid => $activity_node) {
+			if (!in_array($activity_node->activity_type, $exclude_types)) {
+				$content_nids = $inquiry_content->getContributionContent($contribution_node, $activity_nid);
+				$activities[] = _pi_journal_contribution_view_get_activity_data($phase_key, $activity_node, $content_nids);
 			}
 		}
+	}
 
-		$data[] = $phase_data;
+	return $activities;
+}
+
+function _pi_journal_contribution_view_get_activity_data($phase_key, $activity_node, $content_nids) {
+	$data = array(
+			'node' => $activity_node,
+			'title' => check_plain($activity_node->title),
+			'description' => nl2br(check_plain($activity_node->body)),
+			'phase_key' => $phase_key,
+			'nodes' => array(),
+	);
+
+	$options = array(
+			'edit' => FALSE,
+			'child_activity_edit' => FALSE,
+			'child_activity_delete' => FALSE,
+			'editable' => FALSE,
+			'activity_nid' => $activity_node->nid,
+			'separate_page' => FALSE,
+	);
+
+	$view_f = "{$activity_node->activity_type}_display_content_in_activity";
+	foreach ($content_nids as $content_nid) {
+		$content_node = node_load($content_nid);
+		$data['nodes'][] = $view_f($content_node, $options);
 	}
 
 	return $data;

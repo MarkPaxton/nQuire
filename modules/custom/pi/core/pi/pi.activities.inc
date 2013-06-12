@@ -49,16 +49,16 @@ function pi_activities_page($node) {
 
 
 	if ($data['in_phase']) {
-		$link = l(t('here'), 'phase/' . $phase_node->nid . '/shared');
+//		$link = l(t('here'), 'phase/' . $phase_node->nid . '/shared');
 
 		switch ($phase_node->collaboration) {
 			case 'individual':
 				$data['phase']['sharing'] .= t('Activities in this phase are carried out individually. ')
-								. t('Click !link to see what other participants are doing.', array('!link' => $link));
+							/*	. t('Click !link to see what other participants are doing.', array('!link' => $link))*/;
 				break;
 			case 'group':
 				$data['phase']['sharing'] .= t('Activities in this phase are carried out in groups.')
-								. t('Click !link to see what other groups are doing.', array('!link' => $link));
+								/*. t('Click !link to see what other groups are doing.', array('!link' => $link))*/;
 				break;
 			default:
 				$data['phase']['sharing'] .= t('Activities in this phase are done by all inquiry participants working together.');
@@ -80,6 +80,8 @@ function pi_activities_page($node) {
 
 	return $output;
 }
+
+
 
 function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $activity_node, $edit, $edit_child, $child_delete, $separate_page) {
 	$access = $inquiry_access->getAccessToItem($activity_node);
@@ -146,3 +148,14 @@ function theme_pi_activities_view_activity($activity_data) {
 	$output = '';
 	return $output;
 }
+
+function theme_pi_activities_view_contribution_content($phases_data) {
+	$output = '';
+	return $output;
+}
+
+function theme_pi_activities_view_shared_activity($activity_data) {
+	$output = '';
+	return $output;
+}
+

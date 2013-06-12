@@ -103,8 +103,13 @@ function pi_sort_key_answers_display_content_in_activity($node, $options) {
 					$answer_activity_nid = pi_activity_get_activity_nid_for_content_nid($answer->nid);
 
 					if ($options['editable']) {
-						if ($answer_activity_nid === $child_activity_edit->nid) {
-							$a_content = pi_activity_get_children_activity_edit_form($child_activity_edit);
+						if ($answer_activity_nid == $child_activity_edit->nid) {
+							if ($options['child_activity_delete']) {
+								$a_content = '<p>' . check_plain($child_activity_edit->title) . '</p>'
+												. drupal_get_form('pi_activity_content_delete_form', $child_activity_edit, t('Are you sure you want to delete this key answer?'));
+							} else {
+								$a_content = pi_activity_get_children_activity_edit_form($child_activity_edit);
+							}
 						} else {
 							$a_content = pi_activity_build_link_for_child(pi_activity_get_activity_nid_for_content_nid($answer->nid));
 						}
@@ -134,7 +139,7 @@ function pi_sort_key_answers_display_content_in_activity($node, $options) {
 		}
 
 		if (count($rows) === 0) {
-			$rows = array(array(t('Key answers:'), array('content' => t('There are not questions yet.'), 'empty' => TRUE)));
+			$rows = array(array(t('Key answers:'), array('content' => t('There are no questions yet.'), 'empty' => TRUE)));
 		}
 	}
 
@@ -148,7 +153,6 @@ function pi_sort_key_answers_view($node, $teaser, $page = FALSE) {
 	$node = node_prepare($node, $teaser);
 	return $node;
 }
-
 
 function pi_sort_key_answers_create_contribution_view($node) {
 	return pi_sort_key_answers_create_shared_view($node);

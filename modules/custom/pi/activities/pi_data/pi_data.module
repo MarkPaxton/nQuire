@@ -317,6 +317,7 @@ function theme_pi_data($node, $teaser) {
 }
 
 /* AJAX form functions */
+
 function pi_data_ajax_access() {
 	return TRUE;
 }
@@ -351,6 +352,28 @@ function pi_data_ajax_submit() {
 			'status' => TRUE,
 			'data' => $item,
 	);
+
+	drupal_json($result);
+}
+
+function pi_data_ajax_delete() {
+
+	global $user;
+	/* TODO check permissions! */
+
+	$node = _pi_data_ajax_get_form_data_node();
+	if ($node) {
+		node_delete($node->nid);
+		$result = array(
+				'data' => $node->nid,
+				'status' => TRUE,
+		);
+	} else {
+		$result = array(
+				'data' => '',
+				'status' => FALSE,
+		);
+	}
 
 	drupal_json($result);
 }

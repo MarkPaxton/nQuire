@@ -33,13 +33,20 @@ $(function() {
 				return false;
 			});
 
-			$('#nquire-data-input-button-createdata').click(function() {
+			$('#nquire-data-input-button-createdata').click(function(event) {
+				event.preventDefault();
+				event.stopPropagation();
 				self.clearDataAndNotify();
 				return false;
 			});
 
-			$('#nquire-data-input-button-deletedata').click(function() {
+			$('#nquire-data-input-button-deletedata').click(function(event) {
+				event.preventDefault();
+				event.stopPropagation();
 
+				self._deleteData();
+
+				return false;
 			});
 
 			this._measuresService.addUserChangeListener(function(automaticSave) {
@@ -141,6 +148,21 @@ $(function() {
 				this._submitData();
 			}
 		},
+		_deleteData: function() {
+			if (this._data.current) {
+				var self = this;
+				var processResponse = function(success, data) {
+					if (success && self._data.all[data]) {
+						delete self._data.all[data];
+						self.setData(null, function() {
+							self._fireDataChangeEvent('deleted', data);
+						});
+					}
+				};
+
+				self._ajaxCall('delete', {'data_id': this._data.current}, processResponse);
+			}
+		},
 		_submitData: function() {
 			var self = this;
 			var processResponse = function(success, data) {
@@ -183,7 +205,7 @@ $(function() {
 			}
 
 			url += '/data/' + op;
-			
+
 			$.ajax({
 				url: url,
 				type: "POST",
