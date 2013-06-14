@@ -1,0 +1,22 @@
+<?php
+
+function pi_node_hierarchy_set_parent($child_nid, $parent_nid) {
+	$query = "INSERT INTO {pi_node_hierarchy} (child, parent) VALUES (%d, %d) ON DUPLICATE KEY UPDATE parent=%d";
+	db_query($query, $child_nid, $parent_nid, $parent_nid);
+}
+
+function pi_node_hierarchy_get_children($parent_nid) {
+	$query = "SELECT child FROM {node} LEFT JOIN {pi_node_hierarchy} ON node.nid=pi_node_hierarchy.child WHERE parent=%d";
+	$result = db_query($query, $parent_nid);
+	$children = array();
+	while ($row = db_fetch_array($result)) {
+		$children[] = $row['child'];
+	}
+	return $children;
+}
+
+function pi_node_hierarchy_get_parent($child_nid) {
+	$query = "SELECT parent FROM {pi_node_hierarchy} WHERE child=%d";
+	$row = db_fetch_array(db_query($query, $child_nid));
+	return $row ? $row['parent'] : NULL;
+}

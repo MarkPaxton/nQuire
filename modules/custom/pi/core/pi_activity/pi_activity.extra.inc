@@ -8,34 +8,35 @@
 
 
 
-function pi_activity_build_link_for_child($child_activity_nid) {
+function pi_activity_build_link_for_child($child_content_nid, $title) {
+	$parent_content_nid = pi_node_hierarchy_get_parent($child_content_nid);
+	$activity_nid = pi_activity_get_activity_nid_for_content_nid($parent_content_nid);
+	
 	global $user;
-	$child_activity_node = node_load($child_activity_nid);
-	$content_manager = pi_info()->getContentManager();
-	$access_manager = pi_info()->getAccessManager(pi_info()->getInquiryInfoForActivity($child_activity_node->parent_activity)->getInquiryNid(), $user->uid);
+	$activity_node = node_load($activity_nid);
+	$access_manager = pi_info()->getAccessManager(pi_info()->getInquiryInfoForActivity($activity_nid)->getInquiryNid(), $user->uid);
 	
 
-	$access = $access_manager->getAccessToItem($child_activity_node);
+	$access = $access_manager->getAccessToItem($activity_node);
 	if ($access === 'hidden') {
 		$image = 'unavailable.png';
-	} else if ($content_manager->getContent($child_activity_nid, $user->uid, FALSE)) {
-		$image = $access . 'able.png';
 	} else {
-		$image = 'creatable.png';
-	}
+		$image = $access . 'able.png';
+	} 
 
 	global $base_path;
 	$image_path = $base_path . '/' . drupal_get_path('module', 'pi') . '/images/' . $image;
 
-	$text = check_plain($child_activity_node->title) . '&nbsp;' . "<img width='12' src='" . $image_path . "'/>";
+	$text = check_plain($title) . '&nbsp;' . "<img width='12' src='" . $image_path . "'/>";
 
 	if ($access !== 'hidden') {
-		$url = "activity/" . $child_activity_nid;
-		return l($text, $url, array('html' => TRUE));
+		$url = "activity/$activity_nid/edit/$child_content_nid";
+		return l($text, $url, array('html' => TRUE, 'fragment' => $activity_nid));
 	} else {
 		return $text;
 	}
 }
+
 
 function pi_activity_build_link($activity_nid) {
 	global $user;

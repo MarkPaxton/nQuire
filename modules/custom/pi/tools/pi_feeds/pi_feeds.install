@@ -1,0 +1,99 @@
+<?php
+
+// $Id: pi_data.install,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * Implementation of pi_data_install().
+ */
+function pi_feeds_install() {
+	drupal_install_schema('pi_feeds');
+}
+
+/**
+ * Implementation of pi_data_uninstall().
+ */
+function pi_feeds_uninstall() {
+	// Remove tables.
+	drupal_uninstall_schema('pi_feeds');
+}
+
+/**
+ * Implementation of pi_data_schema().
+ */
+function pi_feeds_schema() {
+	$schema['pi_feeds'] = array(
+			'description' => t('PI feeds'),
+			'fields' => array(
+					'type' => array(
+							'description' => t('feed type'),
+							'type' => 'text',
+							'size' => 'small',
+					),
+					'context' => array(
+							'description' => t('feed context'),
+							'type' => 'text',
+							'size' => 'small',
+					),
+					'topic' => array(
+							'description' => t('the nid of the node that acts as feed topic'),
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'default' => 0),
+					'event' => array(
+							'description' => t('feed event'),
+							'type' => 'text',
+							'size' => 'small',
+					),
+					'uid' => array(
+							'description' => t('user that generates the activity'),
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'default' => 0),
+					'timestamp' => array(
+							'description' => 'A Unix timestamp indicating when the challenge was generated.',
+							'type' => 'int',
+							'not null' => TRUE,
+							'default' => 0,
+					),
+			),
+			'indexes' => array(),
+	);
+
+	$schema['pi_collected_data_values'] = array(
+			'description' => t('PI data vaues'),
+			'fields' => array(
+					'nid' => array(
+							'description' => t('node id'),
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'default' => 0),
+					'vid' => array(
+							'description' => t('The current vid version identifier'),
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'default' => 0),
+					'measure_nid' => array(
+							'description' => t('Key question linked with this datum'),
+							'type' => 'int',
+							'unsigned' => TRUE,
+							'not null' => TRUE,
+							'default' => 0),
+					'value' => array(
+							'description' => t('Value of the data entry'),
+							'type' => 'text',
+							'size' => 'medium',
+							'not null' => TRUE),
+			),
+			'indexes' => array(
+					'nid' => array('nid'),
+					'vid' => array('vid'),
+					'measure_nid' => array('measure_nid'),
+			),
+	);
+
+	return $schema;
+}

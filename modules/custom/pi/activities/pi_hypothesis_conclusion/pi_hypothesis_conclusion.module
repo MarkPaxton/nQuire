@@ -1,4 +1,5 @@
 <?php
+
 // $Id: pi_hypothesis_conclusion.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
 
 /**
@@ -29,6 +30,10 @@ function pi_hypothesis_conclusion_node_info() {
  */
 function pi_hypothesis_conclusion_access($op, $node, $account) {
 	return FALSE;
+}
+
+function pi_hypothesis_conclusion_edit_content_label() {
+	return t('Edit');
 }
 
 /**
@@ -99,11 +104,11 @@ function pi_hypothesis_conclusion_load($node) {
 
 function pi_hypothesis_conclusion_display_content_in_activity($node, $options) {
 	global $user;
-	
-	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($options['activity_nid'], $user->uid);
+
+	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($options['activity_node']->nid, $user->uid);
 
 	$rows = array();
-	
+
 	if ($hypothesis_nids) {
 		$hypotheses = array_filter(array_map(function($nid) {
 											$node = node_load($nid);
@@ -132,7 +137,7 @@ function pi_hypothesis_conclusion_display_content_in_activity($node, $options) {
 	}
 
 	$rows[] = array(t('Conclusion:'), $c_content);
-	
+
 	return array(
 			'mode' => 'twocolumns',
 			'rows' => $rows,
@@ -144,29 +149,23 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
 	return $node;
 }
 
-
-
 /**
-* Theme function to display the pi_hypothesis_conclusion view page (uses drupal theme_hook())
-* @param object(node) $node Drupal node of type pi_hypothesis_conlcusion
-* @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
-* @return string HTML for the page content added for hypothesis conclusion data
-*/
+ * Theme function to display the pi_hypothesis_conclusion view page (uses drupal theme_hook())
+ * @param object(node) $node Drupal node of type pi_hypothesis_conlcusion
+ * @param object(pi_activity) $current_activity default NULL, pi_activity object that's linked to this node
+ * @return string HTML for the page content added for hypothesis conclusion data
+ */
 function theme_pi_hypothesis_conclusion($node, $teaser) {
-$output = '< 
+	$output = '< 
 
 
 
 strong>' . t('Conclusion:') . '</strong> ' . nl2br($node->conclusion);
-return $output;
+	return $output;
 
-return $output;
+	return $output;
 }
 
 function pi_hypothesis_conclusion_create_shared_view($node) {
-return theme('pi_hypothesis_conclusion', $node, FALSE);
-}
-
-function pi_hypothesis_conclusion_create_contribution_view($node) {
-return theme('pi_hypothesis_conclusion', $node, FALSE);
+	return theme('pi_hypothesis_conclusion', $node, FALSE);
 }

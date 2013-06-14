@@ -1,33 +1,35 @@
 <?php
 
-function pi_activity_create_edit_links($activity_node, $edit_view, $child_edit) {
+function pi_activity_create_edit_links($activity_node, $edit_view) {
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	if ($inquiry_info) {
 		global $user;
 		$access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 		$content_manager = pi_info()->getContentManager();
 
-		$has_content = $content_manager->getContent($activity_node->nid, $user->uid, FALSE);
+		$content_node = node_load($content_manager->getContent($activity_node->nid, $user->uid, FALSE));
+		
 		$activity_access = $access_data->getAccessToItem($activity_node);
 		$can_edit = pi_activity_tab_edit_access_callback($activity_node) && $activity_access === 'edit';
 
 		$links = array();
 
-		$add_activity_nid = pi_activity_get_add_activity_for_sort_activity($activity_node->nid);
+
 
 		if ($can_edit) {
-			if ($has_content) {
-				if ($add_activity_nid && !$child_edit) {
-					$add_activity = node_load($add_activity_nid);
-					$links[] = array('url' => url("activity/$add_activity_nid", array('fragment' => $activity_node->nid)), 'label' => check_plain($add_activity->title), 'image' => 'addable.png');
+			if ($content_node) {
+				$add_content_link_f = "{$activity_node->activity_type}_add_content_label";
+				$add_content_link_label = function_exists($add_content_link_f) ? $add_content_link_f($content_node) : FALSE;
+
+				if ($add_content_link_label) {
+					$links[] = array('url' => url("activity/{$activity_node->nid}/add", array('fragment' => $activity_node->nid)), 'label' => $add_content_link_label, 'image' => 'addable.png');
 				}
 
-				if (!($edit_view || $child_edit)) {
-					$show_edit_link_f = "{$activity_node->activity_type}_show_edit_link";
-					if (!function_exists($show_edit_link_f) || $show_edit_link_f()) {
-						$type = node_get_types('type', $activity_node->activity_type);
-						$label = isset($type->edit_action_label) ? $type->edit_action_label : ($add_activity_nid ? t('Sort') : t('Edit'));
-						$links[] = array('url' => url("activity/{$activity_node->nid}", array('fragment' => $activity_node->nid)), 'label' => $label, 'image' => 'editable.png');
+				if (!$edit_view) {
+					$edit_content_link_f = "{$activity_node->activity_type}_edit_content_label";
+					$edit_content_link_label = function_exists($edit_content_link_f) ? $edit_content_link_f($content_node) : FALSE;
+					if ($edit_content_link_label) {
+						$links[] = array('url' => url("activity/{$activity_node->nid}", array('fragment' => $activity_node->nid)), 'label' => $edit_content_link_label, 'image' => 'editable.png');
 					}
 				}
 			} else {

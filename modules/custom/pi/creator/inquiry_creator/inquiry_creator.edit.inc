@@ -231,7 +231,6 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
 
 					if ($activity_node->phase_nid != $phase_node->nid) {
 						$activity_node->phase_nid = $phase_node->nid;
-						inquiry_creator_update_children_activities_phase($activity_node->nid, $phase_node->nid);
 						$change = TRUE;
 					}
 

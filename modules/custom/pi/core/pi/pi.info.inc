@@ -500,34 +500,8 @@ class PiInquiryContent {
 		);
 
 		drupal_write_record('pi_activity_node', $activity_node);
-
-		if (!$activity->script_activity) {
-			$query = "UPDATE pi_activity SET referenced_node=%d WHERE nid=%d";
-			db_query($query, $content_node->nid, $activity_nid);
-		}
 	}
 
-	public function createNewActivityForContent($content_node, $add_activity) {
-		//This is the new activity node to be created
-		$new_activity_node = new stdClass();
-		//copy over current except for the activity_id
-
-		$new_activity_node->type = 'pi_activity';
-		$new_activity_node->uid = $content_node->uid;
-
-		$new_activity_node->title = $content_node->title;
-		$new_activity_node->body = $add_activity->description;
-		$new_activity_node->activity_type = $add_activity->activity_type;
-		$new_activity_node->parameters = $add_activity->parameters;
-		$new_activity_node->script_activity = FALSE;
-		$new_activity_node->phase_nid = $add_activity->phase_nid;
-		$new_activity_node->weight = $add_activity->weight;
-		$new_activity_node->parent_activity = $add_activity->parent_activity;
-
-		node_save($new_activity_node);
-
-		$this->linkContentWithActivity($content_node, $new_activity_node->nid, $content_node->uid);
-	}
 
 	public function getChildrenContentForContentNids($content_nids) {
 		$nids = array();
@@ -538,29 +512,9 @@ class PiInquiryContent {
 	}
 
 	public function getChildrenContentForContentNid($content_nid) {
-		return $this->getChildrenContentForContentNode(node_load($content_nid));
+		return pi_node_hierarchy_get_children($content_nid);
 	}
 
-	public function getChildrenContentForContentNode($content_node) {
-		$activity_nid = $this->getActivityForContent($content_node->nid);
-		$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
-		$actor_data = $inquiry_info->getActivityActor($activity_nid, $content_node->uid);
-		return $this->getChildrenContentForActivityAndActor($activity_nid, $actor_data);
-	}
-
-	private function getChildrenContentForActivityAndActor($activity_nid, $actor_data) {
-		$query = "SELECT {pi_activity_node}.nid FROM {node} LEFT JOIN {pi_activity} ON {node}.vid={pi_activity}.vid "
-						. "LEFT JOIN {pi_activity_node} ON {pi_activity}.nid={pi_activity_node}.activity_id "
-						. "WHERE {pi_activity}.parent_activity=%d AND {pi_activity_node}.collaboration='%s' AND {pi_activity_node}.actor=%d";
-
-		$nids = array();
-		$result = db_query($query, $activity_nid, $actor_data['collaboration'], $actor_data['actor']);
-		while ($row = db_fetch_array($result)) {
-			$nids[] = $row['nid'];
-		}
-
-		return $nids;
-	}
 
 	public function getContentFromForUsingContent($activity_nid, $using_content_nid) {
 		$author = $this->getContentAuthor($using_content_nid);

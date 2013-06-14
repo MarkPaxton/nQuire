@@ -13,8 +13,6 @@ function pi_sort_key_questions_node_info() {
 					'has_body' => FALSE,
 					'body_label' => t('Show and sort of key questions'),
 					'locked' => TRUE,
-					'add_node_type' => 'pi_key_questions',
-					'edit_action_label' => t('Sort questions'),
 			)
 	);
 }
@@ -34,6 +32,19 @@ function pi_sort_key_questions_theme() {
 	);
 }
 
+function pi_sort_key_questions_edit_content_label($node) {
+	$children = pi_node_hierarchy_get_children($node->nid);
+	if (count($children) > 1) {
+		return t('Sort key questions');
+	} else {
+		return FALSE;
+	}
+}
+
+function pi_sort_key_questions_add_content_label() {
+	return t('Add key questions');
+}
+
 /**
  * hook_form() for pi_sort_key_questions which provides draggable sorting for pi_key_questions
  *  nodes in an inquiry
@@ -51,14 +62,8 @@ function pi_sort_key_questions_form(&$node) {
 	// set $tree to point to the above $form['onepageprofile_categories'] object
 	$key_question_elements = &$form['onepageprofile_categories'];
 	foreach ($questions as $i => $question_nid) {
-
-		$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($question_nid);
-		if ($key_question_activity_id) {
-			$question_label = pi_activity_build_link_for_child($key_question_activity_id);
-		} else {
-			$question_node = node_load($question_nid);
-			$question_label = check_plain($question_node->key_question);
-		}
+		$question_node = node_load($question_nid);
+		$question_label = pi_activity_build_link_for_child($question_nid, $question_node->key_question);
 
 		$key_question_elements[$question_nid] = array(
 				'title' => array('#value' => $question_label),
@@ -112,10 +117,6 @@ function pi_sort_key_questions_view($node, $teaser, $page = FALSE) {
 	return $node;
 }
 
-function pi_sort_key_questions_create_contribution_view($node) {
-	return pi_sort_key_questions_create_shared_view($node);
-}
-
 function pi_sort_key_questions_create_shared_view($node) {
 	$key_questions = pi_sort_key_questions_get_questions_for_node($node);
 
@@ -148,22 +149,17 @@ function pi_sort_key_questions_display_content_in_activity($node, $options) {
 	if ($options['edit']) {
 		$rows = array(array(t('Key questions:'), node_page_edit($node)));
 	} else {
-		$child_activity_edit = node_load($options['child_activity_edit']);
-
-		$key_questions = array_map(function($nid) use($child_activity_edit, $options) {
-							$key_question_activity_id = pi_activity_get_activity_nid_for_content_nid($nid);
-							if ($key_question_activity_id == $child_activity_edit->nid) {
-								if ($options['child_activity_delete']) {
-									return '<p>' . check_plain($child_activity_edit->title) . '</p>'
-													. drupal_get_form('pi_activity_content_delete_form', $child_activity_edit, t('Are you sure you want to delete this key question?'));
-								} else {
-									return pi_activity_get_children_activity_edit_form($child_activity_edit);
-								}
+		$key_questions = array_map(function($nid) use($options) {
+							$question_node = node_load($nid);
+							if ($nid == $options['child_edit']) {
+								return pi_activity_get_children_activity_edit_form($question_node);
+							} else if ($nid == $options['child_delete']) {
+								return '<p>' . check_plain($question_node->key_question) . '</p>'
+												. pi_activity_get_child_content_delete_form($options['activity_node'], t('Are you sure you want to delete this key question?'));
 							} else {
 								if ($options['editable']) {
-									return pi_activity_build_link_for_child($key_question_activity_id);
+									return pi_activity_build_link_for_child($nid, check_plain($question_node->key_question));
 								} else {
-									$question_node = node_load($nid);
 									return check_plain($question_node->key_question);
 								}
 							}
@@ -178,8 +174,8 @@ function pi_sort_key_questions_display_content_in_activity($node, $options) {
 			$rows[] = array($kq_label, $content);
 		}
 
-		if ($child_activity_edit->script_activity) {
-			$rows[] = array(t('New key questions:'), pi_activity_get_children_activity_edit_form($child_activity_edit));
+		if ($options['add_child']) {
+			$rows[] = array(t('New key question:'), pi_activity_get_children_activity_edit_form('pi_key_questions'));
 		}
 
 		if (count($rows) === 0) {
@@ -263,7 +259,7 @@ function pi_sort_key_questions_get_questions_use_in_content_nid($content_nid) {
 }
 
 function pi_sort_key_questions_get_questions_for_node($node) {
-	$questions = pi_activity_get_children_content_nids_for_content_nid($node->nid);
+	$questions = pi_node_hierarchy_get_children($node->nid);
 	$query = "SELECT key_question, weight FROM {pi_sort_key_questions} WHERE {pi_sort_key_questions}.vid=%d";
 	$result = db_query($query, $node->vid);
 	$weights = array();

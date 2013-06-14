@@ -1,0 +1,97 @@
+<?php
+
+
+function pi_feeds_enable(){
+  db_query("UPDATE {system} SET weight=1000 WHERE name='pi_feeds'");
+}
+
+
+function _pi_feeds_topic_list_for_context($type, $context, $max = 0) {
+	global $user;
+
+	$query = "SELECT DISTINCT topic FROM pi_feeds WHERE uid != %d AND type='%s'";
+	$args = array($user->uid, $type);
+
+	if ($context) {
+		$query .= " AND context='%s'";
+		$args[] = $context;
+	}
+
+	$query .= ' ORDER BY timestamp DESC';
+
+
+	$topics = array();
+	$result = db_query($query, $args);
+	while ($row = db_fetch_array($result)) {
+		$topics[] = $row['topic'];
+	}
+
+	$filtered_topics = _pi_feeds_filter_topics_by_access($type, $context, $topics);
+	if ($max > 0) {
+		return array_slice($filtered_topics, 0, $max);
+	} else {
+		return $filtered_topics;
+	}
+}
+
+function _pi_feeds_filter_topics_by_access($type, $context, $topics) {
+	if ($type === 'journalcontribution') {
+		return $topics;
+	}
+
+	return array();
+}
+
+function _pi_feeds_add($type, $context, $topic, $event) {
+	$query = "INSERT INTO pi_feeds (type, context, topic, event, timestamp) VALUES ('%s', '%s', %d, '%s', %d)";
+	db_query($query, $type, $context, $topic, $event, time());
+}
+
+function pi_feeds_nodeapi($node, $op) {
+	$content_node = FALSE;
+	
+	switch ($node->type) {
+		case 'pi_key_questions':
+		case 'pi_key_answers':
+		case 'pi_data':
+		case 'pi_results_presentations':
+			if ($op === 'insert' || $op === 'update' || $op === 'delete') {
+				$event = $op . 'child';
+				$content_node = pi_activity_get_parent_content_for_child_nid($node->nid);
+			}
+			break;
+		case 'pi_sort_key_questions':
+		case 'pi_sort_key_answers':
+		case 'pi_sort_result_presentations':
+			if ($op === 'update') {
+				$event = 'update';
+				$content_node = $node->nid;
+			}
+			break;
+		case 'pi_hypothesis':
+		case 'pi_hypothesis_conclusion':
+		case 'pi_wiki_notes':
+			if ($op === 'update' || $op === 'insert') {
+				$event = $op;
+				$content_node = $node->nid;
+			}
+			break;
+	}
+	
+	if ($content_node) {
+		return;
+	}
+}
+
+function _pi_feeds_content_node_event($content_nid, $event) {
+	global $user;
+
+	$inquiry_info = pi_info()->getInquiryInfoForContent($content_nid);
+	if ($inquiry_info->getInquiryNode()) {
+		$contribution_node = pi_journal_contribution_find_contribution_node($inquiry_info->getInquiryNode(), $user->uid);
+		if ($contribution_node) {
+			_pi_feeds_add('journalcontribution', $inquiry_info->getInquiryNid(), $contribution_node->nid, $event);
+		}
+	}
+}
+

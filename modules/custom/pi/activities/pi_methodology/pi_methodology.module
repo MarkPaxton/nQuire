@@ -17,8 +17,6 @@ function pi_methodology_node_info() {
 					'has_body' => TRUE,
 					'body_label' => t('Methodology description'),
 					'locked' => TRUE,
-					'add_node_type' => 'pi_available_measures',
-					'edit_action_label' => t('Organize measures'),
 			),
 	);
 }
@@ -30,6 +28,14 @@ function pi_methodology_node_info() {
 
 function pi_methodology_access($op, $node) {
 	return FALSE;
+}
+
+function pi_methodology_add_content_label() {
+	return t('Add new measure');
+}
+
+function pi_methodology_edit_content_label() {
+	return t('Organize measures');
 }
 
 /**
@@ -173,7 +179,7 @@ function pi_methodology_load($node) {
 		}
 	}
 
-	$user_created_measures = pi_activity_get_children_content_nids_for_content_nid($node->nid);
+	$user_created_measures = pi_node_hierarchy_get_children($node->nid);
 	if ($user_created_measures) {
 		foreach ($user_created_measures as $user_created_measure_nid) {
 			$user_created_measure_node = node_load($user_created_measure_nid);
@@ -285,22 +291,40 @@ function pi_methodology_display_content_in_activity($node, $options) {
 	if ($options['edit']) {
 		$rows = array(array(t('Organize<br/>measures:'), node_page_edit($node)));
 	} else {
-		$child_activity_edit = node_load($options['child_activity_edit']);
+		$activity = node_load(pi_activity_get_activity_nid_for_content_nid($node->nid));
 
-		if ($child_activity_edit) {
-			$label = $child_activity_edit->script_activity ? t('New measure:') : t('Edit measure <i>@measure</i>:', array('@measure' => $child_activity_edit->title));
-			$rows = array(array($label, pi_activity_get_children_activity_edit_form($child_activity_edit)));
-		} else if (is_array($node->measures) && count($node->measures) > 0) {
-			$rows = array();
-
-			$tables = _pi_methodology_get_measures_table($node, $options['editable']);
-			foreach ($tables as $data_activity_nid => $table) {
-				$data_activity_node = node_load($data_activity_nid);
-				$label = t('Measures for<br/><i>@activity</i>:', array('@activity' => $data_activity_node->title));
-				$rows[] = array($label, $table);
-			}
+		if ($options['child_delete']) {
+			$child_measure_delete = node_load($options['child_delete']);
+			$content = '<div class="measure_item_content"><b>' . check_plain($child_measure_delete->title) . '</b>: ' . inquiry_available_features_name('measure', $child_measure_delete->measure_type) . '</div>'
+							. pi_activity_get_child_content_delete_form($activity, t('Are you sure you want to delete this measure?'));
+			$rows = array(array(t('Delete measure:'), $content));
 		} else {
-			$rows[] = array('Measures', array('content' => t('There are no data collection activities to configure.'), 'empty' => TRUE));
+			$child_measure_edit = NULL;
+			if ($options['child_edit']) {
+				$child_measure_edit = node_load($options['child_edit']);
+			} else if ($options['add_child']) {
+
+				$data = nquire_commons_decode_data($activity->parameters);
+				if ($data['own_measures']) {
+					$child_measure_edit = 'pi_available_measures';
+				}
+			}
+
+			if ($child_measure_edit) {
+				$label = $options['child_edit'] ? t('New measure:') : t('Edit measure:');
+				$rows = array(array($label, pi_activity_get_children_activity_edit_form($child_measure_edit)));
+			} else if (is_array($node->measures) && count($node->measures) > 0) {
+				$rows = array();
+
+				$tables = _pi_methodology_get_measures_table($node, $options['editable']);
+				foreach ($tables as $data_activity_nid => $table) {
+					$data_activity_node = node_load($data_activity_nid);
+					$label = t('Measures for<br/><i>@activity</i>:', array('@activity' => $data_activity_node->title));
+					$rows[] = array($label, $table);
+				}
+			} else {
+				$rows[] = array('Measures', array('content' => t('There are no data collection activities to configure.'), 'empty' => TRUE));
+			}
 		}
 	}
 
@@ -329,7 +353,7 @@ function _pi_methodology_get_measures_table($node, $editable) {
 				foreach ($list as $measure_nid) {
 					$measure_node = node_load($measure_nid);
 					if (!$measure_node->script_measure && $editable) {
-						$label = pi_activity_build_link_for_child(pi_activity_get_activity_nid_for_content_nid($measure_node->nid));
+						$label = pi_activity_build_link_for_child($measure_node->nid, $measure_node->title);
 					} else {
 						$label = check_plain($measure_node->title);
 					}
@@ -359,9 +383,6 @@ function _pi_methodology_get_measures_table($node, $editable) {
 	return $tables;
 }
 
-function pi_methodology_create_contribution_view($node) {
-	return pi_methodology_create_shared_view($node);
-}
 
 function pi_methodology_create_shared_view($node) {
 	return theme('pi_methodology', $node, FALSE);
