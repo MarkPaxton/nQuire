@@ -21,13 +21,29 @@ function pi_sort_result_presentations_access($op, $node, $account) {
 	return FALSE;
 }
 
+
+function pi_sort_result_presentations_edit_content_label($node) {
+	$children = pi_node_hierarchy_get_children($node->nid);
+	if (count($children) > 1) {
+		return t('Sort charts');
+	} else {
+		return FALSE;
+	}
+}
+
+function pi_sort_result_presentations_add_content_label() {
+	return t('Add new chart');
+}
+
+
+
 function pi_sort_result_presentations_display_content_in_activity($node, $options) {
 	$child_node_edit = NULL;
 
 	if ($options['child_edit']) {
 		$child_node_edit = node_load($options['child_edit']);
 	} else if ($options['add_child']) {
-		$child_node_edit = 'pi_data';
+		$child_node_edit = 'pi_result_presentations';
 	}
 
 	if ($child_node_edit) {
@@ -49,7 +65,7 @@ function pi_sort_result_presentations_display_content_in_activity($node, $option
 				$chart_node = node_load($chart_nid);
 				if ($chart_node) {
 					$label = $options['editable'] ? pi_activity_build_link_for_child($chart_nid, $chart_node->title) : check_plain($chart_node->title);
-					$content = '<img src="' . url('activity/' . $options['activity_node']->nid . '/chart/' . $chart_nid) . '"></img>';
+					$content = '<img style="width: 100%;" src="' . url('activity/' . $options['activity_node']->nid . '/chart/' . $chart_nid) . '/chart.png"></img>';
 
 					if ($chart_nid == $options['child_delete']) {
 						$content .= pi_activity_get_child_content_delete_form($options['activity_node'], t('Are you sure you want to delete this chart?'));
