@@ -29,13 +29,13 @@ function pi_data_node_info() {
 function pi_data_menu() {
 	$items = array();
 
-	$items['activity/%/data/submit'] = array(
+	$items['activity/%/pi_data_ajax/submit'] = array(
 			'page callback' => 'pi_data_ajax_submit',
 			'type' => MENU_CALLBACK,
 			'access callback' => 'pi_data_ajax_access',
 	);
-
-	$items['activity/%/data/delete'] = array(
+	
+	$items['activity/%/pi_data_ajax/delete'] = array(
 			'page callback' => 'pi_data_ajax_delete',
 			'type' => MENU_CALLBACK,
 			'access callback' => 'pi_data_ajax_access',
@@ -255,16 +255,13 @@ function pi_data_theme() {
 }
 
 function theme_pi_data_node_form($form) {
-	$details = get_inquiry_details_from_current_path();
-	$activity = node_load($details->activity_id);
+	$path = pi_info()->getCurrentPath();
+	$activity = node_load($path->activity_nid);
 
-
-	$parent_activity = node_load($activity->parent_activity);
-
-	$data = nquire_commons_decode_data($parent_activity->parameters);
+	$data = nquire_commons_decode_data($activity->parameters);
 	if (isset($data['tool'])) {
 		if (pi_data_tools_plugin_use_ajax_form($data['tool'])) {
-			_pi_data_load_ajax_form_support($parent_activity, $form);
+			_pi_data_load_ajax_form_support($activity, $form);
 			unset($form['buttons']);
 		}
 

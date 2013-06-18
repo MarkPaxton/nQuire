@@ -7,10 +7,20 @@ $(function() {
 		_container: null,
 		_overlay: null,
 		_dataListeners: null,
+		_urlBase: null,
 		init: function(dependencies) {
 			this._measuresService = dependencies.DynamicMeasureService;
 			this._data = dependencies.AjaxDataServiceInitialData;
 			this._data.nextIndex = 0;
+
+			var url = location.href;
+			var urlp = url.indexOf('activity/');
+			if (urlp >= 0) {
+				var urlp2 = url.indexOf('/', urlp + 'activity/'.length);
+				if (urlp2 >= 0) {
+					this._urlBase = url.substr(0, urlp2) + '/pi_data_ajax/';
+				}
+			}
 
 			for (var i in this._data.all) {
 				this._indexData(this._data.all[i]);
@@ -210,36 +220,25 @@ $(function() {
 			this._measuresService.prepareToSave(submit);
 		},
 		_ajaxCall: function(op, data, callback) {
-			var url = location.href;
-
-			var urlEnd = url.indexOf('?');
-			if (urlEnd >= 0) {
-				var url = url.substr(0, urlEnd);
-			}
-
-			var urlEnd = url.indexOf('#');
-			if (urlEnd >= 0) {
-				var url = url.substr(0, urlEnd);
-			}
-
-			url += '/data/' + op;
-
-			$.ajax({
-				url: url,
-				type: "POST",
-				dataType: 'json',
-				data: data,
-				success: function(data) {
-					if (data.status) {
-						callback(true, data.data);
-					} else {
-						callback(false, data.error);
+			if (this._urlBase) {
+				var url = this._urlBase + op;
+				$.ajax({
+					url: url,
+					type: "POST",
+					dataType: 'json',
+					data: data,
+					success: function(data) {
+						if (data.status) {
+							callback(true, data.data);
+						} else {
+							callback(false, data.error);
+						}
+					},
+					error: function(jqXHR, textStatus) {
+						callback(false, 'ajax call error: ' + textStatus);
 					}
-				},
-				error: function(jqXHR, textStatus) {
-					callback(false, 'ajax call error: ' + textStatus);
-				}
-			});
+				});
+			}
 		},
 		setData: function(dataId, callbackWhenDone) {
 			var data = null;

@@ -20,3 +20,47 @@ function pi_node_hierarchy_get_parent($child_nid) {
 	$row = db_fetch_array(db_query($query, $child_nid));
 	return $row ? $row['parent'] : NULL;
 }
+
+
+function pi_node_hierarchy_menu() {
+	
+	$items = array();
+
+	$items['admin/settings/unh'] = array(
+			'title' => 'Update node hierarchy',
+			'page callback' => 'pi_node_hierarchy_update_page',
+			'type' => MENU_NORMAL_ITEM,
+			'access callback' => 'pi_node_hierarchy_update_page_access',
+	);
+
+
+	return $items;
+}
+
+function pi_node_hierarchy_update_page_access() {
+	global $user;
+	return $user->uid == 1;
+}
+
+function pi_node_hierarchy_update_page() {
+	$content_manager = pi_info()->getContentManager();
+	$output = '';
+	$query = "SELECT DISTINCT node.nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE pi_activity.script_activity=0 AND referenced_node IS NOT NULL";
+	$result = db_query($query);
+	while($row = db_fetch_array($result)) {
+		$nid = $row['nid'];
+		$node = node_load($nid);
+		$child_content = $node->referenced_node; 
+		$type = $node->activity_type;
+		$parent = $node->parent_activity;
+		$uid = $node->uid;
+		$list_nid = $content_manager->getContent($parent, $uid, FALSE);
+		
+		$output .= "nid: $nid;  type: $type;  parent: $parent;  uid: $uid;  ($child_content -> $list_nid)<br/>";
+		
+		pi_node_hierarchy_set_parent($child_content, $list_nid);
+		node_delete($node->nid);
+	}
+	
+	return $output;
+}
