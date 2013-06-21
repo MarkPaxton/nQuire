@@ -1,0 +1,12 @@
+<?php
+
+function pi_last_visited_phase_set($uid, $inquiry_nid, $phase_nid) {
+  $query = "INSERT INTO {pi_last_visited_phase} (uid, inquiry_nid, phase_nid) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE phase_nid=%d";
+  db_query($query, $uid, $inquiry_nid, $phase_nid, $phase_nid);
+}
+
+function pi_last_visited_phase_get($uid, $inquiry_nid) {
+  $query = "SELECT phase_nid FROM {pi_last_visited_phase} WHERE uid=%d AND inquiry_nid=%d";
+  $row = db_fetch_array(db_query($query, $uid, $inquiry_nid));
+  return $row ? $row['phase_nid'] : FALSE;
+}

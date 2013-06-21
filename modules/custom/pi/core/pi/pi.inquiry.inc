@@ -3,16 +3,6 @@
 /** @file This file contains all the functions that display the inquiry level view.
  * This is the page where the phases will be listed, e.g. with the octagon layout 
  */
-function pi_inquiry_inquiry_view($node) {
-
-	$output = '';
-
-	if ($node->image) {
-		$output .= '<div><img style="width: 100%" src="' . file_create_url($node->image) . '"></img></div>';
-	}
-
-	return $output;
-}
 
 function pi_inquiry_structure_view($node) {
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();

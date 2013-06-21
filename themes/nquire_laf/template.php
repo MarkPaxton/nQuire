@@ -65,13 +65,13 @@
  * Implementation of HOOK_theme().
  */
 function nquire_laf_theme(&$existing, $type, $theme, $path) {
-	$hooks = zen_theme($existing, $type, $theme, $path);
-	// Add your theme hooks like this:
-	/*
-	  $hooks['hook_name_here'] = array( // Details go here );
-	 */
-	// @TODO: Needs detailed comments. Patches welcome!
-	return $hooks;
+  $hooks = zen_theme($existing, $type, $theme, $path);
+  // Add your theme hooks like this:
+  /*
+    $hooks['hook_name_here'] = array( // Details go here );
+   */
+  // @TODO: Needs detailed comments. Patches welcome!
+  return $hooks;
 }
 
 /**
@@ -159,7 +159,7 @@ $color_scheme = theme_get_setting('nquire_laf_color_scheme');
 drupal_add_css(drupal_get_path('theme', 'nquire_laf') . '/css/color_scheme_' . ($color_scheme ? $color_scheme : 'original') . '.css', 'theme', 'all');
 
 function _nquire_laf_color($key) {
-	static $colors = array(
+  static $colors = array(
 'a' => array('#b0b70f', '#eaeccb'),
  'b' => array('#0cadaa', '#d7ecea'),
  'c' => array('#00ace2', '#d5ebf8'),
@@ -168,256 +168,256 @@ function _nquire_laf_color($key) {
  'f' => array('#dc1340', '#f7d1c9'),
  'g' => array('#ea620d', '#fbd4b5'),
  'h' => array('#fcc724', '#feeec8'),
-	);
+  );
 
-	return $colors[$key];
+  return $colors[$key];
 }
 
 function phptemplate_pi_inquiry_structure($node = NULL) {
-	global $user;
-	$inquiry_info = pi_info()->getInquiryInfo($node->nid);
-	$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-	$phases = $inquiry_info->getPhases();
-	$phase_count = count($phases);
+  global $user;
+  $inquiry_info = pi_info()->getInquiryInfo($node->nid);
+  $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+  $phases = $inquiry_info->getPhases();
+  $phase_count = count($phases);
 
-	if ($phase_count == 0) {
-		return '';
-	}
+  if ($phase_count == 0) {
+    return '';
+  }
 
-	$circle_radius = 60.0;
-	$circle_stroke = 8.0;
-	$circle_distance = 80.0;
+  $circle_radius = 60.0;
+  $circle_stroke = 8.0;
+  $circle_distance = 80.0;
 
-	$aspect_ratio = sqrt(3. / 4.);
-	$scale = .8;
-
-
-	$net_radius = $phase_count * ($circle_radius + .5 * $circle_distance) / PI;
-	$net_vertical_radius = $aspect_ratio * $net_radius;
-
-	$net_center_x = $net_radius + $circle_radius + $circle_stroke;
-	$net_center_y = $net_vertical_radius + $circle_radius + $circle_stroke;
-
-	$net_width = 2 * $net_center_x;
-	$net_height = 2 * $net_center_y;
-
-	$svg_width = $scale * $net_width;
-	$svg_height = $scale * $net_height;
-
-	$inner_circle_radius = $circle_radius - $circle_stroke;
-	$inner_circle_diameter = 2 * $inner_circle_radius;
-	$outer_circle_radius = $circle_radius + .5 * $circle_stroke;
-
-	$color_keys = _ag_phase_keys(count($phases));
-
-	$svg = "<svg width='$svg_width' height='$svg_height' viewBox='0 0 $net_width $net_height' xmlns='http://www.w3.org/2000/svg'>";
-
-	$i = 0;
-	$a0 = PI / $phase_count;
-	$points = array();
-	foreach ($phases as $phase_nid => $phase_node) {
-		$a = $a0 + 2 * ($i) * PI / $phase_count;
-		$sin_a = sin($a);
-		$cos_a = cos($a);
-
-		$x = $net_center_x + $net_radius * $sin_a;
-		$y = $net_center_y - $net_vertical_radius * $cos_a;
-		$lx = $x - $outer_circle_radius * $sin_a;
-		$ly = $y + $outer_circle_radius * $cos_a;
-
-		$label = $inquiry_access->getAccessToItem($phase_node) === 'hidden' ? check_plain($phase_node->title) :
-						l(check_plain($phase_node->title), 'phase/' . $phase_nid, array('attributes' => array('style' => 'color:black;text-decoration@none;')));
-
-		$points[] = array(
-				'x' => $x,
-				'y' => $y,
-				'lx' => $lx,
-				'ly' => $ly,
-				'label' => $label,
-		);
-		$i++;
-	}
-
-	for ($i = 0; $i < $phase_count - 1; $i++) {
-		for ($j = $i + 2; $j < $phase_count; $j++) {
-			if ($i !== 0 || $j !== $phase_count - 1) {
-				$svg .= "<line stroke='#d2d3d4' id='line_{$i}_{$j}' x1='{$points[$i]['lx']}' y1='{$points[$i]['ly']}' x2='{$points[$j]['lx']}' y2='{$points[$j]['ly']}' stroke-linecap='round' stroke-linejoin='round' stroke-dasharray='6,12' stroke-width='4' fill='none'/>";
-			}
-		}
-	}
+  $aspect_ratio = sqrt(3. / 4.);
+  $scale = .8;
 
 
+  $net_radius = $phase_count * ($circle_radius + .5 * $circle_distance) / PI;
+  $net_vertical_radius = $aspect_ratio * $net_radius;
 
-	foreach ($points as $i => $point) {
-		$tx = $point['x'] - $inner_circle_radius;
-		$ty = $point['y'] - $inner_circle_radius;
+  $net_center_x = $net_radius + $circle_radius + $circle_stroke;
+  $net_center_y = $net_vertical_radius + $circle_radius + $circle_stroke;
 
-		$cs = _nquire_laf_color($color_keys[$i % $phase_count]);
-		$svg .= "<circle id='circle_phase_{$phase_nid}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
-		$svg .= "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
-						. "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_circle_diameter}px;height:{$inner_circle_diameter}px;line-height:{$inner_circle_diameter}px;text-align: center;'>"
-						. "<div class='nquire_diagram_text' style='font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.2em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
-						. $point['label']
-						. "</div>"
-						. "</div>"
-						. "</foreignObject>";
-	}
+  $net_width = 2 * $net_center_x;
+  $net_height = 2 * $net_center_y;
 
-	$arrow_length = 123.5;
-	$arrow_angle = 15.5;
-	$image_origin_x = 15;
-	$image_origin_y = 45;
-	$image_url = url(drupal_get_path('theme', 'nquire_laf') . '/images/nQuire_diagram_arrow.png');
-	$image_width = 144;
-	$image_height = 85;
+  $svg_width = $scale * $net_width;
+  $svg_height = $scale * $net_height;
 
-	for ($i = 0; $i < $phase_count; $i++) {
-		$p1 = $points[$i];
-		$p2 = $points[($i + 1) % $phase_count];
-		$a = atan2($p2['y'] - $p1['ly'], $p1['lx'] - $p2['x']);
-		$p3x = $p2['x'] + $outer_circle_radius * cos($a);
-		$p3y = $p2['y'] - $outer_circle_radius * sin($a);
+  $inner_circle_radius = $circle_radius - $circle_stroke;
+  $inner_circle_diameter = 2 * $inner_circle_radius;
+  $outer_circle_radius = $circle_radius + .5 * $circle_stroke;
 
-		$dx = $p3x - $p1['lx'];
-		$dy = $p3y - $p1['ly'];
-		$d = sqrt($dx * $dx + $dy * $dy);
-		$scale = $d / $arrow_length;
+  $svg = "<svg width='$svg_width' height='$svg_height' viewBox='0 0 $net_width $net_height' xmlns='http://www.w3.org/2000/svg'>";
 
-		$final_width = $image_width * $scale;
-		$final_height = $image_height * $scale;
+  $i = 0;
+  $a0 = PI / $phase_count;
+  $points = array();
+  foreach ($phases as $phase_nid => $phase_node) {
+    $a = $a0 + 2 * ($i) * PI / $phase_count;
+    $sin_a = sin($a);
+    $cos_a = cos($a);
 
-		$rotation = 180 - 180 * $a / PI + $arrow_angle;
-		$image_x = $p1['lx'] - $scale * $image_origin_x;
-		$image_y = $p1['ly'] - $scale * $image_origin_y;
+    $x = $net_center_x + $net_radius * $sin_a;
+    $y = $net_center_y - $net_vertical_radius * $cos_a;
+    $lx = $x - $outer_circle_radius * $sin_a;
+    $ly = $y + $outer_circle_radius * $cos_a;
 
-		$svg .= "<image xlink:href='$image_url' height='$final_height' width='$final_width' y='$image_y' x='$image_x' transform='rotate($rotation {$p1['lx']} {$p1['ly']})'/>";
-	}
+    $label = $inquiry_access->getAccessToItem($phase_node) === 'hidden' ? check_plain($phase_node->title) :
+            l(check_plain($phase_node->title), 'phase/' . $phase_nid, array('attributes' => array('style' => 'color:black;text-decoration@none;')));
 
-	$svg .= '</svg>';
+    $points[] = array(
+        'x' => $x,
+        'y' => $y,
+        'lx' => $lx,
+        'ly' => $ly,
+        'label' => $label,
+        'phase_nid' => $phase_nid,
+        'phase_key' => $inquiry_info->getPhaseKey($phase_nid),
+    );
+    $i++;
+  }
 
-	$output = '<div><div style="max-width: 900px; max-height:512px;">' . $svg . '</div></div>';
+  for ($i = 0; $i < $phase_count - 1; $i++) {
+    for ($j = $i + 2; $j < $phase_count; $j++) {
+      if ($i !== 0 || $j !== $phase_count - 1) {
+        $svg .= "<line stroke='#d2d3d4' id='line_{$i}_{$j}' x1='{$points[$i]['lx']}' y1='{$points[$i]['ly']}' x2='{$points[$j]['lx']}' y2='{$points[$j]['ly']}' stroke-linecap='round' stroke-linejoin='round' stroke-dasharray='6,12' stroke-width='4' fill='none'/>";
+      }
+    }
+  }
 
-	return $output;
+
+
+  foreach ($points as $i => $point) {
+    $tx = $point['x'] - $inner_circle_radius;
+    $ty = $point['y'] - $inner_circle_radius;
+
+    $cs = _nquire_laf_color($point['phase_key']);
+    $svg .= "<circle id='circle_phase_{$point['phase_nid']}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
+    $svg .= "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
+            . "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_circle_diameter}px;height:{$inner_circle_diameter}px;line-height:{$inner_circle_diameter}px;text-align: center;'>"
+            . "<div class='nquire_diagram_text' style='font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.2em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
+            . $point['label']
+            . "</div>"
+            . "</div>"
+            . "</foreignObject>";
+  }
+
+  $arrow_length = 123.5;
+  $arrow_angle = 15.5;
+  $image_origin_x = 15;
+  $image_origin_y = 45;
+  $image_url = url(drupal_get_path('theme', 'nquire_laf') . '/images/nQuire_diagram_arrow.png');
+  $image_width = 144;
+  $image_height = 85;
+
+  for ($i = 0; $i < $phase_count; $i++) {
+    $p1 = $points[$i];
+    $p2 = $points[($i + 1) % $phase_count];
+    $a = atan2($p2['y'] - $p1['ly'], $p1['lx'] - $p2['x']);
+    $p3x = $p2['x'] + $outer_circle_radius * cos($a);
+    $p3y = $p2['y'] - $outer_circle_radius * sin($a);
+
+    $dx = $p3x - $p1['lx'];
+    $dy = $p3y - $p1['ly'];
+    $d = sqrt($dx * $dx + $dy * $dy);
+    $scale = $d / $arrow_length;
+
+    $final_width = $image_width * $scale;
+    $final_height = $image_height * $scale;
+
+    $rotation = 180 - 180 * $a / PI + $arrow_angle;
+    $image_x = $p1['lx'] - $scale * $image_origin_x;
+    $image_y = $p1['ly'] - $scale * $image_origin_y;
+
+    $svg .= "<image xlink:href='$image_url' height='$final_height' width='$final_width' y='$image_y' x='$image_x' transform='rotate($rotation {$p1['lx']} {$p1['ly']})'/>";
+  }
+
+  $svg .= '</svg>';
+
+  $output = '<div><div style="max-width: 900px; max-height:512px;">' . $svg . '</div></div>';
+
+  return $output;
 }
 
 function phptemplate_pi_activities_view_phase($data) {
-	drupal_set_title($data['phase']['title']);
+  drupal_set_title($data['phase']['title']);
 
-	if ($data['in_phase']) {
-		$output = "<p><b>{$data['phase']['description']}</b></p><p><small>{$data['phase']['sharing']}</small></p>";
-	}
+  if ($data['in_phase']) {
+    $output = "<p><b>{$data['phase']['description']}</b></p><p><small>{$data['phase']['sharing']}</small></p>";
+  }
 
-	foreach ($data['activities'] as $activity_data) {
-		$output .= '<div>' . theme('pi_activities_view_activity', $activity_data) . '</div>';
-	}
+  foreach ($data['activities'] as $activity_data) {
+    $output .= '<div>' . theme('pi_activities_view_activity', $activity_data) . '</div>';
+  }
 
-	return $output;
+  return $output;
 }
 
 function phptemplate_pi_activities_view_activity($activity_data) {
-	$output = '<a name="' . $activity_data['node']->nid . '"></a>';
+  $output = '<a name="' . $activity_data['node']->nid . '"></a>';
 
-	if ($activity_data['content']['mode'] === 'activity_page') {
-		$output .= $activity_data['content']['content'];
-	} else {
+  if ($activity_data['content']['mode'] === 'activity_page') {
+    $output .= $activity_data['content']['content'];
+  } else {
 
-		$output .= '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
+    $output .= '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
 
-		$output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
+    $output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
-		$output .= '<div class="phase_activity_content_wrapper">'
-						. '<table class="phase_activity_table">'
-						. '<tr><td class="phase_activity_label"><div>'
-						. (strlen($activity_data['description']) > 0 ? t('Activity:') : '')
-						. '</div></td><td class="phase_activity_content_cell phase_activity_description"><div>' . $activity_data['description'] . '</div>'
-						. '</td></tr>';
-
-
-		if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
-			switch ($activity_data['content']['mode']) {
-				case 'twocolumns':
-					foreach ($activity_data['content']['rows'] as $row) {
-						if (is_array($row[1])) {
-							$empty = $row[1]['empty'];
-							$content = $row[1]['content'];
-						} else {
-							$empty = $row[1] === FALSE;
-							$content = $empty ? '' : $row[1];
-						}
-						$content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
-
-						$output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
-					}
-					$output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
-					break;
-				case 'singleblock':
-					$output .= '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
-					$output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
-					break;
-			}
-		}
-
-		$output .= '</table></div>';
-
-		/* 					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
-		  . '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
-		  . '<div class="phase_activity_link">' .  . '</div>'; */
+    $output .= '<div class="phase_activity_content_wrapper">'
+            . '<table class="phase_activity_table">'
+            . '<tr><td class="phase_activity_label"><div>'
+            . (strlen($activity_data['description']) > 0 ? t('Activity:') : '')
+            . '</div></td><td class="phase_activity_content_cell phase_activity_description"><div>' . $activity_data['description'] . '</div>'
+            . '</td></tr>';
 
 
+    if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
+      switch ($activity_data['content']['mode']) {
+        case 'twocolumns':
+          foreach ($activity_data['content']['rows'] as $row) {
+            if (is_array($row[1])) {
+              $empty = $row[1]['empty'];
+              $content = $row[1]['content'];
+            } else {
+              $empty = $row[1] === FALSE;
+              $content = $empty ? '' : $row[1];
+            }
+            $content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
 
-		$output .= '</div>';
-	}
+            $output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
+          }
+          $output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
+          break;
+        case 'singleblock':
+          $output .= '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
+          $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
+          break;
+      }
+    }
 
-	return $output;
+    $output .= '</table></div>';
+
+    /* 					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
+      . '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
+      . '<div class="phase_activity_link">' .  . '</div>'; */
+
+
+
+    $output .= '</div>';
+  }
+
+  return $output;
 }
 
 function phptemplate_pi_activities_view_contribution_content($activities_data) {
-	$output = '';
+  $output = '';
 
-	foreach ($activities_data as $activity_data) {
-		$output .= theme('pi_activities_view_shared_activity', $activity_data);
-	}
+  foreach ($activities_data as $activity_data) {
+    $output .= theme('pi_activities_view_shared_activity', $activity_data);
+  }
 
-	return $output;
+  return $output;
 }
 
 function phptemplate_pi_activities_view_shared_activity($activity_data) {
-	$output = '<a name="' . $activity_data['node']->nid . '"></a>';
+  $output = '<a name="' . $activity_data['node']->nid . '"></a>';
 
-	$output .= '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
+  $output .= '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
 
-	$output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
+  $output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
-	$output .= '<div class="phase_activity_content_wrapper">'
-					. '<table class="phase_activity_table">'
-					. '<tr><td class="phase_activity_label"><div></div></td>'
-					. '<td class="phase_activity_content_cell phase_activity_description"><div></div>'
-					. '</td></tr>';
+  $output .= '<div class="phase_activity_content_wrapper">'
+          . '<table class="phase_activity_table">'
+          . '<tr><td class="phase_activity_label"><div></div></td>'
+          . '<td class="phase_activity_content_cell phase_activity_description"><div></div>'
+          . '</td></tr>';
 
-	foreach ($activity_data['nodes'] as $content_node_data) {
-		switch ($content_node_data['mode']) {
-			case 'twocolumns':
-				foreach ($content_node_data['rows'] as $row) {
-					if (is_array($row[1])) {
-						$empty = $row[1]['empty'];
-						$content = $row[1]['content'];
-					} else {
-						$empty = $row[1] === FALSE;
-						$content = $empty ? '' : $row[1];
-					}
-					$content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
+  foreach ($activity_data['nodes'] as $content_node_data) {
+    switch ($content_node_data['mode']) {
+      case 'twocolumns':
+        foreach ($content_node_data['rows'] as $row) {
+          if (is_array($row[1])) {
+            $empty = $row[1]['empty'];
+            $content = $row[1]['content'];
+          } else {
+            $empty = $row[1] === FALSE;
+            $content = $empty ? '' : $row[1];
+          }
+          $content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
 
-					$output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
-				}
-				break;
-			case 'singleblock':
-				$output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
-				break;
-		}
-	}
+          $output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
+        }
+        break;
+      case 'singleblock':
+        $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
+        break;
+    }
+  }
 
-	$output .= '</table></div>';
+  $output .= '</table></div>';
 
-	$output .= '</div>';
-	return $output;
+  $output .= '</div>';
+  return $output;
 }

@@ -1,0 +1,245 @@
+<?php
+
+// $Id: ag.module,v 1.2 2009/06/24 09:17:48 ou_pm Exp $
+
+
+function pi_inquiry_menu_block($op = 'list') {
+
+  switch ($op) {
+    case 'list':
+
+      $blocks = array(
+          array('info' => t('Inquiry menu')),
+      );
+
+      return $blocks;
+
+    case 'view':
+      global $user;
+      if ($user->uid > 1) {
+        if (arg(0) === 'inquiry' || arg(0) === 'phase' || arg(0) === 'activity') {
+          $block = _pi_inquiry_block_inquiry($user->uid);
+        } else if (arg(0) === 'creator') {
+          $block = _pi_inquiry_block_my_designs(arg(1) ? arg(1) : 'home');
+        } else {
+          $block = _pi_inquiry_block_my_inquiries($user->uid);
+        }
+
+        return $block;
+      }
+
+      return NULL;
+  }
+}
+
+function _pi_inquiry_block_my_inquiries($uid) {
+  $subject = l(t('My inquiries'), 'inquiries');
+  $inquiry_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_INQUIRY);
+  $joined_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups['active']);
+
+  if (count($joined_inquiries) > 0) {
+    $list = array_map(function($nid) {
+              $node = node_load($nid);
+              return l(check_plain($node->title), "inquiry/$nid/structure");
+            }, $joined_inquiries);
+    $content = theme('item_list', $list);
+  } else {
+    $content = t('You have not joined any inquiry yet.');
+  }
+
+  return array(
+      'subject' => $subject,
+      'content' => $content,
+  );
+}
+
+function _pi_inquiry_block_my_designs($current) {
+  if ($current == 'home') {
+    return array(
+        'subject' => t('My designs'),
+        'content' => t('Browse your inquiry designs.'),
+    );
+  } else {
+    $inquiry = node_load($current);
+    if ($inquiry) {
+      $subject = l(t('Design: @design', array('@design' => $inquiry->title)), "creator/$current");
+
+      $items = array(
+          l(t('Go to live inquiry'), "inquiry/$current"),
+          l(t('Browser my designs'), "creator"),
+      );
+      $content = theme('item_list', $items);
+
+      return array(
+          'subject' => $subject,
+          'content' => $content,
+      );
+    } else {
+      return NULL;
+    }
+  }
+}
+
+function _pi_inquiry_block_inquiry($uid) {
+  $inquiry_info = pi_info()->getCurrentInquiryInfo();
+  if (!$inquiry_info->getInquiryNode()) {
+    return NULL;
+  }
+
+  $status = nquire_group_get_user_status_in_group($inquiry_info->getInquiryActorGid(), $uid);
+  if ($status === 'member') {
+    return _pi_inquiry_block_inquiry_member($inquiry_info);
+  } else {
+    return _pi_inquiry_block_inquiry_join($inquiry_info, $uid, $status);
+  }
+}
+
+function _pi_inquiry_block_inquiry_join($inquiry_info, $uid, $status) {
+
+  $group_selective = pi_inquiry_groupings_get_group_selective_type($inquiry_info->getInquiryNode());
+
+  $title = NULL;
+  $intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry_info->getInquiryNode());
+  $links = array();
+  if ($status === 'awaiting') {
+    if ($group_selective == OG_MODERATED) {
+      $title = t('Awaiting decision');
+      $intro .= ' ' . t('You have requested access to this inquiry.');
+      $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Cancel request'), $inquiry_info->getInquiryNid(), FALSE, 'leave');
+    } else {
+      $title = t('Invitation to inquiry');
+      $intro .= ' ' . t('You have been invited to join this inquiry.');
+      $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Accept invitation'), $inquiry_info->getInquiryNid(), FALSE, 'acceptinvitation');
+      $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Decline invitation'), $inquiry_info->getInquiryNid(), FALSE, 'leave');
+    }
+  } else {
+    $title = t('Join inquiry');
+    switch ($group_selective) {
+      case OG_OPEN:
+        $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Join inquiry'), $inquiry_info->getInquiryNid(), FALSE, 'join');
+        break;
+      case OG_MODERATED:
+        $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Request access'), $inquiry_info->getInquiryNid(), FALSE, 'join');
+        break;
+      default:
+        break;
+    }
+  }
+
+  return array(
+      'subject' => $title,
+      'content' => $intro . '<p/>' . theme('item_list', $links),
+  );
+}
+
+function _pi_inquiry_block_inquiry_member($inquiry_info) {
+  $sections = array();
+  $notAtHome = arg(1);
+
+  if ($notAtHome) {
+    $homeLinkSection = '<div>' . theme('item_list', array(l(t('Inquiry home'), 'inquiry/' . $inquiry_info->getInquiryNid()))) . '</div>';
+    $sections[] = $homeLinkSection;
+
+    $navigationSection = _pi_inquiry_block_inquiry_member_navigation($inquiry_info);
+    if ($navigationSection) {
+      $sections[] = $navigationSection;
+    }
+  }
+
+  $managementSection = _pi_inquiry_block_inquiry_member_management($inquiry_info);
+  $sections[] = $managementSection;
+
+  $editlinkSectin = _pi_inquiry_block_inquiry_member_editlink($inquiry_info);
+  if ($editlinkSectin) {
+    $sections[] = $editlinkSectin;
+  }
+
+  $content = implode('<div class="block_inner_separator"></div>', $sections);
+  return array(
+      'subject' => check_plain($inquiry_info->getInquiryNode()->title),
+      'content' => $content,
+  );
+}
+
+function _pi_inquiry_block_inquiry_member_editlink($inquiry_info) {
+  global $user;
+  $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+
+  if ($inquiry_access->isInquiryOwner()) {
+    return theme('item_list', array(l(t('Edit this inquiry'), 'creator/' . $inquiry_info->getInquiryNid())));
+  } else {
+    return FALSE;
+  }
+}
+
+function _pi_inquiry_block_inquiry_member_management($inquiry_info) {
+  $tools = array();
+
+  if ($inquiry_info->hasSeveralStages()) {
+    $tools[] = l(t('Stages'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/stages');
+  }
+  $tools[] = l(t('People and groups'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/participants');
+  $tools[] = l(t('Share content'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/share');
+  $tools[] = l(t('Publish investigation'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/publish');
+
+  return theme('item_list', $tools, NULL, 'ul', array('class' => 'menu'));
+}
+
+function _pi_inquiry_block_inquiry_member_navigation($inquiry_info) {
+  global $user;
+
+  if (arg(0) === 'phase' || arg(0) === 'activity') {
+    $current_path = pi_info()->getCurrentPath();
+    $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+
+    foreach ($inquiry_info->getPhases() as $phase_nid => $phase_node) {
+      $is_current_phase = $phase_nid == $current_path->phase_nid;
+
+      if ($inquiry_access->getAccessToItem($phase_node) === 'hidden') {
+        $phase_link = check_plain($phase_node->title);
+      } else {
+        $phase_link = l($phase_node->title, "phase/" . $phase_nid, array('html' => true));
+      }
+
+      $activity_menu_items = array();
+
+      //expand activities of the phase if it is current
+      if ($is_current_phase) {
+        foreach ($inquiry_info->getActivitiesForPhase($phase_nid) as $activity_node) {
+          $activity_menu_items[] = pi_activity_build_link($activity_node->nid, $user->uid);
+        }
+      }
+
+      if ($is_current_phase) {
+        $phase_class = 'expanded active-trail';
+      } else {
+        $phase_class = 'collapsed';
+      }
+      $phase_key = $inquiry_info->getPhaseKey($phase_nid);
+      $phase_class .= ' phase_' . $phase_key;
+
+      $phase_menu_items[] = array('data' => $phase_link, 'children' => $activity_menu_items, 'class' => $phase_class);
+    }
+
+    $block_content = "<div class='activity-guide'>"
+            . t(theme('item_list', $phase_menu_items, NULL, 'ul', array('class' => 'menu')))
+            . '</div>';
+
+    return $block_content;
+  } else {
+    $phase_nid = pi_last_visited_phase_get($user->uid, $inquiry_info->getInquiryNid());
+    $phase = $inquiry_info->getPhase($phase_nid);
+    if ($phase) {
+      $phase_key = $inquiry_info->getPhaseKey($phase_nid);
+      $phase_class .= ' phase_' . $phase_key;
+      return theme('item_list', array(
+          array(
+              'data' => l(t('Go back to @phase', array('@phase' => $phase->title)), "phase/{$phase->nid}"),
+              'class' => $phase_class,
+          ),
+      ));
+    } else {
+      return NULL;
+    }
+  }
+}

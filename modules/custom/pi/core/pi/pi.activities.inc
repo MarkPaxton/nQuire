@@ -3,8 +3,6 @@
 function pi_activities_page($node, $mode, $child_node = NULL) {
 	global $user;
 
-
-
 	switch ($mode) {
 		case 'phase':
 			$ok = $node->type === 'pi_phase';
@@ -25,12 +23,11 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
 
 		$phase_node = $mode === 'phase' ? $node : $inquiry_info->getPhase($node->phase_nid);
 		$activity_node = $mode === 'phase' ? NULL : $node;
+    
+    pi_last_visited_phase_set($user->uid, $inquiry_info->getInquiryNid(), $phase_node->nid);
 
-		$phase_count = count($inquiry_info->getPhases());
-		$phase_index = $inquiry_info->getPhaseIndex($phase_node->nid);
-		$keys = _ag_phase_keys($phase_count);
-		$phase_key = $keys[$phase_index % strlen($keys)];
-
+    $phase_key = $inquiry_info->getPhaseKey($phase_node->nid);
+    
 		if ($mode === 'child_edit' || 'child_add') {
 			$separate_f = "{$activity_node->activity_type}_edit_child_in_separate_page";
 			$separate_page = function_exists($separate_f) && $separate_f($activity_node);

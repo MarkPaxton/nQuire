@@ -1,10 +1,8 @@
 <?php
 
-
-function pi_feeds_enable(){
-  db_query("UPDATE {system} SET weight=1000 WHERE name='pi_feeds'");
+function pi_feeds_enable() {
+	db_query("UPDATE {system} SET weight=1000 WHERE name='pi_feeds'");
 }
-
 
 function _pi_feeds_topic_list_for_context($type, $context, $max = 0) {
 	global $user;
@@ -13,7 +11,7 @@ function _pi_feeds_topic_list_for_context($type, $context, $max = 0) {
 	$args = array($user->uid, $type);
 
 	if ($context) {
-		$query .= " AND context='%s'";
+		$query .= " AND context=%d";
 		$args[] = $context;
 	}
 
@@ -42,14 +40,31 @@ function _pi_feeds_filter_topics_by_access($type, $context, $topics) {
 	return array();
 }
 
-function _pi_feeds_add($type, $context, $topic, $event) {
-	$query = "INSERT INTO pi_feeds (type, context, topic, event, timestamp) VALUES ('%s', '%s', %d, '%s', %d)";
-	db_query($query, $type, $context, $topic, $event, time());
+function _pi_feeds_add($type, $context, $topic, $event, $object_node) {
+	global $user;
+
+	if (is_object($object_node)) {
+		$object = $object_node->nid;
+		$object_type = $object_node->type;
+	} else if (is_string($object_node)) {
+		$object = NULL;
+		$object_type = $object_node;
+	} else {
+		$object = NULL;
+		$object_type = NULL;
+	}
+
+	$query = "INSERT INTO pi_feeds (type, context, topic, event, object, object_type, uid, timestamp) VALUES ('%s', '%s', %d, '%s', %d, '%s', %d, %d)";
+	db_query($query, $type, $context, $topic, $event, $object, $object_type, $user->uid, time());
 }
 
 function pi_feeds_nodeapi($node, $op) {
+	global $user;
+
+	$inquiry_info = FALSE;
 	$content_node = FALSE;
-	
+	$journal_contribution = FALSE;
+
 	switch ($node->type) {
 		case 'pi_key_questions':
 		case 'pi_key_answers':
@@ -57,29 +72,46 @@ function pi_feeds_nodeapi($node, $op) {
 		case 'pi_results_presentations':
 			if ($op === 'insert' || $op === 'update' || $op === 'delete') {
 				$event = $op . 'child';
-				$content_node = pi_activity_get_parent_content_for_child_nid($node->nid);
+				$content_node = node_load(pi_node_hierarchy_get_parent($node->nid));
 			}
 			break;
 		case 'pi_sort_key_questions':
 		case 'pi_sort_key_answers':
 		case 'pi_sort_result_presentations':
 			if ($op === 'update') {
-				$event = 'update';
-				$content_node = $node->nid;
+				$event = 'updatecontent';
+				$content_node = $node;
 			}
 			break;
 		case 'pi_hypothesis':
 		case 'pi_hypothesis_conclusion':
 		case 'pi_wiki_notes':
 			if ($op === 'update' || $op === 'insert') {
-				$event = $op;
-				$content_node = $node->nid;
+				$event = $op . 'content';
+				$content_node = $node;
 			}
 			break;
+		case 'pi_journal_contribution':
+			if ($node->shared && ($op === 'insert' || $op === 'update')) {
+				$journal_contribution = $node;
+				$event = $op . 'contribution';
+			}
 	}
-	
-	if ($content_node) {
-		return;
+
+	if ($journal_contribution) {
+		$inquiry_info = pi_info()->getInquiryInfo($node->inquiry_id);
+	} else if ($content_node) {
+		$activity_nid = pi_activity_get_activity_nid_for_content_nid($content_node->nid);
+		$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
+		if ($inquiry_info->getInquiryNode()) {
+			$journal_contribution = pi_journal_contribution_find_contribution_node($inquiry_info->getInquiryNode(), $user->uid);
+		}
+	}
+
+	if ($inquiry_info && $inquiry_info->getInquiryNode()) {
+		if ($journal_contribution) {
+			_pi_feeds_add('journalcontribution', $inquiry_info->getInquiryNid(), $journal_contribution->nid, $event, $content_node);
+		}
 	}
 }
 

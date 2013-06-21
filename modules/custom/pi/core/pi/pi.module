@@ -43,15 +43,6 @@ function pi_menu() {
 	);
 
 	$items['inquiry/%node'] = array(
-			'page callback' => 'pi_inquiry_inquiry_view',
-			'page arguments' => array(1),
-			'file' => 'pi.inquiry.inc',
-			'access arguments' => array(1),
-			'access callback' => 'pi_inquiry_inquiry_view_access',
-			'type' => MENU_CALLBACK
-	);
-
-	$items['inquiry/%node/structure'] = array(
 			'page callback' => 'pi_inquiry_structure_view',
 			'page arguments' => array(1),
 			'file' => 'pi.inquiry.inc',
@@ -316,26 +307,22 @@ function pi_get_activities_for_phase_and_type($phase_nid, $type) {
 	return $activities;
 }
 
-function pi_inquiry_inquiry_view_access() {
+function pi_inquiry_structure_view_access() {
 	global $user;
 	$inquiry_info = pi_info()->getCurrentInquiryInfo();
 	if ($inquiry_info) {
+    $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    if ($access_data->hasInquiryAccess()) {
+      return TRUE;
+    }
+    
 		$inquiry_node = $inquiry_info->getInquiryNode();
-		return pi_inquiry_structure_view_access() || $inquiry_node->participants_selection === 'anyone' ||
+		return $inquiry_node->participants_selection === 'anyone' ||
 						pi_inquiry_groupings_user_is_in_participants_target_group($user->uid, $inquiry_node);
 	}
 	return FALSE;
 }
 
-function pi_inquiry_structure_view_access() {
-	global $user;
-	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	if ($inquiry_info) {
-		$access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-		return $access_data->hasInquiryAccess();
-	}
-	return FALSE;
-}
 
 function pi_inquiry_phase_view_access($phase) {
 	global $user;
