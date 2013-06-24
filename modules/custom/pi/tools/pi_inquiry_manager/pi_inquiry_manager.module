@@ -4,467 +4,466 @@ include_once 'pi_inquiry_manager.participants.inc';
 include_once 'pi_inquiry_manager.share.inc';
 include_once 'pi_inquiry_manager.stage.inc';
 
-
 function pi_inquiry_manager_menu() {
-	$items = array(
-			'inquiry/%/participants' => array(
-					'title' => 'Inquiry participant',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_access',
-					'access arguments' => array(),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/access' => array(
-					'title' => 'Participant access configuration',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_edit_inquiry_group',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_configure_inquiry_participants_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/join' => array(
-					'title' => 'Join inquiry',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_join',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_join_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/join' => array(
-					'title' => 'Join group',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_join',
-					'page arguments' => array(1, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_join_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/leave' => array(
-					'title' => 'Leave inquiry',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_leave',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_leave_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/leave' => array(
-					'title' => 'Leave group',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_leave',
-					'page arguments' => array(1, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_leave_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/invite' => array(
-					'title' => 'Invite users',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_invite_users',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/invite' => array(
-					'title' => 'Invite users',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_invite_users',
-					'page arguments' => array(1, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/acceptinvitation' => array(
-					'title' => 'Accept invitation',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_acceptinvitation',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_acceptinvitation_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/acceptinvitation' => array(
-					'title' => 'Accept invitation',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_acceptinvitation',
-					'page arguments' => array(1, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_acceptinvitation_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/accept/%' => array(
-					'title' => 'Accept user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_accept_user',
-					'page arguments' => array(1, 4),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/accept/%' => array(
-					'title' => 'Accept user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_accept_user',
-					'page arguments' => array(1, 5, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/reject/%' => array(
-					'title' => 'Reject user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_reject_user',
-					'page arguments' => array(1, 4),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/reject/%' => array(
-					'title' => 'Reject user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_reject_user',
-					'page arguments' => array(1, 5, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/adduserstorole/%' => array(
-					'title' => 'Reject user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_adduserstorole',
-					'page arguments' => array(1, 4), // (inquiry_id, role_id)
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/adduserstorole/%' => array(
-					'title' => 'Reject user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_adduserstorole',
-					'page arguments' => array(1, 5, 3), // (inquiry_id, role_id, group_nid)
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/addrolestouser/%' => array(
-					'title' => 'Reject user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_addrolestouser',
-					'page arguments' => array(1, 4), // (inquiry_id, uid)
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/addrolestouser/%' => array(
-					'title' => 'Reject user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_addrolestouser',
-					'page arguments' => array(1, 5, 3), // (inquiry_id, uid, group_nid)
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/removeuserrole/%/%' => array(
-					'title' => 'Remove user role',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_removeuserrole',
-					'page arguments' => array(1, 4, 5), // (inquiry_id, uid, rold_id)
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/removeuserrole/%/%' => array(
-					'title' => 'Remove user role',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_group_removeuserrole',
-					'page arguments' => array(1, 5, 6, 3), // (inquiry_id, uid, role_id)
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/groupmanagement' => array(
-					'title' => 'Reject user',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_subgroups_edit_policy',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_subgroups_edit_policy_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/createsubgroup' => array(
-					'title' => 'Create subgroup',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_subgroups_create',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_subgroups_create_access',
-					'access arguments' => array(1),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%' => array(
-					'title' => 'Inquiry subgroup',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_subgroup',
-					'page arguments' => array(1, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_subgroups_view_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/participants/%/edit' => array(
-					'title' => 'Create subgroup',
-					'file' => 'pi_inquiry_manager.participants.inc',
-					'page callback' => 'pi_inquiry_manager_participants_subgroup_edit',
-					'page arguments' => array(1, 3),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_participants_subgroups_edit_access',
-					'access arguments' => array(1, 3),
-					'weight' => 1,
-			),
-			'inquiry/%/share' => array(
-					'title' => 'Share my investigation',
-					'file' => 'pi_inquiry_manager.share.inc',
-					'page callback' => 'pi_inquiry_manager_share',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_share_access',
-					'access arguments' => array(),
-					'weight' => 1,
-			),
-			'inquiry/%/publish' => array(
-					'title' => 'Publish my investigation',
-					'file' => 'pi_inquiry_manager.publish.inc',
-					'page callback' => 'pi_inquiry_manager_publish',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_share_access',
-					'access arguments' => array(),
-					'weight' => 1,
-			),
-			'inquiry/%/stages' => array(
-					'title' => 'Inquiry stages',
-					'file' => 'pi_inquiry_manager.share.inc',
-					'page callback' => 'pi_inquiry_manager_stage_selector',
-					'page arguments' => array(1),
-					'type' => MENU_CALLBACK,
-					'access callback' => 'pi_inquiry_manager_stage_access',
-					'access arguments' => array(),
-					'weight' => 1,
-			),
-	);
+  $items = array(
+      'inquiry/%/participants' => array(
+          'title' => 'Inquiry participant',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_access',
+          'access arguments' => array(),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/access' => array(
+          'title' => 'Participant access configuration',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_edit_inquiry_group',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_configure_inquiry_participants_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/join' => array(
+          'title' => 'Join inquiry',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_join',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_join_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/join' => array(
+          'title' => 'Join group',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_join',
+          'page arguments' => array(1, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_join_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/leave' => array(
+          'title' => 'Leave inquiry',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_leave',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_leave_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/leave' => array(
+          'title' => 'Leave group',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_leave',
+          'page arguments' => array(1, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_leave_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/invite' => array(
+          'title' => 'Invite users',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_invite_users',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/invite' => array(
+          'title' => 'Invite users',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_invite_users',
+          'page arguments' => array(1, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/acceptinvitation' => array(
+          'title' => 'Accept invitation',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_acceptinvitation',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_acceptinvitation_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/acceptinvitation' => array(
+          'title' => 'Accept invitation',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_acceptinvitation',
+          'page arguments' => array(1, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_acceptinvitation_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/accept/%' => array(
+          'title' => 'Accept user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_accept_user',
+          'page arguments' => array(1, 4),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/accept/%' => array(
+          'title' => 'Accept user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_accept_user',
+          'page arguments' => array(1, 5, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/reject/%' => array(
+          'title' => 'Reject user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_reject_user',
+          'page arguments' => array(1, 4),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/reject/%' => array(
+          'title' => 'Reject user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_reject_user',
+          'page arguments' => array(1, 5, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/adduserstorole/%' => array(
+          'title' => 'Reject user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_adduserstorole',
+          'page arguments' => array(1, 4), // (inquiry_id, role_id)
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/adduserstorole/%' => array(
+          'title' => 'Reject user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_adduserstorole',
+          'page arguments' => array(1, 5, 3), // (inquiry_id, role_id, group_nid)
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/addrolestouser/%' => array(
+          'title' => 'Reject user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_addrolestouser',
+          'page arguments' => array(1, 4), // (inquiry_id, uid)
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/addrolestouser/%' => array(
+          'title' => 'Reject user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_addrolestouser',
+          'page arguments' => array(1, 5, 3), // (inquiry_id, uid, group_nid)
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/removeuserrole/%/%' => array(
+          'title' => 'Remove user role',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_removeuserrole',
+          'page arguments' => array(1, 4, 5), // (inquiry_id, uid, rold_id)
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/removeuserrole/%/%' => array(
+          'title' => 'Remove user role',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_group_removeuserrole',
+          'page arguments' => array(1, 5, 6, 3), // (inquiry_id, uid, role_id)
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_manageuser_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/groupmanagement' => array(
+          'title' => 'Reject user',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_subgroups_edit_policy',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_subgroups_edit_policy_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/createsubgroup' => array(
+          'title' => 'Create subgroup',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_subgroups_create',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_subgroups_create_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%' => array(
+          'title' => 'Inquiry subgroup',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_subgroup',
+          'page arguments' => array(1, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_subgroups_view_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/participants/%/edit' => array(
+          'title' => 'Create subgroup',
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_subgroup_edit',
+          'page arguments' => array(1, 3),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_subgroups_edit_access',
+          'access arguments' => array(1, 3),
+          'weight' => 1,
+      ),
+      'inquiry/%/share' => array(
+          'title' => 'Share my investigation',
+          'file' => 'pi_inquiry_manager.share.inc',
+          'page callback' => 'pi_inquiry_manager_share',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_share_access',
+          'access arguments' => array(),
+          'weight' => 1,
+      ),
+      'inquiry/%/publish' => array(
+          'title' => 'Publish my investigation',
+          'file' => 'pi_inquiry_manager.publish.inc',
+          'page callback' => 'pi_inquiry_manager_publish',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_share_access',
+          'access arguments' => array(),
+          'weight' => 1,
+      ),
+      'inquiry/%/stages' => array(
+          'title' => 'Inquiry stages',
+          'file' => 'pi_inquiry_manager.share.inc',
+          'page callback' => 'pi_inquiry_manager_stage_selector',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_stage_access',
+          'access arguments' => array(),
+          'weight' => 1,
+      ),
+  );
 
-	return $items;
+  return $items;
 }
 
 function pi_inquiry_manager_theme() {
-	return array(
-			'pi_inquiry_manager_participants_view_inquiry_group' => array(
-					'arguments' => array('node'),
-					'file' => 'pi_inquiry_manager.participants.inc',
-			),
-			'pi_inquiry_manager_participants_list' => array(
-					'arguments' => array('group_nid', 'uid'),
-					'file' => 'pi_inquiry_manager.participants.inc',
-			),
-			'pi_inquiry_manager_participants_group_status_and_options' => array(
-					'arguments' => array('group_nid', 'uid'),
-					'file' => 'pi_inquiry_manager.participants.inc',
-			),
-			'pi_inquiry_manager_participants_roles' => array(
-					'arguments' => array('inquiry_node', 'group_nid'),
-					'file' => 'pi_inquiry_manager.participants.inc',
-			),
-			'pi_inquiry_manager_participants_groups' => array(
-					'arguments' => array('inquiry_node'),
-					'file' => 'pi_inquiry_manager.participants.inc',
-			),
-			'pi_inquiry_manager_participants_group_access_policy' => array(
-					'arguments' => array('inquiry_node', 'group_nid'),
-					'file' => 'pi_inquiry_manager.participants.inc',
-			),
-	);
+  return array(
+      'pi_inquiry_manager_participants_view_inquiry_group' => array(
+          'arguments' => array('node'),
+          'file' => 'pi_inquiry_manager.participants.inc',
+      ),
+      'pi_inquiry_manager_participants_list' => array(
+          'arguments' => array('group_nid', 'uid'),
+          'file' => 'pi_inquiry_manager.participants.inc',
+      ),
+      'pi_inquiry_manager_participants_group_status_and_options' => array(
+          'arguments' => array('group_nid', 'uid'),
+          'file' => 'pi_inquiry_manager.participants.inc',
+      ),
+      'pi_inquiry_manager_participants_roles' => array(
+          'arguments' => array('inquiry_node', 'group_nid'),
+          'file' => 'pi_inquiry_manager.participants.inc',
+      ),
+      'pi_inquiry_manager_participants_groups' => array(
+          'arguments' => array('inquiry_node'),
+          'file' => 'pi_inquiry_manager.participants.inc',
+      ),
+      'pi_inquiry_manager_participants_group_access_policy' => array(
+          'arguments' => array('inquiry_node', 'group_nid'),
+          'file' => 'pi_inquiry_manager.participants.inc',
+      ),
+  );
 }
 
 function pi_inquiry_manager_participants_access() {
-	if (user_is_logged_in()) {
-		global $user;
-		$inquiry_info = pi_info()->getCurrentInquiryInfo();
-		$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-		return $inquiry_access->hasInquiryAccess();
-	}
-	return FALSE;
+  if (user_is_logged_in()) {
+    global $user;
+    $inquiry_info = pi_info()->getCurrentInquiryInfo();
+    $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    return $inquiry_access->hasInquiryAccess();
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_share_access() {
-	if (user_is_logged_in()) {
-		global $user;
-		$inquiry_info = pi_info()->getCurrentInquiryInfo();
-		$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-		return $inquiry_access->hasInquiryAccess();
-	}
-	return FALSE;
+  if (user_is_logged_in()) {
+    global $user;
+    $inquiry_info = pi_info()->getCurrentInquiryInfo();
+    $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    return $inquiry_access->hasInquiryAccess();
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_stage_access() {
-	if (user_is_logged_in()) {
-		global $user;
-		$inquiry_info = pi_info()->getCurrentInquiryInfo();
-		$inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-		return $inquiry_access->hasInquiryAccess();
-	}
-	return FALSE;
+  if (user_is_logged_in()) {
+    global $user;
+    $inquiry_info = pi_info()->getCurrentInquiryInfo();
+    $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    return $inquiry_access->hasInquiryAccess();
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid) {
-	if (user_is_logged_in()) {
-		global $user;
-		$node = node_load($inquiry_nid);
-		return $node->uid === $user->uid;
-	}
-	return FALSE;
+  if (user_is_logged_in()) {
+    global $user;
+    $node = node_load($inquiry_nid);
+    return $node->uid === $user->uid;
+  }
+  return FALSE;
 }
 
 /* group operation access */
 
 function pi_inquiry_manager_participants_group_join_access($inquiry_nid, $group_nid = FALSE) {
-	if (user_is_logged_in()) {
-		global $user;
+  if (user_is_logged_in()) {
+    global $user;
 
-		$inquiry = node_load($inquiry_nid);
-		if ($inquiry->type === 'pi_inquiry') {
-			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-			if ($group_check && $group_check['normal_management'] &&
-							($group_check['type'] === 'inquiry' || !pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid))) {
+    $inquiry = node_load($inquiry_nid);
+    if ($inquiry->type === 'pi_inquiry') {
+      $group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+      if ($group_check && $group_check['normal_management'] &&
+              ($group_check['type'] === 'inquiry' || !pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid))) {
 
-				$allowed_participants = $group_nid ? nquire_group_get_member_uids($inquiry->actor_gid) : pi_inquiry_groupings_get_allowed_participants_for_inquiry($inquiry);
+        $allowed_participants = $group_nid ? nquire_group_get_member_uids($inquiry->actor_gid) : pi_inquiry_groupings_get_allowed_participants_for_inquiry($inquiry);
 
-				if (!$allowed_participants || in_array($user->uid, $allowed_participants)) {
-					if ($group_check['group']->og_selective == OG_OPEN || $group_check['group']->og_selective == OG_MODERATED) {
-						return TRUE;
-					}
-				}
-			}
-		}
-	}
+        if (!$allowed_participants || in_array($user->uid, $allowed_participants)) {
+          if ($group_check['group']->og_selective == OG_OPEN || $group_check['group']->og_selective == OG_MODERATED) {
+            return TRUE;
+          }
+        }
+      }
+    }
+  }
 
-	return FALSE;
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_group_acceptinvitation_access($inquiry_nid, $group_nid = FALSE) {
-	if (user_is_logged_in()) {
-		global $user;
+  if (user_is_logged_in()) {
+    global $user;
 
-		$inquiry = node_load($inquiry_nid);
-		if ($inquiry->type === 'pi_inquiry') {
-			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-			if ($group_check && $group_check['normal_management']) {
-				if ($group_check['group']->selective == OG_INVITE_ONLY && nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) === 'awaiting') {
-					return TRUE;
-				}
-			}
-		}
-	}
+    $inquiry = node_load($inquiry_nid);
+    if ($inquiry->type === 'pi_inquiry') {
+      $group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+      if ($group_check && $group_check['normal_management']) {
+        if ($group_check['group']->selective == OG_INVITE_ONLY && nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) === 'awaiting') {
+          return TRUE;
+        }
+      }
+    }
+  }
 
-	return FALSE;
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_group_leave_access($inquiry_nid, $group_nid = FALSE) {
-	if (user_is_logged_in()) {
-		global $user;
+  if (user_is_logged_in()) {
+    global $user;
 
-		$inquiry = node_load($inquiry_nid);
-		if ($inquiry->type === 'pi_inquiry') {
-			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-			if ($group_check && $group_check['normal_management']) {
-				return nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) !== 'none';
-			}
-		}
-	}
-	return FALSE;
+    $inquiry = node_load($inquiry_nid);
+    if ($inquiry->type === 'pi_inquiry') {
+      $group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+      if ($group_check && $group_check['normal_management']) {
+        return nquire_group_get_user_status_in_group($group_check['gid'], $user->uid) !== 'none';
+      }
+    }
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_group_manageuser_access($inquiry_nid, $group_nid = FALSE) {
-	if (user_is_logged_in()) {
-		global $user;
+  if (user_is_logged_in()) {
+    global $user;
 
-		$inquiry = node_load($inquiry_nid);
-		if ($inquiry->type === 'pi_inquiry') {
-			$group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
-			if ($group_check) {
-				return $user->uid === $group_check['manager'];
-			}
-		}
-	}
-	return FALSE;
+    $inquiry = node_load($inquiry_nid);
+    if ($inquiry->type === 'pi_inquiry') {
+      $group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
+      if ($group_check) {
+        return $user->uid === $group_check['manager'];
+      }
+    }
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_edit_policy_access($inquiry_nid) {
-	if (user_is_logged_in()) {
-		global $user;
+  if (user_is_logged_in()) {
+    global $user;
 
-		$inquiry = node_load($inquiry_nid);
-		if ($inquiry->type === 'pi_inquiry' && $inquiry->uid === $user->uid) {
-			return pi_inquiry_groupings_has_collaboration_phases($inquiry_nid, 'group');
-		}
-	}
-	return FALSE;
+    $inquiry = node_load($inquiry_nid);
+    if ($inquiry->type === 'pi_inquiry' && $inquiry->uid === $user->uid) {
+      return pi_inquiry_groupings_has_collaboration_phases($inquiry_nid, 'group');
+    }
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_view_access($inquiry_nid, $subgroup_nid) {
-	if (user_is_logged_in()) {
-		if (pi_inquiry_groupings_check_group(node_load($inquiry_nid), $subgroup_nid)) {
-			return TRUE;
-		}
-	}
-	return FALSE;
+  if (user_is_logged_in()) {
+    if (pi_inquiry_groupings_check_group(node_load($inquiry_nid), $subgroup_nid)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_create_access($inquiry_nid) {
-	if (user_is_logged_in()) {
-		global $user;
+  if (user_is_logged_in()) {
+    global $user;
 
-		$inquiry = node_load($inquiry_nid);
-		if ($inquiry->type === 'pi_inquiry') {
-			return $user->uid === $inquiry->uid || ($inquiry->group_creation === 'normal' && nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid) === 'member');
-		}
-	}
-	return FALSE;
+    $inquiry = node_load($inquiry_nid);
+    if ($inquiry->type === 'pi_inquiry') {
+      return $user->uid === $inquiry->uid || ($inquiry->group_creation === 'normal' && nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid) === 'member');
+    }
+  }
+  return FALSE;
 }
 
 function pi_inquiry_manager_participants_subgroups_edit_access($inquiry_nid, $group_nid) {
-	if (user_is_logged_in()) {
-		global $user;
+  if (user_is_logged_in()) {
+    global $user;
 
-		$inquiry_node = node_load($inquiry_nid);
-		$group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
-		return $group_check && $group_check['type'] === 'group' && $group_check['manager'] === $user->uid;
-	}
-	return FALSE;
+    $inquiry_node = node_load($inquiry_nid);
+    $group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
+    return $group_check && $group_check['type'] === 'group' && $group_check['manager'] === $user->uid;
+  }
+  return FALSE;
 }
 

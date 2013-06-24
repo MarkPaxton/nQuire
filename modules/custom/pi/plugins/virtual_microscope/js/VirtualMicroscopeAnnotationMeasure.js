@@ -50,10 +50,12 @@ $(function() {
 		this._dataBrowser.updateCurrentDataFeaturePaint(this._measureId);
 	};
 
-	AnnotationMeasureManager.prototype.createPaintShape = function(data, options) {
+	AnnotationMeasureManager.prototype.createPaintShape = function(data, options, index) {
 
-		var shapes = (options.mode === 'selected' && this._editingInfo) ? this._editingInfo.shapes : this._parseShapes(data[this._measureId]);
-
+		var shapes = (options.isSelected && this._editingInfo) ? this._editingInfo.shapes : this._parseShapes(data[this._measureId]);
+    var baseStyle = $.extend({'stroke-opacity': options.selectedData && !options.isSelected ? .5 : 1}, this._baseStyle);
+    
+    
 		var output = {
 			pos: {x: 0, y: 0},
 			shapes: []
@@ -63,7 +65,7 @@ $(function() {
 			output.shapes.push({
 				type: 'polyline',
 				points: shapes[i].points,
-				settings: $.extend({}, this._baseStyle, {stroke: this._baseStyleColors[shapes[i].color]})
+				settings: $.extend({}, baseStyle, {stroke: this._baseStyleColors[shapes[i].color]})
 			});
 		}
 

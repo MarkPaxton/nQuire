@@ -79,9 +79,9 @@ $(function() {
 
 	NumberMeasureManager.prototype._saveAndStop = function() {
 		this._value = this._editingInfo;
+		this._serviceDelegate.saveData(JSON.stringify(this._value), true);
 		this._measureManager.setPaintValueForSave(false, this._value);
 		this._stopInput();
-		this._serviceDelegate.saveData(JSON.stringify(this._value), true);
 	};
 
 	NumberMeasureManager.prototype._cancelInput = function() {
