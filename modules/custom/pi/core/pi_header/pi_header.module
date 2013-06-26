@@ -5,69 +5,61 @@
 define('NQUIRE_VERSION', 'BETA3 2013-05-02');
 
 function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
-	global $user;
-	switch ($op) {
-		case 'list':
-			$blocks = array();
-			$blocks[0]['info'] = t('Activity guide header');
-			return $blocks;
+  global $user;
+  switch ($op) {
+    case 'list':
+      $blocks = array();
+      $blocks[0]['info'] = t('Activity guide header');
+      return $blocks;
 
-		case 'view':
-			$module_path = drupal_get_path('module', 'pi_header');
-			$image_path = base_path() . $module_path . '/images/';
-			drupal_add_css($module_path . '/pi_header.css');
-
-
-			$details = get_inquiry_details_from_current_path();
-			$inquiry = node_load($details->inquiry_id);
+    case 'view':
+      $module_path = drupal_get_path('module', 'pi_header');
+      $image_path = base_path() . $module_path . '/images/';
+      drupal_add_css($module_path . '/pi_header.css');
 
 
-			$output = '';
+      $details = get_inquiry_details_from_current_path();
+      $inquiry = node_load($details->inquiry_id);
 
-			$output .= "<div class='nquire_home'>" . l('<img src="' . $image_path . 'logo.png" height="50px" >', '/', array('html' => TRUE)) . "</div>";
 
-			if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
-				if (arg(2) === 'structure') {
-					if ($inquiry->image) {
-						$output .= '<div class="nquire_home">'
-										. l('<img src="' . file_create_url($inquiry->image) . '" height="48px" style="border: 1px solid gray;"></img>', "inquiry/{$inquiry->nid}", array('html' => TRUE))
-										. '</div>';
-					} else if (isset($inquiry->title)) {
-						$output .= "<div class='nquire_home'>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
-					}
-				} else {
-					$output .= '<div class="nquire_home">'
-									. l('<img src="' . $image_path . 'nQuire_diagram_icon.png" height="50px">', "inquiry/{$inquiry->nid}/structure", array('html' => TRUE))
-									. '</div>';
-				}
-			}
+      $output = '<div class="nquire_header">';
 
-			$output .= "</div>";
+      $output .= "<div>" . l('<img src="' . $image_path . 'logo.png" height="50px" >', '/', array('html' => TRUE)) . "</div>";
 
-			if ($user->uid) {
-				$output .= "<div style='float:right;clear:right;'>";
-				$output .= "<div style='clear:both; float:right;'>" . l(check_plain($user->name), 'user/' . $user->uid, array('attributes' => array('class' => 'username'))) . "</div>";
-				$output .= "<div style='clear:both; float:right;'>" . l(t('logout'), "logout", array('attributes' => array('class' => 'logout'))) . "</div>";
-				$output .= "</div>";
-			}
+      if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
+        $output .= '<div>'
+                . l('<img src="' . $image_path . 'nQuire_diagram_icon.png" height="50px">', "inquiry/{$inquiry->nid}", array('html' => TRUE))
+                . '</div>';
+        $output .= "<div>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
+      }
+      
+      $output .= '</div>';
 
-			$block['content'] = $output;
-			return $block;
-	}
+
+      if ($user->uid) {
+        $output .= '<div class="nquire_username_block">'
+                . '<div class="nquire_username_username">' . l(check_plain($user->name), 'user/' . $user->uid) . "</div>"
+                . '<div class="nquire_username_logout">' . l(t('logout'), "logout") . "</div>"
+                . "</div>";
+      }
+
+      $block['content'] = $output;
+      return $block;
+  }
 }
 
 function pi_stage_bar() {
-	$output = '';
+  $output = '';
 
-	$inquiry_info = pi_info()->getCurrentInquiryInfo();
-	if ($inquiry_info && $inquiry_info->hasSeveralStages()) {
-		$stage = $inquiry_info->getCurrentStage();
+  $inquiry_info = pi_info()->getCurrentInquiryInfo();
+  if ($inquiry_info && $inquiry_info->hasSeveralStages()) {
+    $stage = $inquiry_info->getCurrentStage();
 
-		if ($stage) {
-			$output .= '<p><strong>' . t('Current stage: ') . '</strong>' . check_plain($stage->title) . '</p>';
-		}
-	}
+    if ($stage) {
+      $output .= '<p><strong>' . t('Current stage: ') . '</strong>' . check_plain($stage->title) . '</p>';
+    }
+  }
 
-	return $output;
+  return $output;
 }
 

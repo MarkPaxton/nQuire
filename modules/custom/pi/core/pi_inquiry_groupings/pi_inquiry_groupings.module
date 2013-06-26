@@ -228,7 +228,7 @@ function pi_inquiry_groupings_get_user_anystate_subgroups($inquiry_node, $uid) {
 
 function pi_inquiry_groupings_get_users_without_subgroup($inquiry_node) {
 	/* TODO clean this */
-	$users = nquire_group_get_member_uids($inquiry_node->actor_gid);
+	$users = nquire_group_get_member_uids($inquiry_node->actor_gid, TRUE);
 	$filtered = array_filter($users, function($uid) use ($inquiry_node) {
 						return pi_inquiry_groupings_get_user_subgroup($inquiry_node, $uid) === FALSE;
 					});
@@ -297,6 +297,8 @@ function pi_inquiry_groupings_add_user_to_group($group_check, $uid, $active) {
 }
 
 function pi_inquiry_groupings_remove_user_from_group($group_check, $uid) {
+  $goto = FALSE;
+  
 	if ($group_check['type'] === 'inquiry') {
 		$gids = pi_inquiry_groupings_get_user_anystate_subgroups($group_check['inquiry_node'], $uid);
 		global $user;
@@ -316,9 +318,17 @@ function pi_inquiry_groupings_remove_user_from_group($group_check, $uid) {
 			$user = $original_user;
 			session_save_session($old_state);
 		}
+    
+    $destination = $_REQUEST['destination'];
+    $base_inquiry_path = 'inquiry/' . $group_check['inquiry_node']->nid;
+    if (strpos($base_inquiry_path, $destination) == 0) {
+      $_REQUEST['destination'] = $base_inquiry_path;
+    }
+   
 	}
 
 	nquire_group_delete_user_from_group($group_check['gid'], $uid);
+ 
 }
 
 function pi_inquiry_groupings_get_actor_for($inquiry_node, $collaboration, $uid) {

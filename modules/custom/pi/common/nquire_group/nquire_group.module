@@ -13,43 +13,43 @@ define("NQUIRE_GROUP_TYPE_SUBGROUP", 1);
  * hook_node_info()Define the nquire_group node type
  */
 function nquire_group_node_info() {
-	return array(
-			'nquire_group' => array(
-					'name' => t('nQuire Group'), // Required.
-					'module' => 'nquire_group', // Required.
-					'description' => t('An nQuire Group'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Group name'),
-					'has_body' => FALSE,
-			)
-	);
+  return array(
+      'nquire_group' => array(
+          'name' => t('nQuire Group'), // Required.
+          'module' => 'nquire_group', // Required.
+          'description' => t('An nQuire Group'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Group name'),
+          'has_body' => FALSE,
+      )
+  );
 }
 
 /**
  * Work out if a user has permission to do something with an Inquiry
  */
 function nquire_group_access($op, $node, $account) {
-	return FALSE;
+  return FALSE;
 }
 
 /**
  * INSERT command for a new activity
  */
 function nquire_group_insert($node) {
-	$group_type = isset($node->group_type) ? $node->group_type : NQUIRE_GROUP_TYPE_NORMAL;
-	db_query("INSERT INTO {nquire_group} (nid, vid, selective, group_type, parent) VALUES (%d, %d, %d, %d, %d)", $node->nid, $node->vid, $node->selective, $group_type, $node->parent);
+  $group_type = isset($node->group_type) ? $node->group_type : NQUIRE_GROUP_TYPE_NORMAL;
+  db_query("INSERT INTO {nquire_group} (nid, vid, selective, group_type, parent) VALUES (%d, %d, %d, %d, %d)", $node->nid, $node->vid, $node->selective, $group_type, $node->parent);
 }
 
 /**
  * UPDATE command for an existing inquiry
  */
 function nquire_group_update($node) {
-	if ($node->revision) {
-		nquire_group_insert($node);
-	} else {
-		$group_type = isset($node->group_type) ? $node->group_type : NQUIRE_GROUP_TYPE_NORMAL;
-		db_query("UPDATE {nquire_group} SET selective=%d, group_type='%s', parent=%d WHERE vid='%d'", $node->selective, $group_type, $node->parent, $node->vid);
-	}
+  if ($node->revision) {
+    nquire_group_insert($node);
+  } else {
+    $group_type = isset($node->group_type) ? $node->group_type : NQUIRE_GROUP_TYPE_NORMAL;
+    db_query("UPDATE {nquire_group} SET selective=%d, group_type='%s', parent=%d WHERE vid='%d'", $node->selective, $group_type, $node->parent, $node->vid);
+  }
 }
 
 /**
@@ -60,15 +60,15 @@ function nquire_group_update($node) {
  * hook_nodeapi().
  */
 function nquire_group_nodeapi(&$node, $op, $teaser, $page) {
-	if ($node->type === 'nquire_group') {
-		switch ($op) {
-			case 'delete revision':
-				// Notice that we're matching a single revision based on the node's vid.
-				db_query('DELETE FROM {nquire_group} WHERE vid = %d', $node->vid);
-				break;
-		}
-	}
-	return;
+  if ($node->type === 'nquire_group') {
+    switch ($op) {
+      case 'delete revision':
+        // Notice that we're matching a single revision based on the node's vid.
+        db_query('DELETE FROM {nquire_group} WHERE vid = %d', $node->vid);
+        break;
+    }
+  }
+  return;
 }
 
 /**
@@ -76,17 +76,19 @@ function nquire_group_nodeapi(&$node, $op, $teaser, $page) {
  * @todo this should delete all the associated data with the inquiry too!
  */
 function nquire_group_delete(&$node) {
-	// Delete the related information we were saving for this node.
-	db_query('DELETE FROM {nquire_group} WHERE nid = %d', $node->nid);
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {nquire_group} WHERE nid = %d', $node->nid);
+  db_query("DELETE FROM {nquire_group_participant} WHERE nid=%d", $node->nid);
+  db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d", $node->nid);
 }
 
 /**
  * node loader function for inquiry type called when noad_load() is called
  */
 function nquire_group_load($node) {
-	$design = db_fetch_object(db_query('SELECT * FROM {nquire_group} WHERE vid = %d', $node->vid));
+  $design = db_fetch_object(db_query('SELECT * FROM {nquire_group} WHERE vid = %d', $node->vid));
 
-	return $design;
+  return $design;
 }
 
 /**
@@ -94,164 +96,171 @@ function nquire_group_load($node) {
  * @todo Add a detailed inquiry view to be used in the whole system
  */
 function nquire_group_view($node, $teaser = FALSE, $page = FALSE) {
-	// If $teaser is FALSE, the entire node is being displayed.
-	if (!$teaser) {
-		//Use Drupal's default node view.
-		$node = node_prepare($node, $teaser);
+  // If $teaser is FALSE, the entire node is being displayed.
+  if (!$teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
 
-		// render the inquiry description using a theme function
-		$node->content['layout'] = array(
-				'#value' => theme('inquiry_layout', $node),
-				'#weight' => 1,
-		);
-		// Add more involved inquiry layout here
-	}
+    // render the inquiry description using a theme function
+    $node->content['layout'] = array(
+        '#value' => theme('inquiry_layout', $node),
+        '#weight' => 1,
+    );
+    // Add more involved inquiry layout here
+  }
 
-	// If $teaser is true, node is being displayed as a teaser,
-	// in this case, just show the description and none of the rest of the inquiry stuff
-	if ($teaser) {
-		//Use Drupal's default node view.
-		$node = node_prepare($node, $teaser);
-	}
-	return $node;
+  // If $teaser is true, node is being displayed as a teaser,
+  // in this case, just show the description and none of the rest of the inquiry stuff
+  if ($teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+  return $node;
 }
 
 function nquire_group_create_group($owner, $title, $add_owner, $parent = NULL) {
 
-	$node = new stdClass();
-	$node->type = 'nquire_group';
-	$node->uid = $owner;
-	$node->title = $title;
-	$node->parent = NULL;
-	$node->selective = OG_CLOSED;
-	$node->parent = $parent;
-	$node->group_type = $parent ? NQUIRE_GROUP_TYPE_SUBGROUP : NQUIRE_GROUP_TYPE_INQUIRY;
+  $node = new stdClass();
+  $node->type = 'nquire_group';
+  $node->uid = $owner;
+  $node->title = $title;
+  $node->parent = NULL;
+  $node->selective = OG_CLOSED;
+  $node->parent = $parent;
+  $node->group_type = $parent ? NQUIRE_GROUP_TYPE_SUBGROUP : NQUIRE_GROUP_TYPE_INQUIRY;
 
-	node_save($node);
-	if ($add_owner) {
-		nquire_group_add_user_to_group($node->nid, $owner, TRUE);
-	}
-	return $node->nid;
+  node_save($node);
+  if ($add_owner) {
+    nquire_group_add_user_to_group($node->nid, $owner, TRUE);
+  }
+  return $node->nid;
 }
 
 function nquire_group_get_participants_with_role($gid, $role) {
-	$users = array();
-	$query = "SELECT DISTINCT uid FROM nquire_group_participant_role WHERE nid=%d AND role=%s";
-	$result = db_query($query, $gid, $role);
-	while ($row = db_fetch_array($result)) {
-		$users[] = $row['uid'];
-	}
-	return $users;
+  $users = array();
+  $query = "SELECT DISTINCT uid FROM nquire_group_participant_role WHERE nid=%d AND role=%s";
+  $result = db_query($query, $gid, $role);
+  while ($row = db_fetch_array($result)) {
+    $users[] = $row['uid'];
+  }
+  return $users;
 }
 
 function nquire_group_add_user_to_group($gid, $uid, $is_active = FALSE) {
-	$query = "INSERT INTO nquire_group_participant (nid, uid, active) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE active=%d";
-	db_query($query, $gid, $uid, $is_active, $is_active);
-	if (!$is_active) {
-		db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
-	}
+  $query = "INSERT INTO nquire_group_participant (nid, uid, active) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE active=%d";
+  db_query($query, $gid, $uid, $is_active, $is_active);
+  if (!$is_active) {
+    db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
+  }
 }
 
 function nquire_group_user($op, $edit, $account) {
-	if ($op === 'delete') {
-		db_query("DELETE FROM {nquire_group_participant} WHERE uid=%d", $account->uid);
-		db_query("DELETE FROM {nquire_group_participant_role} WHERE uid=%d", $account->uid);
-	}
+  if ($op === 'delete') {
+    db_query("DELETE FROM {nquire_group_participant} WHERE uid=%d", $account->uid);
+    db_query("DELETE FROM {nquire_group_participant_role} WHERE uid=%d", $account->uid);
+  }
 }
 
 function nquire_group_delete_user_from_group($gid, $uid) {
-	db_query("DELETE FROM {nquire_group_participant} WHERE nid=%d AND uid=%d", $gid, $uid);
-	db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
+  db_query("DELETE FROM {nquire_group_participant} WHERE nid=%d AND uid=%d", $gid, $uid);
+  db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
 
-	if (count(nquire_group_get_member_uids($gid, TRUE)) === 0) {
-		node_delete($gid);
-	} else {
-		$group = node_load($gid);
-		if ($group->uid === $uid) {
-			$query = "SELECT uid FROM {nquire_group_participant} WHERE nid=%d AND active=1 LIMIT 1";
-			$row = db_fetch_array(db_query($query, $gid));
-			$group->uid = $row['uid'];
-			node_save($group);
-		}
-	}
+  if (count(nquire_group_get_member_uids($gid, TRUE)) === 0) {
+    global $user;
+    $original_user = $user;
+    $old_state = session_save_session();
+    session_save_session(FALSE);
+    $user = user_load(array('uid' => 1));
+    node_delete($gid);
+    $user = $original_user;
+    session_save_session($old_state);
+  } else {
+    $group = node_load($gid);
+    if ($group->uid === $uid) {
+      $query = "SELECT uid FROM {nquire_group_participant} WHERE nid=%d AND active=1 LIMIT 1";
+      $row = db_fetch_array(db_query($query, $gid));
+      $group->uid = $row['uid'];
+      node_save($group);
+    }
+  }
 }
 
 function nquire_group_add_user_role($gid, $uid, $role_id) {
-	if (nquire_group_get_user_status_in_group($gid, $uid) === 'member') {
-		$s_query = "SELECT uid FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d AND role='%s'";
-		$row = db_fetch_array(db_query($s_query, $gid, $uid, $role_id));
-		if (!$row) {
-			$query = "INSERT INTO {nquire_group_participant_role} (nid, uid, role) VALUES (%d, %d, '%s')";
-			db_query($query, $gid, $uid, $role_id, $role_id);
-		}
-	}
+  if (nquire_group_get_user_status_in_group($gid, $uid) === 'member') {
+    $s_query = "SELECT uid FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d AND role='%s'";
+    $row = db_fetch_array(db_query($s_query, $gid, $uid, $role_id));
+    if (!$row) {
+      $query = "INSERT INTO {nquire_group_participant_role} (nid, uid, role) VALUES (%d, %d, '%s')";
+      db_query($query, $gid, $uid, $role_id, $role_id);
+    }
+  }
 }
 
 function nquire_group_user_has_role($gid, $uid, $role_id) {
-	$query = "SELECT EXISTS(SELECT 1 FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d AND role='%s') AS e";
-	$result = db_query($query, $gid, $uid, $role_id);
-	$row = db_fetch_array($result);
-	return $row && $row['e'];
+  $query = "SELECT EXISTS(SELECT 1 FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d AND role='%s') AS e";
+  $result = db_query($query, $gid, $uid, $role_id);
+  $row = db_fetch_array($result);
+  return $row && $row['e'];
 }
 
 function nquire_group_remove_user_role($gid, $uid, $role_id) {
-	$query = "DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d AND role='%s'";
-	db_query($query, $gid, $uid, $role_id);
+  $query = "DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d AND role='%s'";
+  db_query($query, $gid, $uid, $role_id);
 }
 
 function nquire_group_get_user_roles($gid, $uid) {
-	$query = "SELECT role FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d";
-	$result = db_query($query, $gid, $uid);
-	$roles = array();
-	while ($row = db_fetch_array($result)) {
-		$roles[] = $row['role'];
-	}
-	return $roles;
+  $query = "SELECT role FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d";
+  $result = db_query($query, $gid, $uid);
+  $roles = array();
+  while ($row = db_fetch_array($result)) {
+    $roles[] = $row['role'];
+  }
+  return $roles;
 }
 
 function nquire_group_get_user_status_in_group($gid, $uid) {
-	$query = "SELECT active FROM {nquire_group_participant} WHERE nid=%d AND uid=%d";
-	$row = db_fetch_array(db_query($query, $gid, $uid));
-	return $row ? ($row['active'] ? 'member' : 'awaiting') : 'none';
+  $query = "SELECT active FROM {nquire_group_participant} WHERE nid=%d AND uid=%d";
+  $row = db_fetch_array(db_query($query, $gid, $uid));
+  return $row ? ($row['active'] ? 'member' : 'awaiting') : 'none';
 }
 
 function nquire_group_get_member_uids($group_nid, $only_active = FALSE) {
-	$members = array();
+  $members = array();
 
-	$query = "SELECT uid FROM nquire_group_participant WHERE nid=%d";
-	if ($only_active) {
-		$query .= " AND active=1";
-	}
+  $query = "SELECT uid FROM nquire_group_participant WHERE nid=%d";
+  if ($only_active) {
+    $query .= " AND active=1";
+  }
 
-	$result = db_query($query, $group_nid);
-	while ($row = db_fetch_array($result)) {
-		$members[] = $row['uid'];
-	}
+  $result = db_query($query, $group_nid);
+  while ($row = db_fetch_array($result)) {
+    $members[] = $row['uid'];
+  }
 
-	return $members;
+  return $members;
 }
 
 function nquire_group_set_join_mode($group_nid, $value) {
-	$group = node_load($group_nid);
-	if ($group->selective != $value) {
-		$group->selective = $value;
-		$group->revision = TRUE;
-		node_save($group);
+  $group = node_load($group_nid);
+  if ($group->selective != $value) {
+    $group->selective = $value;
+    $group->revision = TRUE;
+    node_save($group);
 
-		$query = "SELECT uid FROM {nquire_group_participant} WHERE {nquire_group_participant}.active=0 AND {nquire_group_participant}.nid=%d";
-		$result = db_query($query, $group_nid);
-		while ($row = db_fetch_array($result)) {
-			nquire_group_delete_user_from_group($group_nid, $row['uid']);
-		}
-	}
+    $query = "SELECT uid FROM {nquire_group_participant} WHERE {nquire_group_participant}.active=0 AND {nquire_group_participant}.nid=%d";
+    $result = db_query($query, $group_nid);
+    while ($row = db_fetch_array($result)) {
+      nquire_group_delete_user_from_group($group_nid, $row['uid']);
+    }
+  }
 }
 
 function nquire_group_set_title($group_nid, $value) {
-	$group = node_load($group_nid);
-	if ($group->title != $value) {
-		$group->title = $value;
-		$group->revision = TRUE;
-		node_save($group);
-	}
+  $group = node_load($group_nid);
+  if ($group->title != $value) {
+    $group->title = $value;
+    $group->revision = TRUE;
+    node_save($group);
+  }
 }
 

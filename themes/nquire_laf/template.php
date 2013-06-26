@@ -303,8 +303,21 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 function phptemplate_pi_activities_view_phase($data) {
   drupal_set_title($data['phase']['title']);
 
+  $output = '';
+
   if ($data['in_phase']) {
-    $output = "<p><b>{$data['phase']['description']}</b></p><p><small>{$data['phase']['sharing']}</small></p>";
+    $content = '';
+    if ($data['phase']['description']) {
+      $content .= '<p>' . $data['phase']['description'] . '</p>';
+    }
+
+    if ($data['phase']['sharing']) {
+      $sharing .= '<p><small>' . $data['phase']['sharing'] . '</small></p>';
+    } else {
+      $sharing = '';
+    }
+
+    $output .= nquire_commons_create_page_section($content, $data['phase']['title']) . $sharing;
   }
 
   foreach ($data['activities'] as $activity_data) {
@@ -411,7 +424,11 @@ function phptemplate_pi_activities_view_shared_activity($activity_data) {
         }
         break;
       case 'singleblock':
-        $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
+        $output .= '<tr><      
+
+ 
+
+    td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
         break;
     }
   }

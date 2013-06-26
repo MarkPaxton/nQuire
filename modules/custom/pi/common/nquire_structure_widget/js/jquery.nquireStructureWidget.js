@@ -61,7 +61,7 @@
 		_buildItemElement: function(item, type, container) {
 			var self = this;
 			var element = $('<div>').attr('item-id', item.id)
-							.addClass('nquire-structure-' + type + '-container');
+							.addClass('nquire-structure-' + type + '-container').addClass('nquire-structure-item-container');
 
 			if (type === 'phase') {
 				this.append(element);

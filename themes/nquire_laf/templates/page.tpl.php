@@ -169,7 +169,7 @@
         <?php print $highlight; ?>
 
         <?php print $breadcrumb; ?>
-        <?php if ($title && !($node && $node->type === 'page') && $menu_item['path'] !== "journal/contribution/%"): ?>
+        <?php if ($title && !($node && ($node->type === 'page' || $node->type === 'pi_activity' || $node->type === 'pi_phase')) && $menu_item['path'] !== "journal/contribution/%"): ?>
           <h1 class="title"><?php print $title; ?></h1>
         <?php endif; ?>
         <?php print $messages; ?>
