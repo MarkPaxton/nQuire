@@ -76,6 +76,26 @@ function nquire_group_nodeapi(&$node, $op, $teaser, $page) {
  * @todo this should delete all the associated data with the inquiry too!
  */
 function nquire_group_delete(&$node) {
+  global $user;
+
+  $children = nquire_group_get_children($node->nid);
+
+  if ($user->uid != 1) {
+    $original_user = $user;
+    $old_state = session_save_session();
+    session_save_session(FALSE);
+    $user = user_load(array('uid' => 1));
+  }
+
+  foreach ($children as $gid) {
+    node_delete($gid);
+  }
+
+  if ($original_user) {
+    $user = $original_user;
+    session_save_session($old_state);
+  }
+
   // Delete the related information we were saving for this node.
   db_query('DELETE FROM {nquire_group} WHERE nid = %d', $node->nid);
   db_query("DELETE FROM {nquire_group_participant} WHERE nid=%d", $node->nid);
@@ -134,6 +154,15 @@ function nquire_group_create_group($owner, $title, $add_owner, $parent = NULL) {
     nquire_group_add_user_to_group($node->nid, $owner, TRUE);
   }
   return $node->nid;
+}
+
+function nquire_group_get_children($parent_nid) {
+  $nids = array();
+  $query = "SELECT node.nid FROM {node} LEFT JOIN {nquire_group} ON node.vid=nquire_group.vid WHERE nquire_group.parent=%d";
+  $result = db_query($query, $parent_nid);
+  while ($row = db_fetch_array($result)) {
+    $nids[] = $row['nid'];
+  }
 }
 
 function nquire_group_get_participants_with_role($gid, $role) {

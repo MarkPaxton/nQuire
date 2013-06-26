@@ -8,62 +8,62 @@
  * pi_home_view - Home page for PI that lists all the inquiries
  */
 function pi_home_view() {
-	drupal_set_title("My inquiries");
-	$output = "<p>Choose an inquiry.</p>";
+  drupal_set_title("My inquiries");
+  $output = '<p>' . t('Browse the list of available inquiries for you.') . '</p>';
 
-	global $user;
+  global $user;
 
-	$list = array();
+  global $user;
+  $inquiries_for_user = pi_inquiry_groupings_get_inquiries_for_user($user->uid);
 
-	//list all inquiries for the user
-	global $user;
-	$inquiries_for_user = pi_inquiry_groupings_get_inquiries_for_user($user->uid);
+  $active_inquiries = array_merge($inquiries_for_user['joined'], $inquiries_for_user['awaiting']);
 
-	//$header = array(t('Inquiry'), t('Description'));
+  if (count($active_inquiries) > 0) {
+    $title = t('Active inquiries');
+    $intro = t('Inquiries you are currently engaged with:');
 
-	foreach ($inquiries_for_user as $status => $inquiries) {
-		if (count($inquiries) > 0) {
-			switch ($status) {
-				case 'joined':
-					$output .= '<p>' . t('My inquiries:') . '</p>';
-					break;
-				case 'awaiting':
-					$output .= '<p>' . t('Inquiries awaiting decision on membership:') . '</p>';
-					break;
-				case 'available':
-					$output .= '<p>' . t('Available inquiries:') . '</p>';
-					break;
-			}
-			$rows = array();
+    $header = array(t('Inquiry'), t('Status'));
 
-			foreach ($inquiries as $inquiry_nid) {
-				$inquiry = node_load($inquiry_nid);
-				$status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry, $user->uid);
-				
-				$image = $inquiry->image ? ('<img src="' . file_create_url($inquiry->image) . '" style="float:left;width: 200px;"></img>') : '';
-				$title = l('<h3>' . check_plain($inquiry->title) . '</h3>', "inquiry/{$inquiry->nid}", array('html' => TRUE)) 
-								. '<p><b>' . nl2br(check_plain($inquiry->body)) . '</b></p>'
-								. '<p><small>' . t('Created by !user', array('!user' => nquire_commons_user_name_or_me($inquiry->uid))) . '<br/>'
-								. t('Number of participants: !n', array('!n' => count(nquire_group_get_member_uids($inquiry->actor_gid, TRUE)))) . '</small></p>';
-				
-				
-				$rows[] = array(array('data' => $image, 'style' => 'width: 200px'), $title);
-			}
+    $rows = array();
+    foreach ($active_inquiries as $inquiry_nid) {
+      $inquiry = node_load($inquiry_nid);
+      $rows[] = _pi_home_inquiry_presentation_in_list($inquiry);
+    }
 
-			$output .= theme_table(NULL, $rows);
-		}
-	}
+    $output .= nquire_commons_create_page_section($intro 
+            . nquire_commons_create_not_expanding_table_block(theme('table', $header, $rows), $title));
+  }
 
-	return $output;
-	foreach ($inquiries_for_user as $inquiry_nid) {
-		$inquiry = node_load($inquiry_nid);
-		$list[] = array('data' => l(check_plain($inquiry->title), "inquiry/" . $inquiry->nid, array('attributes' => array('class' => 'heading'))) . node_view($inquiry, TRUE, TRUE), 'class' => 'inquiry');
-	}
 
-	$type = 'ul';
-	$attributes = array('class' => 'inquiry');
+  if (count($inquiries_for_user['available']) > 0) {
+    $title = t('Available inquiries');
+    $intro = t('Inquiries you can join:');
 
-	$output .= theme_item_list($list, $title, $type, $attributes);
-	return $output;
+    $header = array(t('Inquiry'), t('Join'));
+
+    $rows = array();
+    foreach ($inquiries_for_user['available'] as $inquiry_nid) {
+      $inquiry = node_load($inquiry_nid);
+      $rows[] = _pi_home_inquiry_presentation_in_list($inquiry);
+    }
+
+    $output .= nquire_commons_create_page_section($intro 
+            . nquire_commons_create_not_expanding_table_block(theme('table', $header, $rows), $title));
+  }
+  return $output;
 }
 
+function _pi_home_inquiry_presentation_in_list($inquiry) {
+  global $user;
+
+  $status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry, $user->uid);
+
+  $output = l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}", array('attributes' => array('style' => 'font-size: 1.5em;font-weight: bold;')))
+          . '<div style="padding: .5em 0 .5em 1em;">' . nl2br(check_plain($inquiry->body)) . '</div>'
+          . '<div style="padding-left: 1em;">'
+          . '<small>' . t('Created by !user', array('!user' => l(nquire_commons_user_name_or_me($inquiry->uid), 'user/' . $inquiry->uid, array('html' => TRUE)))) . '<br/>'
+          . t('Number of participants: !n', array('!n' => count(nquire_group_get_member_uids($inquiry->actor_gid, TRUE)))) . '</small>'
+          . '</div>';
+
+  return array($output, $status);
+}

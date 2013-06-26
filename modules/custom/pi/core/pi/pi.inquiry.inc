@@ -17,21 +17,24 @@ function pi_inquiry_structure_view($node) {
   $output .= nquire_commons_create_page_section($description, $title);
 
   if ($access_data->hasInquiryAccess()) {
-    $output .= '<p>' . t('Click a circle to view any phase of <i>@inquiry</i>. ', array('@inquiry' => $inquiry_info->getInquiryNode()->title));
     $phases = $inquiry_info->getPhases();
     if (count($phases) > 0) {
       $phase_nodes = $inquiry_info->getPhases();
       $phase_node = array_shift($phase_nodes);
-      $output .= t(' You can start at <b>@phase</b>.', array('@phase' => $phase_node->title));
+      $output .= '<p>' . t('Click a circle to view any phase of <i>@inquiry</i>. You can start at <b>@phase</b>.', array(
+                  '@inquiry' => $inquiry_info->getInquiryNode()->title,
+                  '@phase' => $phase_node->title,
+              ))
+              . '</p>';
+    } else {
+      $output .= '<p>' . t('This inquiry has not phases or activities (yet).') . '</p>';
     }
-    $output .= '</p>';
   }
 
   $output .= theme('pi_inquiry_structure', $node);
 
   return $output;
 }
-
 
 function theme_pi_inquiry_structure($node) {
   $output = '';

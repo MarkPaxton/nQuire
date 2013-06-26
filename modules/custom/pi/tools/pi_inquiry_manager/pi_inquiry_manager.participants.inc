@@ -372,7 +372,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
             $buttons[] = l(t('cancel request'), $path('leave'), $link_params);
           }
         } else if ($join_mode == OG_INVITE_ONLY) {
-          $status .= t('Invitation sent');
+          $status .= t('Invitation to join received');
           if ($im_owner) {
             $buttons[] = l(t('cancel invitation'), $path('reject', $uid), $link_params);
           } else if ($its_me) {
@@ -406,25 +406,33 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
 /* roles list */
 
 function theme_pi_inquiry_manager_participants_roles($inquiry_node, $group_nid = FALSE) {
+  $inquiry_info = pi_info()->getInquiryInfo($inquiry_node->nid);
+
+  $roles_data = pi_inquiry_groupings_get_inquiry_roles($inquiry_node);
   $output = '';
 
   $group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
-  if ($group_check) {
-
-    $roles_data = pi_inquiry_groupings_get_inquiry_roles($inquiry_node);
+  if ($group_check && count($roles_data) > 0) {
     $collaboration_type = $group_nid ? 'group' : 'all';
-
 
     $phase_nids = pi_phase_load_nids_for_inquiry_and_collaboration_type($inquiry_node->nid, $collaboration_type);
 
-    $role_phase_activities = array();
-
-    $roles_used = FALSE;
+    $role_activities = array();
 
     if (count($phase_nids) > 0) {
-      $roles_used = TRUE;
+      $image_path = drupal_get_path('module', 'pi') . '/images/';
+
+      foreach ($roles_data as $role) {
+        $role_activities[$role['id']] = array();
+      }
+
       foreach ($phase_nids as $phase_nid) {
         $phase = node_load($phase_nid);
+        $phase_key = $inquiry_info->getPhaseKey($phase_nid);
+        $phase_class = "phase_$phase_key";
+
+
+        $phase_title = check_plain($phase->title);
 
         $activity_nids = pi_get_activities_for_phase($phase_nid);
         $activity_titles = array();
@@ -434,50 +442,77 @@ function theme_pi_inquiry_manager_participants_roles($inquiry_node, $group_nid =
         }
 
         foreach ($roles_data as $role) {
-          $activities_for_role = array_filter($activity_nids, function($aid) use($role) {
-                    return $role['activities'][$aid] === 'edit';
-                  });
-          if (count($activities_for_role) > 0) {
-            $role_phase_activities[$role['id']][$phase_nid] = array(
-                'data' => check_plain($phase->title),
-                'children' => array_map(function($aid) use ($activity_titles) {
-                          return $activity_titles[$aid];
-                        }, $activities_for_role),
+          $role_phase_activities = array();
+
+          foreach ($activity_nids as $activity_nid) {
+            $access = isset($role['values'][$activity_nid]) ? $role['values'][$activity_nid] : 'edit';
+            if ($access == 'edit' || $access == 'view') {
+              $image_url = url($image_path . $access . 'able.png');
+              $data = $activity_titles[$activity_nid] . "&nbsp<img width='12' src='$image_url'/>";
+
+              $role_phase_activities[] = array(
+                  'data' => $data,
+                  'class' => $phase_class,
+              );
+            }
+          }
+          if (count($role_phase_activities) > 0) {
+            $role_activities[$role['id']][] = array(
+                'data' => $phase_title,
+                'children' => $role_phase_activities,
+                'class' => $phase_class,
             );
           }
         }
       }
-    }
 
-    if ($roles_used) {
-      $header = array(t('Role'), t('Responsible for'), t('Participants'));
-      $rows = array();
-      foreach ($roles_data as $role) {
-        $title = $role['title'];
-        $activities = theme_item_list($role_phase_activities[$role['id']]);
+      $filtered_role_activities = array_filter($role_activities);
 
-        $users = nquire_group_get_participants_with_role($group_check['gid'], $role['id']);
+      if (count($filtered_role_activities) > 0) {
         $im_manager = pi_inquiry_manager_participants_group_manageuser_access($inquiry_node->nid, $group_nid);
 
-        $user_list = array_map(function($uid) use ($inquiry_node, $group_nid, $im_manager, $role) {
-                  $user = user_load($uid);
-                  $output = check_plain($user->name);
-                  if ($im_manager) {
-                    $output .= '<small>&nbsp;&nbsp;&nbsp;'
-                            . pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $uid, $role['id']))
-                            . '</small>';
-                  }
-                  return $output;
-                }, $users);
-        $user_html = theme_item_list($user_list);
-        if ($im_manager) {
-          $user_html .= pi_inquiry_manager_partipants_group_operation_link(t('Add participant'), $inquiry_node->nid, $group_nid, array('adduserstorole', $role['id']));
+        $header = array(t('Role'), t('Activities'), t('Participants'));
+        $rows = array();
+        foreach ($roles_data as $role) {
+          if (isset($filtered_role_activities[$role['id']])) {
+            $title = check_plain($role['title']);
+            $activity_output = theme('item_list', $filtered_role_activities[$role['id']]);
+
+
+            $users = nquire_group_get_participants_with_role($group_check['gid'], $role['id']);
+
+            $user_list = array_map(function($uid) use ($inquiry_node, $group_nid, $im_manager, $role) {
+                      $output = nquire_commons_user_name_or_me($uid);
+                      if ($im_manager) {
+                        $output .= '<small>&nbsp;&nbsp;&nbsp;'
+                                . pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $uid, $role['id']))
+                                . '</small>';
+                      }
+                      return $output;
+                    }, $users);
+            $user_html = theme('item_list', $user_list);
+
+            if ($im_manager) {
+              $user_html .= '<small>'
+                      . pi_inquiry_manager_partipants_group_operation_link(t('Add participant'), $inquiry_node->nid, $group_nid, array('adduserstorole', $role['id']))
+                      . '</small>';
+            }
+
+            $rows[] = array($title, $activity_output, $user_html);
+          }
         }
 
-        $rows[] = array($title, $activities, $user_html);
+        $content = '';
+        if ($collaboration_type === 'group') {
+          $content = t('The following table shows the roles that affect access to group activities:');
+          $title = t('Group roles');
+        } else {
+          $content = t('The following table shows the roles that affect access to activities carried out by all inquiry participants together:');
+          $title = t('Inquiry roles');
+        }
+        $content .= nquire_commons_create_not_expanding_table_block(theme_table($header, $rows));
+        $output .= nquire_commons_create_page_section($content, $title);
       }
-
-      $output .= nquire_commons_create_not_expanding_table_block(theme_table($header, $rows));
     }
   }
 

@@ -723,7 +723,7 @@ class PiInquiryAccess {
 
   private function getInquiryRoles() {
     if (!isset($this->inquiry_roles)) {
-      $this->inquiry_roles = nquire_group_get_user_roles($this->inquiry_info->getInquiryActorGid());
+      $this->inquiry_roles = nquire_group_get_user_roles($this->inquiry_info->getInquiryActorGid(), $this->uid);
     }
     return $this->inquiry_roles;
   }

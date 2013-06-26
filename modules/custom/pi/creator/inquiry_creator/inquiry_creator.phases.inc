@@ -4,11 +4,10 @@ function inquiry_creator_phase_edit($design_nid, $phase_nid) {
 	$design = node_load($design_nid);
 	$node = node_load($phase_nid);
 
-	$output = theme('inquiry_creator_inquiry_main', $design, 'activities');
-
 	$form = drupal_get_form('inquiry_creator_phase_form', $design, $node);
-
-	$output .= theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
+	$content = theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
+  
+  $output = theme('inquiry_creator_inquiry_main', $design, '', $content);
 	return $output;
 }
 
@@ -83,11 +82,11 @@ function inquiry_creator_phase_delete($design_nid, $phase_nid) {
 	$design = node_load($design_nid);
 	$node = node_load($phase_nid);
 
-	$output = theme('inquiry_creator_inquiry_main', $design, 'activities');
 
 	$form = drupal_get_form('inquiry_creator_phase_delete_form', $design, $node);
-
-	$output .= theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
+	$content = theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
+  
+	$output = theme('inquiry_creator_inquiry_main', $design, '', $content);
 	return $output;
 }
 
@@ -104,7 +103,7 @@ function inquiry_creator_phase_delete_form(&$form_state, $design, $node) {
 	if ($activities && count($activities > 0)) {
 		$info .= '<p>' . t('The following activities will also be deleted:') . '<ul>';
 		foreach ($activities as $activity) {
-			$info .= '<li><b>' . check_plain($activity['title']) . '</b></li>';
+			$info .= '<li><b>' . check_plain($activity->title) . '</b></li>';
 		}
 		$info .= '</ul></p>';
 	}
