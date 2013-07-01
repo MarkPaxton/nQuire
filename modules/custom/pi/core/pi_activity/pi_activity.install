@@ -10,172 +10,176 @@
  * Implementation of hook_install().
  */
 function pi_activity_install() {
-	// Create tables.
-	drupal_install_schema('pi_activity');
+  // Create tables.
+  drupal_install_schema('pi_activity');
 
-	variable_set("og_content_type_usage_pi_activity", 'group_post');
-	//Options are status, promote, sticky, revision
-	variable_set("node_options_pi_activity", array('status', 'revision'));
-	variable_set("comment_pi_activity", COMMENT_NODE_DISABLED);
-	variable_set('upload_pi_activity', 0);
+  variable_set("og_content_type_usage_pi_activity", 'group_post');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_pi_activity", array('status', 'revision'));
+  variable_set("comment_pi_activity", COMMENT_NODE_DISABLED);
+  variable_set('upload_pi_activity', 0);
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function pi_activity_uninstall() {
-	// Remove tables.
-	drupal_uninstall_schema('pi_activity');
+  // Remove tables.
+  drupal_uninstall_schema('pi_activity');
 
-	variable_del("og_content_type_usage_pi_activity");
-	variable_del("node_options_pi_activity");
-	variable_del("comment_pi_activity");
-	variable_del("upload_pi_activity");
+  variable_del("og_content_type_usage_pi_activity");
+  variable_del("node_options_pi_activity");
+  variable_del("comment_pi_activity");
+  variable_del("upload_pi_activity");
 }
 
 /**
  * Implementation of hook_schema for pi_activity module
  */
 function pi_activity_schema() {
-	$schema = array();
-	$schema['pi_activity'] = array(
-			'description' => 'PI Activity table with details about activities in nQuire.',
-			'fields' => array(
-					'nid' => array(
-							'description' => 'Activity node id, used to be activity_id',
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-					),
-					'vid' => array(
-							'description' => 'Activity node id, used to be activity_id',
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-					),
-					'phase_nid' => array(
-							'description' => 'The phase this activity is associated with.',
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-					),
-					'parent_activity' => array(
-							'description' => 'If this activity is created by another activity, then it is referenced here.',
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'default' => NULL
-					),
-					'show_children_in_phase' => array(
-							'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it will be set here.',
-							'type' => 'int',
-							'size' => 'tiny',
-							'not null' => TRUE,
-					),
-					'referenced_node' => array(
-							'type' => 'varchar',
-							'length' => 255,
-							'default' => NULL,
-							'description' => 'If the activity directly references a single node, it is set here.'
-					),
-					'activity_type' => array(
-							'type' => 'varchar',
-							'length' => 64,
-							'not null' => FALSE,
-							'description' => 'What kind of node type is this activity working with.'
-					),
-					'script_activity' => array(
-							'type' => 'int',
-							'size' => 'tiny',
-							'not null' => TRUE,
-							'description' => 'Whether this activity is part of the script (not just related to content).'
-					),
-					'parameters' => array(
-							'type' => 'text',
-							'not null' => TRUE,
-							'size' => 'big',
-							'description' => 'Parameters needed to create/use a node in an activity (optional).'
-					),
-					'weight' => array(
-							'description' => 'The default layout order in the phase list.',
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0
-					)
-			),
-			'primary key' => array('nid', 'vid'),
-			'indexes' => array(
-					'nid' => array('nid'),
-					'vid' => array('vid'),
-					'phase_nid' => array('phase_nid'),
-					'activity_type' => array('activity_type'),
-			)
-	);
+  $schema = array();
+  $schema['pi_activity'] = array(
+      'description' => 'PI Activity table with details about activities in nQuire.',
+      'fields' => array(
+          'nid' => array(
+              'description' => 'Activity node id, used to be activity_id',
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+          ),
+          'vid' => array(
+              'description' => 'Activity node id, used to be activity_id',
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+          ),
+          'phase_nid' => array(
+              'description' => 'The phase this activity is associated with.',
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+          ),
+          'parent_activity' => array(
+              'description' => 'If this activity is created by another activity, then it is referenced here.',
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'default' => NULL
+          ),
+          'show_children_in_phase' => array(
+              'description' => 'If this activity creates child activities then if they are to be shown in the phase view, it will be set here.',
+              'type' => 'int',
+              'size' => 'tiny',
+              'not null' => TRUE,
+          ),
+          'referenced_node' => array(
+              'type' => 'varchar',
+              'length' => 255,
+              'default' => NULL,
+              'description' => 'If the activity directly references a single node, it is set here.'
+          ),
+          'activity_type' => array(
+              'type' => 'varchar',
+              'length' => 64,
+              'not null' => FALSE,
+              'description' => 'What kind of node type is this activity working with.'
+          ),
+          'script_activity' => array(
+              'type' => 'int',
+              'size' => 'tiny',
+              'not null' => TRUE,
+              'description' => 'Whether this activity is part of the script (not just related to content).'
+          ),
+          'parameters' => array(
+              'type' => 'text',
+              'not null' => TRUE,
+              'size' => 'big',
+              'description' => 'Parameters needed to create/use a node in an activity (optional).'
+          ),
+          'weight' => array(
+              'description' => 'The default layout order in the phase list.',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0
+          )
+      ),
+      'primary key' => array('nid', 'vid'),
+      'indexes' => array(
+          'nid' => array('nid'),
+          'vid' => array('vid'),
+          'phase_nid' => array('phase_nid'),
+          'activity_type' => array('activity_type'),
+      )
+  );
 
 
-	$schema['pi_activity_node'] = array(
-			'description' => 'PI Activity node - references to activity content in nQuire',
-			'fields' => array(
-					'pan_id' => array(
-							'type' => 'serial',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Primary Key: Unique category ID'),
-					'activity_id' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Activity id.'),
-					'nid' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Node id.'),
-					'collaboration' => array(
-							'type' => 'text',
-							'size' => 'small',
-							'description' => 'Collaboration mode'),
-					'actor' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'description' => 'Actor id.'),
-			),
-			'primary key' => array('pan_id'),
-			'indexes' => array(//'inquiry_id' => array('inquiry_id'),
-					'activity_id' => array('activity_id'),
-					'nid' => array('nid')
-			),
-	);
+  $schema['pi_activity_node'] = array(
+      'description' => 'PI Activity node - references to activity content in nQuire',
+      'fields' => array(
+          'pan_id' => array(
+              'type' => 'serial',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Primary Key: Unique category ID'),
+          'activity_id' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Activity id.'),
+          'nid' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Node id.'),
+          'collaboration' => array(
+              'type' => 'text',
+              'size' => 'small',
+              'description' => 'Collaboration mode'),
+          'actor' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'description' => 'Actor id.'),
+      ),
+      'primary key' => array('pan_id'),
+      'indexes' => array(//'inquiry_id' => array('inquiry_id'),
+          'activity_id' => array('activity_id'),
+          'nid' => array('nid')
+      ),
+  );
 
-	$schema['pi_activity_share'] = array(
-			'description' => 'PI Activity node - references to activity content in nQuire',
-			'fields' => array(
-					'activity_id' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Activity id.'),
-					'actor' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Node id.'),
-					'share' => array(
-							'type' => 'text',
-							'size' => 'small',
-							'description' => 'Share content.'),
-			),
-			'primary key' => array('activity_id', 'actor'),
-	);
+  $schema['pi_activity_share'] = array(
+      'description' => 'PI Activity node - references to activity content in nQuire',
+      'fields' => array(
+          'activity_id' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Activity id.'),
+          'actor' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Node id.'),
+          'mode' => array(
+              'type' => 'text',
+              'size' => 'small',
+              'description' => 'Share content.'),
+          'share' => array(
+              'type' => 'varchar',
+              'size' => '16',
+              'description' => 'Share content.'),
+      ),
+      'primary key' => array('activity_id', 'actor', 'mode'),
+  );
 
 
-	return $schema;
+  return $schema;
 }

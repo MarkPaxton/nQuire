@@ -320,8 +320,16 @@ function phptemplate_pi_activities_view_phase($data) {
     $output .= nquire_commons_create_page_section($content, $data['phase']['title']) . $sharing;
   }
 
-  foreach ($data['activities'] as $activity_data) {
-    $output .= '<div>' . theme('pi_activities_view_activity', $activity_data) . '</div>';
+  if ($data['shared_view']) {
+    foreach ($data['activities'] as $activity_data) {
+      if (count($activity_data['shared_content']) > 0) {
+        $output .= '<div>' . theme('pi_activities_view_shared_activity', $activity_data) . '</div>';
+      }
+    }
+  } else {
+    foreach ($data['activities'] as $activity_data) {
+      $output .= '<div>' . theme('pi_activities_view_activity', $activity_data) . '</div>';
+    }
   }
 
   return $output;
@@ -388,13 +396,13 @@ function phptemplate_pi_activities_view_contribution_content($activities_data) {
   $output = '';
 
   foreach ($activities_data as $activity_data) {
-    $output .= theme('pi_activities_view_shared_activity', $activity_data);
+    $output .= theme('pi_activities_view_contributed_activity', $activity_data);
   }
 
   return $output;
 }
 
-function phptemplate_pi_activities_view_shared_activity($activity_data) {
+function phptemplate_pi_activities_view_contributed_activity($activity_data) {
   $output = '<a name="' . $activity_data['node']->nid . '"></a>';
 
   $output .= '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
@@ -424,11 +432,59 @@ function phptemplate_pi_activities_view_shared_activity($activity_data) {
         }
         break;
       case 'singleblock':
-        $output .= '<tr><      
+        $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
+        break;
+    }
+  }
+}
 
- 
+function phptemplate_pi_activities_view_shared_activity($activity_data) {
+  global $user;
 
-    td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
+  $output = '<a name="' . $activity_data['node']->nid . '"></a>';
+
+  $output .= '<div class="phase_activity phase_activity_' . $activity_data['phase_key'] . '">';
+
+  $output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
+
+  $output .= '<div class="phase_activity_content_wrapper">'
+          . '<table class="phase_activity_table">'
+          . '<tr><td class="phase_activity_label"><div></div></td>'
+          . '<td class="phase_activity_content_cell phase_activity_description"><div></div>'
+          . '</td></tr>';
+
+  foreach ($activity_data['shared_content'] as $shared_content_data) {
+    $actor = $shared_content_data['actor'];
+    if ($actor['collaboration'] === 'individual') {
+      $actor_title = nquire_commons_user_name_or_me($actor['actor'], $user->uid);
+    } else if ($actor['collaboration'] === 'group') {
+      $group = node_load($actor['actor']);
+      $actor_title = check_plain($group->title);
+    }
+
+    if ($actor_title) {
+      $output .= '<tr><td colspan="2" style="font-weight: bold; padding: 15px 0 5px 0;">' . t('Created by: !actor', array('!actor' => $actor_title)) . '</td></tr>';
+    }
+
+    $content_node_data = $shared_content_data['content'];
+
+    switch ($content_node_data['mode']) {
+      case 'twocolumns':
+        foreach ($content_node_data['rows'] as $row) {
+          if (is_array($row[1])) {
+            $empty = $row[1]['empty'];
+            $content = $row[1]['content'];
+          } else {
+            $empty = $row[1] === FALSE;
+            $content = $empty ? '' : $row[1];
+          }
+          $content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
+
+          $output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
+        }
+        break;
+      case 'singleblock':
+        $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
         break;
     }
   }

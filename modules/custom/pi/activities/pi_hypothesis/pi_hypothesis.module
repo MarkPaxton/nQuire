@@ -10,98 +10,98 @@
  * Implementation of hook_node_info().
  */
 function pi_hypothesis_node_info() {
-	return array(
-			'pi_hypothesis' => array(
-					'name' => t('Inquiry hypothesis'), // Required.
-					'module' => 'pi_hypothesis', // Required.
-					'description' => t('What is your hypothesis?'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Inquiry hypothesis'),
-					'has_body' => TRUE,
-					'body_label' => t('Hypothesis'),
-					'locked' => TRUE)
-	);
+  return array(
+      'pi_hypothesis' => array(
+          'name' => t('Inquiry hypothesis'), // Required.
+          'module' => 'pi_hypothesis', // Required.
+          'description' => t('What is your hypothesis?'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Inquiry hypothesis'),
+          'has_body' => TRUE,
+          'body_label' => t('Hypothesis'),
+          'locked' => TRUE)
+  );
 }
 
 /**
  * Implementation of hook_access().
  */
 function pi_hypothesis_access($op, $node, $account) {
-	return FALSE;
+  return FALSE;
 }
 
 function pi_hypothesis_edit_content_label() {
-	return t('Edit');
+  return t('Edit');
 }
 
 /**
  * Implementation of hook_form().
  */
 function pi_hypothesis_form(&$node) {
-	$type = node_get_types('type', $node);
+  $type = node_get_types('type', $node);
 
-	$form['title'] = array(
-			'#type' => 'hidden',
-			'#title' => check_plain($type->title_label),
-			'#required' => FALSE,
-			'#default_value' => $type->title_label,
-			'#weight' => -5
-	);
+  $form['title'] = array(
+      '#type' => 'hidden',
+      '#title' => check_plain($type->title_label),
+      '#required' => FALSE,
+      '#default_value' => $type->title_label,
+      '#weight' => -5
+  );
 
-	$form['hypothesis'] = array(
-			'#type' => 'textarea',
-			'#required' => FALSE,
-			'#default_value' => $node->hypothesis,
-			'#description' => t('A hypothesis is a prediction that you can test. Write your hypothesis here.'),
-			'#resizable' => TRUE,
-			'#rows' => 5,
-			'#cols' => 40,
-			'#weight' => -2
-	);
+  $form['hypothesis'] = array(
+      '#type' => 'textarea',
+      '#required' => FALSE,
+      '#default_value' => $node->hypothesis,
+      '#description' => t('A hypothesis is a prediction that you can test. Write your hypothesis here.'),
+      '#resizable' => TRUE,
+      '#rows' => 5,
+      '#cols' => 40,
+      '#weight' => -2
+  );
 
-	return $form;
+  return $form;
 }
 
 /**
  * Implementation of hook_insert().
  */
 function pi_hypothesis_insert($node) {
-	db_query("INSERT INTO {pi_hypothesis} (nid, vid, hypothesis) VALUES ('%d', '%d', '%s')", $node->nid, $node->vid, $node->hypothesis);
+  db_query("INSERT INTO {pi_hypothesis} (nid, vid, hypothesis) VALUES ('%d', '%d', '%s')", $node->nid, $node->vid, $node->hypothesis);
 }
 
 /**
  * Implementation of hook_update().
  */
 function pi_hypothesis_update($node) {
-	if ($node->revision) {
-		pi_hypothesis_insert($node);
-	} else {
-		db_query("UPDATE {pi_hypothesis} SET hypothesis = '%s' WHERE vid = %d", $node->hypothesis, $node->vid);
-	}
+  if ($node->revision) {
+    pi_hypothesis_insert($node);
+  } else {
+    db_query("UPDATE {pi_hypothesis} SET hypothesis = '%s' WHERE vid = %d", $node->hypothesis, $node->vid);
+  }
 }
 
 /**
  * Implementation of hook_delete().
  */
 function pi_hypothesis_delete(&$node) {
-	// Delete the related information we were saving for this node.
-	db_query('DELETE FROM {pi_hypothesis} WHERE nid = %d', $node->nid);
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_hypothesis} WHERE nid = %d', $node->nid);
 }
 
 /**
  * Implementation of hook_load().
  */
 function pi_hypothesis_load($node) {
-	return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis} WHERE vid = %d', $node->vid));
+  return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis} WHERE vid = %d', $node->vid));
 }
 
 /**
  * Implementation of hook_view().
  */
 function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
-	// Use Drupal's default node view.
-	$node = node_prepare($node, $teaser);
-	return $node;
+  // Use Drupal's default node view.
+  $node = node_prepare($node, $teaser);
+  return $node;
 }
 
 /**
@@ -110,51 +110,60 @@ function pi_hypothesis_view($node, $teaser = FALSE, $page = FALSE) {
  * @return array of theme data   
  */
 function pi_hypothesis_theme() {
-	return array(
-			'pi_hypothesis_to_support_activities' => array(
-					'arguments' => array('list' => NULL),
-			),
-	);
+  return array(
+      'pi_hypothesis_to_support_activities' => array(
+          'arguments' => array('list' => NULL),
+      ),
+  );
 }
 
-
-
 function pi_hypothesis_get_hypothesis_nids_for_use_in_activity($using_activity_nid, $using_uid) {
-	$inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
-	$content_access = pi_info()->getContentManager();
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
+  $content_access = pi_info()->getContentManager();
 
-	$activity = $inquiry_info->getActivityByType('pi_hypothesis');
+  $activity = $inquiry_info->getActivityByType('pi_hypothesis');
 
-	if ($activity) {
-		return $content_access->getContentFromForUsingActivityActor($activity->nid, $using_activity_nid, $using_uid);
-	}
-	return FALSE;
+  if ($activity) {
+    return $content_access->getContentFromForUsingActivityActor($activity->nid, $using_activity_nid, $using_uid);
+  }
+  return FALSE;
+}
+
+function pi_hypothesis_get_hypothesis_nids_for_use_in_content($using_activity_nid, $using_content_nid) {
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
+  $content_access = pi_info()->getContentManager();
+
+  $activity = $inquiry_info->getActivityByType('pi_hypothesis');
+
+  if ($activity) {
+    return $content_access->getContentFromForUsingContent($activity->nid, $using_content_nid);
+  }
+  return FALSE;
 }
 
 function theme_pi_hypothesis_to_support_activities($hypothesis_nids) {
-	if ($hypothesis_nids) {
-		$output = '<b>' . t('Hypothesis: ') . '</b>';
-		$output .= theme('item_list', array_map(function($nid) {
-											$node = node_load($nid);
-											return nl2br(check_plain($node->hypothesis));
-										}, $hypothesis_nids));
-		return $output;
-	}
+  if ($hypothesis_nids) {
+    $output = '<b>' . t('Hypothesis: ') . '</b>';
+    $output .= theme('item_list', array_map(function($nid) {
+                      $node = node_load($nid);
+                      return nl2br(check_plain($node->hypothesis));
+                    }, $hypothesis_nids));
+    return $output;
+  }
 }
 
+function pi_hypothesis_display_content_in_activity($node, $options) {
+  $content = NULL;
+  if ($options['edit']) {
+    $content = node_page_edit($node);
+  } else {
+    $content = $node ? nl2br(check_plain($node->hypothesis)) : FALSE;
+  }
 
-function pi_hypothesis_display_content_in_activity($node, $options) {	
-	$content = NULL;
-	if ($options['edit']) {
-		$content = node_page_edit($node);
-	} else {
-		$content = $node ? nl2br(check_plain($node->hypothesis)) : FALSE;
-	}
-	
-	return array(
-			'mode' => 'twocolumns',
-			'rows' => array(
-					array('Hypothesis:', $content),
-			),
-	);
+  return array(
+      'mode' => 'twocolumns',
+      'rows' => array(
+          array('Hypothesis:', $content),
+      ),
+  );
 }

@@ -358,8 +358,8 @@ class PiInquiryInfo {
   }
 
   public function getUserSharePolicy($uid) {
-    $share_policy = array('structure' => array(), 'values' => array());
-    $query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
+    $share_policy = array('structure' => array(), 'members' => array(), 'supervisor' => array());
+    $query = "SELECT share, mode FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
 
     foreach ($this->phases as $pnid => $phase_node) {
       $phase_policy = array(
@@ -394,8 +394,10 @@ class PiInquiryInfo {
 
       foreach ($this->getActivitiesForPhase($pnid) as $anid => $activity_node) {
         if ($valid) {
-          $row = db_fetch_array(db_query($query, $anid, $actor));
-          $share_policy['values'][$anid] = $row ? $row['share'] : $default;
+          $result = db_query($query, $anid, $actor);
+          while ($row = db_fetch_array($result)) {
+            $share_policy[$row['mode']][$anid] = $row ? $row['share'] : $default;
+          }
         }
 
         $activity_policy = array(
@@ -558,59 +560,50 @@ class PiInquiryContent {
     return $this->aggregateContentForActivityAndActorData($activity_nid, $actor_data);
   }
 
-  private function getActivityForContent($content_nid) {
-    $query = "SELECT `activity_id` FROM {pi_activity_node} WHERE `nid` = %d";
-    $result = db_fetch_object(db_query($query, $content_nid));
-    if ($result != false) {
-      if (isset($result->activity_id)) {
-        return $result->activity_id;
+  public function getSharedContent($activity_nid, $viewer_uid, $include_any_for_supervisor = FALSE) {
+    $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
+    $activity_collaboration = $inquiry_info->getActivityCollaboration($activity_nid);
+
+    $sharing_actors = array();
+
+    $query = "SELECT actor FROM {pi_activity_share} WHERE mode='%s' AND activity_id=%d AND share='%s'";
+
+    $get_actors = function(&$actors, $mode, $share, $restrict_actors = FALSE) use ($query, $activity_nid) {
+              $result = db_query($query, $mode, $activity_nid, $share);
+              while ($row = db_fetch_array($result)) {
+                if (!in_array($row['actor'], $actors) && (!$restrict_actors || in_array($row['actor'], $restrict_actors))) {
+                  $actors[] = $row['actor'];
+                }
+              }
+            };
+
+    if ($activity_collaboration === 'individual') {
+      $group = $inquiry_info->getSubgroup($viewer_uid);
+      $group_members = nquire_group_get_member_uids($group, TRUE);
+      $get_actors($sharing_actors, 'members', 'individual_group', $group_members);
+      $get_actors($sharing_actors, 'members', 'individual_all');
+    } else if ($activity_collaboration === 'group') {
+      $get_actors($sharing_actors, 'members', 'group_all');
+    }
+
+    if ($include_any_for_supervisor) {
+      $get_actors($sharing_actors, 'supervisor', 'supervisor_yes');
+    }
+
+    $nids = array();
+
+    $query = "SELECT DISTINCT filtered_pi_activity_node.nid FROM "
+            . "(SELECT * FROM pi_activity_node WHERE actor=%d) AS filtered_pi_activity_node INNER JOIN "
+            . "(SELECT node.nid as activity_node_nid FROM node LEFT JOIN pi_activity ON node.vid=pi_activity.vid WHERE pi_activity.nid=%d) AS activity_node_table "
+            . "ON filtered_pi_activity_node.activity_id=activity_node_table.activity_node_nid ";
+    foreach ($sharing_actors as $actor) {
+      $result = db_query($query, $actor, $activity_nid);
+      while ($row = db_fetch_array($result)) {
+        $nids[] = $row['nid'];
       }
     }
-    return FALSE;
-  }
 
-  public function getActivitySharedContent($activity_nid, $viewer_uid) {
-    $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
-    $activity_actor = $inquiry_info->getActivityActor($activity_nid, $viewer_uid);
-
-    $query = "SELECT pi_activity_node.nid, pi_activity_share.share, pi_activity_share.actor FROM {pi_activity_node} "
-            . "LEFT JOIN {pi_activity_share} ON (pi_activity_node.activity_id=pi_activity_share.activity_id AND pi_activity_node.actor=pi_activity_share.actor) "
-            . "WHERE {pi_activity_node}.activity_id=%d ";
-
-    switch ($activity_actor['collaboration']) {
-      case 'individual':
-        $subgroup = pi_inquiry_groupings_get_user_subgroup($inquiry_info->getInquiryNode(), $viewer_uid);
-        if ($subgroup) {
-          $nids = array('groupmates' => array(), 'participants' => array());
-          $group_mates = nquire_group_get_member_uids($subgroup);
-        } else {
-          $nids = array('participants' => array());
-          $group_mates = NULL;
-        }
-        $query .= "AND pi_activity_node.collaboration='individual' AND pi_activity_share.share!='individual_no'";
-
-        $result = db_query($query, $activity_nid);
-        while ($row = db_fetch_array($result)) {
-          if ($group_mates && in_array($row['actor'], $group_mates)) {
-            $nids['groupmates'][$row['actor']] = $row['nid'];
-          } else if ($row['share'] === 'individual_all') {
-            $nids['participants'][$row['actor']] = $row['nid'];
-          }
-        }
-
-        return $nids;
-      case 'group':
-        $query .= "AND pi_activity_node.collaboration='individual' AND pi_activity_share.share='group_all'";
-        $nids = array('groups' => array());
-        $result = db_query($query, $activity_nid);
-        while ($row = db_fetch_array($result)) {
-          $nids['participants'][$row['actor']] = $row['nid'];
-        }
-
-        break;
-      case 'all':
-        return NULL;
-    }
+    return $nids;
   }
 
   public function getContentAuthor($content_nid) {
@@ -661,7 +654,7 @@ class PiInquiryContent {
         }
         break;
       case 'shared_with_inquiry':
-        $share_query = "SELECT actor FROM pi_activity_share WHERE activity_id=%d AND share='%s'";
+        $share_query = "SELECT actor FROM {pi_activity_share} WHERE activity_id=%d AND mode='members' AND share='%s'";
         $result = db_query($share_query, $activity_nid, $all_share_requisite);
         while ($row = db_fetch_array($result)) {
           $sharing_actors[] = $row['actor'];

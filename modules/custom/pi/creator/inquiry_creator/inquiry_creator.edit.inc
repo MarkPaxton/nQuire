@@ -567,29 +567,6 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
       '#required' => TRUE
   );
 
-  if ($node->image) {
-    $form['image_pre'] = array(
-        '#value' => '<div><div class="inquiry_creator_metadata_image"><img src="' . file_create_url($node->image) . '"></img></div><div class="inquiry_creator_medatada_image_input_item_block">',
-    );
-    $form['image'] = array(
-        '#type' => 'file',
-        '#title' => t('Inquiry image'),
-        '#description' => t('Select an image if you want to replace the current one.'),
-        '#required' => FALSE,
-    );
-    $form['image_pos'] = array(
-        '#value' => '</div></div>',
-    );
-  } else {
-    $form['image'] = array(
-        '#type' => 'file',
-        '#title' => t('Inquiry image'),
-        '#description' => t('Select an image for the inquiry front page.'),
-        '#required' => FALSE,
-        '#default_value' => '',
-    );
-  }
-
   nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', "creator/");
 
   $form['#theme'] = 'inquiry_creator_inquiry_metadata_form';
@@ -612,10 +589,6 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
 
     node_save($node);
 
-    if (_pi_inquiry_creator_metadata_save_image_file($node, $form, $form_state)) {
-      node_save($node);
-    }
-
     inquiry_creator_create_stage_stub(t('Stage 1'), $node->nid);
   } else {
     $node = node_load($node_nid);
@@ -632,10 +605,6 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
         $save = TRUE;
       }
 
-      if (_pi_inquiry_creator_metadata_save_image_file($node, $form, $form_state)) {
-        $save = TRUE;
-      }
-
       if ($save) {
         $node->revision = TRUE;
         node_save($node);
@@ -644,40 +613,6 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
   }
 
   drupal_goto('creator/' . $node->nid);
-}
-
-function _pi_inquiry_creator_metadata_save_image_file(&$node, $form, $form_state) {
-  if (isset($_FILES['files']['name']['image'])) {
-//	$extensions = 'jpeg jpg gif tiff';
-//	$size_limit = file_upload_max_size();
-    $validators = array(
-            /* 'my_file_validate_extensions' => array($extensions),
-              'my_file_validate_size' => array($size_limit), */
-    );
-
-    $dest = file_directory_path() . '/pi_inquiry_images/';
-    file_check_directory($dest, TRUE);
-    $file = file_save_upload('image', $validators, $dest);
-    if ($file) {
-      if ($node->image) {
-        //file_delete($node->image);
-      }
-
-      file_set_status($file, FILE_STATUS_PERMANENT);
-
-      $p = strrpos($file->filepath, '.');
-      $s = strrpos($file->filepath, '/');
-
-      $path = substr($file->filepath, 0, $s);
-      $ext = $p ? substr($file->filepath, $p) : '';
-
-      $new_path = $path . '/' . $node->nid . '_' . nquire_commons_random_string(8) . $ext;
-      rename($file->filepath, $new_path);
-      $node->image = $new_path;
-      return TRUE;
-    }
-  }
-  return FALSE;
 }
 
 function inquiry_creator_create_stage_stub($title, $inquiry_nid, $phases = array()) {

@@ -9,6 +9,7 @@
 		init: function(options) {
 			var _options = $.extend({
 				allowCreate: true,
+        allowDelete: true,
 				canRename: true,
 				newButtonLabel: 'Add',
 				newDialogTitle: 'Add new column',
@@ -72,7 +73,7 @@
 			var options = this.data('options');
 			var buttonElements = this.find('.feature-buttons');
 
-			var canDelete = options.allowEmpty || buttonElements.length > 1;
+			var canDelete = options.allowDelete && (options.allowEmpty || buttonElements.length > 1);
 
 			buttonElements.each(function() {
 				var element = $(this);
@@ -143,12 +144,12 @@
 					var itemId = row.attr('item-id');
 					var value = null;
 
-					if (typeof column.values[itemId] !== 'undefined' && (!options.validValuesForItem || (column.values[itemId] in options.validValuesForItem(row)))) {
+					if (typeof column.values[itemId] !== 'undefined' && (!options.validValuesForItem || (column.values[itemId] in options.validValuesForItem(row, column.id)))) {
 						value = column.values[itemId];
 					} else if (notEditable) {
 						value = null;
 					} else if (options.defaultValueForItem) {
-						value = options.defaultValueForItem(row);
+						value = options.defaultValueForItem(row, column.id);
 					} else {
 						value = options.defaultValue;
 					}
@@ -236,7 +237,8 @@
 
 			if (options.validValuesForItem) {
 				var row = cell.parent();
-				values = options.validValuesForItem(row);
+        var columnId = cell.attr('column-id');
+				values = options.validValuesForItem(row, columnId);
 			} else {
 				values = options.values;
 			}

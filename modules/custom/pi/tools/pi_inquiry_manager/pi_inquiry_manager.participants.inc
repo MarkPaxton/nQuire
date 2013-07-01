@@ -406,10 +406,24 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
 /* roles list */
 
 function theme_pi_inquiry_manager_participants_roles($inquiry_node, $group_nid = FALSE) {
+  global $user;
+
   $inquiry_info = pi_info()->getInquiryInfo($inquiry_node->nid);
+  $inquiry_access = pi_info()->getAccessManager($inquiry_node->nid, $user->uid);
+
+  $output = '';
+
+  if ($inquiry_access->isInquiryOwner()) {
+    $title = 'Inquiry monitoring';
+    $content = ($inquiry_node->supervised ? t('This inquiry is monitored, and you are the supervisor.') : t('This inquiry is not monitored.'))
+            . '<br/>'
+            . l(t('Edit'), 'inquiry/' . $inquiry_node->nid . '/participants/supervise');
+
+    $output .= nquire_commons_create_page_section($content, $title);
+  }
+
 
   $roles_data = pi_inquiry_groupings_get_inquiry_roles($inquiry_node);
-  $output = '';
 
   $group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
   if ($group_check && count($roles_data) > 0) {
@@ -1245,6 +1259,51 @@ function pi_inquiry_manager_participants_subgroups_edit_policy_form_submit($form
 
     $inquiry->revision = TRUE;
     node_save($inquiry);
+  }
+
+  nquire_commons_form_close($form, $form_state);
+}
+
+function pi_inquiry_manager_participants_edit_supervision($inquiry_nid) {
+  $inquiry_node = node_load($inquiry_nid);
+  return drupal_get_form('pi_inquiry_manager_participants_edit_supervision_form', $inquiry_node);
+}
+
+function pi_inquiry_manager_participants_edit_supervision_form(&$form_state, $inquiry_node) {
+  $form = array();
+
+  ahah_helper_register($form, $form_state);
+
+  nquire_commons_load_ahah_fix();
+
+  $form['intro'] = array(
+      '#value' => t('The inquiry supervisor can access all content that the inquiry members select.') . '<br/>'
+      . t('This feature can be used to give the inquiry owner access to content that is private for the rest or participants.'),
+  );
+  $form['supervision'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Inquiry monitoring'),
+      '#description' => t('Check this option if you wish to be the supervisor of this inquiry.'),
+      '#default_value' => nquire_commons_form_node_default_value($inquiry_node, 'supervised', $form_state, 'supervision', FALSE),
+      '#required' => FALSE,
+  );
+
+  nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_participants_edit_supervision_form_submit', 'inquiry/' . $inquiry_node->nid . '/participants');
+
+  return $form;
+}
+
+function pi_inquiry_manager_participants_edit_supervision_form_submit($form, $form_state) {
+  $inquiry_nid = arg(1);
+  if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid)) {
+    $inquiry = node_load($inquiry_nid);
+    $supervision = $form_state['values']['supervision'] ? TRUE : FALSE;
+
+    if ($inquiry->supervised !== $supervision) {
+      $inquiry->supervised = $supervision;
+      $inquiry->revision = TRUE;
+      node_save($inquiry);
+    }
   }
 
   nquire_commons_form_close($form, $form_state);

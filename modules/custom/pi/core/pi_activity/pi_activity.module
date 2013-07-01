@@ -45,26 +45,7 @@ function pi_activity_access($activity, $op) {
 	return FALSE;
 }
 
-/**
- * hook_menu() for pi_activity defining all the activity/% menu callbacks, etc
- * @return array of menu items as per drupal 6 api
- */
-function pi_activity_menu() {
-	$items = array();
 
-
-	$items['activity/%node/shared/%'] = array(
-			'title' => 'View',
-			'file' => 'pi_activity.activity.inc',
-			'page callback' => 'pi_activity_shared_content_view',
-			'page arguments' => array(1, 3),
-			'access callback' => 'pi_activity_shared_content_view_access',
-			'access arguments' => array(1, 3),
-			'type' => MENU_CALLBACK
-	);
-
-	return $items;
-}
 
 function pi_activity_tab_view_access_callback($node) {
 	return pi_activity_tabs_access_to_content($node, 'view');
@@ -284,38 +265,6 @@ function pi_activity_delete(&$node) {
 	$custom_delete_function = "{$node->activity_type}_delete_activity";
 	if (function_exists($custom_delete_function)) {
 		$custom_delete_function($node);
-	}
-}
-
-function pi_activity_shared_content_list($activity) {
-	include_once 'pi_activity.activity.inc';
-	return pi_activity_shared_content_list_view($activity);
-}
-
-function pi_activity_shared_content_view_access($activity_node, $actor) {
-	$access_value = FALSE;
-
-	$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_node->nid);
-	if ($inquiry_info) {
-		$query = "SELECT share FROM pi_activity_share WHERE activity_id=%d AND actor=%d";
-		$row = db_fetch_array(db_query($query, $activity_node->nid, $actor));
-
-		if ($row) {
-			$access_value = $row['share'];
-		} else if ($inquiry_info->getActivityCollaboration($activity_node->nid) === 'individual') {
-			$access_value = 'individual_group';
-		}
-	}
-
-	switch ($access_value) {
-		case 'group_all':
-		case 'individual_all':
-			return TRUE;
-		case 'individual_group':
-			global $user;
-			return in_array($actor, nquire_group_get_member_uids($inquiry_info->getSubgroup($user->uid)));
-		default:
-			return FALSE;
 	}
 }
 
