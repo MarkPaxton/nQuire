@@ -1,211 +1,244 @@
 <?php
 
-
 function virtual_microscope_pi_tool_vm_use_ajax_form() {
-	return TRUE;
+  return TRUE;
 }
 
 function _virtual_microscope_create_selected_samples_tabs($tool_data) {
-	$selected_samples = $tool_data['vm_selected'] ? $tool_data['vm_selected'] : array();
+  $selected_samples = $tool_data['vm_selected'] ? $tool_data['vm_selected'] : array();
 
-	$tabs = array_map(function($sample) {
-						return array('id' => $sample, 'title' => t('Sample @sample', array('@sample' => $sample)));
-					}, $selected_samples);
+  $tabs = array_map(function($sample) {
+            return array('id' => $sample, 'title' => t('Sample @sample', array('@sample' => $sample)));
+          }, $selected_samples);
 
-	array_unshift($tabs, array('id' => 'home', 'title' => t('Samples')));
+  array_unshift($tabs, array('id' => 'home', 'title' => t('Samples')));
 
-	return nquire_commons_create_tabs_panel($tabs);
+  return nquire_commons_create_tabs_panel($tabs);
 }
 
 function virtual_microscope_pi_tool_vm_format_form_page($tool_data, $rendered_form) {
-	nquire_commons_load_javascript_custom_mouse_input();
-	nquire_commons_load_jquery_svg();
+  nquire_commons_load_javascript_custom_mouse_input();
+  nquire_commons_load_jquery_svg();
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopePageManager.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopePageManager.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope.css');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope.css');
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeDataBrowser.js');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeDataBrowser.js');
 
-	_virtual_microscope_load_vm_data_javascript();
+  _virtual_microscope_load_vm_data_javascript();
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeWhiteboard.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_whiteboard.css');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeWhiteboard.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_whiteboard.css');
 
-	$output = '';
+  $output = '';
 
-	$output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
+  $output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
 
-	$output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
-					. _virtual_microscope_create_home_page($tool_data)
-					. '</div>';
-
-
-	$data_block = nquire_commons_create_ajax_false_data_block($rendered_form);
+  $output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . _virtual_microscope_create_home_page($tool_data)
+          . '</div>';
 
 
-	$data_menu = '<div class="virtual_microscope_view_menu_popup_container">'
-					. '<label><input type="checkbox" name="browser_data" id="virtual_microscope_view_menu_data" checked />' . t('Show all data') . '</label>'
-					. '<div class="virtual_microscope_view_menu_popup"></div>'
-					. '</div>'
-					. '<div class="virtual_microscope_view_menu_link_container">'
-					. '<a id="virtual_microscope_view_menu_reset">' . t('Zoom out') . '</a>'
-					. '</div>'
-					. '<div class="virtual_microscope_view_menu_link_container">'
-					. '<a id="virtual_microscope_view_menu_center">' . t('Center on data') . '</a>'
-					. '</div>';
+  $data_block = nquire_commons_create_ajax_false_data_block($rendered_form);
 
 
-	$tree = array(
-			'direction' => 'horizontal',
-			'children' => array(
-					array(
-							'direction' => 'vertical',
-							'children' => array(
-									array(
-											'id' => 'virtual_microscope_view_menu',
-											'class' => 'virtual_microscope_view_menu',
-											'content' => $data_menu,
-											'size' => 'auto',
-									),
-									array('id' => 'virtual_microscope_container'),
-							),
-					),
-					array(
-							'id' => 'data_form_container',
-							'direction' => 'vertical',
-							'size' => 200,
-							'children' => array(
-									array('content' => $data_block['title'], 'size' => 'auto'),
-									array('content' => $data_block['middle']),
-									array('content' => $data_block['bottom'], 'size' => 'auto'),
-							),
-					),
-			),
-	);
-
-	$output .= '<div id="virtual-microscope-sample" class="virtual-microscope-page virtual-microscope-page-hidden">'
-					. nquire_commons_create_layout($tree)
-					. '</div>';
+  $data_menu = '<div class="virtual_microscope_view_menu_popup_container">'
+          . '<label><input type="checkbox" name="browser_data" id="virtual_microscope_view_menu_data" checked />' . t('Show all data') . '</label>'
+          . '<div class="virtual_microscope_view_menu_popup"></div>'
+          . '</div>'
+          . '<div class="virtual_microscope_view_menu_link_container">'
+          . '<a id="virtual_microscope_view_menu_reset">' . t('Zoom out') . '</a>'
+          . '</div>'
+          . '<div class="virtual_microscope_view_menu_link_container">'
+          . '<a id="virtual_microscope_view_menu_center">' . t('Center on data') . '</a>'
+          . '</div>';
 
 
-	return $output;
+  $tree = array(
+      'direction' => 'horizontal',
+      'children' => array(
+          array(
+              'direction' => 'vertical',
+              'children' => array(
+                  array(
+                      'id' => 'virtual_microscope_view_menu',
+                      'class' => 'virtual_microscope_view_menu',
+                      'content' => $data_menu,
+                      'size' => 'auto',
+                  ),
+                  array('id' => 'virtual_microscope_container'),
+              ),
+          ),
+          array(
+              'id' => 'data_form_container',
+              'direction' => 'vertical',
+              'size' => 200,
+              'children' => array(
+                  array('content' => $data_block['title'], 'size' => 'auto'),
+                  array('content' => $data_block['middle']),
+                  array('content' => $data_block['bottom'], 'size' => 'auto'),
+              ),
+          ),
+      ),
+  );
+
+  $output .= '<div id="virtual-microscope-sample" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . nquire_commons_create_layout($tree)
+          . '</div>';
+
+
+  return $output;
 }
 
 function virtual_microscope_pi_tool_vm_format_explore_page($tool_data) {
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopePageManager.js');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeManager.js');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopePageManager.js');
 
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope.css');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope.css');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
 
-	_virtual_microscope_load_vm_data_javascript();
+  _virtual_microscope_load_vm_data_javascript();
 
-	$output = '';
+  $output = '';
 
-	$output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
+  $output .= _virtual_microscope_create_selected_samples_tabs($tool_data);
 
-	$output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
-					. _virtual_microscope_create_home_page($tool_data)
-					. '</div>';
-
-
-	$tree = array(
-			'direction' => 'horizontal',
-			'children' => array(
-					array('id' => 'virtual_microscope_container'),
-			),
-	);
-
-	$output .= '<div id="virtual-microscope-sample" class="virtual-microscope-page virtual-microscope-page-hidden">'
-					. nquire_commons_create_layout($tree)
-					. '</div>';
+  $output .= '<div id="virtual-microscope-home" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . _virtual_microscope_create_home_page($tool_data)
+          . '</div>';
 
 
-	return $output;
+  $tree = array(
+      'direction' => 'horizontal',
+      'children' => array(
+          array('id' => 'virtual_microscope_container'),
+      ),
+  );
+
+  $output .= '<div id="virtual-microscope-sample" class="virtual-microscope-page virtual-microscope-page-hidden">'
+          . nquire_commons_create_layout($tree)
+          . '</div>';
+
+
+  return $output;
+}
+
+function virtual_microscope_pi_tool_vm_format_add_data_links($tool_data, $activity_nid) {
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_page.css');
+  $set = $tool_data['vm_set'];
+  $samples = $tool_data['vm_selected'];
+  $path = file_directory_path() . '/vm_data/' . $set . '/';
+
+  $output = '<div class="virtual-microscope-sample-list">';
+  
+  foreach ($samples as $sample_id) {
+    $url = url("activity/$activity_nid/add/$sample_id");
+    $output .= '<div class="virtual-microscope-sample-container virtual-microscope-sample-container-small">';
+
+    $output .= '<div class="virtual-microscope-sample" item-id="' . $sample_id . '">'
+            . '<div class="virtual-microscope-image-container">'
+            . '<a href="' . $url . '">'
+            . '<img class="virtual-microscope-image" src="' . file_create_url($path . 'pics/sample_' . $sample_id . '.jpg') . '" />'
+            . '<div class = "virtual-microscope-open"></div>'
+            . '</a>'
+            . '</div>'
+            . '</div>';
+
+    $output .= '<div class="virtual-microscope-sample-add-data-link"><a href="' . $url . '">' . t('Add data for sample @sample', array('@sample' => $sample_id)) . '</a></div>';
+
+
+    $output .= '</div>';
+  }
+  $output .= '</div>';
+
+  return array(
+      'position' => 'before',
+      'content' => $output,
+  );
 }
 
 function _virtual_microscope_load_vm_data_javascript() {
-	$paths = explode(',', trim(file_get_contents(drupal_get_path('module', 'virtual_microscope') . '/data/vmpath')));
+  $paths = explode(',', trim(file_get_contents(drupal_get_path('module', 'virtual_microscope') . '/data/vmpath')));
 
-	$data = file_get_contents($paths[0] . "sizedata.txt");
+  $data = file_get_contents($paths[0] . "sizedata.txt");
 
-	$module = "{"
-					. "  init: function() {"
-					. "    this.path='{$paths[1]}';"
-					. "    this.sizes=$data;"
-					. "  }"
-					. "}";
+  $module = "{"
+          . "  init: function() {"
+          . "    this.path='{$paths[1]}';"
+          . "    this.sizes=$data;"
+          . "  }"
+          . "}";
 
-	nquire_commons_inject_inline_javascript_module('VirtualMicroscopeData', $module);
+  nquire_commons_inject_inline_javascript_module('VirtualMicroscopeData', $module);
 }
 
 function _virtual_microscope_create_home_page($tool_data) {
-	nquire_commons_load_external_link_format();
+  nquire_commons_load_external_link_format();
 
-	$set = $tool_data['vm_set'];
-	$samples = $tool_data['vm_selected'];
-	$path = file_directory_path() . '/vm_data/' . $set . '/';
+  $set = $tool_data['vm_set'];
+  $samples = $tool_data['vm_selected'];
+  $path = file_directory_path() . '/vm_data/' . $set . '/';
 
-	$url = file_create_url($path . 'vm_data.txt');
-	$str = trim(file_get_contents($url));
-	$sample_data = nquire_commons_decode_data($str);
+  $url = file_create_url($path . 'vm_data.txt');
+  $str = trim(file_get_contents($url));
+  $sample_data = nquire_commons_decode_data($str);
 
-	$output = '<div class="virtual-microscope-sample-list">';
+  $output = '<div class="virtual-microscope-sample-list">';
 
-	$metadata_titles = array(
-			'location' => t('Location:'),
-			'source' => t('Source:'),
-			'info' => t('Further information:'),
-	);
+  $metadata_titles = array(
+      'location' => t('Location:'),
+      'source' => t('Source:'),
+      'info' => t('Further information:'),
+  );
 
-	foreach ($samples as $sample_id) {
-		$output .= '<div class="virtual-microscope-sample-container">';
+  foreach ($samples as $sample_id) {
+    $output .= '<div class="virtual-microscope-sample-container">';
 
-		$output .= '<div class="virtual-microscope-sample" item-id="' . $sample_id . '">'
-						. '<div class="virtual-microscope-image-container">'
-						. '<img class="virtual-microscope-image" src="' . file_create_url($path . 'pics/sample_' . $sample_id . '.jpg') . '" />'
-						. '<div class = "virtual-microscope-open"></div>'
-						. '</div>'
-						. '</div>';
+    $output .= '<div class="virtual-microscope-sample" item-id="' . $sample_id . '">'
+            . '<div class="virtual-microscope-image-container">'
+            . '<img class="virtual-microscope-image" src="' . file_create_url($path . 'pics/sample_' . $sample_id . '.jpg') . '" />'
+            . '<div class = "virtual-microscope-open"></div>'
+            . '</div>'
+            . '</div>';
 
-		$output .= '<div class="virtual-microscope-sample-title">' . t('Sample @sample', array('@sample' => $sample_id)) . '</div>';
-		$output .= '<div class="virtual-microscope-sample-metadata">';
-		foreach ($sample_data[$sample_id] as $key => $value) {
-			$output .= '<div class="virtual-microscope-sample-metadata-row">'
-							. '<div class="virtual-microscope-sample-metadata-cell virtual-microscope-sample-metadata-key virtual-microscope-sample-metadata-key-' . $key . '">' . $metadata_titles[$key] . '</div>'
-							. '<div class="virtual-microscope-sample-metadata-cell virtual-microscope-sample-metadata-value virtual-microscope-sample-metadata-value-' . $key . '">' . $value . '</div>'
-							. '</div>';
-		}
-		$output .= '</div>';
+    $output .= '<div class="virtual-microscope-sample-title">' . t('Sample @sample', array('@sample' => $sample_id)) . '</div>';
+    $output .= '<div class="virtual-microscope-sample-metadata">';
+    foreach ($sample_data[$sample_id] as $key => $value) {
+      $output .= '<div class="virtual-microscope-sample-metadata-row">'
+              . '<div class="virtual-microscope-sample-metadata-cell virtual-microscope-sample-metadata-key virtual-microscope-sample-metadata-key-' . $key . '">' . $metadata_titles[$key] . '</div>'
+              . '<div class="virtual-microscope-sample-metadata-cell virtual-microscope-sample-metadata-value virtual-microscope-sample-metadata-value-' . $key . '">' . $value . '</div>'
+              . '</div>';
+    }
+    $output .= '</div>';
 
-		$output .= '</div>';
-	}
-	$output .= '</div>';
+    $output .= '</div>';
+  }
+  $output .= '</div>';
 
-	return $output;
+  return $output;
 }
 
 function virtual_microscope_theme() {
-	return array(
-			'virtual_microscope_snapshot_measure_widget' => array(
-					'arguments' => array('form' => NULL),
-			),
-			'virtual_microscope_annotation_measure_widget' => array(
-					'arguments' => array('form' => NULL),
-			),
-			'virtual_microscope_length_measure_widget' => array(
-					'arguments' => array('form' => NULL),
-			),
-			'virtual_microscope_color_measure_widget' => array(
-					'arguments' => array('form' => NULL),
-			),
-			'virtual_microscope_user_interaction_measure_buttons' => array(
-					'arguments' => array('label' => '-'),
-			),
-	);
+  return array(
+      'virtual_microscope_snapshot_measure_widget' => array(
+          'arguments' => array('form' => NULL),
+      ),
+      'virtual_microscope_annotation_measure_widget' => array(
+          'arguments' => array('form' => NULL),
+      ),
+      'virtual_microscope_length_measure_widget' => array(
+          'arguments' => array('form' => NULL),
+      ),
+      'virtual_microscope_color_measure_widget' => array(
+          'arguments' => array('form' => NULL),
+      ),
+      'virtual_microscope_user_interaction_measure_buttons' => array(
+          'arguments' => array('label' => '-'),
+      ),
+  );
 }
 
 /* * ********************
@@ -214,66 +247,66 @@ function virtual_microscope_theme() {
 
 function virtual_microscope_pi_measure_vm_snapshot_create_form_item($measure_node, &$form, $value, $required) {
 
-	$input_element_id = "measure_{$measure_node->nid}";
-	$widget_element_id = "{$input_element_id}_widget";
+  $input_element_id = "measure_{$measure_node->nid}";
+  $widget_element_id = "{$input_element_id}_widget";
 
-	$form[$input_element_id] = array(
-			'#type' => 'hidden',
-			'#default_value' => $value,
-			'#required' => $required,
-	);
+  $form[$input_element_id] = array(
+      '#type' => 'hidden',
+      '#default_value' => $value,
+      '#required' => $required,
+  );
 
-	$form[$widget_element_id] = array(
-			'#theme' => 'virtual_microscope_snapshot_measure_widget',
-			'#widget_data' => $measure_node->data,
-			'#widget_id' => $widget_element_id,
-			'#widget_input_id' => $input_element_id,
-			'#widget_measure_nid' => $measure_node->nid,
-	);
+  $form[$widget_element_id] = array(
+      '#theme' => 'virtual_microscope_snapshot_measure_widget',
+      '#widget_data' => $measure_node->data,
+      '#widget_id' => $widget_element_id,
+      '#widget_input_id' => $input_element_id,
+      '#widget_measure_nid' => $measure_node->nid,
+  );
 }
 
 function theme_virtual_microscope_snapshot_measure_widget($form) {
-	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_snapshot" input_element_id="' . $form['#widget_input_id'] . '" style="display:none;"></div>';
+  $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_snapshot" input_element_id="' . $form['#widget_input_id'] . '" style="display:none;"></div>';
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeSnapshotMeasure.js');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeSnapshotMeasure.js');
 
-	return $output;
+  return $output;
 }
 
 function virtual_microscope_pi_measure_vm_snapshot_format_table_value($measure_node, $value) {
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_snapshot_in_table.css');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_snapshot_in_table.css');
 
-	$data = nquire_commons_decode_data($value);
-	$path = file_directory_path() . '/pi_measures_vm_snapshot/' . $data['image'];
-	$output = '<div class="virtual-microscope-snapshot">'
-					. '<img src="' . file_create_url($path . '.png') . '" />'
-					. '<img class="virtual-microscope-snapshot-data-image" src="' . file_create_url($path . '.svg') . '" />'
-					. '</div>';
+  $data = nquire_commons_decode_data($value);
+  $path = file_directory_path() . '/pi_measures_vm_snapshot/' . $data['image'];
+  $output = '<div class="virtual-microscope-snapshot">'
+          . '<img src="' . file_create_url($path . '.png') . '" />'
+          . '<img class="virtual-microscope-snapshot-data-image" src="' . file_create_url($path . '.svg') . '" />'
+          . '</div>';
 
-	return $output;
+  return $output;
 }
 
 function virtual_microscope_pi_measure_vm_snapshot_process_form_value($measure_node, &$value, $old_value, $node) {
-	$dest = file_directory_path() . '/pi_measures_vm_snapshot/';
-	file_check_directory($dest, TRUE);
+  $dest = file_directory_path() . '/pi_measures_vm_snapshot/';
+  file_check_directory($dest, TRUE);
 
-	$old_value_obj = nquire_commons_decode_data($old_value);
-	$img = isset($old_value_obj['image']) ? $old_value_obj['image'] : $node->nid . '_' . nquire_commons_random_string(8);
+  $old_value_obj = nquire_commons_decode_data($old_value);
+  $img = isset($old_value_obj['image']) ? $old_value_obj['image'] : $node->nid . '_' . nquire_commons_random_string(8);
 
-	$new_value_obj = nquire_commons_decode_data($value);
+  $new_value_obj = nquire_commons_decode_data($value);
 
-	$vmImgData = base64_decode(str_replace(' ', '+', substr($new_value_obj['vmImage'], strpos($new_value_obj['vmImage'], ',') + 1)));
-	file_save_data($vmImgData, "$dest/$img.png", FILE_EXISTS_REPLACE);
+  $vmImgData = base64_decode(str_replace(' ', '+', substr($new_value_obj['vmImage'], strpos($new_value_obj['vmImage'], ',') + 1)));
+  file_save_data($vmImgData, "$dest/$img.png", FILE_EXISTS_REPLACE);
 
-	$dataImgData = substr($new_value_obj['dataImage'], strpos($new_value_obj['dataImage'], ',') + 1);
-	file_save_data($dataImgData, "$dest/$img.svg", FILE_EXISTS_REPLACE);
+  $dataImgData = substr($new_value_obj['dataImage'], strpos($new_value_obj['dataImage'], ',') + 1);
+  file_save_data($dataImgData, "$dest/$img.svg", FILE_EXISTS_REPLACE);
 
-	unset($new_value_obj['vmImage']);
-	unset($new_value_obj['dataImage']);
-	$new_value_obj['image'] = $img;
+  unset($new_value_obj['vmImage']);
+  unset($new_value_obj['dataImage']);
+  $new_value_obj['image'] = $img;
 
-	$value = json_encode($new_value_obj);
-	return;
+  $value = json_encode($new_value_obj);
+  return;
 }
 
 /* * ********************
@@ -282,37 +315,37 @@ function virtual_microscope_pi_measure_vm_snapshot_process_form_value($measure_n
 
 function virtual_microscope_pi_measure_vm_annotation_create_form_item($measure_node, &$form, $value, $required) {
 
-	$input_element_id = "measure_{$measure_node->nid}";
-	$widget_element_id = "{$input_element_id}_widget";
+  $input_element_id = "measure_{$measure_node->nid}";
+  $widget_element_id = "{$input_element_id}_widget";
 
-	$form[$input_element_id] = array(
-			'#type' => 'hidden',
-			'#default_value' => $value,
-			'#required' => $required,
-	);
+  $form[$input_element_id] = array(
+      '#type' => 'hidden',
+      '#default_value' => $value,
+      '#required' => $required,
+  );
 
-	$form[$widget_element_id] = array(
-			'#theme' => 'virtual_microscope_annotation_measure_widget',
-			'#widget_data' => $measure_node->data,
-			'#widget_id' => $widget_element_id,
-			'#widget_input_id' => $input_element_id,
-			'#widget_measure_nid' => $measure_node->nid,
-	);
+  $form[$widget_element_id] = array(
+      '#theme' => 'virtual_microscope_annotation_measure_widget',
+      '#widget_data' => $measure_node->data,
+      '#widget_id' => $widget_element_id,
+      '#widget_input_id' => $input_element_id,
+      '#widget_measure_nid' => $measure_node->nid,
+  );
 }
 
 function virtual_microscope_pi_measure_vm_annotation_hide_in_table() {
-	return TRUE;
+  return TRUE;
 }
 
 function theme_virtual_microscope_annotation_measure_widget($form) {
-	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_annotation" input_element_id="' . $form['#widget_input_id'] . '">'
-					. '<button onclick="return false;">' . t('Annotate view') . '</button>'
-					. '</div>';
+  $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_annotation" input_element_id="' . $form['#widget_input_id'] . '">'
+          . '<button onclick="return false;">' . t('Annotate view') . '</button>'
+          . '</div>';
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeAnnotationMeasure.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_annotation_measure.css');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeAnnotationMeasure.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_annotation_measure.css');
 
-	return $output;
+  return $output;
 }
 
 /* * ********************
@@ -321,78 +354,78 @@ function theme_virtual_microscope_annotation_measure_widget($form) {
 
 function virtual_microscope_pi_measure_vm_length_create_form_item($measure_node, &$form, $value, $required) {
 
-	$input_element_id = "measure_{$measure_node->nid}";
-	$widget_element_id = "{$input_element_id}_widget";
+  $input_element_id = "measure_{$measure_node->nid}";
+  $widget_element_id = "{$input_element_id}_widget";
 
-	$form[$input_element_id] = array(
-			'#type' => 'hidden',
-			'#default_value' => $value,
-			'#required' => $required,
-	);
+  $form[$input_element_id] = array(
+      '#type' => 'hidden',
+      '#default_value' => $value,
+      '#required' => $required,
+  );
 
-	$form[$widget_element_id] = array(
-			'#theme' => 'virtual_microscope_length_measure_widget',
-			'#widget_data' => $measure_node->data,
-			'#widget_id' => $widget_element_id,
-			'#widget_input_id' => $input_element_id,
-			'#widget_measure_nid' => $measure_node->nid,
-			'#widget_measure_title' => check_plain($measure_node->title),
-	);
+  $form[$widget_element_id] = array(
+      '#theme' => 'virtual_microscope_length_measure_widget',
+      '#widget_data' => $measure_node->data,
+      '#widget_id' => $widget_element_id,
+      '#widget_input_id' => $input_element_id,
+      '#widget_measure_nid' => $measure_node->nid,
+      '#widget_measure_title' => check_plain($measure_node->title),
+  );
 }
 
 function virtual_microscope_pi_measure_vm_length_format_table_value($measure_node, $value) {
-	$data = nquire_commons_decode_data($value);
-	if (isset($data['value'])) {
-		return "{$data['value']} mm";
-	} else {
-		return '';
-	}
+  $data = nquire_commons_decode_data($value);
+  if (isset($data['value'])) {
+    return "{$data['value']} mm";
+  } else {
+    return '';
+  }
 }
 
 function theme_virtual_microscope_length_measure_widget($form) {
-	$c = _virtual_microscope_get_measure_color();
-	$bc = str_replace('0', 'a', $c);
+  $c = _virtual_microscope_get_measure_color();
+  $bc = str_replace('0', 'a', $c);
 
-	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_length" class="virtual_microscope_number_measure_block" '
-					. 'input_element_id="' . $form['#widget_input_id'] . '" '
-					. 'input_element_title="' . $form['#widget_measure_title'] . '" measure_color="' . $c . '">'
-					. '<div class="virtual_microscope_number_measure_title">' . $form['#widget_measure_title'] . ':</div>'
-					. '<div class="virtual_microscope_number_measure_box" style="background: ' . $bc . ';"></div>'
-					. theme('virtual_microscope_user_interaction_measure_buttons', t('measure'), t('new measure'))
-					. '</div>';
+  $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_length" class="virtual_microscope_number_measure_block" '
+          . 'input_element_id="' . $form['#widget_input_id'] . '" '
+          . 'input_element_title="' . $form['#widget_measure_title'] . '" measure_color="' . $c . '">'
+          . '<div class="virtual_microscope_number_measure_title">' . $form['#widget_measure_title'] . ':</div>'
+          . '<div class="virtual_microscope_number_measure_box" style="background: ' . $bc . ';"></div>'
+          . theme('virtual_microscope_user_interaction_measure_buttons', t('measure'), t('new measure'))
+          . '</div>';
 
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeLengthMeasure.js');
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeNumberMeasure.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_number_measure.css');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeLengthMeasure.js');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeNumberMeasure.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_number_measure.css');
 
-	return $output;
+  return $output;
 }
 
 function theme_virtual_microscope_user_interaction_measure_buttons($start_label, $new_measure, $create_save_button = TRUE) {
-	nquire_commons_load_javascript_custom_mouse_input();
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/jquery.vmUserInteractionMeasure.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_user_interaction_measure.css');
+  nquire_commons_load_javascript_custom_mouse_input();
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/jquery.vmUserInteractionMeasure.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_user_interaction_measure.css');
 
-	$output = '<div class="virtual_microscope_measure_button_row">'
-					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_start_button virtual_microscope_measure_button_hidden">' . $start_label . '</div>'
-					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_edit_button virtual_microscope_measure_button_hidden">' . t('edit') . '</div>'
-					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_new_button virtual_microscope_measure_button_hidden">' . $new_measure . '</div>'
-					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_clear_button virtual_microscope_measure_button_hidden">' . t('clear') . '</div>'
-					. '<div class="virtual_microscope_measure_button virtual_microscope_measure_cancel_button virtual_microscope_measure_button_hidden">' . t('cancel') . '</div>';
-	if ($create_save_button) {
-		$output .= '<div class="virtual_microscope_measure_button virtual_microscope_measure_save_button virtual_microscope_measure_button_hidden">' . t('save') . '</div>';
-	}
+  $output = '<div class="virtual_microscope_measure_button_row">'
+          . '<div class="virtual_microscope_measure_button virtual_microscope_measure_start_button virtual_microscope_measure_button_hidden">' . $start_label . '</div>'
+          . '<div class="virtual_microscope_measure_button virtual_microscope_measure_edit_button virtual_microscope_measure_button_hidden">' . t('edit') . '</div>'
+          . '<div class="virtual_microscope_measure_button virtual_microscope_measure_new_button virtual_microscope_measure_button_hidden">' . $new_measure . '</div>'
+          . '<div class="virtual_microscope_measure_button virtual_microscope_measure_clear_button virtual_microscope_measure_button_hidden">' . t('clear') . '</div>'
+          . '<div class="virtual_microscope_measure_button virtual_microscope_measure_cancel_button virtual_microscope_measure_button_hidden">' . t('cancel') . '</div>';
+  if ($create_save_button) {
+    $output .= '<div class="virtual_microscope_measure_button virtual_microscope_measure_save_button virtual_microscope_measure_button_hidden">' . t('save') . '</div>';
+  }
 
-	$output .= '</div>';
+  $output .= '</div>';
 
-	return $output;
+  return $output;
 }
 
 function _virtual_microscope_get_measure_color() {
-	static $colors = array('#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff');
-	static $n = 0;
-	return $colors[$n++ % count($colors)];
+  static $colors = array('#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff');
+  static $n = 0;
+  return $colors[$n++ % count($colors)];
 }
 
 /* * ********************
@@ -401,182 +434,182 @@ function _virtual_microscope_get_measure_color() {
 
 function virtual_microscope_pi_measure_vm_color_create_form_item($measure_node, &$form, $value, $required) {
 
-	$input_element_id = "measure_{$measure_node->nid}";
-	$widget_element_id = "{$input_element_id}_widget";
+  $input_element_id = "measure_{$measure_node->nid}";
+  $widget_element_id = "{$input_element_id}_widget";
 
-	$form[$input_element_id] = array(
-			'#type' => 'hidden',
-			'#default_value' => $value,
-			'#required' => $required,
-	);
+  $form[$input_element_id] = array(
+      '#type' => 'hidden',
+      '#default_value' => $value,
+      '#required' => $required,
+  );
 
-	$form[$widget_element_id] = array(
-			'#theme' => 'virtual_microscope_color_measure_widget',
-			'#widget_data' => $measure_node->data,
-			'#widget_id' => $widget_element_id,
-			'#widget_input_id' => $input_element_id,
-			'#widget_measure_nid' => $measure_node->nid,
-			'#widget_measure_title' => check_plain($measure_node->title),
-	);
+  $form[$widget_element_id] = array(
+      '#theme' => 'virtual_microscope_color_measure_widget',
+      '#widget_data' => $measure_node->data,
+      '#widget_id' => $widget_element_id,
+      '#widget_input_id' => $input_element_id,
+      '#widget_measure_nid' => $measure_node->nid,
+      '#widget_measure_title' => check_plain($measure_node->title),
+  );
 }
 
 function __virtual_microscope_pi_measure_vm_color_format_table_value($measure_node, $value) {
-	$data = nquire_commons_decode_data($value);
-	if (isset($data['value'])) {
-		return "{$data['value']} mm";
-	} else {
-		return '';
-	}
+  $data = nquire_commons_decode_data($value);
+  if (isset($data['value'])) {
+    return "{$data['value']} mm";
+  } else {
+    return '';
+  }
 }
 
 function theme_virtual_microscope_color_measure_widget($form) {
 
-	$output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_color" class="virtual_microscope_color_measure_block" '
-					. 'input_element_id="' . $form['#widget_input_id'] . '" >'
-					. '<div class="virtual_microscope_color_measure_title">' . $form['#widget_measure_title'] . ':</div>'
-					. '<div class="virtual_microscope_color_measure_box"></div>'
-					. theme('virtual_microscope_user_interaction_measure_buttons', t('select'), t('new data'), FALSE)
-					. '</div>'
-					. _virtual_microscope_color_measure_create_color_picker_image();
+  $output = '<div id="' . $form['#widget_id'] . '" measure_type="measure_widget_vm_color" class="virtual_microscope_color_measure_block" '
+          . 'input_element_id="' . $form['#widget_input_id'] . '" >'
+          . '<div class="virtual_microscope_color_measure_title">' . $form['#widget_measure_title'] . ':</div>'
+          . '<div class="virtual_microscope_color_measure_box"></div>'
+          . theme('virtual_microscope_user_interaction_measure_buttons', t('select'), t('new data'), FALSE)
+          . '</div>'
+          . _virtual_microscope_color_measure_create_color_picker_image();
 
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/jquery.rockColorPicker.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/rock_color_picker.css');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/jquery.rockColorPicker.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/rock_color_picker.css');
 
-	drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeColorMeasure.js');
-	drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_color_measure.css');
+  drupal_add_js(drupal_get_path('module', 'virtual_microscope') . '/js/VirtualMicroscopeColorMeasure.js');
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_color_measure.css');
 
-	return $output;
+  return $output;
 }
 
 function _virtual_microscope_color_measure_create_color_picker_image() {
-	$colors = array();
-	$holes = array();
+  $colors = array();
+  $holes = array();
 
-	$maxrow = 0;
-	$maxcol = 0;
+  $maxrow = 0;
+  $maxcol = 0;
 
-	$fh = fopen(drupal_get_path('module', 'virtual_microscope') . '/data/colors.csv', 'r');
-	$cols = array();
-	$rows = array();
-	while ($line = fgets($fh)) {
-		$parts = explode(',', trim($line));
-		if (count($parts) === 4) {
-			$id = count($colors);
+  $fh = fopen(drupal_get_path('module', 'virtual_microscope') . '/data/colors.csv', 'r');
+  $cols = array();
+  $rows = array();
+  while ($line = fgets($fh)) {
+    $parts = explode(',', trim($line));
+    if (count($parts) === 4) {
+      $id = count($colors);
 
-			$colors[$id] = array(
-					'cid' => $id,
-					'name' => $parts[0],
-					'color' => $parts[3],
-			);
-			$cols[$id] = $parts[1];
-			$rows[$id] = $parts[2];
+      $colors[$id] = array(
+          'cid' => $id,
+          'name' => $parts[0],
+          'color' => $parts[3],
+      );
+      $cols[$id] = $parts[1];
+      $rows[$id] = $parts[2];
 
-			$maxcol = max($maxcol, $cols[$id]);
-			$maxrow = max($maxrow, $rows[$id]);
-			$holes[$cols[$id]][$rows[$id]] = TRUE;
-		}
-	}
-	fclose($fh);
+      $maxcol = max($maxcol, $cols[$id]);
+      $maxrow = max($maxrow, $rows[$id]);
+      $holes[$cols[$id]][$rows[$id]] = TRUE;
+    }
+  }
+  fclose($fh);
 
-	$module = "{"
-					. "  init: function() {"
-					. "    this.colors = " . json_encode($colors) . ";"
-					. "  }"
-					. "}";
-	nquire_commons_inject_inline_javascript_module('VirtualMicroscopeColorMeasureData', $module);
+  $module = "{"
+          . "  init: function() {"
+          . "    this.colors = " . json_encode($colors) . ";"
+          . "  }"
+          . "}";
+  nquire_commons_inject_inline_javascript_module('VirtualMicroscopeColorMeasureData', $module);
 
 
-	$chipWidth = 30;
-	$chipHeight = 40;
-	$chipVGap = 20;
-	$chipHGap = 10;
-	$margin = 40;
-	$selection_gap = 3;
+  $chipWidth = 30;
+  $chipHeight = 40;
+  $chipVGap = 20;
+  $chipHGap = 10;
+  $margin = 40;
+  $selection_gap = 3;
 
-	$holeRadius = .5 * $chipWidth;
-	$halfVGap = .5 * $chipVGap;
-	$chipArcRadius = $holeRadius - 1;
+  $holeRadius = .5 * $chipWidth;
+  $halfVGap = .5 * $chipVGap;
+  $chipArcRadius = $holeRadius - 1;
 
-	$borderCenterVDistance = .5 * $chipVGap;
-	$borderCenterHDistance = sqrt($chipArcRadius * $chipArcRadius - $borderCenterVDistance * $borderCenterVDistance);
-	$borderArcLength = 2 * $borderCenterHDistance;
-	$borderCircleCrossX = .5 * $chipWidth - $borderCenterHDistance;
+  $borderCenterVDistance = .5 * $chipVGap;
+  $borderCenterHDistance = sqrt($chipArcRadius * $chipArcRadius - $borderCenterVDistance * $borderCenterVDistance);
+  $borderArcLength = 2 * $borderCenterHDistance;
+  $borderCircleCrossX = .5 * $chipWidth - $borderCenterHDistance;
 
-	$bottomArcPath = "a $chipArcRadius,$chipArcRadius 0 0,1 $borderArcLength,0";
-	$topArcPath = "a $chipArcRadius,$chipArcRadius 0 0,1 -$borderArcLength,0";
+  $bottomArcPath = "a $chipArcRadius,$chipArcRadius 0 0,1 $borderArcLength,0";
+  $topArcPath = "a $chipArcRadius,$chipArcRadius 0 0,1 -$borderArcLength,0";
 
-	$topChipPath = "v $chipHeight h $borderCircleCrossX $bottomArcPath  h $borderCircleCrossX v -$chipHeight z";
-	$bottomChipPath = "v $chipHeight h $chipWidth v -$chipHeight h -$borderCircleCrossX $topArcPath z";
-	$middleChipPath = "v $chipHeight h $borderCircleCrossX $bottomArcPath  h $borderCircleCrossX v -$chipHeight h -$borderCircleCrossX $topArcPath z";
+  $topChipPath = "v $chipHeight h $borderCircleCrossX $bottomArcPath  h $borderCircleCrossX v -$chipHeight z";
+  $bottomChipPath = "v $chipHeight h $chipWidth v -$chipHeight h -$borderCircleCrossX $topArcPath z";
+  $middleChipPath = "v $chipHeight h $borderCircleCrossX $bottomArcPath  h $borderCircleCrossX v -$chipHeight h -$borderCircleCrossX $topArcPath z";
 
-	$topChipPathNoArc = "m $borderCircleCrossX,$chipHeight h -$borderCircleCrossX v -$chipHeight h $chipWidth v $chipHeight h -$borderCircleCrossX";
-	$bottomChipPathNoArc = "m $borderCircleCrossX,0 h -$borderCircleCrossX v $chipHeight h $chipWidth v -$chipHeight h -$borderCircleCrossX";
-	$middleChipPathNoArc = "m $borderCircleCrossX,0 h -$borderCircleCrossX v $chipHeight h $borderCircleCrossX m $borderArcLength,0  h $borderCircleCrossX v -$chipHeight h -$borderCircleCrossX";
+  $topChipPathNoArc = "m $borderCircleCrossX,$chipHeight h -$borderCircleCrossX v -$chipHeight h $chipWidth v $chipHeight h -$borderCircleCrossX";
+  $bottomChipPathNoArc = "m $borderCircleCrossX,0 h -$borderCircleCrossX v $chipHeight h $chipWidth v -$chipHeight h -$borderCircleCrossX";
+  $middleChipPathNoArc = "m $borderCircleCrossX,0 h -$borderCircleCrossX v $chipHeight h $borderCircleCrossX m $borderArcLength,0  h $borderCircleCrossX v -$chipHeight h -$borderCircleCrossX";
 
-	$selectionHeight = $chipHeight + 2 * $selection_gap;
-	$selectionWidth = $chipWidth + 2 * $selection_gap;
-	$selectionBorderArcLength = $borderArcLength + 2 * $selection_gap;
+  $selectionHeight = $chipHeight + 2 * $selection_gap;
+  $selectionWidth = $chipWidth + 2 * $selection_gap;
+  $selectionBorderArcLength = $borderArcLength + 2 * $selection_gap;
 
-	$topChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,$selectionHeight h -$borderCircleCrossX v -$selectionHeight h $selectionWidth v $selectionHeight h -$borderCircleCrossX";
-	$bottomChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,0 h -$borderCircleCrossX v $selectionHeight h $selectionWidth v -$selectionHeight h -$borderCircleCrossX";
-	$middleChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,0 h -$borderCircleCrossX v $selectionHeight h $borderCircleCrossX m $selectionBorderArcLength,0  h $borderCircleCrossX v -$selectionHeight h -$borderCircleCrossX";
+  $topChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,$selectionHeight h -$borderCircleCrossX v -$selectionHeight h $selectionWidth v $selectionHeight h -$borderCircleCrossX";
+  $bottomChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,0 h -$borderCircleCrossX v $selectionHeight h $selectionWidth v -$selectionHeight h -$borderCircleCrossX";
+  $middleChipPathSelection = "m -$selection_gap,-$selection_gap m $borderCircleCrossX,0 h -$borderCircleCrossX v $selectionHeight h $borderCircleCrossX m $selectionBorderArcLength,0  h $borderCircleCrossX v -$selectionHeight h -$borderCircleCrossX";
 
-	$width = 2 * $margin + $maxcol * ($chipWidth + $chipHGap) + $chipWidth;
-	$height = 2 * $margin + $maxrow * ($chipHeight + $chipVGap) + $chipHeight;
+  $width = 2 * $margin + $maxcol * ($chipWidth + $chipHGap) + $chipWidth;
+  $height = 2 * $margin + $maxrow * ($chipHeight + $chipVGap) + $chipHeight;
 
-	$output = '';
-	$output .= "<div id='rock-color-picker-container' class='hidden' style='width: {$width}px; height: {$height}px;'>";
-	$output .= "<svg id='rock-color-picker-svg' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 $width $height'>";
-	$output .= '<g id="rock-color-picker-svg-group" fill-rule="evenodd" style="font-size: 18px; text-anchor: middle; font-family: serif;">';
+  $output = '';
+  $output .= "<div id='rock-color-picker-container' class='hidden' style='width: {$width}px; height: {$height}px;'>";
+  $output .= "<svg id='rock-color-picker-svg' version='1.1' xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' viewBox='0 0 $width $height'>";
+  $output .= '<g id="rock-color-picker-svg-group" fill-rule="evenodd" style="font-size: 18px; text-anchor: middle; font-family: serif;">';
 
-	$holesPath = '';
-	$chipElements = '';
-	$holePath = "a $holeRadius,$holeRadius 0 0,0 $chipWidth,0 a $holeRadius,$holeRadius 0 0,0 -$chipWidth,0 z";
+  $holesPath = '';
+  $chipElements = '';
+  $holePath = "a $holeRadius,$holeRadius 0 0,0 $chipWidth,0 a $holeRadius,$holeRadius 0 0,0 -$chipWidth,0 z";
 
-	foreach ($colors as $cid => $color) {
-		$path = $rows[$cid] == 0 ? $topChipPath : ($rows[$cid] < $maxrow ? $middleChipPath : $bottomChipPath);
-		$border = $rows[$cid] == 0 ? $topChipPathNoArc : ($rows[$cid] < $maxrow ? $middleChipPathNoArc : $bottomChipPathNoArc);
-		$selectionBorder = $rows[$cid] == 0 ? $topChipPathSelection : ($rows[$cid] < $maxrow ? $middleChipPathSelection : $bottomChipPathSelection);
+  foreach ($colors as $cid => $color) {
+    $path = $rows[$cid] == 0 ? $topChipPath : ($rows[$cid] < $maxrow ? $middleChipPath : $bottomChipPath);
+    $border = $rows[$cid] == 0 ? $topChipPathNoArc : ($rows[$cid] < $maxrow ? $middleChipPathNoArc : $bottomChipPathNoArc);
+    $selectionBorder = $rows[$cid] == 0 ? $topChipPathSelection : ($rows[$cid] < $maxrow ? $middleChipPathSelection : $bottomChipPathSelection);
 
-		$x = $margin + $cols[$cid] * ($chipWidth + $chipHGap);
-		$y = $margin + $rows[$cid] * ($chipHeight + $chipVGap);
+    $x = $margin + $cols[$cid] * ($chipWidth + $chipHGap);
+    $y = $margin + $rows[$cid] * ($chipHeight + $chipVGap);
 
-		$chipElements .= "<g color-id='{$color['cid']}' class='rock-color-picker-chip'>";
-		$chipElements .= "<path d='M $x,$y $path' fill='{$color['color']}'/>";
-		$chipElements .= "<path class='rock-color-picker-border' d='M $x,$y $border' fill='none' />";
-		$chipElements .= "<path class='rock-color-picker-selection-border' d='M $x,$y $selectionBorder' fill='none' />";
-		$chipElements .= "</g>";
-	}
+    $chipElements .= "<g color-id='{$color['cid']}' class='rock-color-picker-chip'>";
+    $chipElements .= "<path d='M $x,$y $path' fill='{$color['color']}'/>";
+    $chipElements .= "<path class='rock-color-picker-border' d='M $x,$y $border' fill='none' />";
+    $chipElements .= "<path class='rock-color-picker-selection-border' d='M $x,$y $selectionBorder' fill='none' />";
+    $chipElements .= "</g>";
+  }
 
-	for ($j = 0, $y = $margin + $chipHeight + $halfVGap; $j < $maxrow; $j++, $y += $chipHeight + $chipVGap) {
-		for ($i = 0, $x = $margin; $i <= $maxcol; $i++, $x += $chipWidth + $chipHGap) {
-			if ($holes[$i][$j]) {
-				$holesPath .= "M $x,$y $holePath ";
-			}
-		}
-	}
+  for ($j = 0, $y = $margin + $chipHeight + $halfVGap; $j < $maxrow; $j++, $y += $chipHeight + $chipVGap) {
+    for ($i = 0, $x = $margin; $i <= $maxcol; $i++, $x += $chipWidth + $chipHGap) {
+      if ($holes[$i][$j]) {
+        $holesPath .= "M $x,$y $holePath ";
+      }
+    }
+  }
 
-	$output .= "<path d='M 0,0 v $height h $width v -$height z $holesPath' fill='#fafafa' fill-opacity='0.85'></path>";
-	$output .= "<rect x='0' y ='0' width='$width' height='$height' fill-opacity='0' stroke='black' stroke-width='1'></rect>";
-	$output .= $chipElements;
+  $output .= "<path d='M 0,0 v $height h $width v -$height z $holesPath' fill='#fafafa' fill-opacity='0.85'></path>";
+  $output .= "<rect x='0' y ='0' width='$width' height='$height' fill-opacity='0' stroke='black' stroke-width='1'></rect>";
+  $output .= $chipElements;
 
-	$pos = 15;
-	$pos2 = $pos + 12;
-	$text_style = "text-anchor='start' font-family='sans-serif' font-size='10' fill='#333'";
+  $pos = 15;
+  $pos2 = $pos + 12;
+  $text_style = "text-anchor='start' font-family='sans-serif' font-size='10' fill='#333'";
 
-	$output .= "<text x='$pos' y='$pos' $text_style>" . t("Drag and zoom in/out this chart to match a colour you see in the sample.") . "</text>"
-					. "<text x='$pos' y='$pos2' $text_style>" . t("Click on a colour to select it.") . "</text>";
+  $output .= "<text x='$pos' y='$pos' $text_style>" . t("Drag and zoom in/out this chart to match a colour you see in the sample.") . "</text>"
+          . "<text x='$pos' y='$pos2' $text_style>" . t("Click on a colour to select it.") . "</text>";
 
-	$size = 24;
-	$y = 5;
-	$x = $width - $size - $y;
-	$link = url(drupal_get_path('module', 'virtual_microscope') . '/css/icons/64_close.png');
-	$output .= "<image id='rock-color-picker-close' class='rock-color-picker-close' x='$x' y='$y' width='$size' height='$size' xlink:href='$link' />";
+  $size = 24;
+  $y = 5;
+  $x = $width - $size - $y;
+  $link = url(drupal_get_path('module', 'virtual_microscope') . '/css/icons/64_close.png');
+  $output .= "<image id='rock-color-picker-close' class='rock-color-picker-close' x='$x' y='$y' width='$size' height='$size' xlink:href='$link' />";
 
-	$output .= "</g>";
-	$output .= "</svg>";
-	$output .= "</div>"; // rock-color-picker-container
+  $output .= "</g>";
+  $output .= "</svg>";
+  $output .= "</div>"; // rock-color-picker-container
 
-	return $output;
+  return $output;
 }

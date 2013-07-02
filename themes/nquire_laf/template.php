@@ -355,8 +355,10 @@ function phptemplate_pi_activities_view_activity($activity_data) {
 
 
     if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
+
       switch ($activity_data['content']['mode']) {
         case 'twocolumns':
+          $node_content = '';
           foreach ($activity_data['content']['rows'] as $row) {
             if (is_array($row[1])) {
               $empty = $row[1]['empty'];
@@ -367,14 +369,21 @@ function phptemplate_pi_activities_view_activity($activity_data) {
             }
             $content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
 
-            $output .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
+            $node_content = '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
           }
-          $output .= '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
+          $links = '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links']['content'] . '</td></tr>';
+
           break;
         case 'singleblock':
-          $output .= '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links'] . '</td></tr>';
-          $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
+          $links = '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links']['content'] . '</td></tr>';
+          $node_content = '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
           break;
+      }
+
+      if ($activity_data['links']['position'] === 'before') {
+        $output .= $links . $node_content;
+      } else {
+        $output .= $node_content . $links;
       }
     }
 

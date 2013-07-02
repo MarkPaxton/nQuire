@@ -112,11 +112,29 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
     $content_node = node_load($content_nid);
   }
 
+  $activity_is_being_edited = $active_activity && $mode === 'edit';
+
+
+  $links_block = NULL;
+  if ($access === 'edit') {
+    $links_block_f = "{$activity_node->activity_type}_format_edit_links_block";
+    if (function_exists($links_block_f)) {
+      $links_block = $links_block_f($activity_node, $activity_is_being_edited);
+    } else {
+      $links_position_f = "{$activity_node->activity_type}_links_block_position";
+      $links_position = function_exists($links_position_f) ? $links_position_f($activity_node, $activity_is_being_edited) : 'after';
+      $links_block = array(
+          'position' => $links_position,
+          'content' => pi_activity_create_edit_links($activity_node, $activity_is_being_edited),
+      );
+    }
+  }
+
   $data = array(
       'node' => $activity_node,
       'title' => check_plain($activity_node->title),
       'description' => nl2br(check_plain($activity_node->body)),
-      'links' => $access === 'edit' ? pi_activity_create_edit_links($activity_node, $active_activity && $mode === 'edit') : NULL,
+      'links' => $links_block,
       'access' => $access,
       'reason' => $reason,
       'access_explanation' => $exaplanation,

@@ -34,7 +34,17 @@ $(function() {
 
       this._tabsManager.selectTab('home');
       this._tabsManager.setEnabled(true);
-      this._openPage('home');
+
+      this._openInitialPage();
+    },
+    _openInitialPage: function() {
+      var parts = location.pathname.split('/');
+      if (parts.length > 2 && parts[parts.length - 2] === 'add' && parts[parts.length - 1].length > 0) {
+        var sample = parts[parts.length - 1];
+        this.openSampleView({sample: sample});
+      } else {
+        this._openPage('home');
+      }
     },
     openSampleView: function(view) {
       this._openPage(view.sample, view);

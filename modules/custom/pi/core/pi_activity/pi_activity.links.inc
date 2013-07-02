@@ -16,7 +16,7 @@ function pi_activity_create_edit_links($activity_node, $edit_view) {
 
 
 
-		if ($can_edit) {
+		if ($can_edit) {      
 			if ($content_node) {
 				$add_content_link_f = "{$activity_node->activity_type}_add_content_label";
 				$add_content_link_label = function_exists($add_content_link_f) ? $add_content_link_f($content_node) : FALSE;
