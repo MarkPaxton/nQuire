@@ -24,13 +24,28 @@ function pi_feeds_block($op = 'list') {
 function _pi_feeds_get_topic_sections() {
   $topic_sections = array();
 
+  $inquiry_context = NULL;
+  $forum_context = NULL;
   if (arg(0) === 'inquiry') {
-    $context = arg(1);
-  } else {
-    $context = NULL;
+    $inquiry_context = arg(1);
+  } else if (arg(0) === 'forum') {
+    $forum_context = arg(1);
+  } else if (arg(0) === 'node') {
+    $node = node_load(arg(1));
+    if ($node && $node->type === 'forum') {
+      $t = array_slice($node->taxonomy);
+      $forum_context = count($t) == 1 ? $t[0]->tid : NULL;
+    }
   }
 
-  $topic_sections[] = _pi_feeds_format_topic_section(_pi_feeds_get_journalcontribution_topics($context));
+  $contribution_topics = _pi_feeds_get_journalcontribution_topics($inquiry_context);
+  if (count($contribution_topics) > 0) {
+    $topic_sections[] = _pi_feeds_format_topic_section($contribution_topics);
+  }
+  $forum_topics = _pi_feeds_get_forum_topics($forum_context);
+  if (count($forum_topics) > 0) {
+    $topic_sections[] = _pi_feeds_format_topic_section($forum_topics);
+  }
 
   return $topic_sections;
 }
@@ -62,21 +77,50 @@ function _pi_feeds_get_journalcontribution_topics($context = NULL, $max = 5) {
   return $topics;
 }
 
+function _pi_feeds_get_forum_topics($context = NULL, $max = 5) {
+  $query = "SELECT DISTINCT topic FROM pi_feeds WHERE type='forum'";
+  $args = array();
+  if ($context) {
+    $query .= " AND context=%d";
+    $args[] = $context;
+  }
+
+  $query .= ' ORDER BY timestamp DESC LIMIT %d';
+  $args[] = $max;
+
+  $topics = array();
+  $result = db_query($query, $args);
+  while ($row = db_fetch_array($result)) {
+    $formatted_topic = _pi_feeds_format_topic('forum', $context, $row['topic']);
+    if ($formatted_topic) {
+      $topics[] = $formatted_topic;
+    }
+  }
+
+  return $topics;
+}
+
 function _pi_feeds_format_topic($type, $context, $topic) {
   $query = "SELECT * FROM {pi_feeds} WHERE type='%s' AND topic=%d ORDER BY timestamp DESC LIMIT 1";
   $row = db_fetch_array(db_query($query, $type, $topic));
 
   if ($type === 'journalcontribution') {
-    if ($row['event'] === 'unpublish') {
-      return FALSE;
-    }
-
     $contribution = node_load($row['topic']);
-    $contribution_title = l(check_plain($contribution->title), 'journal/contribution/' . $contribution->nid, array('html' => TRUE));
+    $contribution_title = l(check_plain($contribution->title), 'journal/contribution/' . $contribution->nid);
     $text = _pi_feeds_contribution_event_text($contribution_title, $row['event'], $row['object_type']);
     $n = comment_num_new($contribution->nid);
     if ($n > 0) {
       $text .= '<br/><small>' . ($n == 1 ? t('(One new comment)') : t('(!n new comments)', array('!n' => $n))) . '</small>';
+    }
+    $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
+    return $text;
+  } else if ($type === 'forum') {
+    $forum = node_load($row['topic']);
+    $forum_title = l(check_plain($forum->title), 'node/' . $forum->nid);
+    $text = _pi_feeds_forum_event_text($forum_title, $row['event']);
+    $n = comment_num_new($contribution->nid);
+    if ($n > 0) {
+      $text .= '<br/><small>' . ($n == 1 ? t('(One new reply)') : t('(!n new replies)', array('!n' => $n))) . '</small>';
     }
     $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
     return $text;
@@ -176,6 +220,23 @@ function _pi_feeds_contribution_event_text($contribution_title, $event, $object_
   }
 }
 
+function _pi_feeds_forum_event_text($forum_title, $event) {
+  $args = array(
+      '!f' => $forum_title,
+  );
+
+  switch ($event) {
+    case 'insert':
+      return t('New forum topic: !f.', $args);
+    case 'update':
+      return t('Topic updated: !f.', $args);
+    case 'comment':
+      return t('!f: commented.', $args);
+    default:
+      return t('!f updated.', $args);
+  }
+}
+
 function _pi_feeds_format_time($timestamp) {
   $t = time() - $timestamp;
   if ($t < 10) {
@@ -211,8 +272,19 @@ function _pi_feeds_add($type, $context, $topic, $event, $object_node) {
     $object_type = NULL;
   }
 
-  $query = "INSERT INTO pi_feeds (type, context, topic, event, object, object_type, uid, timestamp) VALUES ('%s', '%s', %d, '%s', %d, '%s', %d, %d)";
-  db_query($query, $type, $context, $topic, $event, $object, $object_type, $user->uid, time());
+  $check = db_query("SELECT topic FROM pi_feeds WHERE topic=%d LIMIT 1", $topic);
+  if ($check && $check->num_rows > 0) {
+    $query = "UPDATE pi_feeds SET type='%s', context='%s', event='%s', object=%d, object_type='%s', uid=%d, timestamp=%d WHERE topic=%d";
+    db_query($query, $type, $context, $event, $object, $object_type, $user->uid, time(), $topic);
+  } else {
+    $query = "INSERT INTO pi_feeds (type, context, topic, event, object, object_type, uid, timestamp) VALUES ('%s', '%s', %d, '%s', %d, '%s', %d, %d)";
+    db_query($query, $type, $context, $topic, $event, $object, $object_type, $user->uid, time());
+  }
+}
+
+function _pi_feeds_delete_topic($topic) {
+  $query = "DELETE FROM pi_feeds WHERE topic=%d";
+  db_query($query, $topic);
 }
 
 function pi_feeds_nodeapi($node, $op) {
@@ -222,9 +294,20 @@ function pi_feeds_nodeapi($node, $op) {
 
     $inquiry_info = FALSE;
     $content_node = FALSE;
+    $forum_node = FALSE;
     $journal_contribution = FALSE;
 
     switch ($node->type) {
+      case 'forum':
+        if ($op === 'insert' || $op === 'update') {
+          $forum_node = $node;
+          $event = $op;
+          $t = array_slice($forum_node->taxonomy, 0, 1);
+          $forum_context = count($t) == 1 ? $t[0]->tid : 0;
+        } else if ($op === 'delete') {
+          _pi_feeds_delete_topic($node->nid);
+        }
+        break;
       case 'pi_key_questions':
       case 'pi_key_answers':
       case 'pi_data':
@@ -254,8 +337,12 @@ function pi_feeds_nodeapi($node, $op) {
         break;
       case 'pi_journal_contribution':
         if ($op === 'insert' || $op === 'update') {
-          $journal_contribution = $node;
-          $event = $node->shared ? ($op . 'contribution') : 'unpublish';
+          if ($node->shared) {
+            $journal_contribution = $node;
+            $event = $op . 'contribution';
+          } else {
+            _pi_feeds_delete_topic($node->nid);
+          }
         }
     }
 
@@ -274,6 +361,10 @@ function pi_feeds_nodeapi($node, $op) {
         _pi_feeds_add('journalcontribution', $inquiry_info->getInquiryNid(), $journal_contribution->nid, $event, $content_node);
       }
     }
+
+    if ($forum_node) {
+      _pi_feeds_add('forum', $forum_context, $forum_node->nid, $event, NULL);
+    }
   }
 }
 
@@ -282,6 +373,10 @@ function pi_feeds_comment($a1, $op) {
     $node = node_load($a1['nid']);
     if ($node->type === 'pi_journal_contribution') {
       _pi_feeds_add('journalcontribution', $node->inquiry_id, $node->nid, 'comment', NULL);
+    } else if ($node->type === 'forum') {
+      $t = array_slice($node->taxonomy, 0, 1);
+      $context = count($t) == 1 ? $t[0]->tid : 0;
+      _pi_feeds_add('forum', $context, $node->nid, 'comment', NULL);
     }
   }
 }

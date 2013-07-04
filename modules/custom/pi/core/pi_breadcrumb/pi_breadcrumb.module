@@ -5,70 +5,97 @@
 
 function pi_breadcrumb_block($op = 'list', $delta = 0, $edit = array()) {
 
-	switch ($op) {
+  switch ($op) {
 
-		case 'list':
-			$blocks = array();
-			$blocks[0]['info'] = t('Activity guide breadcrumb');
-			return $blocks;
+    case 'list':
+      $blocks = array();
+      $blocks[0]['info'] = t('Activity guide breadcrumb');
+      return $blocks;
 
-		case 'view':
+    case 'view':
+      $details = get_inquiry_details_from_current_path();
 
-			
-			$details = get_inquiry_details_from_current_path();
+      //$block['subject'] = "nQuire";
 
-			//$block['subject'] = "nQuire";
+      $breadcrumb = NULL;
+      if (arg(0) == 'home' || arg(0) == 'inquiries' || arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage') {
+        $breadcrumb = pi_breadcrumb_inquiry(arg(0), $details);
+      } else if (arg(0) == 'forum' && arg(1)) {
+        $breadcrumb = pi_breadcrumb_forum(arg(1));
+      } else if (arg(0) == 'node') {
+        $node = node_load(arg(1));
+        if ($node->type === 'forum') {
+          $breadcrumb = pi_breadcrumb_forum_topic($node);
+        }
+      }
 
-			$output = "";
-			if (arg(0) == 'home' || arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity' || arg(0) == 'set_stage') {
-				$output .= pi_breadcrumb(arg(0), $details);
-			}
+      if ($breadcrumb) {
+        $output .= implode(' > ', $breadcrumb);
+      }
 
-			//theme('breadcrumb',array("a","b"));//array(l("home","home"), l("phase","phase/3")));
-			$block['content'] = $output;
+      $block['content'] = $output;
 
-			return $block;
-	};
+      return $block;
+  };
 }
 
-function pi_breadcrumb($page_level, $details) {
+function pi_breadcrumb_forum($forum_tid) {
+  $t = taxonomy_get_term($forum_tid);
+  $breadcrumb = array(
+      l(t('Forums'), 'forum'),
+      l(check_plain($t->name), "forum/$forum_tid"),
+  );
 
-	$breadcrumb = array(l(t('Home'), ''));
-	if ($page_level == 'home') {
-		$breadcrumb[] = t('My inquiries');
-	} else {
-		$breadcrumb[] = l('My inquiries', 'inquiries');
-	}
-	if ($page_level == 'inquiry' || $page_level == 'phase' || $page_level == 'activity' || $page_level == 'set_stage') {
-		if ($page_level == 'inquiry') {
-			$loaded_inquiry = node_load($details->inquiry_id);
-			$breadcrumb[] = check_plain($loaded_inquiry->title);
-		} else {
-			$loaded_inquiry = node_load($details->inquiry_id);
-			$breadcrumb[] = l(check_plain($loaded_inquiry->title), 'inquiry/' . $details->inquiry_id);
-		}
-	}
-	if ($page_level == 'phase' || $page_level == 'activity') {
-		if ($page_level == 'phase') {
-			$loaded_phase = node_load($details->phase_id);
-			$breadcrumb[] = check_plain($loaded_phase->title);
-		} else {
-			$loaded_phase = node_load($details->phase_id);
-			$breadcrumb[] = l($loaded_phase->title, 'phase/' . $details->phase_id);
-		}
-	}
-	if ($page_level == 'activity') {
-		//@TODO FIXME Missing function get_visible_status_of_activity
-		//$visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
-		$loaded_activity = node_load($details->activity_id);
-		$breadcrumb[] = check_plain($loaded_activity->title);
-	}
-	if ($page_level == 'set_stage') {
-		$breadcrumb[] = t("Change stage");
-	}
-	$output = implode(' > ', $breadcrumb);
-	//$output = theme('breadcrumb', $breadcrumb);
+  return $breadcrumb;
+}
 
-	return $output;
+function pi_breadcrumb_forum_topic($node) {
+  $first = array_splice($node->taxonomy, 0, 1);
+  if (count($first) != 1) {
+    return NULL;
+  }
+  
+  $breadcrumbs = pi_breadcrumb_forum($first[0]->tid);
+  $breadcrumbs[] = l(check_plain($node->title), "node/{$node->nid}");
+  return $breadcrumbs;
+}
+
+function pi_breadcrumb_inquiry($page_level, $details) {
+
+  $breadcrumb = array(l(t('Home'), ''));
+  if ($page_level == 'home') {
+    $breadcrumb[] = t('My inquiries');
+  } else {
+    $breadcrumb[] = l('My inquiries', 'inquiries');
+  }
+  if ($page_level == 'inquiry' || $page_level == 'phase' || $page_level == 'activity' || $page_level == 'set_stage') {
+    if ($page_level == 'inquiry') {
+      $loaded_inquiry = node_load($details->inquiry_id);
+      $breadcrumb[] = check_plain($loaded_inquiry->title);
+    } else {
+      $loaded_inquiry = node_load($details->inquiry_id);
+      $breadcrumb[] = l(check_plain($loaded_inquiry->title), 'inquiry/' . $details->inquiry_id);
+    }
+  }
+  if ($page_level == 'phase' || $page_level == 'activity') {
+    if ($page_level == 'phase') {
+      $loaded_phase = node_load($details->phase_id);
+      $breadcrumb[] = check_plain($loaded_phase->title);
+    } else {
+      $loaded_phase = node_load($details->phase_id);
+      $breadcrumb[] = l($loaded_phase->title, 'phase/' . $details->phase_id);
+    }
+  }
+  if ($page_level == 'activity') {
+    //@TODO FIXME Missing function get_visible_status_of_activity
+    //$visible_status = get_visible_status_of_activity ($details->inquiry_id, $details->activity_id, $uid);
+    $loaded_activity = node_load($details->activity_id);
+    $breadcrumb[] = check_plain($loaded_activity->title);
+  }
+  if ($page_level == 'set_stage') {
+    $breadcrumb[] = t("Change stage");
+  }
+
+  return $breadcrumb;
 }
 
