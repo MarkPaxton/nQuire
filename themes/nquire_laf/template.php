@@ -347,11 +347,14 @@ function phptemplate_pi_activities_view_activity($activity_data) {
     $output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
     $output .= '<div class="phase_activity_content_wrapper">'
-            . '<table class="phase_activity_table">'
-            . '<tr><td class="phase_activity_label"><div>'
-            . (strlen($activity_data['description']) > 0 ? t('Activity:') : '')
-            . '</div></td><td class="phase_activity_content_cell phase_activity_description"><div>' . $activity_data['description'] . '</div>'
-            . '</td></tr>';
+            . '<table class="phase_activity_table">';
+
+    if (strlen($activity_data['description']) > 0) {
+      $output .= '<tr><td class="phase_activity_label"><div>'
+              . (strlen($activity_data['description']) > 0 ? t('Activity:') : '')
+              . '</div></td><td class="phase_activity_content_cell phase_activity_description"><div>' . $activity_data['description'] . '</div>'
+              . '</td></tr>';
+    }
 
 
     if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
@@ -419,10 +422,7 @@ function phptemplate_pi_activities_view_contributed_activity($activity_data) {
   $output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
   $output .= '<div class="phase_activity_content_wrapper">'
-          . '<table class="phase_activity_table">'
-          . '<tr><td class="phase_activity_label"><div></div></td>'
-          . '<td class="phase_activity_content_cell phase_activity_description"><div></div>'
-          . '</td></tr>';
+          . '<table class="phase_activity_table">';
 
   foreach ($activity_data['nodes'] as $content_node_data) {
     switch ($content_node_data['mode']) {
@@ -445,6 +445,10 @@ function phptemplate_pi_activities_view_contributed_activity($activity_data) {
         break;
     }
   }
+  
+  $output .= '</table></div>';
+  $output .= '</div>';
+  return $output;
 }
 
 function phptemplate_pi_activities_view_shared_activity($activity_data) {
@@ -457,10 +461,7 @@ function phptemplate_pi_activities_view_shared_activity($activity_data) {
   $output .= '<div class="phase_activity_title">' . $activity_data['title'] . '</div>';
 
   $output .= '<div class="phase_activity_content_wrapper">'
-          . '<table class="phase_activity_table">'
-          . '<tr><td class="phase_activity_label"><div></div></td>'
-          . '<td class="phase_activity_content_cell phase_activity_description"><div></div>'
-          . '</td></tr>';
+          . '<table class="phase_activity_table">';
 
   foreach ($activity_data['shared_content'] as $shared_content_data) {
     $actor = $shared_content_data['actor'];

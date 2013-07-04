@@ -1,129 +1,287 @@
 <?php
 
 function pi_feeds_enable() {
-	db_query("UPDATE {system} SET weight=1000 WHERE name='pi_feeds'");
+  db_query("UPDATE {system} SET weight=1000 WHERE name='pi_feeds'");
 }
 
-function _pi_feeds_topic_list_for_context($type, $context, $max = 0) {
-	global $user;
-
-	$query = "SELECT DISTINCT topic FROM pi_feeds WHERE uid != %d AND type='%s'";
-	$args = array($user->uid, $type);
-
-	if ($context) {
-		$query .= " AND context=%d";
-		$args[] = $context;
-	}
-
-	$query .= ' ORDER BY timestamp DESC';
-
-
-	$topics = array();
-	$result = db_query($query, $args);
-	while ($row = db_fetch_array($result)) {
-		$topics[] = $row['topic'];
-	}
-
-	$filtered_topics = _pi_feeds_filter_topics_by_access($type, $context, $topics);
-	if ($max > 0) {
-		return array_slice($filtered_topics, 0, $max);
-	} else {
-		return $filtered_topics;
-	}
+function pi_feeds_block($op = 'list') {
+  if ($op === 'list') {
+    return array(
+        array(
+            'info' => t('Inquiry activity feed'),
+        ),
+    );
+  } else if ($op === 'view') {
+    $topic_sections = _pi_feeds_get_topic_sections();
+    $content = implode('<div class="block_inner_separator"></div>', $topic_sections);
+    return array(
+        'subject' => t('Recent activity'),
+        'content' => $content,
+    );
+  }
 }
 
-function _pi_feeds_filter_topics_by_access($type, $context, $topics) {
-	if ($type === 'journalcontribution') {
-		return $topics;
-	}
+function _pi_feeds_get_topic_sections() {
+  $topic_sections = array();
 
-	return array();
+  if (arg(0) === 'inquiry') {
+    $context = arg(1);
+  } else {
+    $context = NULL;
+  }
+
+  $topic_sections[] = _pi_feeds_format_topic_section(_pi_feeds_get_journalcontribution_topics($context));
+
+  return $topic_sections;
+}
+
+function _pi_feeds_format_topic_section($topics) {
+  return theme('item_list', $topics);
+}
+
+function _pi_feeds_get_journalcontribution_topics($context = NULL, $max = 5) {
+  $query = "SELECT DISTINCT topic FROM pi_feeds WHERE type='journalcontribution'";
+  $args = array();
+  if ($context) {
+    $query .= " AND context=%d";
+    $args[] = $context;
+  }
+
+  $query .= ' ORDER BY timestamp DESC LIMIT %d';
+  $args[] = $max;
+
+  $topics = array();
+  $result = db_query($query, $args);
+  while ($row = db_fetch_array($result)) {
+    $formatted_topic = _pi_feeds_format_topic('journalcontribution', $context, $row['topic']);
+    if ($formatted_topic) {
+      $topics[] = $formatted_topic;
+    }
+  }
+
+  return $topics;
+}
+
+function _pi_feeds_format_topic($type, $context, $topic) {
+  $query = "SELECT * FROM {pi_feeds} WHERE type='%s' AND topic=%d ORDER BY timestamp DESC LIMIT 1";
+  $row = db_fetch_array(db_query($query, $type, $topic));
+
+  if ($type === 'journalcontribution') {
+    if ($row['event'] === 'unpublish') {
+      return FALSE;
+    }
+
+    $contribution = node_load($row['topic']);
+    $contribution_title = l(check_plain($contribution->title), 'journal/contribution/' . $contribution->nid, array('html' => TRUE));
+    $text = _pi_feeds_contribution_event_text($contribution_title, $row['event'], $row['object_type']);
+    $n = comment_num_new($contribution->nid);
+    if ($n > 0) {
+      $text .= '<br/><small>' . ($n == 1 ? t('(One new comment)') : t('(!n new comments)', array('!n' => $n))) . '</small>';
+    }
+    $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
+    return $text;
+  }
+
+  return print_r($row, TRUE);
+}
+
+function _pi_feeds_contribution_event_text($contribution_title, $event, $object_type) {
+  $args = array(
+      '!c' => $contribution_title,
+  );
+
+  switch ($event) {
+    case 'insertcontribution':
+      return t('!c published.', $args);
+    case 'comment':
+      return t('!c: commented.', $args);
+    case 'updatecontent':
+      switch ($object_type) {
+        case 'pi_sort_key_questions':
+          return t('!c: key questions updated.', $args);
+        case 'pi_sort_key_answers':
+          return t('!c: key answers updated.', $args);
+        case 'pi_sort_result_presentations':
+          return t('!c: charts updated.', $args);
+        case 'pi_methodology':
+          return t('!c: methodology updated.', $args);
+        case 'pi_hypothesis':
+          return t('!c: hypothesis updated.', $args);
+        case 'pi_hypothesis_conclusion':
+          return t('!c: conclusion updated.', $args);
+        case 'pi_wiki_notes':
+          return t('!c: notes updated.', $args);
+        default:
+          return t('!c updated.', $args);
+      }
+    case 'updatechild':
+      switch ($object_type) {
+        case 'pi_sort_key_questions':
+          return t('!c: key question updated.', $args);
+        case 'pi_sort_key_answers':
+          return t('!c: key answer updated.', $args);
+        case 'pi_sort_data':
+          return t('!c: data updated.', $args);
+        case 'pi_sort_results_presentations':
+          return t('!c: chart updated.', $args);
+        case 'pi_methodology':
+          return t('!c: measure updated.', $args);
+        default:
+          return t('!c updated.', $args);
+      }
+    case 'insertcontent':
+      switch ($object_type) {
+        case 'pi_hypothesis':
+          return t('!c: hypothesis created.', $args);
+        case 'pi_hypothesis_conclusion':
+          return t('!c: conclusion created.', $args);
+        case 'pi_wiki_notes':
+          return t('!c: notes created.', $args);
+        default:
+          return t('!c updated.', $args);
+      }
+    case 'insertchild':
+      switch ($object_type) {
+        case 'pi_sort_key_questions':
+          return t('!c: key question created.', $args);
+        case 'pi_sort_key_answers':
+          return t('!c: key answer created.', $args);
+        case 'pi_sort_data':
+          return t('!c: data created.', $args);
+        case 'pi_sort_results_presentations':
+          return t('!c: chart created.', $args);
+        case 'pi_methodology':
+          return t('!c: measure created.', $args);
+        default:
+          return t('!c updated.', $args);
+      }
+    case 'deletechild':
+      switch ($object_type) {
+        case 'pi_sort_key_questions':
+          return t('!c: key question deleted.', $args);
+        case 'pi_sort_key_answers':
+          return t('!c: key answer deleted.', $args);
+        case 'pi_sort_data':
+          return t('!c: key data deleted.', $args);
+        case 'pi_sort_results_presentations':
+          return t('!c: chart deleted.', $args);
+        case 'pi_methodology':
+          return t('!c: measures deleted.', $args);
+        default:
+          return t('!c updated.', $args);
+      }
+    case 'updatecontribution':
+    default:
+      return t('!c updated.', $args);
+  }
+}
+
+function _pi_feeds_format_time($timestamp) {
+  $t = time() - $timestamp;
+  if ($t < 10) {
+    return t('Just now.');
+  } else if ($t < 60) {
+    return t('@t seconds ago.', array('@t' => $t));
+  } else if ($t < 120) {
+    return t('1 minute ago.');
+  } else if ($t < 3600) {
+    return t('@t minutes ago.', array('@t' => round($t / 60)));
+  } else if ($t < 7200) {
+    return t('1 hour ago.');
+  } else if ($t < 86400) {
+    return t('@t hours ago.', array('@t' => round($t / 3600)));
+  } else if ($t < 172800) {
+    return t('1 day ago.', array('@t' => round($t / 3600)));
+  } else {
+    return t('On !d', array('!d' => format('d/m/Y')));
+  }
 }
 
 function _pi_feeds_add($type, $context, $topic, $event, $object_node) {
-	global $user;
+  global $user;
 
-	if (is_object($object_node)) {
-		$object = $object_node->nid;
-		$object_type = $object_node->type;
-	} else if (is_string($object_node)) {
-		$object = NULL;
-		$object_type = $object_node;
-	} else {
-		$object = NULL;
-		$object_type = NULL;
-	}
+  if (is_object($object_node)) {
+    $object = $object_node->nid;
+    $object_type = $object_node->type;
+  } else if (is_string($object_node)) {
+    $object = NULL;
+    $object_type = $object_node;
+  } else {
+    $object = NULL;
+    $object_type = NULL;
+  }
 
-	$query = "INSERT INTO pi_feeds (type, context, topic, event, object, object_type, uid, timestamp) VALUES ('%s', '%s', %d, '%s', %d, '%s', %d, %d)";
-	db_query($query, $type, $context, $topic, $event, $object, $object_type, $user->uid, time());
+  $query = "INSERT INTO pi_feeds (type, context, topic, event, object, object_type, uid, timestamp) VALUES ('%s', '%s', %d, '%s', %d, '%s', %d, %d)";
+  db_query($query, $type, $context, $topic, $event, $object, $object_type, $user->uid, time());
 }
 
 function pi_feeds_nodeapi($node, $op) {
-	global $user;
+  if ($op === 'insert' || $op === 'update' || $op === 'delete') {
+    global $user;
 
-	$inquiry_info = FALSE;
-	$content_node = FALSE;
-	$journal_contribution = FALSE;
 
-	switch ($node->type) {
-		case 'pi_key_questions':
-		case 'pi_key_answers':
-		case 'pi_data':
-		case 'pi_results_presentations':
-			if ($op === 'insert' || $op === 'update' || $op === 'delete') {
-				$event = $op . 'child';
-				$content_node = node_load(pi_node_hierarchy_get_parent($node->nid));
-			}
-			break;
-		case 'pi_sort_key_questions':
-		case 'pi_sort_key_answers':
-		case 'pi_sort_result_presentations':
-			if ($op === 'update') {
-				$event = 'updatecontent';
-				$content_node = $node;
-			}
-			break;
-		case 'pi_hypothesis':
-		case 'pi_hypothesis_conclusion':
-		case 'pi_wiki_notes':
-			if ($op === 'update' || $op === 'insert') {
-				$event = $op . 'content';
-				$content_node = $node;
-			}
-			break;
-		case 'pi_journal_contribution':
-			if ($node->shared && ($op === 'insert' || $op === 'update')) {
-				$journal_contribution = $node;
-				$event = $op . 'contribution';
-			}
-	}
+    $inquiry_info = FALSE;
+    $content_node = FALSE;
+    $journal_contribution = FALSE;
 
-	if ($journal_contribution) {
-		$inquiry_info = pi_info()->getInquiryInfo($node->inquiry_id);
-	} else if ($content_node) {
-		$activity_nid = pi_activity_get_activity_nid_for_content_nid($content_node->nid);
-		$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
-		if ($inquiry_info->getInquiryNode()) {
-			$journal_contribution = pi_journal_contribution_find_contribution_node($inquiry_info->getInquiryNode(), $user->uid);
-		}
-	}
+    switch ($node->type) {
+      case 'pi_key_questions':
+      case 'pi_key_answers':
+      case 'pi_data':
+      case 'pi_results_presentations':
+      case 'pi_available_measures':
+        if ($op === 'insert' || $op === 'update' || $op === 'delete') {
+          $event = $op . 'child';
+          $content_node = node_load(pi_node_hierarchy_get_parent($node->nid));
+        }
+        break;
+      case 'pi_sort_key_questions':
+      case 'pi_sort_key_answers':
+      case 'pi_sort_result_presentations':
+      case 'pi_methodology':
+        if ($op === 'update') {
+          $event = 'updatecontent';
+          $content_node = $node;
+        }
+        break;
+      case 'pi_hypothesis':
+      case 'pi_hypothesis_conclusion':
+      case 'pi_wiki_notes':
+        if ($op === 'update' || $op === 'insert') {
+          $event = $op . 'content';
+          $content_node = $node;
+        }
+        break;
+      case 'pi_journal_contribution':
+        if ($op === 'insert' || $op === 'update') {
+          $journal_contribution = $node;
+          $event = $node->shared ? ($op . 'contribution') : 'unpublish';
+        }
+    }
 
-	if ($inquiry_info && $inquiry_info->getInquiryNode()) {
-		if ($journal_contribution) {
-			_pi_feeds_add('journalcontribution', $inquiry_info->getInquiryNid(), $journal_contribution->nid, $event, $content_node);
-		}
-	}
+    if ($journal_contribution) {
+      $inquiry_info = pi_info()->getInquiryInfo($node->inquiry_id);
+    } else if ($content_node) {
+      $activity_nid = pi_activity_get_activity_nid_for_content_nid($content_node->nid);
+      $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
+      if ($inquiry_info->getInquiryNode()) {
+        $journal_contribution = pi_journal_contribution_find_contribution_node($inquiry_info->getInquiryNode(), $user->uid);
+      }
+    }
+
+    if ($inquiry_info && $inquiry_info->getInquiryNode()) {
+      if ($journal_contribution) {
+        _pi_feeds_add('journalcontribution', $inquiry_info->getInquiryNid(), $journal_contribution->nid, $event, $content_node);
+      }
+    }
+  }
 }
 
-function _pi_feeds_content_node_event($content_nid, $event) {
-	global $user;
-
-	$inquiry_info = pi_info()->getInquiryInfoForContent($content_nid);
-	if ($inquiry_info->getInquiryNode()) {
-		$contribution_node = pi_journal_contribution_find_contribution_node($inquiry_info->getInquiryNode(), $user->uid);
-		if ($contribution_node) {
-			_pi_feeds_add('journalcontribution', $inquiry_info->getInquiryNid(), $contribution_node->nid, $event);
-		}
-	}
+function pi_feeds_comment($a1, $op) {
+  if ($op === 'update' || $op === 'insert') {
+    $node = node_load($a1['nid']);
+    if ($node->type === 'pi_journal_contribution') {
+      _pi_feeds_add('journalcontribution', $node->inquiry_id, $node->nid, 'comment', NULL);
+    }
+  }
 }
-
