@@ -26,9 +26,9 @@ function _pi_feeds_get_topic_sections() {
 
   $inquiry_context = NULL;
   $forum_context = NULL;
-  if (arg(0) === 'inquiry') {
-    $inquiry_context = arg(1);
-  } else if (arg(0) === 'forum') {
+
+  $inquiry_info = pi_info()->getCurrentInquiryInfo();
+  if (arg(0) === 'forum') {
     $forum_context = arg(1);
   } else if (arg(0) === 'node') {
     $node = node_load(arg(1));
@@ -38,20 +38,35 @@ function _pi_feeds_get_topic_sections() {
     }
   }
 
-  $contribution_topics = _pi_feeds_get_journalcontribution_topics($inquiry_context);
-  if (count($contribution_topics) > 0) {
-    $topic_sections[] = _pi_feeds_format_topic_section($contribution_topics);
+  if ($inquiry_info) {
+    $sa_topics = _pi_feeds_get_sharedactivity_topics($inquiry_info->getInquiryNid());
+    if ($sa_topics) {
+      $sa_title = t('Shared content (@t):', array('@t' => $inquiry_info->getInquiryNode()->title));
+      $topic_sections[] = _pi_feeds_format_feed_section($sa_title, $sa_topics);
+    }
   }
-  $forum_topics = _pi_feeds_get_forum_topics($forum_context);
-  if (count($forum_topics) > 0) {
-    $topic_sections[] = _pi_feeds_format_topic_section($forum_topics);
+
+  $jc_topics = _pi_feeds_get_journalcontribution_topics($inquiry_info ? $inquiry_info->getInquiryNid() : FALSE);
+  if ($jc_topics) {
+    $jc_title = $inquiry_info ? t('Inquiry results (@t):', array('@t' => $inquiry_info->getInquiryNode()->title)) : t('Inquiry results:');
+    $topic_sections[] = _pi_feeds_format_feed_section($jc_title, $jc_topics);
+  }
+  
+  $ft_topics = _pi_feeds_get_forum_topics($forum_context);
+  if ($ft_topics) {
+    $ft_title = t('Forum topics:');
+    $topic_sections[] = _pi_feeds_format_feed_section($ft_title, $ft_topics);
   }
 
   return $topic_sections;
 }
 
-function _pi_feeds_format_topic_section($topics) {
-  return theme('item_list', $topics);
+function _pi_feeds_format_feed_section($title, $topics) {
+  if ($topics) {
+    return '<div style="color:#444;"><small><b>' . $title . '</b></small></div>' . theme('item_list', $topics);
+  } else {
+    return FALSE;
+  }
 }
 
 function _pi_feeds_get_journalcontribution_topics($context = NULL, $max = 5) {
@@ -75,6 +90,36 @@ function _pi_feeds_get_journalcontribution_topics($context = NULL, $max = 5) {
   }
 
   return $topics;
+}
+
+function _pi_feeds_get_sharedactivity_topics($context, $max = 5) {
+  $inquiry_info = pi_info()->getInquiryInfo($context);
+  if ($inquiry_info->getInquiryNode()) {
+    global $user;
+    $content_manager = pi_info()->getContentManager();
+    $args = array();
+    $activities = $inquiry_info->getActivities();
+
+    foreach ($activities as $activity) {
+      $args = array_merge($args, $content_manager->getSharedContent($activity->nid, $user->uid, $user->uid === $inquiry_info->getInquiryOwner()));
+    }
+
+    if (count($args) > 0) {
+      $placeholders = db_placeholders($args);
+      $args[] = $max;
+      $query = "SELECT topic FROM pi_feeds WHERE type='sharedactivity' AND topic IN ($placeholders) ORDER BY timestamp DESC LIMIT %d";
+      $result = db_query($query, $args);
+      $topics = array();
+      while ($row = db_fetch_array($result)) {
+        $formatted_topic = _pi_feeds_format_topic('sharedactivity', $context, $row['topic']);
+        if ($formatted_topic) {
+          $topics[] = $formatted_topic;
+        }
+      }
+      return $topics;
+    }
+  }
+  return FALSE;
 }
 
 function _pi_feeds_get_forum_topics($context = NULL, $max = 5) {
@@ -122,6 +167,12 @@ function _pi_feeds_format_topic($type, $context, $topic) {
     if ($n > 0) {
       $text .= '<br/><small>' . ($n == 1 ? t('(One new reply)') : t('(!n new replies)', array('!n' => $n))) . '</small>';
     }
+    $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
+    return $text;
+  } else if ($type === 'sharedactivity') {
+    $activity = node_load($row['context']);
+    $activity_title = l(check_plain($activity->title), "phase/{$activity->phase_nid}/shared", array('fragment' => $activity->nid));
+    $text = _pi_feeds_sharedactivity_event_text($activity_title, $row['event'], $row['object']);
     $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
     return $text;
   }
@@ -237,9 +288,32 @@ function _pi_feeds_forum_event_text($forum_title, $event) {
   }
 }
 
+function _pi_feeds_sharedactivity_event_text($activity_title, $event, $object_nid) {
+  $content_manager = pi_info()->getContentManager();
+  $author_info = $content_manager->getContentAuthor($object_nid);
+  $args = array('!t' => $activity_title);
+
+  if ($author_info['collaboration'] === 'individual') {
+    $args['!a'] = nquire_commons_user_name_or_me($author_info['actor']);
+  } else if ($author_info['collaboration'] === 'group') {
+    $g = node_load($author_info['actor']);
+    $args['!a'] = check_plain($g->title);
+  }
+
+  if (isset($args['!a'])) {
+    if ($event === 'sharedcontent') {
+      return t('!t shared by !a.', $args);
+    } else {
+      return t('!t updated by !a.', $args);
+    }
+  }
+
+  return FALSE;
+}
+
 function _pi_feeds_format_time($timestamp) {
   $t = time() - $timestamp;
-  if ($t < 10) {
+  if ($t < 5) {
     return t('Just now.');
   } else if ($t < 60) {
     return t('@t seconds ago.', array('@t' => $t));
@@ -353,12 +427,19 @@ function pi_feeds_nodeapi($node, $op) {
       $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
       if ($inquiry_info->getInquiryNode()) {
         $journal_contribution = pi_journal_contribution_find_contribution_node($inquiry_info->getInquiryNode(), $user->uid);
+
+        $check = db_query("SELECT topic FROM pi_feeds WHERE topic=%d LIMIT 1", $content_node->nid);
+        $shared_content_feed_exist = $check && $check->num_rows > 0;
       }
     }
 
     if ($inquiry_info && $inquiry_info->getInquiryNode()) {
       if ($journal_contribution) {
         _pi_feeds_add('journalcontribution', $inquiry_info->getInquiryNid(), $journal_contribution->nid, $event, $content_node);
+      }
+
+      if ($shared_content_feed_exist) {
+        _pi_feeds_add('sharedactivity', $activity_nid, $content_node->nid, $event, $content_node);
       }
     }
 
@@ -378,5 +459,19 @@ function pi_feeds_comment($a1, $op) {
       $context = count($t) == 1 ? $t[0]->tid : 0;
       _pi_feeds_add('forum', $context, $node->nid, 'comment', NULL);
     }
+  }
+}
+
+function pi_feeds_share_activity_change($activity_nid, $content_nid, $shared) {
+  if ($shared) {
+    $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
+    if ($inquiry_info->getInquiryNode()) {
+      $check = db_query("SELECT topic FROM pi_feeds WHERE topic=%d LIMIT 1", $content_nid);
+      if (!$check || $check->num_rows == 0) {
+        _pi_feeds_add('sharedactivity', $activity_nid, $content_nid, 'sharedcontent', node_load($content_nid));
+      }
+    }
+  } else {
+    _pi_feeds_delete_topic($content_nid);
   }
 }

@@ -13,18 +13,18 @@ module_load_include('inc', 'pi_activity', 'pi_activity.content');
  * Function used by the drupal system
  */
 function pi_activity_node_info() {
-	return array(
-			'pi_activity' => array(
-					'name' => t('Inquiry Activity'), // Required.
-					'module' => 'pi_activity', // Required.
-					'description' => t('Activities are plans for work that students do within nQuire'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Activity name'),
-					'has_body' => TRUE,
-					'body_label' => t('Description of the activity'),
-					'locked' => TRUE
-			)
-	);
+  return array(
+      'pi_activity' => array(
+          'name' => t('Inquiry Activity'), // Required.
+          'module' => 'pi_activity', // Required.
+          'description' => t('Activities are plans for work that students do within nQuire'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Activity name'),
+          'has_body' => TRUE,
+          'body_label' => t('Description of the activity'),
+          'locked' => TRUE
+      )
+  );
 }
 
 /**
@@ -32,7 +32,7 @@ function pi_activity_node_info() {
  * Drupal API hook_perm() implemetaiton to define available permissions for activity node type
  */
 function pi_activity_perm() {
-	return array('create activity', 'edit own activity', 'edit any activity', 'delete own activity', 'delete any activity');
+  return array('create activity', 'edit own activity', 'edit any activity', 'delete own activity', 'delete any activity');
 }
 
 /**
@@ -42,46 +42,44 @@ function pi_activity_perm() {
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
 function pi_activity_access($activity, $op) {
-	return FALSE;
+  return FALSE;
 }
 
-
-
 function pi_activity_tab_view_access_callback($node) {
-	return pi_activity_tabs_access_to_content($node, 'view');
+  return pi_activity_tabs_access_to_content($node, 'view');
 }
 
 function pi_activity_is_editable($node) {
-	switch ($node->activity_type) {
-		case 'pi_read_information':
-		case 'pi_explore_tool':
-			return FALSE;
-		default:
-			return TRUE;
-	}
+  switch ($node->activity_type) {
+    case 'pi_read_information':
+    case 'pi_explore_tool':
+      return FALSE;
+    default:
+      return TRUE;
+  }
 }
 
 function pi_activity_tab_edit_access_callback($node) {
-	return pi_activity_is_editable($node) && pi_activity_tabs_access_to_content($node, 'edit');
+  return pi_activity_is_editable($node) && pi_activity_tabs_access_to_content($node, 'edit');
 }
 
 function pi_activity_access_callback($node) {
-	return pi_activity_tab_edit_access_callback($node) || pi_activity_tab_view_access_callback($node);
+  return pi_activity_tab_edit_access_callback($node) || pi_activity_tab_view_access_callback($node);
 }
 
 function pi_activity_tabs_access_to_content($node, $function) {
-	if ($node->type === 'pi_activity') {
-		global $user;
+  if ($node->type === 'pi_activity') {
+    global $user;
 
-		$inquiry_info = pi_info()->getInquiryInfoForActivity($node->nid);
-		$access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    $inquiry_info = pi_info()->getInquiryInfoForActivity($node->nid);
+    $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
-		$access = $access_data->getAccessToItem($node);
+    $access = $access_data->getAccessToItem($node);
 
-		return ($node->script_activity || pi_info()->getContentManager()->getContent($node->nid, $user->uid, FALSE)) && ($access === 'edit' || ($access === 'view' && $function === 'view'));
-	}
+    return ($node->script_activity || pi_info()->getContentManager()->getContent($node->nid, $user->uid, FALSE)) && ($access === 'edit' || ($access === 'view' && $function === 'view'));
+  }
 
-	return FALSE;
+  return FALSE;
 }
 
 /**
@@ -90,16 +88,16 @@ function pi_activity_tabs_access_to_content($node, $function) {
  * be redirected to it's calling location where necessary
  */
 function pi_activity_add() {
-	$output = '';
+  $output = '';
 
-	$output = t("<p>Use this page to add an activity to an inquiry - select the activity, then the phase and then the phases that it will be incuded in." .
-					" For each stage you wil have to choose how it will be made available: as either <i>unavailable</i>, " .
-					"<i>startable</i>, <i>editable</i> or <i>viewable</i>.");
-	$new_activity = new stdClass();
-	$new_activity->type = 'pi_activity';
-	$output .= drupal_get_form('pi_activity_form', $new_activity);
+  $output = t("<p>Use this page to add an activity to an inquiry - select the activity, then the phase and then the phases that it will be incuded in." .
+          " For each stage you wil have to choose how it will be made available: as either <i>unavailable</i>, " .
+          "<i>startable</i>, <i>editable</i> or <i>viewable</i>.");
+  $new_activity = new stdClass();
+  $new_activity->type = 'pi_activity';
+  $output .= drupal_get_form('pi_activity_form', $new_activity);
 
-	return $output;
+  return $output;
 }
 
 /**
@@ -107,8 +105,8 @@ function pi_activity_add() {
  * @param $form_state
  */
 function pi_activity_form(&$node, $form_state) {
-	$form = array();
-	return $form;
+  $form = array();
+  return $form;
 }
 
 /**
@@ -119,39 +117,39 @@ function pi_activity_form(&$node, $form_state) {
  * @param &$form_state
  */
 function pi_activity_form_alter(&$form, &$form_state, $form_id) {
-	if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id) {
+  if (isset($form['type']) && isset($form['#node']) && $form['type']['#value'] . '_node_form' == $form_id) {
 
-		$form['revision_information']['#access'] = FALSE;
+    $form['revision_information']['#access'] = FALSE;
 
-		if (arg(0) === 'activity') {
-			$activity_node = node_load(arg(1));
-		} else {
-			$activity_node = node_load($form_state['values']['current_activity_nid']);
-		}
+    if (arg(0) === 'activity') {
+      $activity_node = node_load(arg(1));
+    } else {
+      $activity_node = node_load($form_state['values']['current_activity_nid']);
+    }
 
-		if (!$form_state['values']['original_action']) {
-			$original_action = $form['#action'];
-			$form['original_action'] = array(
-					'#type' => 'hidden',
-					'#default_value' => $original_action,
-			);
-		} else {
-			$original_action = $form_state['values']['original_action'];
-		}
+    if (!$form_state['values']['original_action']) {
+      $original_action = $form['#action'];
+      $form['original_action'] = array(
+          '#type' => 'hidden',
+          '#default_value' => $original_action,
+      );
+    } else {
+      $original_action = $form_state['values']['original_action'];
+    }
 
-		if ($activity_node) {
-			$path = "phase/{$activity_node->phase_nid}";
-			if ($activity_node->parent_activity) {
-				$path .= url($path, array('fragment' => "{$activity_node->parent_activity}"));
-			}
+    if ($activity_node) {
+      $path = "phase/{$activity_node->phase_nid}";
+      if ($activity_node->parent_activity) {
+        $path .= url($path, array('fragment' => "{$activity_node->parent_activity}"));
+      }
 
-			$form['#redirect'] = $form_state['redirect'] = $path;
-		}
+      $form['#redirect'] = $form_state['redirect'] = $path;
+    }
 
-		$form['#action'] = $original_action;
+    $form['#action'] = $original_action;
 
-		nquire_commons_form_replace_delete_button_with_link($form, $activity_node);
-	}
+    nquire_commons_form_replace_delete_button_with_link($form, $activity_node);
+  }
 }
 
 /**
@@ -162,11 +160,11 @@ function pi_activity_form_alter(&$form, &$form_state, $form_id) {
  * @return object from db_fetch_object() for pi_activity table
  */
 function pi_activity_load($node) {
-	$query = "SELECT * FROM {node} LEFT JOIN {pi_activity} ON node.vid=pi_activity.vid WHERE node.nid=%d";
-	$result = db_query($query, $node->nid);
-	$activity = db_fetch_object($result);
+  $query = "SELECT * FROM {node} LEFT JOIN {pi_activity} ON node.vid=pi_activity.vid WHERE node.nid=%d";
+  $result = db_query($query, $node->nid);
+  $activity = db_fetch_object($result);
 
-	return $activity;
+  return $activity;
 }
 
 /**
@@ -181,25 +179,25 @@ function pi_activity_insert($node) {
 //   * pi_activity_status
 //   * pi_activity_node
 // First update the pi_activity table
-	$pi_activity_row = _pi_activity_form_data_to_pi_activity_row($node);
-	$write_result = drupal_write_record('pi_activity', $pi_activity_row);
+  $pi_activity_row = _pi_activity_form_data_to_pi_activity_row($node);
+  $write_result = drupal_write_record('pi_activity', $pi_activity_row);
 
-	if ($write_result == FALSE) {
-		drupal_set_message(t('Error saving new pi_activity data'), 'error');
-	}
+  if ($write_result == FALSE) {
+    drupal_set_message(t('Error saving new pi_activity data'), 'error');
+  }
 }
 
 function pi_activity_theme() {
-	return array(
-			'pi_activity_display_shared_content_node' => array(
-					'arguments' => array('activity_node' => NULL, 'actor_id' => NULL, 'node' => NULL, 'teaser' => FALSE),
-					'file' => 'pi_activity.activity.inc',
-			),
-			'pi_activity_links' => array(
-					'arguments' => array('links' => NULL),
-					'file' => 'pi_activity.links.inc',
-			),
-	);
+  return array(
+      'pi_activity_display_shared_content_node' => array(
+          'arguments' => array('activity_node' => NULL, 'actor_id' => NULL, 'node' => NULL, 'teaser' => FALSE),
+          'file' => 'pi_activity.activity.inc',
+      ),
+      'pi_activity_links' => array(
+          'arguments' => array('links' => NULL),
+          'file' => 'pi_activity.links.inc',
+      ),
+  );
 }
 
 /**
@@ -208,11 +206,11 @@ function pi_activity_theme() {
  * @param $node
  */
 function pi_activity_update($node) {
-	$activity_row_data = _pi_activity_form_data_to_pi_activity_row($node);
-	$update_result = drupal_write_record('pi_activity', $activity_row_data, array('nid'));
+  $activity_row_data = _pi_activity_form_data_to_pi_activity_row($node);
+  $update_result = drupal_write_record('pi_activity', $activity_row_data, array('nid'));
 
-	if ($update_result == FALSE)
-		drupal_set_message('Error: Activity data not saved due to database problem; try saving again.', 'error');
+  if ($update_result == FALSE)
+    drupal_set_message('Error: Activity data not saved due to database problem; try saving again.', 'error');
 }
 
 /**
@@ -222,163 +220,163 @@ function pi_activity_update($node) {
  * @param $node
  */
 function _pi_activity_form_data_to_pi_activity_row($node) {
-	$data_to_save = new StdClass();
+  $data_to_save = new StdClass();
 
-	$property_to_column = array(
-			'nid' => 'nid',
-			'vid' => 'vid',
-			'activity_type' => 'activity_type',
-			'node_type' => 'node_type',
-			'parameters' => 'parameters',
-			'script_activity' => 'script_activity',
-			'parent_activity' => 'parent_activity',
-			'phase_nid' => 'phase_nid',
-			'show_children_in_phase' => 'show_children_in_phase',
-			'weight' => 'weight',
-			'referenced_node' => 'referenced_node',
-	);
+  $property_to_column = array(
+      'nid' => 'nid',
+      'vid' => 'vid',
+      'activity_type' => 'activity_type',
+      'node_type' => 'node_type',
+      'parameters' => 'parameters',
+      'script_activity' => 'script_activity',
+      'parent_activity' => 'parent_activity',
+      'phase_nid' => 'phase_nid',
+      'show_children_in_phase' => 'show_children_in_phase',
+      'weight' => 'weight',
+      'referenced_node' => 'referenced_node',
+  );
 
-	foreach ($property_to_column as $column => $property) {
-		$data_to_save->$column = $node->$property;
-	}
+  foreach ($property_to_column as $column => $property) {
+    $data_to_save->$column = $node->$property;
+  }
 
-	return $data_to_save;
+  return $data_to_save;
 }
 
 function pi_activity_delete(&$node) {
 
-	//node_delete($node->referenced_content);
-	$content_result = db_query("SELECT nid FROM {pi_activity_node} WHERE activity_id=%d", $node->nid);
-	while ($content_row = db_fetch_array($content_result)) {
-		//node_delete($content_row['nid']);
-	}
+  //node_delete($node->referenced_content);
+  $content_result = db_query("SELECT nid FROM {pi_activity_node} WHERE activity_id=%d", $node->nid);
+  while ($content_row = db_fetch_array($content_result)) {
+    //node_delete($content_row['nid']);
+  }
 
-	db_query("DELETE FROM {pi_activity} WHERE nid = %d AND vid = %d", $node->nid, $node->vid);
-	db_query("DELETE FROM {pi_activity_node} WHERE activity_id = %d", $node->nid);
-	db_query("DELETE FROM {pi_activity_share} WHERE activity_id = %d", $node->nid);
+  db_query("DELETE FROM {pi_activity} WHERE nid = %d AND vid = %d", $node->nid, $node->vid);
+  db_query("DELETE FROM {pi_activity_node} WHERE activity_id = %d", $node->nid);
+  db_query("DELETE FROM {pi_activity_share} WHERE activity_id = %d", $node->nid);
 
-	$children_result = db_query("SELECT {node}.nid FROM {node} LEFT JOIN {pi_activity} ON node.vid=pi_activity.vid WHERE pi_activity.parent_activity=%d", $node->nid);
-	while ($child_row = db_fetch_array($children_result)) {
-		//node_delete($child_row['nid']);
-	}
+  $children_result = db_query("SELECT {node}.nid FROM {node} LEFT JOIN {pi_activity} ON node.vid=pi_activity.vid WHERE pi_activity.parent_activity=%d", $node->nid);
+  while ($child_row = db_fetch_array($children_result)) {
+    //node_delete($child_row['nid']);
+  }
 
-	$custom_delete_function = "{$node->activity_type}_delete_activity";
-	if (function_exists($custom_delete_function)) {
-		$custom_delete_function($node);
-	}
+  $custom_delete_function = "{$node->activity_type}_delete_activity";
+  if (function_exists($custom_delete_function)) {
+    $custom_delete_function($node);
+  }
 }
 
 function pi_activity_access_get_explanation_text($access, $reason, $inquiry_nid) {
-	switch ($reason) {
-		case 'no_inquiry_access':
-			$text = $reason;
-			break;
-		case 'inquiry_roles':
-			switch ($access) {
-				case 'edit':
-					$text = t('Given your roles in this inquiry, you can edit this activity.');
-					break;
-				case 'view':
-					$text = t('Given your roles in this inquiry, you can view this activity, but not edit it.');
-					break;
-				default:
-					$text = t('Given your roles in this inquiry, you cannot access this activity.');
-					break;
-			}
-			break;
-		case 'group_roles':
-			switch ($access) {
-				case 'edit':
-					$text = t('Given your roles in your group, you can edit this activity.');
-					break;
-				case 'view':
-					$text = t('Given your roles in your group, you can view this activity, but not edit it.');
-					break;
-				default:
-					$text = t('Given your roles in your group, you cannot access this activity.');
-					break;
-			}
-			break;
-		case 'no_group':
-			$url = url('inquiry/' . $inquiry_nid . '/participants');
-			$text = t('This is a group activity, but you do not belong to any group. Click <a href="!url">here</a> to create or join a group.', array('!url' => $url));
-			break;
-		case 'stage':
-			switch ($access) {
-				case 'edit':
-					$text = t('At this stage, you can edit this activity.');
-					break;
-				case 'view':
-					$text = t('At this stage, you can view this activity, but not edit it.');
-					break;
-				default:
-					$text = t('At this stage, you cannot access this activity.');
-					break;
-			}
-			break;
-		case 'none':
-			switch ($access) {
-				case 'edit':
-					$text = t('You can edit this activity.');
-					break;
-				case 'view':
-					$text = t('You can view this activity.');
-					break;
-				default:
-					$text = t('You cannot access this activity.');
-					break;
-			}
-			break;
-	}
-	return $text;
+  switch ($reason) {
+    case 'no_inquiry_access':
+      $text = $reason;
+      break;
+    case 'inquiry_roles':
+      switch ($access) {
+        case 'edit':
+          $text = t('Given your roles in this inquiry, you can edit this activity.');
+          break;
+        case 'view':
+          $text = t('Given your roles in this inquiry, you can view this activity, but not edit it.');
+          break;
+        default:
+          $text = t('Given your roles in this inquiry, you cannot access this activity.');
+          break;
+      }
+      break;
+    case 'group_roles':
+      switch ($access) {
+        case 'edit':
+          $text = t('Given your roles in your group, you can edit this activity.');
+          break;
+        case 'view':
+          $text = t('Given your roles in your group, you can view this activity, but not edit it.');
+          break;
+        default:
+          $text = t('Given your roles in your group, you cannot access this activity.');
+          break;
+      }
+      break;
+    case 'no_group':
+      $url = url('inquiry/' . $inquiry_nid . '/participants');
+      $text = t('This is a group activity, but you do not belong to any group. Click <a href="!url">here</a> to create or join a group.', array('!url' => $url));
+      break;
+    case 'stage':
+      switch ($access) {
+        case 'edit':
+          $text = t('At this stage, you can edit this activity.');
+          break;
+        case 'view':
+          $text = t('At this stage, you can view this activity, but not edit it.');
+          break;
+        default:
+          $text = t('At this stage, you cannot access this activity.');
+          break;
+      }
+      break;
+    case 'none':
+      switch ($access) {
+        case 'edit':
+          $text = t('You can edit this activity.');
+          break;
+        case 'view':
+          $text = t('You can view this activity.');
+          break;
+        default:
+          $text = t('You cannot access this activity.');
+          break;
+      }
+      break;
+  }
+  return $text;
 }
 
 function pi_activity_get_children_activity_edit_form($child_content) {
-	if (is_string($child_content)) {
-		global $user;
-		$node = new stdClass();
-		$node->type = $child_content;
-		$node->uid = $user->uid;
-	} else {
-		$node = $child_content;
-	}
+  if (is_string($child_content)) {
+    global $user;
+    $node = new stdClass();
+    $node->type = $child_content;
+    $node->uid = $user->uid;
+  } else {
+    $node = $child_content;
+  }
 
-	return node_page_edit($node);
+  return node_page_edit($node);
 }
 
 function pi_activity_get_child_content_delete_form($activity_node, $title) {
-	return drupal_get_form('pi_activity_content_delete_form', $activity_node, $title);
+  return drupal_get_form('pi_activity_content_delete_form', $activity_node, $title);
 }
 
 function pi_activity_content_delete_form(&$form_state, $activity_node, $title) {
-	$form = array();
+  $form = array();
 
-	$info = '<p><b>' . $title . '</b><br/>' . t('This action cannot be undone.') . '</p>';
+  $info = '<p><b>' . $title . '</b><br/>' . t('This action cannot be undone.') . '</p>';
 
-	$form['info'] = array(
-			'#value' => $info,
-	);
+  $form['info'] = array(
+      '#value' => $info,
+  );
 
-	$path = "phase/{$activity_node->phase_nid}";
+  $path = "phase/{$activity_node->phase_nid}";
 
-	$form['#redirect'] = $form_state['redirect'] = url($path, array('fragment' => $activity_node->nid));
-	nquire_commont_create_form_delete_cancel_buttons($form, 'pi_activity_content_delete_form_submit', $path, $activity_node->nid);
+  $form['#redirect'] = $form_state['redirect'] = url($path, array('fragment' => $activity_node->nid));
+  nquire_commont_create_form_delete_cancel_buttons($form, 'pi_activity_content_delete_form_submit', $path, $activity_node->nid);
 
 
-	return $form;
+  return $form;
 }
 
 function pi_activity_content_delete_form_submit($form, $form_state) {
-	$content_nid = arg(3);
+  $content_nid = arg(3);
 
-	node_delete($content_nid);
+  node_delete($content_nid);
 
-	nquire_commons_form_close($form, $form_state);
+  nquire_commons_form_close($form, $form_state);
 }
 
 function pi_activity_nodeapi(&$node, $op) {
-	if ($op === 'insert' || $op === 'delete') {
-		static $parent_content_node_types = array(
+  if ($op === 'insert' || $op === 'delete') {
+    static $parent_content_node_types = array(
 'pi_data_spreadsheet',
  'pi_hypothesis',
  'pi_hypothesis_conclusion',
@@ -388,38 +386,38 @@ function pi_activity_nodeapi(&$node, $op) {
  'pi_sort_key_answers',
  'pi_sort_result_presentations',
  'pi_wiki_notes',
-		);
+    );
 
-		static $child_content_node_types = array(
+    static $child_content_node_types = array(
 'pi_data',
  'pi_key_questions',
  'pi_key_answers',
  'pi_available_measures',
  'pi_result_presentations',
-		);
+    );
 
 
-		global $user;
+    global $user;
 
-		if (in_array($node->type, $parent_content_node_types)) {
-			if ($op === 'insert') {
-				$content_manager = pi_info()->getContentManager();
-				$activity_nid = pi_info()->getCurrentPath()->activity_nid;
-				if ($activity_nid) {
-					$content_manager->linkContentWithActivity($node, $activity_nid, $user->uid);
-				}
-			} else if ($op === 'delete') {
-				db_query('DELETE FROM pi_activity_node WHERE nid=%d', $node->nid);
-			}
-		} else if (in_array($node->type, $child_content_node_types)) {
-			$content_manager = pi_info()->getContentManager();
-			$activity_nid = pi_info()->getCurrentPath()->activity_nid;
-			$parent_content_nid = $content_manager->getContent($activity_nid, $user->uid, FALSE);
-			if ($parent_content_nid) {
-				if ($op === 'insert') {
-					pi_node_hierarchy_set_parent($node->nid, $parent_content_nid);
-				}
-			}
-		}
-	}
+    if (in_array($node->type, $parent_content_node_types)) {
+      if ($op === 'insert') {
+        $content_manager = pi_info()->getContentManager();
+        $activity_nid = pi_info()->getCurrentPath()->activity_nid;
+        if ($activity_nid) {
+          $content_manager->linkContentWithActivity($node, $activity_nid, $user->uid);
+        }
+      } else if ($op === 'delete') {
+        db_query('DELETE FROM pi_activity_node WHERE nid=%d', $node->nid);
+      }
+    } else if (in_array($node->type, $child_content_node_types)) {
+      $content_manager = pi_info()->getContentManager();
+      $activity_nid = pi_info()->getCurrentPath()->activity_nid;
+      $parent_content_nid = $content_manager->getContent($activity_nid, $user->uid, FALSE);
+      if ($parent_content_nid) {
+        if ($op === 'insert') {
+          pi_node_hierarchy_set_parent($node->nid, $parent_content_nid);
+        }
+      }
+    }
+  }
 }

@@ -40,32 +40,59 @@ function pi_inquiry_manager_share_content_form_submit($form, $form_state) {
   global $user;
   $inquiry_info = pi_info()->getCurrentInquiryInfo();
   $access_manager = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+  $current_policy = $inquiry_info->getUserSharePolicy($user->uid);
+  $content_manager = pi_info()->getContentManager();
 
   $sc = nquire_commons_decode_data($form_state['values']['sharecontent']);
-  $query = "INSERT INTO pi_activity_share (activity_id, actor, mode, share) VALUES (%d, %d, '%s', '%s') ON DUPLICATE KEY UPDATE share='%s'";
+
+
+  $changes = array();
+
+
   foreach ($sc as $section) {
     if (isset($section['values'])) {
       foreach ($section['values'] as $anid => $value) {
-        $activity = $inquiry_info->getActivity($anid);
-        if ($activity) {
+        if ($value != $current_policy[$section['id']][$anid]) {
           switch ($inquiry_info->getActivityCollaboration($anid)) {
             case 'individual':
-              db_query($query, $anid, $user->uid, $section['id'], $value, $value);
+              $actor = $user->uid;
               break;
             case 'group':
               if ($access_manager->isGroupOwner()) {
-                db_query($query, $anid, $access_manager->getSubgroup(), $section['id'], $value, $value);
+                $actor = $access_manager->getSubgroup();
               }
               break;
             default:
               if ($access_manager->isInquiryOwner()) {
-                db_query($query, $anid, $inquiry_info->getInquiryActorGid(), $section['id'], $value, $value);
+                $actor = $inquiry_info->getInquiryActorGid();
               }
               break;
+          }
+          if ($actor) {
+            if (!isset($changes[$anid])) {
+              $changes[$anid] = array();
+            }
+            $changes[$anid][$section['id']] = array($actor, $value);
           }
         }
       }
     }
   }
+
+  $query = "INSERT INTO pi_activity_share (activity_id, actor, mode, share) VALUES (%d, %d, '%s', '%s') ON DUPLICATE KEY UPDATE share='%s'";
+  foreach ($changes as $activity_nid => $change) {
+    $shared = FALSE;
+    foreach ($change as $mode => $data) {
+      $shared = $shared || substr($data[1], -2) !== 'no';
+      db_query($query, $activity_nid, $data[0], $mode, $data[1], $data[1]);
+    }
+
+    $content_nid = $content_manager->getContent($activity_nid, $user->uid, FALSE);
+    if ($content_nid) {
+      pi_feeds_share_activity_change($activity_nid, $content_nid, $shared);
+    }
+  }
+
+  return;
 }
 

@@ -220,6 +220,10 @@ class PiInquiryInfo {
   public function getActivity($activity_nid) {
     return $this->activities[$activity_nid];
   }
+  
+  public function getActivities() {
+    return $this->activities;
+  }
 
   public function getActivityByType($type) {
     foreach ($this->activities as $activity) {
@@ -396,7 +400,14 @@ class PiInquiryInfo {
         if ($valid) {
           $result = db_query($query, $anid, $actor);
           while ($row = db_fetch_array($result)) {
-            $share_policy[$row['mode']][$anid] = $row ? $row['share'] : $default;
+            $share_policy[$row['mode']][$anid] = $row['share'];
+          }
+
+          if (!isset($share_policy['members'][$anid])) {
+            $share_policy['members'][$anid] = $default;
+          }
+          if (!isset($share_policy['supervisor'][$anid])) {
+            $share_policy['supervisor'][$anid] = 'supervisor_no';
           }
         }
 
@@ -518,8 +529,6 @@ class PiInquiryContent {
 
   public function linkContentWithActivity($content_node, $activity_nid, $uid) {
     $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
-    $activity = $inquiry_info->getActivity($activity_nid);
-
     $actor_data = $inquiry_info->getActivityActor($activity_nid, $uid);
 
     $activity_node = array(
@@ -530,6 +539,8 @@ class PiInquiryContent {
     );
 
     drupal_write_record('pi_activity_node', $activity_node);
+
+    $this->setDefaultSharePolicy($activity_nid, $uid);
   }
 
   public function getChildrenContentForContentNids($content_nids) {
@@ -558,6 +569,32 @@ class PiInquiryContent {
   public function getContributionContent($contribution_node, $activity_nid) {
     $actor_data = array('collaboration' => $contribution_node->collaboration, 'actor' => $contribution_node->actor);
     return $this->aggregateContentForActivityAndActorData($activity_nid, $actor_data);
+  }
+
+  public function setDefaultSharePolicy($activity_nid, $viewer_uid) {
+    $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
+    $activity_collaboration = $inquiry_info->getActivityCollaboration($activity_nid);
+
+    if ($activity_collaboration === 'individual') {
+      $actor = $viewer_uid;
+    } else if ($activity_collaboration === 'group') {
+      $actor = $inquiry_info->getSubgroup($viewer_uid);
+    }
+
+    if ($actor) {
+      $check = "SELECT share FROM {pi_activity_share} WHERE mode='%s' AND activity_id=%d AND actor=%d";
+      $insert = "INSERT INTO pi_activity_share (activity_id, actor, mode, share) VALUES (%d, %d, '%s', '%s')";
+      $defaults = array(
+          'members' => $activity_collaboration === 'individual' ? 'individual_group' : 'group_no',
+          'supervisor' => 'supervisor_no',
+      );
+      foreach ($defaults as $mode => $default) {
+        $check_result = db_query($check, $mode, $activity_nid, $actor);
+        if (!$check_result || $check_result->num_rows == 0) {
+          db_query($insert, $activity_nid, $actor, $mode, $default);
+        }
+      }
+    }
   }
 
   public function getSharedContent($activity_nid, $viewer_uid, $include_any_for_supervisor = FALSE) {
