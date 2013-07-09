@@ -220,7 +220,7 @@ class PiInquiryInfo {
   public function getActivity($activity_nid) {
     return $this->activities[$activity_nid];
   }
-  
+
   public function getActivities() {
     return $this->activities;
   }
@@ -608,7 +608,7 @@ class PiInquiryContent {
     $get_actors = function(&$actors, $mode, $share, $restrict_actors = FALSE) use ($query, $activity_nid) {
               $result = db_query($query, $mode, $activity_nid, $share);
               while ($row = db_fetch_array($result)) {
-                if (!in_array($row['actor'], $actors) && (!$restrict_actors || in_array($row['actor'], $restrict_actors))) {
+                if (!in_array($row['actor'], $actors) && ($restrict_actors === FALSE || in_array($row['actor'], $restrict_actors))) {
                   $actors[] = $row['actor'];
                 }
               }
@@ -626,7 +626,7 @@ class PiInquiryContent {
     if ($include_any_for_supervisor) {
       $get_actors($sharing_actors, 'supervisor', 'supervisor_yes');
     }
-
+    
     $nids = array();
 
     $query = "SELECT DISTINCT filtered_pi_activity_node.nid FROM "

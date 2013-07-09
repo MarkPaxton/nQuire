@@ -32,10 +32,8 @@ $(function() {
         self._tabsManager.selectTab(sampleId);
       });
 
-      this._tabsManager.selectTab('home');
-      this._tabsManager.setEnabled(true);
-
       this._openInitialPage();
+      this._tabsManager.setEnabled(true);
     },
     _openInitialPage: function() {
       var parts = location.pathname.split('/');
@@ -43,7 +41,9 @@ $(function() {
         var sample = parts[parts.length - 1];
         this.openSampleView({sample: sample});
       } else {
-        this._openPage('home');
+        var tab = this._tabsManager.getFirstTab();
+        this._openPage(tab);
+        this._tabsManager.selectTab(tab);
       }
     },
     openSampleView: function(view) {

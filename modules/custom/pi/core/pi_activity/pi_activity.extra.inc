@@ -65,8 +65,7 @@ function pi_activity_build_link($activity_nid) {
 	$text = check_plain($activity_node->title) . '&nbsp;' . "<img width='12' src='" . $image_path . "'/>";
 
 	if ($access !== 'hidden') {
-		$url = $access === 'edit' ? "activity/$activity_nid" : "phase/{$activity_node->phase_nid}";
-		return l($text, $url, array('html' => TRUE, 'fragment' => $activity_nid));
+		return l($text, "activity/$activity_nid", array('html' => TRUE, 'fragment' => $activity_nid));
 	} else {
 		return $text;
 	}

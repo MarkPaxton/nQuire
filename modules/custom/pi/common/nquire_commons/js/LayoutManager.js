@@ -28,8 +28,8 @@ $(function() {
     },
     resizeRoot: function(element) {
       var offset = element.offset();
-      var availableH = $(window).height() - offset.top - 30;
-      var availableW = $(window).width() - offset.left - 20;
+      var availableH = $(window).height() - offset.top - 10;
+      var availableW = $(window).width() - offset.left - 10;
 
       element.css({
         width: availableW,

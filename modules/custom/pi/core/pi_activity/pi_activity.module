@@ -28,21 +28,29 @@ function pi_activity_node_info() {
 }
 
 /**
- *
- * Drupal API hook_perm() implemetaiton to define available permissions for activity node type
- */
-function pi_activity_perm() {
-  return array('create activity', 'edit own activity', 'edit any activity', 'delete own activity', 'delete any activity');
-}
-
-/**
  * Access callback for pi_activities under the url activity/%
  * @param uint $activity node of the activity being accessed
  * @param uint $op the function to perform on the activity (view/add/edit)
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
-function pi_activity_access($activity, $op) {
-  return FALSE;
+function pi_activity_access($op, $node, $account) {
+  $is_author = $account->uid == $node->uid;
+  switch ($op) {
+    case 'create':
+      // Allow if user's role has 'create inquiry' permission.
+      return user_access('create inquiry', $account);
+
+    case 'update':
+      // Allow if user's role has 'edit own inquiry' permission and user is
+      // the author; or if the user's role has 'edit any inquiry' permission.
+      return user_access('edit own inquiry', $account) && is_author ||
+              user_access('edit any inquiry', $account);
+    case 'delete':
+      // Allow if user's role has 'delete own inquiry' permission and user is
+      // the author; or if the user's role has 'delete any inquiry' permission.
+      return user_access('delete own inquiry', $account) && $is_author ||
+              user_access('delete any inquiry', $account);
+  }
 }
 
 function pi_activity_tab_view_access_callback($node) {

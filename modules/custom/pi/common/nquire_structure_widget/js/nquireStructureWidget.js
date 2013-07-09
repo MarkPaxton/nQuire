@@ -23,7 +23,7 @@ $(function() {
         pi_hypothesis_conclusion: {
           title: 'My hypothesis conclusion',
           multiplicity: '1',
-          requires: ['hypothesis']
+          requires: ['pi_hypothesis']
         },
         pi_sort_key_questions: {
           title: 'My key questions',
@@ -33,7 +33,7 @@ $(function() {
         pi_sort_key_answers: {
           title: 'My key answers',
           multiplicity: '1',
-          requires: ['keyquestions']
+          requires: ['pi_key_questions']
         },
         pi_methodology: {
           title: 'Decide my methodology',
@@ -50,11 +50,11 @@ $(function() {
           multiplicity: '*',
           requires: []
         },
-        pi_data_spreadsheet: {
+        /*pi_data_spreadsheet: {
           title: 'Data spreadsheet analysis',
           multiplicity: '*',
           requires: []
-        },
+        },*/
 				pi_sort_result_presentations : {
           title: 'Data chart analysis',
           multiplicity: '*',
@@ -68,7 +68,7 @@ $(function() {
         },
         questions: {
           title: 'My hypothesis',
-          activities: ['pihypothesis', 'pi_sort_key_questions']
+          activities: ['pi_hypothesis', 'pi_sort_key_questions']
         },
         methodology: {
           title: 'Methodology',
@@ -82,10 +82,10 @@ $(function() {
           title: 'Chart data analysis',
           activities: ['pi_sort_result_presentations']
         },
-        spreadsheetanalysedata: {
+        /*spreadsheetanalysedata: {
           title: 'Spreadsheet data analysis',
           activities: ['pi_data_spreadsheet']
-        },
+        },*/
         conclusions: {
           title: 'My conclusions',
           activities: ['pi_sort_key_answers', 'pi_hypothesis_conclusion']

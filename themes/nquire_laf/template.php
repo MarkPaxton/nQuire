@@ -372,7 +372,7 @@ function phptemplate_pi_activities_view_activity($activity_data) {
             }
             $content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
 
-            $node_content = '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
+            $node_content .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
           }
           $links = '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links']['content'] . '</td></tr>';
 

@@ -103,7 +103,8 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
   $reason = $inquiry_access->getAccessReason($activity_node);
   $inquiry_nid = $inquiry_info->getInquiryNid();
   $exaplanation = pi_activity_access_get_explanation_text($access, $reason, $inquiry_nid);
-  $can_view = $active_activity ? pi_activity_tab_edit_access_callback($activity_node) : pi_activity_tab_view_access_callback($activity_node);
+  $edit_mode = $active_activity && pi_activity_tab_edit_access_callback($activity_node);
+  $can_view = $edit_mode ? pi_activity_tab_edit_access_callback($activity_node) : pi_activity_tab_view_access_callback($activity_node);
 
   $content_manager = pi_info()->getContentManager();
 
@@ -112,7 +113,7 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
     $content_node = node_load($content_nid);
   }
 
-  $activity_is_being_edited = $active_activity && $mode === 'edit';
+  $activity_is_being_edited = $edit_mode && $active_activity && $mode === 'edit';
 
 
   $links_block = NULL;
@@ -120,7 +121,9 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
     $links_block_f = "{$activity_node->activity_type}_format_edit_links_block";
     if (function_exists($links_block_f)) {
       $links_block = $links_block_f($activity_node, $activity_is_being_edited);
-    } else {
+    }
+
+    if (!$links_block) {
       $links_position_f = "{$activity_node->activity_type}_links_block_position";
       $links_position = function_exists($links_position_f) ? $links_position_f($activity_node, $activity_is_being_edited) : 'after';
       $links_block = array(
@@ -170,10 +173,10 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
       }
     } else {
       $options = array(
-          'edit' => $active_activity && $mode === 'edit',
-          'child_edit' => $active_activity && $mode === 'child_edit' ? $child_node->nid : NULL,
-          'child_delete' => $active_activity && $mode === 'child_delete' ? $child_node->nid : NULL,
-          'add_child' => $active_activity && $mode === 'child_add',
+          'edit' => $edit_mode && $mode === 'edit',
+          'child_edit' => $edit_mode && $mode === 'child_edit' ? $child_node->nid : NULL,
+          'child_delete' => $edit_mode && $mode === 'child_delete' ? $child_node->nid : NULL,
+          'add_child' => $edit_mode && $mode === 'child_add',
           'editable' => $access === 'edit',
           'activity_node' => $activity_node,
           'separate_page' => $separate_page,

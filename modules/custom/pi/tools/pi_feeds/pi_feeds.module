@@ -24,7 +24,6 @@ function pi_feeds_block($op = 'list') {
 function _pi_feeds_get_topic_sections() {
   $topic_sections = array();
 
-  $inquiry_context = NULL;
   $forum_context = NULL;
 
   $inquiry_info = pi_info()->getCurrentInquiryInfo();
@@ -33,7 +32,7 @@ function _pi_feeds_get_topic_sections() {
   } else if (arg(0) === 'node') {
     $node = node_load(arg(1));
     if ($node && $node->type === 'forum') {
-      $t = array_slice($node->taxonomy);
+      $t = array_slice($node->taxonomy, 0, 1);
       $forum_context = count($t) == 1 ? $t[0]->tid : NULL;
     }
   }
@@ -41,20 +40,20 @@ function _pi_feeds_get_topic_sections() {
   if ($inquiry_info) {
     $sa_topics = _pi_feeds_get_sharedactivity_topics($inquiry_info->getInquiryNid());
     if ($sa_topics) {
-      $sa_title = t('Shared content (@t):', array('@t' => $inquiry_info->getInquiryNode()->title));
+      $sa_title = t('Shared content in this inquiry:');
       $topic_sections[] = _pi_feeds_format_feed_section($sa_title, $sa_topics);
     }
   }
 
   $jc_topics = _pi_feeds_get_journalcontribution_topics($inquiry_info ? $inquiry_info->getInquiryNid() : FALSE);
   if ($jc_topics) {
-    $jc_title = $inquiry_info ? t('Inquiry results (@t):', array('@t' => $inquiry_info->getInquiryNode()->title)) : t('Inquiry results:');
+    $jc_title = $inquiry_info ? t('<a href="!url">Inquiry results</a> (@t):', array('!url' => url('journal'), '@t' => $inquiry_info->getInquiryNode()->title)) : t('Inquiry results:');
     $topic_sections[] = _pi_feeds_format_feed_section($jc_title, $jc_topics);
   }
   
   $ft_topics = _pi_feeds_get_forum_topics($forum_context);
   if ($ft_topics) {
-    $ft_title = t('Forum topics:');
+    $ft_title = t('<a href="!url">Forum</a> topics:', array('!url' => url('forum')));
     $topic_sections[] = _pi_feeds_format_feed_section($ft_title, $ft_topics);
   }
 
@@ -328,7 +327,7 @@ function _pi_feeds_format_time($timestamp) {
   } else if ($t < 172800) {
     return t('1 day ago.', array('@t' => round($t / 3600)));
   } else {
-    return t('On !d', array('!d' => format('d/m/Y')));
+    return t('On !d', array('!d' => date('d/m/Y')));
   }
 }
 

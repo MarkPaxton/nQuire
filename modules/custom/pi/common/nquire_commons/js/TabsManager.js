@@ -14,6 +14,9 @@ $(function() {
         self._tabClicked($(this).attr('tab'));
       });
     },
+    getFirstTab: function() {
+      return this._container.find('.nquire-tabs-tab:first-child').attr('tab');
+    },
     addListener: function(callback) {
       this._tabListeners.push(callback);
     },
@@ -40,9 +43,9 @@ $(function() {
       this._container.find('.nquire-tabs-tab').each(function() {
         var tab = $(this);
         if (tab.attr('tab') === self._currentTab) {
-          tab.addClass('nquire-tabs-tab-selected');
+          tab.addClass('selected');
         } else {
-          tab.removeClass('nquire-tabs-tab-selected');
+          tab.removeClass('selected');
         }
       });
     }
