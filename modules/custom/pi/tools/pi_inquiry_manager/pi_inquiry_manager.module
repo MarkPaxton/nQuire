@@ -286,6 +286,16 @@ function pi_inquiry_manager_menu() {
           'access arguments' => array(),
           'weight' => 1,
       ),
+      'inquiry/%/promote' => array(
+          'title' => 'Rate and promote inquiry',
+          'file' => 'pi_inquiry_manager.promote.inc',
+          'page callback' => 'pi_inquiry_manager_promote',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_promote_access',
+          'access arguments' => array(),
+          'weight' => 1,
+      ),
   );
 
   return $items;
@@ -331,6 +341,16 @@ function pi_inquiry_manager_participants_access() {
 }
 
 function pi_inquiry_manager_share_access() {
+  if (user_is_logged_in()) {
+    global $user;
+    $inquiry_info = pi_info()->getCurrentInquiryInfo();
+    $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    return $inquiry_access->hasInquiryAccess();
+  }
+  return FALSE;
+}
+
+function pi_inquiry_manager_promote_access() {
   if (user_is_logged_in()) {
     global $user;
     $inquiry_info = pi_info()->getCurrentInquiryInfo();

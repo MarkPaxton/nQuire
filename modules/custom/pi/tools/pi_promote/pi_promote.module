@@ -1,0 +1,210 @@
+<?php
+
+define('PI_PROMOTE_NONE', 0);
+define('PI_PROMOTE_SELECTED', 1);
+define('PI_PROMOTE_REQUESTED', 2);
+
+function pi_promote_menu() {
+  $items = array();
+  
+  $items['front_page'] = array(
+      'title' => 'Home',
+      'page callback' => 'pi_promote_front_page',
+      'type' => MENU_NORMAL_ITEM,
+      'access callback' => 'pi_promote_shop_page_callback',
+  );
+
+  $items['home'] = array(
+      'title' => 'Home',
+      'page callback' => 'pi_promote_shop_page',
+      'type' => MENU_NORMAL_ITEM,
+      'access callback' => 'pi_promote_shop_page_callback',
+  );
+  
+  $items['admin/nquire/promote'] = array(
+      'title' => 'Promoted inquiries',
+      'page callback' => 'pi_promote_admin_page',
+      'access arguments' => array('configure nquire'),
+      'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+function pi_promote_front_page() {
+  drupal_goto('home');
+}
+
+function pi_promote_shop_page() {
+  return '!';
+}
+
+function pi_promote_shop_page_callback() {
+  return TRUE;
+}
+
+function pi_promote_admin_page() {
+  $output = drupal_get_form('pi_promote_admin_form');
+  return $output;
+}
+
+function pi_promote_admin_form(&$form_state) {
+  $query = "SELECT inquiry_id, status FROM {pi_promote} WHERE status>0 ORDER BY status";
+
+  $options = array();
+  $values = array();
+
+  $result = db_query($query);
+  while ($row = db_fetch_array($result)) {
+    $inquiry = node_load($row['inquiry_id']);
+    if ($inquiry && $inquiry->type === 'pi_inquiry') {
+      $options[$inquiry->nid] = check_plain($inquiry->title);
+      if ($row['status'] == PI_PROMOTE_SELECTED) {
+        $values[] = $inquiry->nid; //[$inquiry->nid] = $row['status'] == PI_PROMOTE_SELECTED;
+      }
+    }
+  }
+
+  $form = array();
+  $form['selected'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Promoted inquiries'),
+      '#description' => t('This list includes only inquiries whose owners have proposed for promotion.'),
+      '#options' => $options,
+      '#default_value' => $values
+  );
+
+nquire_commons_create_form_save_cancel_buttons($form, 'pi_promote_admin_form_submit', "admin/nquire/promote");
+
+  return $form;
+}
+
+function pi_promote_admin_form_submit($form, $form_state) {
+  foreach ($form_state['values']['selected'] as $inquiry_nid => $selected) {
+    $current_value = _pi_promote_get_value($inquiry_nid);
+    if ($current_value === PI_PROMOTE_SELECTED && !$selected) {
+      _pi_promote_set_value($inquiry_nid, PI_PROMOTE_REQUESTED);
+    } else if ($current_value === PI_PROMOTE_REQUESTED && $selected) {
+      _pi_promote_set_value($inquiry_nid, PI_PROMOTE_SELECTED);
+    }
+  }
+}
+
+function _pi_promote_set_value($inquiry_nid, $status) {
+  $query = "INSERT INTO pi_promote (inquiry_id, status) VALUES (%d, %d) ON DUPLICATE KEY UPDATE status=%d";
+  db_query($query, $inquiry_nid, $status, $status);
+}
+
+function _pi_promote_set_rating($inquiry_nid, $uid, $rating) {
+  $query = "INSERT INTO pi_promote_ratings (inquiry_id, uid, rating) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE rating=%d";
+  $_rating = min(5, max(1, intval($rating)));
+  db_query($query, $inquiry_nid, $uid, $_rating, $_rating);
+}
+
+function _pi_promote_get_value($inquiry_nid) {
+  $query = "SELECT status FROM {pi_promote} WHERE inquiry_id=%d LIMIT 1";
+  $row = db_fetch_array(db_query($query, $inquiry_nid));
+  return $row ? intval($row['status']) : PI_PROMOTE_NONE;
+}
+
+function pi_promote_inquiry_form(&$form_state) {
+  global $user;
+  $inquiry_info = pi_info()->getCurrentInquiryInfo();
+  $form = array();
+
+  if ($inquiry_info->getInquiryNode()) {
+    $inquiry_nid = $inquiry_info->getInquiryNid();
+
+    $status = _pi_promote_get_value($inquiry_nid);
+
+    $promote_access = $user->uid === $inquiry_info->getInquiryOwner();
+
+    if ($status === PI_PROMOTE_SELECTED) {
+      $status_text = t("This inquiry is currently shown in this site's front page.");
+      if ($promote_access) {
+        $description .= t(' Uncheck this option to remove it.');
+      }
+    } else if ($status === PI_PROMOTE_REQUESTED) {
+      $status_text = t("This inquiry has been proposed for this site's front page.");
+      if ($promote_access) {
+        $description .= t(' Uncheck this option to cancel the proposal.');
+      }
+    } else {
+      $status_text = t("This inquiry is not shown in this site's front page.");
+      if ($promote_access) {
+        $description .= t(' Check this option to propose it for the front page.');
+      }
+    }
+
+    if (!$promote_access) {
+      $rating_query = "SELECT rating FROM {pi_promote_ratings} WHERE inquiry_id=%d AND uid=%d LIMIT 1";
+      $rating_row = db_fetch_array(db_query($rating_query, $inquiry_nid, $user->uid));
+      $rating = $rating_row ? intval($rating_row['rating']) : 0;
+      $ratting_wrapper = nquire_commons_create_page_section_prefix_suffix('', t('Rate this inquiry'));
+      $form['rating_prefix'] = array(
+          '#value' => $ratting_wrapper['prefix'],
+      );
+      $form['rating'] = array(
+          '#type' => 'radios',
+          '#title' => t('Your rating'),
+          '#options' => array(1 => t('1 - awful'), 2 => t('2'), 3 => t('3'), 4 => t('4'), 5 => t('5 - fantastic')),
+          '#default_value' => $rating,
+      );
+      $form['rating_suffix'] = array(
+          '#value' => $ratting_wrapper['suffix'],
+      );
+    }
+
+
+    $promote_wrapper = nquire_commons_create_page_section_prefix_suffix($status_text, t('Promote inquiry'));
+    $form['promote_prefix'] = array(
+        '#value' => $promote_wrapper['prefix'],
+    );
+    if ($promote_access) {
+      $form['promote'] = array(
+          '#type' => 'checkbox',
+          '#title' => t('Promote to front page'),
+          '#description' => $description,
+          '#default_value' => $status != PI_PROMOTE_NONE,
+      );
+    }
+    $form['promote_suffix'] = array(
+        '#value' => $promote_wrapper['suffix'],
+    );
+
+
+
+    nquire_commons_create_form_save_cancel_buttons($form, 'pi_promote_inquiry_form_submit', "inquiry/$inquiry_nid/promote");
+  }
+
+  return $form;
+}
+
+function pi_promote_inquiry_form_submit($form, $form_state) {
+  $inquiry_info = pi_info()->getCurrentInquiryInfo();
+  if ($inquiry_info->getInquiryNode()) {
+    $inquiry_nid = $inquiry_info->getInquiryNid();
+    if (isset($form_state['values']['promote'])) {
+      $promote = $form_state['values']['promote'];
+      $current_value = _pi_promote_get_value($inquiry_nid);
+      if ($promote && !$current_value) {
+        _pi_promote_set_value($inquiry_nid, PI_PROMOTE_REQUESTED);
+      } else if (!$promote && $current_value) {
+        _pi_promote_set_value($inquiry_nid, PI_PROMOTE_NONE);
+      }
+    }
+
+    if (isset($form_state['values']['rating'])) {
+      global $user;
+      _pi_promote_set_rating($inquiry_nid, $user->uid, $form_state['values']['rating']);
+    }
+  }
+  nquire_commons_form_close($form, $form_state);
+}
+
+function pi_promote_nodeapi($node, $op) {
+  if ($op === 'delete' && $node->type === 'pi_inquiry') {
+    db_query('DELETE FROM {pi_promote} WHERE inquiry_id=%d', $node->nid);
+  }
+}
+
