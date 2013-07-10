@@ -10,31 +10,31 @@
  * hook_node_info()Define the pi_inquiry node type
  */
 function pi_inquiry_node_info() {
-	return array(
-			'pi_inquiry' => array(
-					'name' => t('Inquiry'), // Required.
-					'module' => 'pi_inquiry', // Required.
-					'description' => t('An nQuire Inquiry'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Inquiry Name'),
-					'has_body' => TRUE,
-					'body_label' => t('Inquiry Description'),
-			)
-	);
+  return array(
+      'pi_inquiry' => array(
+          'name' => t('Inquiry'), // Required.
+          'module' => 'pi_inquiry', // Required.
+          'description' => t('An nQuire Inquiry'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Inquiry Name'),
+          'has_body' => TRUE,
+          'body_label' => t('Inquiry Description'),
+      )
+  );
 }
 
 /**
  * Define permissions available for pi_inquiry module
  */
 function pi_inquiry_perm() {
-	return array('create inquiry', 'edit own inquiry', 'edit any inquiry', 'delete own inquiry', 'delete any inquiry');
+  return array('create inquiry', 'edit own inquiry', 'edit any inquiry', 'delete own inquiry', 'delete any inquiry');
 }
 
 /**
  * Work out if a user has permission to do something with an Inquiry
  */
 function pi_inquiry_access($op, $node, $account) {
-	global $user;
+  global $user;
   return $user->uid === $node->uid;
 }
 
@@ -42,90 +42,92 @@ function pi_inquiry_access($op, $node, $account) {
  * The form for adding/editing an Inquiry
  */
 function pi_inquiry_form($node) {
-	$form = array();
-	return $form;
+  $form = array();
+  return $form;
 }
 
 function _pi_inquiry_prepare_participants_to_save($node, &$data_to_write) {
-	if (!isset($node->participants_selection)) {
-		$data_to_write->participants_selection = 'justme';
-		$data_to_write->participants_cohort = nquire_group_create_group($node->uid, "Participants of {$node->nid}", TRUE);
-		$data_to_write->actor_gid = $data_to_write->participants_cohort;
-		$data_to_write->group_creation = 'controlled';
-	} else {
-		$data_to_write->participants_selection = $node->participants_selection;
-		$data_to_write->participants_cohort = $node->participants_cohort;
-		$data_to_write->actor_gid = $node->actor_gid;
-		$data_to_write->group_creation = $node->group_creation;
-	}
+  if (!isset($node->participants_selection)) {
+    $data_to_write->participants_selection = 'justme';
+    $data_to_write->participants_cohort = nquire_group_create_group($node->uid, "Participants of {$node->nid}", TRUE);
+    $data_to_write->actor_gid = $data_to_write->participants_cohort;
+    $data_to_write->group_creation = 'controlled';
+  } else {
+    $data_to_write->participants_selection = $node->participants_selection;
+    $data_to_write->participants_cohort = $node->participants_cohort;
+    $data_to_write->actor_gid = $node->actor_gid;
+    $data_to_write->group_creation = $node->group_creation;
+  }
 }
 
 /**
  * INSERT command for a new inquiry
  */
 function pi_inquiry_insert($node) {
-	// Query the database first to set the weight to place the item at the end of lists.
-	// If the query result is NULL then the the field will to default=0 since the weight
-	// column is defined with NOT NULL DEFAULT 0
+  // Query the database first to set the weight to place the item at the end of lists.
+  // If the query result is NULL then the the field will to default=0 since the weight
+  // column is defined with NOT NULL DEFAULT 0
 
 
-	$initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_inquiry}"));
-	$data_to_write = new stdClass();
-	$data_to_write->nid = $node->nid;
-	$data_to_write->vid = $node->vid;
-	$data_to_write->supervised = $node->supervised;
-	$data_to_write->weight = $initial_weight;
-	$data_to_write->roles = $node->roles;
-	_pi_inquiry_prepare_participants_to_save($node, $data_to_write);
+  $initial_weight = db_result(db_query("SELECT MAX(weight)+1 FROM {pi_inquiry}"));
+  $data_to_write = new stdClass();
+  $data_to_write->nid = $node->nid;
+  $data_to_write->vid = $node->vid;
+  $data_to_write->image = $node->image;
+  $data_to_write->supervised = $node->supervised;
+  $data_to_write->weight = $initial_weight;
+  $data_to_write->roles = $node->roles;
+  _pi_inquiry_prepare_participants_to_save($node, $data_to_write);
 
-	$result = drupal_write_record('pi_inquiry', $data_to_write);
+  $result = drupal_write_record('pi_inquiry', $data_to_write);
 
-	if ($result != SAVED_NEW) {
-		$result_string = _pi_write_record_result_string($result);
-		drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
-	}
+  if ($result != SAVED_NEW) {
+    $result_string = _pi_write_record_result_string($result);
+    drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+  }
 }
 
 /**
  * UPDATE command for an existing inquiry
  */
 function pi_inquiry_update($node) {
-	if ($node->revision) {
-		// New revision; treat it as a new record.
-		pi_inquiry_insert($node);
-	} else {
-		$link = array();
-		$summary = array();
+  if ($node->revision) {
+    // New revision; treat it as a new record.
+    pi_inquiry_insert($node);
+  } else {
+    $link = array();
+    $summary = array();
 
-		// If there are no activities installed then the options will be empty, so make into an empty array
-		if (!is_array($node->activities_show_hide)) {
-			$node->activities_show_hide = array();
-		}
+    // If there are no activities installed then the options will be empty, so make into an empty array
+    if (!is_array($node->activities_show_hide)) {
+      $node->activities_show_hide = array();
+    }
 
-		foreach ($node->activities_show_hide as $module_name => $show_hide) {
-			if ($show_hide['link'] !== 0) {
-				$link[] = $module_name;
-			}
+    foreach ($node->activities_show_hide as $module_name => $show_hide) {
+      if ($show_hide['link'] !== 0) {
+        $link[] = $module_name;
+      }
 
-			if ($show_hide['summary'] !== 0) {
-				$summary[] = $module_name;
-			}
-		}
+      if ($show_hide['summary'] !== 0) {
+        $summary[] = $module_name;
+      }
+    }
 
-		$data_to_write = new stdClass();
-		$data_to_write->nid = $node->nid;
-		$data_to_write->vid = $node->vid;
-		$data_to_write->supervised = $node->supervised;
-		$data_to_write->weight = $node->weight;
-		$data_to_write->roles = $node->roles;
-		_pi_inquiry_prepare_participants_to_save($node, $data_to_write);
+    $data_to_write = new stdClass();
+    $data_to_write->nid = $node->nid;
+    $data_to_write->vid = $node->vid;
+    $data_to_write->image = $node->image;
+    $data_to_write->supervised = $node->supervised;
+    $data_to_write->weight = $node->weight;
+    $data_to_write->roles = $node->roles;
+    _pi_inquiry_prepare_participants_to_save($node, $data_to_write);
 
-		$result = drupal_write_record('pi_inquiry', $data_to_write, array('vid', 'nid'));
-		if ($result != SAVED_UPDATED) {
-			$result_string = _pi_write_record_result_string($result);
-			drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
-		}
-	}
+    $result = drupal_write_record('pi_inquiry', $data_to_write, array('vid', 'nid'));
+    if ($result != SAVED_UPDATED) {
+      $result_string = _pi_write_record_result_string($result);
+      drupal_set_message(t('Problem saving Inquiry data - saved returned a value of %value.', array('%value' => $result_string)), 'error');
+    }
+  }
 }
 
 /**
@@ -136,12 +138,12 @@ function pi_inquiry_update($node) {
  * hook_nodeapi().
  */
 function pi_inquiry_nodeapi(&$node, $op, $teaser, $page) {
-	switch ($op) {
-		case 'delete revision':
-			// Notice that we're matching a single revision based on the node's vid.
-			db_query('DELETE FROM {pi_inqury} WHERE vid = %d', $node->vid);
-			break;
-	}
+  switch ($op) {
+    case 'delete revision':
+      // Notice that we're matching a single revision based on the node's vid.
+      db_query('DELETE FROM {pi_inqury} WHERE vid = %d', $node->vid);
+      break;
+  }
 }
 
 /**
@@ -149,29 +151,29 @@ function pi_inquiry_nodeapi(&$node, $op, $teaser, $page) {
  * @todo this should delete all the associated data with the inquiry too!
  */
 function pi_inquiry_delete(&$node) {
-	// Delete the related information we were saving for this node.
-	db_query('DELETE FROM {pi_inquiry} WHERE nid = %d', $node->nid);
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_inquiry} WHERE nid = %d', $node->nid);
 }
 
 /**
  * node loader function for inquiry type called when noad_load() is called
  */
 function pi_inquiry_load($node) {
-	$inquiry_row = db_fetch_array(db_query('SELECT `roles`, `weight`, `supervised`, `participants_selection`, `participants_cohort`, `group_creation`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
-	$inquiry = new stdClass();
-	$inquiry->weight = $inquiry_row['weight'];
+  $inquiry_row = db_fetch_array(db_query('SELECT `roles`, `weight`, `image`, `supervised`, `participants_selection`, `participants_cohort`, `group_creation`, `actor_gid` FROM {pi_inquiry} WHERE vid = %d', $node->vid));
+  $inquiry = new stdClass();
+  $inquiry->weight = $inquiry_row['weight'];
+  $inquiry->image = $inquiry_row['image'];
+  $inquiry->supervised = $inquiry_row['supervised'];
 
-	$inquiry->supervised = $inquiry_row['supervised'];
+  $inquiry->participants_selection = $inquiry_row['participants_selection'];
+  $inquiry->participants_cohort = $inquiry_row['participants_cohort'];
+  $inquiry->actor_gid = $inquiry_row['actor_gid'];
+  $inquiry->group_creation = $inquiry_row['group_creation'];
 
-	$inquiry->participants_selection = $inquiry_row['participants_selection'];
-	$inquiry->participants_cohort = $inquiry_row['participants_cohort'];
-	$inquiry->actor_gid = $inquiry_row['actor_gid'];
-	$inquiry->group_creation = $inquiry_row['group_creation'];
+  $inquiry->roles = $inquiry_row['roles'];
+  $inquiry->roles_array = nquire_commons_decode_data($inquiry_row['roles']);
 
-	$inquiry->roles = $inquiry_row['roles'];
-	$inquiry->roles_array = nquire_commons_decode_data($inquiry_row['roles']);
-
-	return $inquiry;
+  return $inquiry;
 }
 
 /**
@@ -179,26 +181,26 @@ function pi_inquiry_load($node) {
  * @todo Add a detailed inquiry view to be used in the whole system
  */
 function pi_inquiry_view($node, $teaser = FALSE, $page = FALSE) {
-	// If $teaser is FALSE, the entire node is being displayed.
-	if (!$teaser) {
-		//Use Drupal's default node view.
-		$node = node_prepare($node, $teaser);
+  // If $teaser is FALSE, the entire node is being displayed.
+  if (!$teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
 
-		// render the inquiry description using a theme function
-		$node->content['layout'] = array(
-				'#value' => theme('inquiry_layout', $node),
-				'#weight' => 1,
-		);
-		// Add more involved inquiry layout here
-	}
+    // render the inquiry description using a theme function
+    $node->content['layout'] = array(
+        '#value' => theme('inquiry_layout', $node),
+        '#weight' => 1,
+    );
+    // Add more involved inquiry layout here
+  }
 
-	// If $teaser is true, node is being displayed as a teaser,
-	// in this case, just show the description and none of the rest of the inquiry stuff
-	if ($teaser) {
-		//Use Drupal's default node view.
-		$node = node_prepare($node, $teaser);
-	}
-	return $node;
+  // If $teaser is true, node is being displayed as a teaser,
+  // in this case, just show the description and none of the rest of the inquiry stuff
+  if ($teaser) {
+    //Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+  }
+  return $node;
 }
 
 /**
@@ -208,35 +210,35 @@ function pi_inquiry_view($node, $teaser = FALSE, $page = FALSE) {
  * @return array of nids ordered by weight
  */
 function pi_inquiry_load_nids() {
-	$query = "SELECT nid from {pi_inquiry} ORDER BY weight";
-	$result = db_query($query);
-	$inquiry_nodes = array();
-	while ($nid = db_result($result)) {
-		$inquiry_nodes[] = $nid;
-	}
-	return $inquiry_nodes;
+  $query = "SELECT nid from {pi_inquiry} ORDER BY weight";
+  $result = db_query($query);
+  $inquiry_nodes = array();
+  while ($nid = db_result($result)) {
+    $inquiry_nodes[] = $nid;
+  }
+  return $inquiry_nodes;
 }
 
 function pi_inquiry_find_inquiry_for_content($content_nid) {
-	$activity_nid = pi_activity_get_activity_nid_for_content_nid($content_nid);
-	return pi_inquiry_find_inquiry_for_activity($activity_nid);
+  $activity_nid = pi_activity_get_activity_nid_for_content_nid($content_nid);
+  return pi_inquiry_find_inquiry_for_activity($activity_nid);
 }
 
 function pi_inquiry_find_inquiry_for_activity($activity_nid) {
-	$activity = node_load($activity_nid);
-	$phase = node_load($activity->phase_nid);
-	return $phase->inquiry_nid;
+  $activity = node_load($activity_nid);
+  $phase = node_load($activity->phase_nid);
+  return $phase->inquiry_nid;
 }
 
 /**
  * Declare theme functions for pi_inquiry
  */
 function pi_inquiry_theme() {
-	return array(
-			'inquiry_layout' => array(
-					'arguments' => array('node'),
-			),
-	);
+  return array(
+      'inquiry_layout' => array(
+          'arguments' => array('node'),
+      ),
+  );
 }
 
 /**
@@ -244,8 +246,8 @@ function pi_inquiry_theme() {
  * @param drupal node data $node Inquiry node details.
  */
 function theme_inquiry_layout($node) {
-	$output .= '<div class="inquiry-layout">';
-	$output .= t("Layout: %layout", array('%layout' => check_plain($node->layout)));
-	$output .= '</div>';
-	return $output;
+  $output .= '<div class="inquiry-layout">';
+  $output .= t("Layout: %layout", array('%layout' => check_plain($node->layout)));
+  $output .= '</div>';
+  return $output;
 }

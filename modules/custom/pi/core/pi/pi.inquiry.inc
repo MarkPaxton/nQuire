@@ -26,7 +26,7 @@ function pi_inquiry_structure_view($node) {
               ))
               . '</p>';
     } else {
-      $output .= '<p>' . t('This inquiry has not phases or activities (yet).') . '</p>';
+      $output .= '<p>' . t('This inquiry has not phases or activities yet.') . '</p>';
     }
   }
 

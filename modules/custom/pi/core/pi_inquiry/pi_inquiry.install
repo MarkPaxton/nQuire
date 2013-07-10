@@ -6,24 +6,24 @@
  * Implementation of hook_install(): creates the database table for pi_inquiry
  */
 function pi_inquiry_install() {
-	// Create tables.
-	drupal_install_schema('pi_inquiry');
-	//Options are status, promote, sticky, revision
-	variable_set("node_options_pi_inquiry", array('status'));
-	variable_set("comment_pi_inquiry", COMMENT_NODE_DISABLED);
-	variable_set('upload_pi_inquiry', 0);
+  // Create tables.
+  drupal_install_schema('pi_inquiry');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_pi_inquiry", array('status'));
+  variable_set("comment_pi_inquiry", COMMENT_NODE_DISABLED);
+  variable_set('upload_pi_inquiry', 0);
 }
 
 /**
  * Implementation of hook_uninstall(): removes the pi_inquiry table
  */
 function pi_inquiry_uninstall() {
-	// Remove tables.
-	drupal_uninstall_schema('pi_inquiry');
-	//Options are status, promote, sticky, revision
-	variable_del("node_options_pi_inquiry");
-	variable_del("comment_pi_inquiry");
-	variable_del('upload_pi_inquiry');
+  // Remove tables.
+  drupal_uninstall_schema('pi_inquiry');
+  //Options are status, promote, sticky, revision
+  variable_del("node_options_pi_inquiry");
+  variable_del("comment_pi_inquiry");
+  variable_del('upload_pi_inquiry');
 }
 
 /**
@@ -31,201 +31,206 @@ function pi_inquiry_uninstall() {
  */
 function pi_inquiry_schema() {
 
-	$schema = array();
+  $schema = array();
 
-	$schema['pi_inquiry'] = array(
-			'description' => 'PI Inquiry',
-			'fields' => array(
-					'nid' => array(
-							'description' => 'node id',
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0),
-					'vid' => array(
-							'description' => 'The current vid version identifier',
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0),
-					'supervised' => array(
-							'description' => 'Whether the inquiry has a supervisor',
-							'type' => 'int',
-							'size' => 'tiny',
-							'not null' => TRUE,
-							'default' => 0),
-					'roles' => array(
-							'description' => 'Role information',
-							'type' => 'text',
-							'size' => 'normal'),
-					'participants_selection' => array(
-							'type' => 'text',
-							'size' => 'small',
-							'description' => 'Type of participant selection (justme/group/anyone)'),
-					'participants_cohort' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'default' => NULL,
-							'description' => 'Participants selection group (expect for anyone)'),
-					'group_creation' => array(
-							'description' => 'Group creation policy',
-							'type' => 'text',
-							'size' => 'normal'),
-					'actor_gid' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'default' => NULL,
-							'description' => 'The inquiry actor group id'),
-					'weight' => array(
-							'description' => 'The default layout order in the inquiry list.',
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0)),
-			'primary key' => array('nid', 'vid'),
-			'unique keys' => array('vid' => array('vid')),
-			'indexes' => array('nid' => array('nid'))
-	);
+  $schema['pi_inquiry'] = array(
+      'description' => 'PI Inquiry',
+      'fields' => array(
+          'nid' => array(
+              'description' => 'node id',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'vid' => array(
+              'description' => 'The current vid version identifier',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'image' => array(
+              'description' => 'image file name',
+              'type' => 'text',
+              'size' => 'medium',
+              'not null' => TRUE),
+          'supervised' => array(
+              'description' => 'Whether the inquiry has a supervisor',
+              'type' => 'int',
+              'size' => 'tiny',
+              'not null' => TRUE,
+              'default' => 0),
+          'roles' => array(
+              'description' => 'Role information',
+              'type' => 'text',
+              'size' => 'normal'),
+          'participants_selection' => array(
+              'type' => 'text',
+              'size' => 'small',
+              'description' => 'Type of participant selection (justme/group/anyone)'),
+          'participants_cohort' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'default' => NULL,
+              'description' => 'Participants selection group (expect for anyone)'),
+          'group_creation' => array(
+              'description' => 'Group creation policy',
+              'type' => 'text',
+              'size' => 'normal'),
+          'actor_gid' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'default' => NULL,
+              'description' => 'The inquiry actor group id'),
+          'weight' => array(
+              'description' => 'The default layout order in the inquiry list.',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0)),
+      'primary key' => array('nid', 'vid'),
+      'unique keys' => array('vid' => array('vid')),
+      'indexes' => array('nid' => array('nid'))
+  );
 
-	$schema['pi_inquiry_grouping'] = array(
-			'description' => 'PI Inquiry grouping.',
-			'fields' => array(
-					'pig_id' => array(
-							'type' => 'serial',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Primary Key: Unique category ID.'),
-					'inquiry_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Inquiry id'),
-					'stage_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'default' => NULL,
-							'description' => 'Stage id'),
-					'phase_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'default' => NULL,
-							'description' => 'Phase id.'),
-					'activity_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'description' => 'Activity id.'),
-					'grouping_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => NULL,
-							'description' => 'Grouping id used in a specified inquiry, stage, phase and/or activity')),
-			'primary key' => array('pig_id'),
-			'indexes' => array('inquiry_id' => array('inquiry_id'),
-					'stage_id' => array('stage_id'),
-					'phase_id' => array('phase_id'),
-					'activity_id' => array('activity_id'))
-	);
+  $schema['pi_inquiry_grouping'] = array(
+      'description' => 'PI Inquiry grouping.',
+      'fields' => array(
+          'pig_id' => array(
+              'type' => 'serial',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Primary Key: Unique category ID.'),
+          'inquiry_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Inquiry id'),
+          'stage_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'default' => NULL,
+              'description' => 'Stage id'),
+          'phase_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'default' => NULL,
+              'description' => 'Phase id.'),
+          'activity_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'description' => 'Activity id.'),
+          'grouping_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => NULL,
+              'description' => 'Grouping id used in a specified inquiry, stage, phase and/or activity')),
+      'primary key' => array('pig_id'),
+      'indexes' => array('inquiry_id' => array('inquiry_id'),
+          'stage_id' => array('stage_id'),
+          'phase_id' => array('phase_id'),
+          'activity_id' => array('activity_id'))
+  );
 
-	$schema['pi_inquiry_phase'] = array(
-			'description' => 'PI Inquiry phase.',
-			'fields' => array(
-					'pip_id' => array(
-							'type' => 'serial',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Primary Key: Unique category ID.'),
-					'inquiry_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Inquiry id'),
-					'phase_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => NULL,
-							'description' => 'Stage id'),
-					'position' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0,
-							'description' => 'Phase id.')),
-			'primary key' => array('pip_id'),
-			'indexes' => array('inquiry_id' => array('inquiry_id')),
-	);
+  $schema['pi_inquiry_phase'] = array(
+      'description' => 'PI Inquiry phase.',
+      'fields' => array(
+          'pip_id' => array(
+              'type' => 'serial',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Primary Key: Unique category ID.'),
+          'inquiry_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Inquiry id'),
+          'phase_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => NULL,
+              'description' => 'Stage id'),
+          'position' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0,
+              'description' => 'Phase id.')),
+      'primary key' => array('pip_id'),
+      'indexes' => array('inquiry_id' => array('inquiry_id')),
+  );
 
-	$schema['pi_inquiry_stage'] = array(
-			'description' => 'PI Inquiry stage.',
-			'fields' => array(
-					'pis_id' => array(
-							'type' => 'serial',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Primary Key: Unique category ID.'),
-					'inquiry_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Inquiry id'),
-					'stage_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Stage id'),
-					'position' => array(
-							'type' => 'int',
-							'size' => 'tiny',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'default' => 0,
-							'description' => 'Phase id.')),
-			'primary key' => array('pis_id'),
-			'indexes' => array('inquiry_id' => array('inquiry_id')),
-	);
+  $schema['pi_inquiry_stage'] = array(
+      'description' => 'PI Inquiry stage.',
+      'fields' => array(
+          'pis_id' => array(
+              'type' => 'serial',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Primary Key: Unique category ID.'),
+          'inquiry_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Inquiry id'),
+          'stage_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Stage id'),
+          'position' => array(
+              'type' => 'int',
+              'size' => 'tiny',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'default' => 0,
+              'description' => 'Phase id.')),
+      'primary key' => array('pis_id'),
+      'indexes' => array('inquiry_id' => array('inquiry_id')),
+  );
 
-	$schema['pi_current_inquiry'] = array(
-			'description' => 'PI current inquiry',
-			'fields' => array(
-					'pci_id' => array(
-							'type' => 'serial',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Primary Key: Unique category ID'),
-					'sid' => array(
-							'type' => 'varchar',
-							'length' => 255,
-							'not null' => TRUE,
-							'description' => 'Session id'),
-					'uid' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => NULL,
-							'description' => 'user id'),
-					'inquiry_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'description' => 'inquiry id')),
-			'primary key' => array('pci_id'),
-			'indexes' => array('inquiry_id' => array('inquiry_id'),
-					'sid' => array('sid'),
-					'uid' => array('uid'))
-	);
+  $schema['pi_current_inquiry'] = array(
+      'description' => 'PI current inquiry',
+      'fields' => array(
+          'pci_id' => array(
+              'type' => 'serial',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Primary Key: Unique category ID'),
+          'sid' => array(
+              'type' => 'varchar',
+              'length' => 255,
+              'not null' => TRUE,
+              'description' => 'Session id'),
+          'uid' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => NULL,
+              'description' => 'user id'),
+          'inquiry_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => FALSE,
+              'description' => 'inquiry id')),
+      'primary key' => array('pci_id'),
+      'indexes' => array('inquiry_id' => array('inquiry_id'),
+          'sid' => array('sid'),
+          'uid' => array('uid'))
+  );
 
 
-	return $schema;
+  return $schema;
 }
 
