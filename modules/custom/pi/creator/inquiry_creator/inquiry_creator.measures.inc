@@ -154,7 +154,6 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
   );
 
 
-
   nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_measure_form_submit', "creator/{$design->nid}/activity/{$activity->nid}/");
 
   return $form;

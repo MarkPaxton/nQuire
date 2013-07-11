@@ -117,19 +117,20 @@ function pi_sort_data_display_content_in_activity($node, $options) {
     foreach ($data_nids as $nid) {
       $row = array();
       $data_item_node = node_load($nid);
+      $edit_path = "activity/$activity_id_for_this_node/edit/$nid";
 
       if (!$options['child_delete'] || $nid == $options['child_delete']) {
         $first_cell = format_date($data_item_node->created, 'custom', 'Y/m/d H:i') . '<br/>'
                 . t('by !user', array('!user' => nquire_commons_user_name_or_me($data_item_node->uid, $user->uid)));
         if ($options['editable'] && !$options['child_activity_delete']) {
-          $first_cell .= '<br/>' . l(t('edit'), "activity/$activity_id_for_this_node/edit/$nid") . '&nbsp;&nbsp;&nbsp;'
+          $first_cell .= '<br/>' . l(t('edit'), $edit_path) . '&nbsp;&nbsp;&nbsp;'
                   . l(t('delete'), "activity/$activity_id_for_this_node/delete/$nid");
         }
 
         $row[] = $first_cell;
 
         foreach ($measures as $measure) {
-          $row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid]);
+          $row[] = pi_data_tools_measure_plugin_format_table_value($measure, $data_item_node->values[$measure->nid], url($edit_path));
         }
         $data_rows[] = $row;
       }

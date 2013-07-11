@@ -88,7 +88,7 @@ $(function() {
 					});
 				} else if (element.is('select') || element.is('radio') || element.is('checkbox')) {
 					element.change(function() {
-						self._userInputChanged(false);
+						self._userInputChanged(true);
 					});
 				}
 			});

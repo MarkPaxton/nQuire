@@ -24,6 +24,11 @@ $(function() {
         text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'central', 'text-anchor': 'middle'},
         shadow: {stroke: '#373', strokeWidth: 3, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
       },
+      'selected_active': {
+        label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3, 'vector-effect': 'non-scaling-stroke'},
+        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'central', 'text-anchor': 'middle'},
+        shadow: {stroke: '#373', strokeWidth: 3, strokeOpacity: .2, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
+      },
       'other': {
         label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
         text: {fontWeight: 'normal', fontSize: 12, fill: 'black', 'dominant-baseline': 'central', 'text-anchor': 'middle'},
@@ -66,7 +71,7 @@ $(function() {
       }
     }
 
-    var style = options.isSelected ? 'selected' : (options.selectedData ? (options.hover ? 'other_hover' : 'other') : (options.hover ? 'hover' : 'normal'));
+    var style = options.isSelected ? (options.activeUserProcess ? 'selected_active' : 'selected') : (options.selectedData ? (options.hover ? 'other_hover' : 'other') : (options.hover ? 'hover' : 'normal'));
     var settings = this._styles[style];
 
 
@@ -137,6 +142,7 @@ $(function() {
     _independentPaintFeatures: null,
     _labelPaintFeature: null,
     _viewButtons: null,
+    _activeUserProcess: false,
     init: function(dependencies) {
       var self = this;
       this._ready = false;
@@ -191,6 +197,17 @@ $(function() {
           self._updatePaint();
         }
       });
+
+      this._activeUserProcess = false;
+      dependencies.DynamicMeasureService.addUserProcessListener(function(active) {
+        self._activeUserProcessEvent(active);
+      });
+    },
+    _activeUserProcessEvent: function(active) {
+      if (active !== this._activeUserProcess) {
+        this._activeUserProcess = active;
+        this._updatePaint();
+      }
     },
     _addDrawableFeature: function(feature, title, handler, enabled, isDataPaintHandler) {
       if (isDataPaintHandler) {
@@ -296,7 +313,8 @@ $(function() {
         hover: hover,
         paintAll: all,
         isSelected: selectedData === data.id,
-        selectedData: selectedData
+        selectedData: selectedData,
+        activeUserProcess: this._activeUserProcess
       };
 
       for (var i in this._independentPaintFeatures) {
@@ -344,8 +362,8 @@ $(function() {
 
       var filter = function(shapeName) {
         if (currentData) {
-        var keys = shapeName.split('-');
-        return keys.length !== 2 || keys[0] !== currentData || keys[1] === 'label';
+          var keys = shapeName.split('-');
+          return keys.length !== 2 || keys[0] !== currentData || keys[1] === 'label';
         } else {
           return shapeName !== 'temp';
         }
@@ -361,5 +379,5 @@ $(function() {
 
       return svg;
     }
-  }, ['AjaxDataService', 'VirtualMicroscopeManager', 'VirtualMicroscopePageManager', 'VirtualMicroscopeWhiteboard']);
+  }, ['AjaxDataService', 'DynamicMeasureService', 'VirtualMicroscopeManager', 'VirtualMicroscopePageManager', 'VirtualMicroscopeWhiteboard']);
 });

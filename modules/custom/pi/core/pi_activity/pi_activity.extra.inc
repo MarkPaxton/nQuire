@@ -38,7 +38,7 @@ function pi_activity_build_link_for_child($child_content_nid, $title) {
 }
 
 
-function pi_activity_build_link($activity_nid) {
+function pi_activity_build_link($activity_nid, $force_active = FALSE) {
 	global $user;
 	$content_manager = pi_info()->getContentManager();
 	$inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
@@ -65,7 +65,11 @@ function pi_activity_build_link($activity_nid) {
 	$text = check_plain($activity_node->title) . '&nbsp;' . "<img width='12' src='" . $image_path . "'/>";
 
 	if ($access !== 'hidden') {
-		return l($text, "activity/$activity_nid", array('html' => TRUE, 'fragment' => $activity_nid));
+    $args = array('html' => TRUE, 'fragment' => $activity_nid);
+    if ($force_active) {
+      $args['attributes'] = array('class' => 'active');
+    }
+		return l($text, "activity/$activity_nid", $args);
 	} else {
 		return $text;
 	}

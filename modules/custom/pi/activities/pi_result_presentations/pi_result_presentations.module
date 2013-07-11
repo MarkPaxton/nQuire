@@ -11,219 +11,226 @@
  * Implementation of hook_node_info().
  */
 function pi_result_presentations_node_info() {
-	return array(
-			'pi_result_presentations' => array(
-					'name' => t('Inquiry result presentations'), // Required.
-					'module' => 'pi_result_presentations', // Required.
-					'description' => t('A presentation for exploring part of a collected dataset?'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Short title'),
-					'has_body' => TRUE,
-					'body_label' => t('Conclusion'),
-					'locked' => TRUE
-			)
-	);
+  return array(
+      'pi_result_presentations' => array(
+          'name' => t('Inquiry result presentations'), // Required.
+          'module' => 'pi_result_presentations', // Required.
+          'description' => t('A presentation for exploring part of a collected dataset?'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Short title'),
+          'has_body' => TRUE,
+          'body_label' => t('Conclusion'),
+          'locked' => TRUE
+      )
+  );
 }
 
 /**
  * Implementation of hook_perm().
  */
 function pi_result_presentations_perm() {
-	return array('create pi_result_presentations content', 'edit pi_result_presentations');
+  return array('create pi_result_presentations content', 'edit pi_result_presentations');
 }
 
 /**
  * Implementation of hook_access().
  */
 function pi_result_presentations_access($op, $node, $account) {
-	return pi_access_to_node($op, $node);
+  return pi_access_to_node($op, $node);
 }
 
 /**
  * Implementation of hook_form().
  */
 function pi_result_presentations_form(&$node, $form_state) {
-	$form = array();
-	ahah_helper_register($form, $form_state);
+  $form = array();
+  ahah_helper_register($form, $form_state);
 
-	global $user;
+  global $user;
 
-	if (arg(0) === 'activity') {
-		$current_activity_nid = arg(1);
-	} else {
-		$current_activity_nid = $form_state['values']['current_activity_nid'];
-	}
-
-
-	$inquiry_info = pi_info()->getInquiryInfoForActivity($current_activity_nid);
-
-	$form['current_activity_nid'] = array(
-			'#type' => 'hidden',
-			'#default_value' => $current_activity_nid,
-	);
+  if (arg(0) === 'activity') {
+    $current_activity_nid = arg(1);
+  } else {
+    $current_activity_nid = $form_state['values']['current_activity_nid'];
+  }
 
 
-	$form['title'] = array(
-			'#type' => 'textfield',
-			'#title' => t('Title'),
-			'#required' => TRUE,
-			'#default_value' => nquire_commons_form_node_default_value($node, 'title', $form_state, 'title', ''),
-			'#description' => t('Enter a title for your graph'),
-			'#weight' => -10
-	);
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($current_activity_nid);
+
+  $form['current_activity_nid'] = array(
+      '#type' => 'hidden',
+      '#default_value' => $current_activity_nid,
+  );
 
 
-	$data_activities = pi_sort_data_get_activities($inquiry_info->getInquiryNid());
-	$data_activity_options = array();
-	$default_activity = FALSE;
-	foreach ($data_activities as $activity_nid) {
-		$activity_node = $inquiry_info->getActivity($activity_nid);
-		$data_activity_options[$activity_nid] = check_plain($activity_node->title);
-		if (!$default_activity) {
-			$default_activity = $activity_nid;
-		}
-	}
-
-	//function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {
-	//nquire_commons_form_set_default_link_action($form, 'submit');
-
-	$data_activity_nid = nquire_commons_form_node_default_value($node, 'data_activity_nid', $form_state, 'data_activity_nid', $default_activity);
-	$form['data_activity_nid'] = array(
-			'#type' => 'select',
-			'#title' => t('Data gathering activity'),
-			'#description' => t('Select the data activity in which the measure will be used.'),
-			'#default_value' => $data_activity_nid,
-			'#required' => TRUE,
-			'#options' => $data_activity_options,
-			'#ahah' => array(
-					'path' => ahah_helper_path(array('activity_dependent_section')),
-					'wrapper' => 'activity_dependent_section',
-					'method' => 'replace',
-					'effect' => 'fade',
-			),
-	);
-
-	nquire_commons_create_form_wrapped_section($form, 'activity_dependent_section');
-	$activity_dependent_form = &$form['activity_dependent_section']['wrapped_content'];
+  $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Title'),
+      '#required' => TRUE,
+      '#default_value' => nquire_commons_form_node_default_value($node, 'title', $form_state, 'title', ''),
+      '#description' => t('Enter a title for your graph'),
+      '#weight' => -10
+  );
 
 
-	$chart_types = array(
-			'line-bar' => t('Bar/point chart'),
-			'histogram' => t('Histogram'),
-	);
+  $data_activities = pi_sort_data_get_activities($inquiry_info->getInquiryNid());
+  $data_activity_options = array();
+  $default_activity = FALSE;
+  foreach ($data_activities as $activity_nid) {
+    $activity_node = $inquiry_info->getActivity($activity_nid);
+    $data_activity_options[$activity_nid] = check_plain($activity_node->title);
+    if (!$default_activity) {
+      $default_activity = $activity_nid;
+    }
+  }
 
-	$chart_type = nquire_commons_form_node_default_value($node, 'chart_type', $form_state, 'chart_type', 'line-bar');
+  //function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {
+  //nquire_commons_form_set_default_link_action($form, 'submit');
 
-	$activity_dependent_form['chart_type'] = array(
-			'#type' => 'radios',
-			'#title' => t('Chart type'),
-			'#options' => $chart_types,
-			'#required' => TRUE,
-			'#default_value' => $chart_type,
-			'#description' => t('Select the type of chart for numeric variables.'),
-			'#ahah' => array(
-					'path' => ahah_helper_path(array('activity_dependent_section', 'wrapped_content', 'chart_type_dependent_section')),
-					'wrapper' => 'chart_type_dependent_section',
-					'method' => 'replace',
-					'effect' => 'fade',
-			),
-	);
+  $data_activity_nid = nquire_commons_form_node_default_value($node, 'data_activity_nid', $form_state, 'data_activity_nid', $default_activity);
+  if (count($data_activity_options) > 1) {
+    $form['data_activity_nid'] = array(
+        '#type' => 'select',
+        '#title' => t('Data gathering activity'),
+        '#description' => t('Select the data activity in which the measure will be used.'),
+        '#default_value' => $data_activity_nid,
+        '#required' => TRUE,
+        '#options' => $data_activity_options,
+        '#ahah' => array(
+            'path' => ahah_helper_path(array('activity_dependent_section')),
+            'wrapper' => 'activity_dependent_section',
+            'method' => 'replace',
+            'effect' => 'fade',
+        ),
+    );
+  } else {
+    $form['data_activity_nid'] = array(
+        '#type' => 'hidden',
+        '#default_value' => $data_activity_nid,
+    );
+  }
 
-	nquire_commons_create_form_wrapped_section($activity_dependent_form, 'chart_type_dependent_section');
-	$chart_type_dependent_form = &$activity_dependent_form['chart_type_dependent_section']['wrapped_content'];
-
-
-
-	$measure_nids = pi_methodology_get_measures_for_use_in_activity($current_activity_nid, $user->uid, $data_activity_nid);
-	$x_measure_options = array();
-	$y_measure_options = array();
-
-	$abscissa = nquire_commons_form_node_default_value($node, 'abscissa', $form_state, 'abscissa', 0);
-
-	foreach ($measure_nids as $measure_nid => $_required) {
-		$measure = node_load($measure_nid);
-		$submeasures = pi_data_tools_measure_plugin_get_submeasure_keys($measure);
-		if (!$submeasures) {
-			$submeasures = array($measure_nid);
-		}
-		foreach ($submeasures as $submeasure_key) {
-			$submeasure_title = pi_data_tools_measure_plugin_submeasure_get_title($submeasure_key);
-			$x_measure_options[$submeasure_key] = $submeasure_title;
-			if ($submeasure_key != $abscissa && pi_data_tools_measure_plugin_submeasure_is_numeric($submeasure_key)) {
-				$y_measure_options[$submeasure_key] = $submeasure_title;
-			}
-		}
-	}
+  nquire_commons_create_form_wrapped_section($form, 'activity_dependent_section');
+  $activity_dependent_form = &$form['activity_dependent_section']['wrapped_content'];
 
 
-	$chart_type_dependent_form['abscissa'] = array(
-			'#type' => 'select',
-			'#options' => $x_measure_options,
-			'#title' => t('X axis variable'),
-			'#required' => TRUE,
-			'#description' => t('Select the variable that will be used in the X asis of the graph'),
-			'#default_value' => $abscissa,
-			'#ahah' => array(
-					'path' => ahah_helper_path(array('activity_dependent_section', 'wrapped_content', 'chart_type_dependent_section', 'wrapped_content', 'abscissa_dependent_section')),
-					'wrapper' => 'abscissa_dependent_section',
-					'method' => 'replace',
-					'effect' => 'fade',
-			),
-	);
+  $chart_types = array(
+      'line-bar' => t('Bar/point chart'),
+      'histogram' => t('Histogram'),
+  );
 
-	nquire_commons_create_form_wrapped_section($chart_type_dependent_form, 'abscissa_dependent_section');
-	$abscissa_dependent_section = &$chart_type_dependent_form['abscissa_dependent_section']['wrapped_content'];
+  $chart_type = nquire_commons_form_node_default_value($node, 'chart_type', $form_state, 'chart_type', 'line-bar');
 
-	$ordinate = nquire_commons_form_node_default_value($node, 'ordinate', $form_state, 'ordinate', 0);
-	$abscissa_dependent_section['ordinate'] = array(
-			'#type' => 'select',
-			'#options' => $y_measure_options,
-			'#required' => TRUE,
-			'#title' => 'Y axis variable',
-			'#default_value' => $ordinate,
-			'#description' => t('Select the variable that will be used in the Y asis of the graph'),
-	);
+  $activity_dependent_form['chart_type'] = array(
+      '#type' => 'radios',
+      '#title' => t('Chart type'),
+      '#options' => $chart_types,
+      '#required' => TRUE,
+      '#default_value' => $chart_type,
+      '#description' => t('Select the type of chart for numeric variables.'),
+      '#ahah' => array(
+          'path' => ahah_helper_path(array('activity_dependent_section', 'wrapped_content', 'chart_type_dependent_section')),
+          'wrapper' => 'chart_type_dependent_section',
+          'method' => 'replace',
+          'effect' => 'fade',
+      ),
+  );
+
+  nquire_commons_create_form_wrapped_section($activity_dependent_form, 'chart_type_dependent_section');
+  $chart_type_dependent_form = &$activity_dependent_form['chart_type_dependent_section']['wrapped_content'];
 
 
-	return $form;
+
+  $measure_nids = pi_methodology_get_measures_for_use_in_activity($current_activity_nid, $user->uid, $data_activity_nid);
+  $x_measure_options = array();
+  $y_measure_options = array();
+
+  $abscissa = nquire_commons_form_node_default_value($node, 'abscissa', $form_state, 'abscissa', 0);
+
+  foreach ($measure_nids as $measure_nid => $_required) {
+    $measure = node_load($measure_nid);
+
+    $submeasures = pi_data_tools_measure_plugin_get_submeasure_keys($measure);
+    if (!is_array($submeasures)) {
+      $submeasures = array($measure_nid);
+    }
+    foreach ($submeasures as $submeasure_key) {
+      $submeasure_title = pi_data_tools_measure_plugin_submeasure_get_title($submeasure_key);
+      $x_measure_options[$submeasure_key] = $submeasure_title;
+      if ($submeasure_key != $abscissa && pi_data_tools_measure_plugin_submeasure_is_numeric($submeasure_key)) {
+        $y_measure_options[$submeasure_key] = $submeasure_title;
+      }
+    }
+  }
+
+
+  $chart_type_dependent_form['abscissa'] = array(
+      '#type' => 'select',
+      '#options' => $x_measure_options,
+      '#title' => t('X axis variable'),
+      '#required' => TRUE,
+      '#description' => t('Select the variable that will be used in the X asis of the graph'),
+      '#default_value' => $abscissa,
+      '#ahah' => array(
+          'path' => ahah_helper_path(array('activity_dependent_section', 'wrapped_content', 'chart_type_dependent_section', 'wrapped_content', 'abscissa_dependent_section')),
+          'wrapper' => 'abscissa_dependent_section',
+          'method' => 'replace',
+          'effect' => 'fade',
+      ),
+  );
+
+  nquire_commons_create_form_wrapped_section($chart_type_dependent_form, 'abscissa_dependent_section');
+  $abscissa_dependent_section = &$chart_type_dependent_form['abscissa_dependent_section']['wrapped_content'];
+
+  $ordinate = nquire_commons_form_node_default_value($node, 'ordinate', $form_state, 'ordinate', 0);
+  $abscissa_dependent_section['ordinate'] = array(
+      '#type' => 'select',
+      '#options' => $y_measure_options,
+      '#required' => TRUE,
+      '#title' => 'Y axis variable',
+      '#default_value' => $ordinate,
+      '#description' => t('Select the variable that will be used in the Y asis of the graph'),
+  );
+
+
+  return $form;
 }
-
 
 /**
  * Implementation of hook_insert().
  */
 function pi_result_presentations_insert($node) {
-	$query = "INSERT INTO {pi_result_presentations} (nid, vid, data_activity_nid, chart_type, abscissa, ordinate)
+  $query = "INSERT INTO {pi_result_presentations} (nid, vid, data_activity_nid, chart_type, abscissa, ordinate)
       VALUES ( %d, %d, %d, '%s', '%s', '%s')";
 
-	db_query($query, $node->nid, $node->vid, $node->data_activity_nid, $node->chart_type, $node->abscissa, $node->ordinate);
+  db_query($query, $node->nid, $node->vid, $node->data_activity_nid, $node->chart_type, $node->abscissa, $node->ordinate);
 }
 
 /**
  * Implementation of hook_update().
  */
 function pi_result_presentations_update($node) {
-	if ($node->revision) {
-		pi_result_presentations_insert($node);
-	} else {
-		$query = "UPDATE {pi_result_presentations} SET data_activity_nid=%d, chart_type='%s', abscissa='%s', ordinate='%s' WHERE vid=%d";
-		db_query($query, $node->data_activity_nid, $node->chart_type, $node->abscissa, $node->ordinate);
-	}
+  if ($node->revision) {
+    pi_result_presentations_insert($node);
+  } else {
+    $query = "UPDATE {pi_result_presentations} SET data_activity_nid=%d, chart_type='%s', abscissa='%s', ordinate='%s' WHERE vid=%d";
+    db_query($query, $node->data_activity_nid, $node->chart_type, $node->abscissa, $node->ordinate);
+  }
 }
 
 /**
  * Implementation of hook_delete().
  */
 function pi_result_presentations_delete(&$node) {
-	db_query("DELETE FROM {pi_result_presentations} WHERE nid = %d", $node->nid);
+  db_query("DELETE FROM {pi_result_presentations} WHERE nid = %d", $node->nid);
 }
 
 /**
  * Implementation of hook_load().
  */
 function pi_result_presentations_load($node) {
-	$node = db_fetch_object(db_query('SELECT * FROM {pi_result_presentations} WHERE vid = %d', $node->vid));
-	return $node;
+  $node = db_fetch_object(db_query('SELECT * FROM {pi_result_presentations} WHERE vid = %d', $node->vid));
+  return $node;
 }
 
 /**
@@ -231,188 +238,188 @@ function pi_result_presentations_load($node) {
  */
 function pi_result_presentations_view($node, $teaser = FALSE, $page = FALSE) {
 
-	/*
-	  //In case standard node view is used, the answer to the key question is
-	  //displayed first...
+  /*
+    //In case standard node view is used, the answer to the key question is
+    //displayed first...
 
-	  // Use Drupal's default node view.
-	  $node = node_prepare($node, $teaser);
-	 */
-	$node->content['pi_result_presentations'] = array(
-			'#value' => theme('pi_result_presentations', $node, $teaser),
-			'#weight' => 10
-	);
+    // Use Drupal's default node view.
+    $node = node_prepare($node, $teaser);
+   */
+  $node->content['pi_result_presentations'] = array(
+      '#value' => theme('pi_result_presentations', $node, $teaser),
+      '#weight' => 10
+  );
 
 
-	return $node;
+  return $node;
 }
 
 /**
  * Implementation of hook_theme().
  */
 function pi_result_presentations_theme() {
-	return array(
-			'pi_result_presentations_node_form' => array(
-					'arguments' => array('form'),
-			),
-			'pi_result_presentations' => array(
-					'arguments' => array('node', 'teaser'),
-			),
-			'pi_result_presentations_nid' => array(
-					'arguments' => array('nid'),
-			),
-	);
+  return array(
+      'pi_result_presentations_node_form' => array(
+          'arguments' => array('form'),
+      ),
+      'pi_result_presentations' => array(
+          'arguments' => array('node', 'teaser'),
+      ),
+      'pi_result_presentations_nid' => array(
+          'arguments' => array('nid'),
+      ),
+  );
 }
 
 function theme_pi_result_presentations_nid($activity_nid) {
-	return "<p><img class='chart_image' src='" . url('activity/' . $activity_nid . '/chart.png', array('query' => array('t' => time()))) . "'></p>";
+  return "<p><img class='chart_image' src='" . url('activity/' . $activity_nid . '/chart.png', array('query' => array('t' => time()))) . "'></p>";
 }
 
 function theme_pi_result_presentations($node) {
-	$activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
-	return theme('pi_result_presentations_nid', $activity_nid);
+  $activity_nid = pi_activity_get_activity_nid_for_content_nid($node->nid);
+  return theme('pi_result_presentations_nid', $activity_nid);
 }
 
 /**
  * Theme pi_results_presentations form
  */
 function theme_pi_result_presentations_node_form($form) {
-	return drupal_render($form);
+  return drupal_render($form);
 }
 
 function __pi_data_export_csv() {
 
-	global $user;
-	$details = get_inquiry_details_from_current_path();
+  global $user;
+  $details = get_inquiry_details_from_current_path();
 
-	$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $user->uid);
-	$node = node_load($nid);
+  $nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $user->uid);
+  $node = node_load($nid);
 
-	$selected_measures = "{$node->abscissa},{$node->ordinate}";
+  $selected_measures = "{$node->abscissa},{$node->ordinate}";
 
-	$header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
-	$rows = get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
-	$types = get_selected_measures_types_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
-
-
-	$name = str_replace(' ', '_', $node->title);
-
-	$filename = 'csv_data-' . $name . '.csv';
+  $header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+  $rows = get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+  $types = get_selected_measures_types_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
 
 
-	header('Content-type: text/csv');
+  $name = str_replace(' ', '_', $node->title);
 
-	header('Content-Disposition: attachment; filename=' . $filename);
+  $filename = 'csv_data-' . $name . '.csv';
 
-	echo create_csv_from_table($header, $rows, $types);
 
-	module_invoke_all('exit');
-	exit();
+  header('Content-type: text/csv');
+
+  header('Content-Disposition: attachment; filename=' . $filename);
+
+  echo create_csv_from_table($header, $rows, $types);
+
+  module_invoke_all('exit');
+  exit();
 }
 
 //
 function create_csv_from_table($header, $rows, $types) {
 
-	$output = "";
+  $output = "";
 
-	// print out headers
-	$output .= "\"" . implode("\",\"", $header) . "\"\r\n";
+  // print out headers
+  $output .= "\"" . implode("\",\"", $header) . "\"\r\n";
 
-	// now the data
-	$count = 1;
-	foreach ($rows as $row) {
-		$elements = array();
-		foreach ($row as $i => $item) {
-			$elements[] = pi_chart_get_text_value($item, $types[$i]);
-		}
-		$output .= "\"" . implode("\",\"", $elements) . "\"\r\n";
-		$count++;
-	}
+  // now the data
+  $count = 1;
+  foreach ($rows as $row) {
+    $elements = array();
+    foreach ($row as $i => $item) {
+      $elements[] = pi_chart_get_text_value($item, $types[$i]);
+    }
+    $output .= "\"" . implode("\",\"", $elements) . "\"\r\n";
+    $count++;
+  }
 
-	return $output;
+  return $output;
 }
 
 function pi_data_export_kml() {
 
 
-	global $user;
-	$details = get_inquiry_details_from_current_path();
+  global $user;
+  $details = get_inquiry_details_from_current_path();
 
-	$nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $user->uid);
-	$node = node_load($nid);
-
-
-	$selected_measures = "";
-	$delim = "";
-
-	$measures = db_query("SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC", $node->nid, $node->vid);
-
-	while ($measure = db_fetch_object($measures)) {
-		$selected_measures .= $delim . $measure->available_measure;
-		if ($delim == "") {
-			$delim = ",";
-			$first_measure = $measure->available_measure;
-		};
-	};
+  $nid = get_nid_for_inquiry_activity_and_user($details->inquiry_id, $details->activity_id, $user->uid);
+  $node = node_load($nid);
 
 
-	$header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
-	$rows = get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+  $selected_measures = "";
+  $delim = "";
 
-	$name = str_replace(' ', '_', $node->title);
-	$filename = 'kml_data-' . $name . '.kml';
+  $measures = db_query("SELECT available_measure FROM {pi_result_presentations} WHERE nid = %d AND vid = %d AND status = '1' ORDER BY weight ASC", $node->nid, $node->vid);
 
-	$lat = array();
-	$long = array();
+  while ($measure = db_fetch_object($measures)) {
+    $selected_measures .= $delim . $measure->available_measure;
+    if ($delim == "") {
+      $delim = ",";
+      $first_measure = $measure->available_measure;
+    };
+  };
 
-	$first_measure_node = node_load($first_measure);
 
-	header('Content-type: text/kml');
-	header('Content-Disposition: attachment; filename=' . $filename);
+  $header = get_selected_measures_headings_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
+  $rows = get_selected_measures_data_for_inquiry_and_user($details->inquiry_id, $selected_measures, $user->uid);
 
-	// print_r($location_nids);
-	echo create_kml_from_table($header, $rows, $first_measure_node->content_options);
-	module_invoke_all('exit');
-	exit();
+  $name = str_replace(' ', '_', $node->title);
+  $filename = 'kml_data-' . $name . '.kml';
+
+  $lat = array();
+  $long = array();
+
+  $first_measure_node = node_load($first_measure);
+
+  header('Content-type: text/kml');
+  header('Content-Disposition: attachment; filename=' . $filename);
+
+  // print_r($location_nids);
+  echo create_kml_from_table($header, $rows, $first_measure_node->content_options);
+  module_invoke_all('exit');
+  exit();
 }
 
 function create_kml_from_table($header, $rows, $content_type) {
-	$output = "";
-	$output .= '<?xml version="1.0" encoding="UTF-8"?>';
-	$output .= '<kml xmlns="http://earth.google.com/kml/2.2">';
-	$output .= '<Document>';
-	$x = 0;
-	$y = 0;
-	$loc_count = 1;
-	foreach ($rows as $row) {
-		$x = 0;
+  $output = "";
+  $output .= '<?xml version="1.0" encoding="UTF-8"?>';
+  $output .= '<kml xmlns="http://earth.google.com/kml/2.2">';
+  $output .= '<Document>';
+  $x = 0;
+  $y = 0;
+  $loc_count = 1;
+  foreach ($rows as $row) {
+    $x = 0;
 
-		$query = "SELECT nid FROM {node} WHERE type = '%s' AND title = '%s' ORDER BY nid DESC LIMIT 1";
-		$location_nid = db_result(db_query($query, $content_type, $row[0]));
+    $query = "SELECT nid FROM {node} WHERE type = '%s' AND title = '%s' ORDER BY nid DESC LIMIT 1";
+    $location_nid = db_result(db_query($query, $content_type, $row[0]));
 
-		$loc = node_load($location_nid);
-		if ($loc->field_location_latitude && $loc->field_location_longitude) {
-			$lat = $loc->field_location_latitude;
-			$long = $loc->field_location_longitude;
-		}
+    $loc = node_load($location_nid);
+    if ($loc->field_location_latitude && $loc->field_location_longitude) {
+      $lat = $loc->field_location_latitude;
+      $long = $loc->field_location_longitude;
+    }
 
-		$output .= '<Placemark>';
-		$output .= '<name>' . $loc_count . '. ' . $row[0] . '</name>';
-		$output .= '<description>';
-		foreach ($row as $item) {
-			$output .= '<strong>' . $header[$x] . '</strong>: ' . $item . '<br />';
-			$x = $x + 1;
-		}
-		$output .= '</description>';
-		$output .= '<Point>';
-		$output .= '<coordinates>' . $long[0]['value'] . ',' . $lat[0]['value'] . ',0</coordinates>';
-		$output .= '</Point>';
-		$output .= '</Placemark>';
-		$y = $y + 1;
-		$loc_count = $loc_count + 1;
-	};
-	$output .= '</Document>';
-	$output .= '</kml>';
-	return $output;
+    $output .= '<Placemark>';
+    $output .= '<name>' . $loc_count . '. ' . $row[0] . '</name>';
+    $output .= '<description>';
+    foreach ($row as $item) {
+      $output .= '<strong>' . $header[$x] . '</strong>: ' . $item . '<br />';
+      $x = $x + 1;
+    }
+    $output .= '</description>';
+    $output .= '<Point>';
+    $output .= '<coordinates>' . $long[0]['value'] . ',' . $lat[0]['value'] . ',0</coordinates>';
+    $output .= '</Point>';
+    $output .= '</Placemark>';
+    $y = $y + 1;
+    $loc_count = $loc_count + 1;
+  };
+  $output .= '</Document>';
+  $output .= '</kml>';
+  return $output;
 }
 

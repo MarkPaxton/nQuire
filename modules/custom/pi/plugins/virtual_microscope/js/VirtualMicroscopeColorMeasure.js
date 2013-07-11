@@ -12,6 +12,7 @@ $(function() {
 		var self = this;
 
 		this._element.vmUserInteractionMeasure({
+      activeBox: this._box,
 			startCallback: function() {
 				self._startInput();
 			},

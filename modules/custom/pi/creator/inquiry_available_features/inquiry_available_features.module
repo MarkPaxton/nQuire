@@ -87,10 +87,12 @@ function inquiry_available_features_list($category) {
 function inquiry_available_features_list_measures_for_tool($tool_type) {
   $tools = inquiry_available_features_list('measure');
   $result = array();
-  foreach($tools as $key => $value) {
-    $required_tool = inquiry_available_features_measure_required_tool($key);
-    if ($required_tool === 'none' || $required_tool === $tool_type) {
-      $result[$key] = $value;
+  foreach ($tools as $key => $value) {
+    if (!inquiry_available_features_invoke('measure', 'prevent_creation', $key)) {
+      $required_tool = inquiry_available_features_measure_required_tool($key);
+      if ($required_tool === 'none' || $required_tool === $tool_type) {
+        $result[$key] = $value;
+      }
     }
   }
   return $result;

@@ -109,56 +109,58 @@ function theme_pi_journal_share_information($inquiry_node) {
 
 	$access = pi_journal_edit_share_access($inquiry_node);
 	$contribution_node = pi_journal_contribution_find_contribution_node($inquiry_node, $user->uid);
-
-	if ($contribution_node->shared) {
-		$link = '<br/>' . t('Click <a href="@url">here</a> to view it. ', array('@url' => url('journal/contribution/' . $contribution_node->nid)));
+  $collaboration_mode = pi_inquiry_groupings_get_coarser_collaboration_level($inquiry_node->nid);
+  
+  $published = $contribution_node && $contribution_node->shared;
+  
+	if ($published) {
+		$link = ' ' . t('Click <a href="@url">here</a> to view it. ', array('@url' => url('journal/contribution/' . $contribution_node->nid)));
 	}
 
-	$all = '<br/>' . t('You can see all the published investigations <a href="@url">here</a>. ', array('@url' => url('journal')));
+	$all = t('You can see all the published investigations <a href="@url">here</a>. ', array('@url' => url('journal')));
+  
+  $output = '';
 
-	$output = '<p>';
-
-	switch ($contribution_node->collaboration) {
+	switch ($collaboration_mode) {
 		case 'individual':
-			if ($contribution_node->shared) {
-				$output .= t('You have published your individual investigation. ') . $link . $all;
+			if ($published) {
+				$output .= '<p>' . t('You have published your investigation. ') . $link . '<p></p>' . $all . '</p>';
 			} else {
-				$output .= t('You have not published you individual investigation. ') . $all;
+				$output .= '<p>' . t('If you whish, you can submit the results of your investigation to make them public. ') . '<p></p>' . $all . '</p>';
 			}
 			break;
 		case 'group':
 			if ($access) {
-				if ($contribution_node->shared) {
-					$output .= t('You have published the results of your group investigation. ') . $link . $all;
+				if ($published) {
+					$output .= '<p>' . t('You have published the results of this investigation. ') . $link . '<p></p>' . $all . '</p>';
 				} else {
-					$output .= t('You have not published the results of your group investigation. ') . $all;
+					$output .= '<p>' . t('If you whish, you can submit the results of this investigation to make them public. ') . '<p></p>' . $all . '</p>';
 				}
 			} else {
-				if ($contribution_node->shared) {
-					$output .= t('The group owner has published the results of your investigation. ') . $link . $all;
+				if ($published) {
+					$output .= '<p>' . t('The group owner has published the results of this investigation. ') . $link . '<p></p>' . $all . '</p>';
 				} else {
-					$output .= t('The group owner has not published the results of this investigation. ') . $all;
+					$output .= '<p>' . t('The group owner has not published the results of this investigation. ') . '<p></p>' . $all . '</p>';
 				}
 			}
 			break;
 		case 'all':
 			if ($access) {
-				if ($contribution_node->shared) {
-					$output .= t('You have published the results of this inquiry. ') . $link . $all;
+				if ($published) {
+					$output .= '<p>' . t('You have published the results of this investigation. ') . $link . '<p></p>' . $all . '</p>';
 				} else {
-					$output .= t('You have not published the results of this inquiry. ') . $all;
+					$output .= '<p>' . t('If you whish, you can submit the results of this investigation to make them public. ') . '<p></p>' . $all . '</p>';
 				}
 			} else {
-				if ($contribution_node->shared) {
-					$output .= t('The inquiry owner has published the results of the investigation. ') . $link . $all;
+				if ($published) {
+					$output .= '<p>' . t('The inquiry owner has published the results of the investigation. ') . $link . $all . '</p>';
 				} else {
-					$output .= t('The inquiry owner has not published the results of the investigation. ') . $all;
+					$output .= '<p>' . t('The inquiry owner has not published the results of the investigation. ') . $all . '</p>';
 				}
 			}
 			break;
 	}
 
-	$output .= '</p>';
 	return $output;
 }
 

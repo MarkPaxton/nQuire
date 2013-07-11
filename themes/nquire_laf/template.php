@@ -223,15 +223,15 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
     $lx = $x - $outer_circle_radius * $sin_a;
     $ly = $y + $outer_circle_radius * $cos_a;
 
-    $label = $inquiry_access->getAccessToItem($phase_node) === 'hidden' ? check_plain($phase_node->title) :
-            l(check_plain($phase_node->title), 'phase/' . $phase_nid, array('attributes' => array('style' => 'color:black;text-decoration@none;')));
+    $url = $inquiry_access->getAccessToItem($phase_node) === 'hidden' ? FALSE : url('phase/' . $phase_nid);
 
     $points[] = array(
         'x' => $x,
         'y' => $y,
         'lx' => $lx,
         'ly' => $ly,
-        'label' => $label,
+        'label' => check_plain($phase_node->title),
+        'url' => $url,
         'phase_nid' => $phase_nid,
         'phase_key' => $inquiry_info->getPhaseKey($phase_nid),
     );
@@ -253,14 +253,22 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
     $ty = $point['y'] - $inner_circle_radius;
 
     $cs = _nquire_laf_color($point['phase_key']);
-    $svg .= "<circle id='circle_phase_{$point['phase_nid']}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
-    $svg .= "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
+
+    if ($point['url']) {
+      $svg .= "<a xlink:href='{$point['url']}'>";
+    }
+    $svg .= "<circle id='circle_phase_{$point['phase_nid']}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>"
+            . "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
             . "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_circle_diameter}px;height:{$inner_circle_diameter}px;line-height:{$inner_circle_diameter}px;text-align: center;'>"
-            . "<div class='nquire_diagram_text' style='font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.2em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
+            . "<div class='nquire_diagram_text' style='color: black; font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.2em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
             . $point['label']
             . "</div>"
             . "</div>"
             . "</foreignObject>";
+
+    if ($point['url']) {
+      $svg .= "</a>";
+    }
   }
 
   $arrow_length = 123.5;
@@ -445,7 +453,7 @@ function phptemplate_pi_activities_view_contributed_activity($activity_data) {
         break;
     }
   }
-  
+
   $output .= '</table></div>';
   $output .= '</div>';
   return $output;

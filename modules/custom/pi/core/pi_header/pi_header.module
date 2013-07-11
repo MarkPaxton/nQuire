@@ -32,15 +32,26 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
                 . '</div>';
         $output .= "<div>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
       }
-      
+
       $output .= '</div>';
 
 
       if ($user->uid) {
         $output .= '<div class="nquire_username_block">'
                 . '<div class="nquire_username_username">' . l(check_plain($user->name), 'user/' . $user->uid) . "</div>"
-                . '<div class="nquire_username_logout">' . l(t('logout'), "logout") . "</div>"
+                . '<div class="nquire_username_logout">' . l(t('logout'), "logout", array('attributes' => array('class' => 'nquire_username_action'))) . "</div>"
                 . "</div>";
+      } else {
+        $output .= '<div class="nquire_username_block">'
+                . _pi_header_get_login_form()
+                . "</div>";
+      }
+
+      if (arg(0) === 'home') {
+        $output .= '<div>'
+                . '<div style="text-align: center;margin: 1em 1em 0 0; display:inline-block; width: 300px; height: 200px; background: #ddd"><div style="vertical-align: middle;">a cool picture could go here</div></div>'
+                . '<div style="text-align: center;margin: 1em 1em 0 0; display:inline-block; width: 300px; height: 200px; background: #ddd"><div style="vertical-align: middle;">another nice pic?</div></div>'
+                . '</div>';
       }
 
       $block['content'] = $output;
@@ -48,18 +59,41 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
   }
 }
 
-function pi_stage_bar() {
-  $output = '';
+function pi_header_theme() {
+  return array(
+      'pi_header_user_form' => array(
+          'arguments' => array('form' => NULL),
+      ),
+  );
+}
 
-  $inquiry_info = pi_info()->getCurrentInquiryInfo();
-  if ($inquiry_info && $inquiry_info->hasSeveralStages()) {
-    $stage = $inquiry_info->getCurrentStage();
+function _pi_header_get_login_form() {
+  $attr = array('attributes' => array('class' => 'nquire_username_action'));
 
-    if ($stage) {
-      $output .= '<p><strong>' . t('Current stage: ') . '</strong>' . check_plain($stage->title) . '</p>';
-    }
-  }
+  return '<div style="color: white">'
+          . l(t('login'), 'user', $attr)
+          . ' | '
+          . l(t('create new account'), 'user/register', $attr)
+          . '</div>';
+}
+
+function pi_header_form_user_login_alter(&$form) {
+  $form['name']['#size'] = $form['pass']['#size'] = 15;
+  return;
+}
+
+function theme_pi_header_user_form($form) {
+  $form['name']['#description'] = '';
+  $form['pass']['#description'] = '';
+  $form['name']['#size'] = $form['pass']['#size'] = 12;
+
+
+  $output = '<div style="color:white; padding: 0px !important;">'
+          . '<div style="display: inline-block;">' . drupal_render($form['name']) . '</div>'
+          . '<div style="display: inline-block;">' . drupal_render($form['pass']) . '</div>'
+          . drupal_render($form)
+          . '</div>';
+
 
   return $output;
 }
-

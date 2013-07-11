@@ -274,14 +274,17 @@ function theme_virtual_microscope_snapshot_measure_widget($form) {
   return $output;
 }
 
-function virtual_microscope_pi_measure_vm_snapshot_format_table_value($measure_node, $value) {
+function virtual_microscope_pi_measure_vm_snapshot_format_table_value($measure_node, $value, $edit_link) {
   drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_snapshot_in_table.css');
 
   $data = nquire_commons_decode_data($value);
   $path = file_directory_path() . '/pi_measures_vm_snapshot/' . $data['image'];
-  $output = '<div class="virtual-microscope-snapshot">'
+  $output = '<div>' . t('Sample ') . $data['sample'] . '</div>'
+          . '<div class="virtual-microscope-snapshot">'
+          . '<a href="' . $edit_link . '">'
           . '<img src="' . file_create_url($path . '.png') . '" />'
           . '<img class="virtual-microscope-snapshot-data-image" src="' . file_create_url($path . '.svg') . '" />'
+          . '</a>'
           . '</div>';
 
   return $output;
@@ -308,6 +311,25 @@ function virtual_microscope_pi_measure_vm_snapshot_process_form_value($measure_n
 
   $value = json_encode($new_value_obj);
   return;
+}
+
+function virtual_microscope_pi_measure_vm_snapshot_submeasure_get_title() {
+  return t('Sample');
+}
+
+function virtual_microscope_pi_measure_vm_snapshot_submeasure_get_title_for_chart() {
+  return t('Sample');
+}
+
+function virtual_microscope_pi_measure_vm_snapshot_submeasure_is_numeric() {
+  return FALSE;
+}
+
+function virtual_microscope_pi_measure_vm_snapshot_submeasure_get_value_for_chart($measure_node, $key, &$value) {
+  drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_snapshot_in_table.css');
+
+  $data = nquire_commons_decode_data($value);
+  $value = $data['sample'];
 }
 
 /* * ********************
@@ -347,6 +369,10 @@ function theme_virtual_microscope_annotation_measure_widget($form) {
   drupal_add_css(drupal_get_path('module', 'virtual_microscope') . '/css/virtual_microscope_annotation_measure.css');
 
   return $output;
+}
+
+function virtual_microscope_pi_measure_vm_annotation_get_submeasure_keys() {
+  return array();
 }
 
 /* * ********************
@@ -429,6 +455,24 @@ function _virtual_microscope_get_measure_color() {
   return $colors[$n++ % count($colors)];
 }
 
+function virtual_microscope_pi_measure_vm_length_submeasure_get_title($measure_node) {
+  return check_plain($measure_node->title) . t(' (VM length)');
+}
+
+function virtual_microscope_pi_measure_vm_length_submeasure_get_title_for_chart($measure_node) {
+  return check_plain($measure_node->title);
+}
+
+function virtual_microscope_pi_measure_vm_length_submeasure_is_numeric() {
+  return TRUE;
+}
+
+function virtual_microscope_pi_measure_vm_length_submeasure_get_value_for_chart($measure_node, $key, &$value) {
+  $data = nquire_commons_decode_data($value);
+  $value = isset($data['value']) ? $data['value'] : NULL;
+  return;
+}
+
 /* * ********************
  * VM Color measure
  * ******************** */
@@ -454,10 +498,34 @@ function virtual_microscope_pi_measure_vm_color_create_form_item($measure_node, 
   );
 }
 
-function __virtual_microscope_pi_measure_vm_color_format_table_value($measure_node, $value) {
-  $data = nquire_commons_decode_data($value);
-  if (isset($data['value'])) {
-    return "{$data['value']} mm";
+function virtual_microscope_pi_measure_vm_color_submeasure_get_title($measure_node) {
+  return check_plain($measure_node->title) . t(' (VM colour)');
+}
+
+function virtual_microscope_pi_measure_vm_color_submeasure_get_title_for_chart($measure_node) {
+  return check_plain($measure_node->title);
+}
+
+function virtual_microscope_pi_measure_vm_color_submeasure_is_numeric() {
+  return FALSE;
+}
+
+function virtual_microscope_pi_measure_vm_color_submeasure_get_value_for_chart($measure_node, $key, &$value) {
+  $colors = _virtual_microscope_color_measure_get_colors();
+  $value = $colors[$value]['name'];
+}
+
+function virtual_microscope_pi_measure_vm_color_format_table_value($measure_node, $value) {
+  $colors = _virtual_microscope_color_measure_get_colors();
+  if (isset($colors[$value])) {
+    $color = $colors[$value];
+
+    $output = /* '<div style="display:inline-block">'
+              . */'<div>' . $color['name'] . '</div>'
+            . '<div style="height: 80px;border: 1px solid gray;background: ' . $color['color'] . ';"></div>'
+    /* . '</div>' */;
+
+    return $output;
   } else {
     return '';
   }
@@ -483,35 +551,49 @@ function theme_virtual_microscope_color_measure_widget($form) {
   return $output;
 }
 
+function _virtual_microscope_color_measure_get_colors() {
+  static $colors = NULL;
+  if (!$colors) {
+    $colors = array();
+    $fh = fopen(drupal_get_path('module', 'virtual_microscope') . '/data/colors.csv', 'r');
+    while ($line = fgets($fh)) {
+      $parts = explode(',', trim($line));
+      if (count($parts) === 4) {
+        $id = count($colors);
+
+        $colors[$id] = array(
+            'cid' => $id,
+            'name' => $parts[0],
+            'color' => $parts[3],
+            'row' => $parts[2],
+            'col' => $parts[1],
+        );
+      }
+    }
+    fclose($fh);
+  }
+
+  return $colors;
+}
+
 function _virtual_microscope_color_measure_create_color_picker_image() {
-  $colors = array();
+  $colors = _virtual_microscope_color_measure_get_colors();
   $holes = array();
 
   $maxrow = 0;
   $maxcol = 0;
 
-  $fh = fopen(drupal_get_path('module', 'virtual_microscope') . '/data/colors.csv', 'r');
   $cols = array();
   $rows = array();
-  while ($line = fgets($fh)) {
-    $parts = explode(',', trim($line));
-    if (count($parts) === 4) {
-      $id = count($colors);
+  foreach ($colors as $id => $color) {
+    $cols[$id] = $color['col'];
+    $rows[$id] = $color['row'];
 
-      $colors[$id] = array(
-          'cid' => $id,
-          'name' => $parts[0],
-          'color' => $parts[3],
-      );
-      $cols[$id] = $parts[1];
-      $rows[$id] = $parts[2];
-
-      $maxcol = max($maxcol, $cols[$id]);
-      $maxrow = max($maxrow, $rows[$id]);
-      $holes[$cols[$id]][$rows[$id]] = TRUE;
-    }
+    $maxcol = max($maxcol, $cols[$id]);
+    $maxrow = max($maxrow, $rows[$id]);
+    $holes[$cols[$id]][$rows[$id]] = TRUE;
   }
-  fclose($fh);
+
 
   $module = "{"
           . "  init: function() {"

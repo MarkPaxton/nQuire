@@ -12,12 +12,16 @@ function pi_feeds_block($op = 'list') {
         ),
     );
   } else if ($op === 'view') {
-    $topic_sections = _pi_feeds_get_topic_sections();
-    $content = implode('<div class="block_inner_separator"></div>', $topic_sections);
-    return array(
-        'subject' => t('Recent activity'),
-        'content' => $content,
-    );
+    if (arg(0) === 'home') {
+      return NULL;
+    } else {
+      $topic_sections = _pi_feeds_get_topic_sections();
+      $content = implode('<div class="block_inner_separator"></div>', $topic_sections);
+      return array(
+          'subject' => t('Recent activity'),
+          'content' => $content,
+      );
+    }
   }
 }
 
@@ -50,7 +54,7 @@ function _pi_feeds_get_topic_sections() {
     $jc_title = $inquiry_info ? t('<a href="!url">Inquiry results</a> (@t):', array('!url' => url('journal'), '@t' => $inquiry_info->getInquiryNode()->title)) : t('Inquiry results:');
     $topic_sections[] = _pi_feeds_format_feed_section($jc_title, $jc_topics);
   }
-  
+
   $ft_topics = _pi_feeds_get_forum_topics($forum_context);
   if ($ft_topics) {
     $ft_title = t('<a href="!url">Forum</a> topics:', array('!url' => url('forum')));
