@@ -6,13 +6,8 @@ define('PI_PROMOTE_REQUESTED', 2);
 
 function pi_promote_menu() {
   $items = array();
+
   
-  $items['front_page'] = array(
-      'title' => 'Home',
-      'page callback' => 'pi_promote_front_page',
-      'type' => MENU_NORMAL_ITEM,
-      'access callback' => 'pi_promote_shop_page_callback',
-  );
 
   $items['home'] = array(
       'title' => 'Home',
@@ -20,7 +15,7 @@ function pi_promote_menu() {
       'type' => MENU_NORMAL_ITEM,
       'access callback' => 'pi_promote_shop_page_callback',
   );
-  
+
   $items['admin/nquire/promote'] = array(
       'title' => 'Promoted inquiries',
       'page callback' => 'pi_promote_admin_page',
@@ -36,7 +31,48 @@ function pi_promote_front_page() {
 }
 
 function pi_promote_shop_page() {
-  return '!';
+  drupal_add_css(drupal_get_path('module', 'pi_promote') . '/css/pi_promote_shop.css');
+
+  $inquiries = array();
+
+  $query = "SELECT inquiry_id FROM {pi_promote} WHERE status=%d";
+  $result = db_query($query, PI_PROMOTE_SELECTED);
+  while ($row = db_fetch_array($result)) {
+    $inquiry = node_load($row['inquiry_id']);
+    if ($inquiry) {
+      $inquiries[] = $inquiry;
+    }
+  }
+  
+  $default_image = base_path() . drupal_get_path('module', 'pi_promote') . '/images/default.png';
+
+  $output = '<div class="pi_promote_shop">';
+  for ($i = 0; $i < count($inquiries); $i++) {
+    $output .= '<div class="pi_promote_shop_row"><div class="pi_promote_shop_row_inner">';
+    for ($j = 0; $j < 3; $j++, $i++) {
+      if ($i < count($inquiries)) {
+        $path = 'inquiry/' . $inquiry->nid;
+        $url = url($path);
+        $inquiry = $inquiries[$i];
+        $title = l(check_plain($inquiry->title), $path);
+        $info = 'info';
+
+        $output .= '<div class="pi_promote_shop_item">'
+                . '<div class="pi_promote_shop_item_image"><a href="' . $url . '"><img src="' . $default_image . '"></img></a></div>'
+                . '<div class="pi_promote_shop_item_title">' . $title . '</div>'
+                . '<div class="pi_promote_shop_item_info">' . $info . '</div>'
+                . '</div>';
+      } else {
+        $output .= '<div class="pi_promote_shop_item">'
+                . '</div>';
+      }
+    }
+    $output .= '</div></div>';
+  }
+
+  $output .= '</div>';
+
+  return $output;
 }
 
 function pi_promote_shop_page_callback() {
@@ -74,7 +110,7 @@ function pi_promote_admin_form(&$form_state) {
       '#default_value' => $values
   );
 
-nquire_commons_create_form_save_cancel_buttons($form, 'pi_promote_admin_form_submit', "admin/nquire/promote");
+  nquire_commons_create_form_save_cancel_buttons($form, 'pi_promote_admin_form_submit', "admin/nquire/promote");
 
   return $form;
 }
