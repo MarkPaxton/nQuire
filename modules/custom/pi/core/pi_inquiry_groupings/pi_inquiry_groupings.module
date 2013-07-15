@@ -18,6 +18,19 @@ function pi_inquiry_groupings_get_cohort_og($inquiry_node) {
   return $inquiry_node->participants_cohort;
 }
 
+function pi_inquiry_groupings_check_is_admin($uid, $inquiry_node, $group_nid = FALSE) {
+  if ($group_nid) {
+    $group = node_load($group_nid);
+    if ($group && $group->parent === $inquiry_node->actor_gid) {
+      return $inquiry_node->group_creation === 'normal' ? $group->uid === $uid : nquire_group_user_is_admin($inquiry_node->actor_gid, $uid);
+    }
+  } else {
+    return nquire_group_user_is_admin($inquiry_node->actor_gid, $uid);
+  }
+  
+  return FALSE;
+}
+
 function pi_inquiry_groupings_check_group($inquiry_node, $group_nid = FALSE) {
   if ($group_nid) {
     $group = node_load($group_nid);
@@ -27,7 +40,6 @@ function pi_inquiry_groupings_check_group($inquiry_node, $group_nid = FALSE) {
           'gid' => $group_nid,
           'group' => $group,
           'normal_management' => $inquiry_node->group_creation === 'normal',
-          'manager' => $inquiry_node->group_creation === 'normal' ? $group->uid : $inquiry_node->uid,
           'inquiry_node' => $inquiry_node,
       );
     } else {
@@ -37,7 +49,6 @@ function pi_inquiry_groupings_check_group($inquiry_node, $group_nid = FALSE) {
     return array(
         'type' => 'inquiry',
         'gid' => $inquiry_node->actor_gid,
-        'manager' => $inquiry_node->uid,
         'normal_management' => TRUE,
         'group' => node_load($inquiry_node->actor_gid),
         'inquiry_node' => $inquiry_node,

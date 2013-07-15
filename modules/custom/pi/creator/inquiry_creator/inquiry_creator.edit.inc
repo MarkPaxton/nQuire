@@ -625,7 +625,8 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
     inquiry_creator_create_stage_stub(t('Stage 1'), $node->nid);
   } else {
     $node = node_load($node_nid);
-    if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
+    $inquiry_info = pi_info()->getInquiryInfo($node_nid);
+    if ($inquiry_info->userIsInquiryAdmin($user->uid)) {
       $save = FALSE;
 
       if ($node->title !== $form_state['values']['title']) {

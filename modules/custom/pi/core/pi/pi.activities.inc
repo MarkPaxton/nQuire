@@ -160,7 +160,7 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
 
       $view_f = "{$activity_node->activity_type}_display_content_in_activity";
       $data['shared_content'] = array();
-      $is_supervisor = $inquiry_info->getInquiryOwner() === $user->uid;
+      $is_supervisor = $inquiry_info->userIsInquiryAdmin($user->uid);
       $content_nids = $content_manager->getSharedContent($activity_node->nid, $user->uid, $is_supervisor);
 
       foreach ($content_nids as $content_nid) {

@@ -189,8 +189,12 @@ class PiInquiryInfo {
     return $this->inquiry;
   }
 
-  public function getInquiryOwner() {
-    return $this->inquiry->uid;
+  public function userIsInquiryOwner($uid) {
+    return $this->inquiry->uid === $uid;
+  }
+  
+  public function userIsInquiryAdmin($uid) {
+    return $this->userIsInquiryOwner($uid) || nquire_group_user_is_admin($this->inquiry->actor_gid, $uid);
   }
 
   public function getInquiryActorGid() {
@@ -737,7 +741,7 @@ class PiInquiryAccess {
   public function __construct($inquiry_info, $uid) {
     $this->inquiry_info = $inquiry_info;
     $this->uid = $uid;
-    $this->is_owner = $this->inquiry_info->getInquiryOwner() == $this->uid;
+    $this->is_owner = $this->inquiry_info->userIsInquiryAdmin($this->uid);
     $this->inquiry_access = $this->is_owner || nquire_group_get_user_status_in_group($this->inquiry_info->getInquiryActorGid(), $this->uid) === 'member';
     $this->item_access = array();
     $this->use_roles = count($this->inquiry_info->getRoles()) > 0;

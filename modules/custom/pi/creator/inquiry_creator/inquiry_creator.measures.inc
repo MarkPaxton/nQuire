@@ -102,7 +102,7 @@ function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure
       '#default_value' => $title,
   );
 
-  //Show a simple textarea, no input selector required....
+//Show a simple textarea, no input selector required....
   $form['description'] = array(
       '#type' => 'textarea',
       '#title' => t('Measure description'),
@@ -246,35 +246,11 @@ function inquiry_creator_measure_delete_form_submit($form, $form_state) {
   global $user;
 
   $measure_nid = $form_state['values']['measure_id'];
-
-  if (_inquiry_creator_measure_delete_node($measure_nid)) {
-    $activity = node_load($form_state['values']['activity_id']);
-    if ($activity && $activity->type === 'inquiry_activity' && $user->uid === $activity->uid) {
-      $data = nquire_commons_decode_data($activity->data);
-      if (isset($data['measures'])) {
-        if (($key = array_search($measure_nid, $data['measures'], FALSE)) !== FALSE) {
-          unset($data['measures'][$key]);
-          $activity->data = json_encode($data);
-          $activity->revision = TRUE;
-          node_save($activity);
-        }
-      }
-    }
+  $activity = node_load($form_state['values']['activity_id']);
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($activity->nid);
+  if ($inquiry_info->userIsInquiryAdmin($user->uid)) {
+    node_delete($measure_nid);
   }
 
   nquire_commons_form_close($form, $form_state);
 }
-
-function _inquiry_creator_measure_delete_node($nid) {
-  global $user;
-
-  $measure = node_load($nid);
-
-  if ($measure && $measure->type === 'inquiry_measure' && $measure->uid == $user->uid) {
-    node_delete($nid);
-    return TRUE;
-  }
-
-  return FALSE;
-}
-

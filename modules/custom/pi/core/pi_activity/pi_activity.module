@@ -34,23 +34,8 @@ function pi_activity_node_info() {
  * @return TRUE or FALSE to indicate whether access is allowed for that function
  */
 function pi_activity_access($op, $node, $account) {
-  $is_author = $account->uid == $node->uid;
-  switch ($op) {
-    case 'create':
-      // Allow if user's role has 'create inquiry' permission.
-      return user_access('create inquiry', $account);
-
-    case 'update':
-      // Allow if user's role has 'edit own inquiry' permission and user is
-      // the author; or if the user's role has 'edit any inquiry' permission.
-      return user_access('edit own inquiry', $account) && is_author ||
-              user_access('edit any inquiry', $account);
-    case 'delete':
-      // Allow if user's role has 'delete own inquiry' permission and user is
-      // the author; or if the user's role has 'delete any inquiry' permission.
-      return user_access('delete own inquiry', $account) && $is_author ||
-              user_access('delete any inquiry', $account);
-  }
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($node->nid);
+  return $inquiry_info->userIsInquiryAdmin($account->uid);
 }
 
 function pi_activity_tab_view_access_callback($node) {

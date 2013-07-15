@@ -152,7 +152,9 @@ function nquire_group_create_group($owner, $title, $add_owner, $parent = NULL) {
   node_save($node);
   if ($add_owner) {
     nquire_group_add_user_to_group($node->nid, $owner, TRUE);
+    nquire_group_user_set_admin($node->nid, $owner, TRUE);
   }
+
   return $node->nid;
 }
 
@@ -176,7 +178,7 @@ function nquire_group_get_participants_with_role($gid, $role) {
 }
 
 function nquire_group_add_user_to_group($gid, $uid, $is_active = FALSE) {
-  $query = "INSERT INTO nquire_group_participant (nid, uid, active) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE active=%d";
+  $query = "INSERT INTO nquire_group_participant (nid, uid, active, admin) VALUES (%d, %d, %d, 0) ON DUPLICATE KEY UPDATE active=%d";
   db_query($query, $gid, $uid, $is_active, $is_active);
   if (!$is_active) {
     db_query("DELETE FROM {nquire_group_participant_role} WHERE nid=%d AND uid=%d", $gid, $uid);
@@ -223,6 +225,21 @@ function nquire_group_add_user_role($gid, $uid, $role_id) {
       db_query($query, $gid, $uid, $role_id, $role_id);
     }
   }
+}
+
+function nquire_group_user_is_admin($gid, $uid) {
+  $group = node_load($gid);
+  if ($group->uid === $uid) {
+    return TRUE;
+  }
+
+  $s_query = "SELECT uid FROM {nquire_group_participant} WHERE nid=%d AND uid=%d AND admin=1";
+  $row = db_fetch_array(db_query($s_query, $gid, $uid));
+  return $row ? TRUE : FALSE;
+}
+
+function nquire_group_user_set_admin($gid, $uid, $admin) {
+  db_query("UPDATE {nquire_group_participant} SET admin=%d WHERE nid=%d AND uid=%d", $admin, $gid, $uid);
 }
 
 function nquire_group_user_has_role($gid, $uid, $role_id) {

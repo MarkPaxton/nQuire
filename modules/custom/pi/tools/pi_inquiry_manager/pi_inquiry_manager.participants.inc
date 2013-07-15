@@ -57,6 +57,63 @@ function theme_pi_inquiry_manager_participants_view_inquiry_group($inquiry_node,
   return $wrap_in_section ? nquire_commons_create_page_section($output, t('Inquiry access')) : $output;
 }
 
+function pi_inquiry_manager_participants_edit_admins($inquiry_nid) {
+  $inquiry_node = node_load($inquiry_nid);
+  return drupal_get_form('pi_inquiry_manager_participants_edit_admins_form', $inquiry_node);
+}
+
+function pi_inquiry_manager_participants_edit_admins_form(&$form_state, $inquiry_node) {
+  $form = array();
+
+  ahah_helper_register($form, $form_state);
+
+  nquire_commons_load_ahah_fix();
+
+  $group = node_load($inquiry_node->actor_gid);
+  $owner = $group->uid;
+  $form['owner'] = array(
+      '#value' => t('Inquiry owner: ') . nquire_commons_user_name_or_me($owner),
+  );
+
+  $options = array();
+  $values = array();
+
+  $query = "SELECT uid, admin FROM {nquire_group_participant} WHERE uid != %d AND active = 1 AND nid = %d ORDER BY admin DESC";
+  $result = db_query($query, $owner, $inquiry_node->actor_gid);
+  while ($row = db_fetch_array($result)) {
+    $options[$row['uid']] = nquire_commons_user_name_or_me($row['uid']);
+    $values[$row['uid']] = $row['admin'] ? $row['uid'] : 0;
+  }
+
+
+  $form['admins'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Select inquiry administrators:'),
+      '#description' => t('Select the users that will be allowed to administrate this inquiry.'),
+      '#options' => $options,
+      '#default_value' => $values,
+  );
+
+
+  nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_participants_edit_admins_form_submit', "inquiry/{$inquiry_node->nid}/participants");
+
+  return $form;
+}
+
+function pi_inquiry_manager_participants_edit_admins_form_submit($form, $form_state) {
+  $inquiry_nid = arg(1);
+  if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid)) {
+    $inquiry = node_load($inquiry_nid);
+    $gid = $inquiry->actor_gid;
+
+    foreach ($form_state['values']['admins'] as $uid => $value) {
+      nquire_group_user_set_admin($gid, $uid, (boolean) $value);
+    }
+  }
+
+  nquire_commons_form_close($form, $form_state);
+}
+
 function pi_inquiry_manager_participants_edit_inquiry_group($inquiry_nid) {
   $inquiry_node = node_load($inquiry_nid);
   return drupal_get_form('pi_inquiry_manager_participants_edit_inquiry_group_form', $inquiry_node);
@@ -215,7 +272,7 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
   if ($group_check) {
     global $user;
 
-    $im_owner = $group_check['manager'] === $user->uid;
+    $im_owner = pi_inquiry_groupings_check_is_admin($user->uid, $inquiry_node, $group_nid);
 
     $roles = pi_inquiry_groupings_get_inquiry_role_names($inquiry_node);
     $has_roles = count($roles) > 0;
@@ -297,6 +354,11 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
               . '</p>';
     }
 
+    if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_node->nid)) {
+      $output .= '<br/>' . pi_inquiry_manager_partipants_group_operation_link(t('Select admins'), $inquiry_node->nid, FALSE, "admins");
+    }
+
+
     return nquire_commons_create_page_section($output, t('Participant list'));
   }
 }
@@ -330,10 +392,10 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
 
     global $user;
 
-    $im_owner = $group_check['manager'] === $user->uid;
+    $im_owner = pi_inquiry_groupings_check_is_admin($user->uid, $inquiry_node, $group_nid);
 
     $its_me = $uid === $user->uid;
-    $its_owner = $uid === $group_check['manager'];
+    $its_owner = pi_inquiry_groupings_check_is_admin($uid, $inquiry_node, $group_nid);
     $join_mode = $group_check['group']->selective;
     $user_status = nquire_group_get_user_status_in_group($group_check['gid'], $uid);
 
@@ -349,7 +411,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
     if ($user_status === 'member') {
       $status .= t('Active');
       if ($its_owner) {
-        $status .= '&nbsp;' . t('(owner)');
+        $status .= '&nbsp;' . t('(admin)');
       }
 
       if ($its_me) {

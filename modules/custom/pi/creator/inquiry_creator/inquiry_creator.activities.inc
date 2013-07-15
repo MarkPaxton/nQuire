@@ -126,9 +126,9 @@ function inquiry_creator_activity_delete_form_submit($form, $form_state) {
 function _inquiry_creator_activity_delete_node($activity_nid) {
   global $user;
 
-  $activity = node_load($activity_nid);
-
-  if ($activity && $activity->type === 'pi_activity' && $activity->uid == $user->uid) {
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_nid);
+  if ($inquiry_info->userIsInquiryAdmin($user->uid)) {
+    $activity = node_load($activity_nid);
     inquiry_available_features_invoke('activity', 'delete', $activity);
     node_delete($activity_nid);
 

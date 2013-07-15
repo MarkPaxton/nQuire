@@ -35,34 +35,18 @@ function pi_phase_perm() {
  * Work out if a user has permission to do something with an Inquiry
  */
 function pi_phase_access($op, $node, $account) {
-  $is_author = $account->uid == $node->uid;
-  switch ($op) {
-    case 'create':
-      // Allow if user's role has 'create inquiry' permission.
-      return user_access('create inquiry', $account);
-
-    case 'update':
-      // Allow if user's role has 'edit own inquiry' permission and user is
-      // the author; or if the user's role has 'edit any inquiry' permission.
-      return user_access('edit own inquiry', $account) && is_author ||
-              user_access('edit any inquiry', $account);
-    case 'delete':
-      // Allow if user's role has 'delete own inquiry' permission and user is
-      // the author; or if the user's role has 'delete any inquiry' permission.
-      return user_access('delete own inquiry', $account) && $is_author ||
-              user_access('delete any inquiry', $account);
-  }
+  $inquiry_info = pi_info()->getInquiryInfo($node->inquiry_nid);
+  return $inquiry_info->userIsInquiryAdmin($account->uid);
 }
 
 /**
  * The form for adding/editing an Inquiry
  */
 function pi_phase_form($node) {
-	$form = array();
+  $form = array();
 
   return $form;
 }
-
 
 /**
  * hook_insert() - INSERT command for a new inquiry phase
@@ -155,6 +139,7 @@ function pi_phase_load_nids_for_inquiry($inquiry_nid) {
   }
   return $phase_nodes;
 }
+
 /**
  * Queries the node database to provide a list of nids referring to phases in an
  * inquiry given by $inquiry_nid, ordered by weight
@@ -174,7 +159,6 @@ function pi_phase_load_nids_for_inquiry_and_collaboration_type($inquiry_nid, $co
   }
   return $phase_nodes;
 }
-
 
 /**
  * Builds the view for the inquiry

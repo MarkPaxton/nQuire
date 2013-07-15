@@ -11,244 +11,242 @@
  * Implementation of pi_available_measures_node_info().
  */
 function pi_available_measures_node_info() {
-	return array(
-			'pi_available_measures' => array(
-					'name' => t('Inquiry available measures'), // Required.
-					'module' => 'pi_available_measures', // Required.
-					'description' => t('What are you going to measure?'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Name'),
-					'has_body' => TRUE,
-					'body_label' => t('Description'),
-					'min_word_count' => 2,
-					'locked' => TRUE
-			)
-	);
-}
-
-/**
- * Implementation of pi_available_measures_perm().
- */
-function pi_available_measures_perm() {
-	
+  return array(
+      'pi_available_measures' => array(
+          'name' => t('Inquiry available measures'), // Required.
+          'module' => 'pi_available_measures', // Required.
+          'description' => t('What are you going to measure?'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Name'),
+          'has_body' => TRUE,
+          'body_label' => t('Description'),
+          'min_word_count' => 2,
+          'locked' => TRUE
+      )
+  );
 }
 
 /**
  * Implementation of pi_available_measures_access().
  */
 function pi_available_measures_access($op, $node, $account) {
-	return pi_access_to_node($op, $node);
+  if (is_object($node) && $node->script_measure) {
+    $inquiry_info = pi_info()->getInquiryInfoForActivity($node->activity_nid);
+    return $inquiry_info->userIsInquiryAdmin($account->uid);
+  }
+  
+  return pi_access_to_node($op, $node);
 }
 
 /**
  * Implementation of pi_available_measures_form().
  */
 function pi_available_measures_form(&$measure, $form_state) {
-	$form = array();
-	ahah_helper_register($form, $form_state);
+  $form = array();
+  ahah_helper_register($form, $form_state);
 
 
-	if (arg(0) === 'activity') {
-		$current_activity_nid = arg(1);
-	} else {
-		$current_activity_nid = $form_state['values']['current_activity_nid'];
-	}
+  if (arg(0) === 'activity') {
+    $current_activity_nid = arg(1);
+  } else {
+    $current_activity_nid = $form_state['values']['current_activity_nid'];
+  }
 
-	$form['current_activity_nid'] = array(
-			'#type' => 'hidden',
-			'#default_value' => $current_activity_nid,
-	);
+  $form['current_activity_nid'] = array(
+      '#type' => 'hidden',
+      '#default_value' => $current_activity_nid,
+  );
 
-	$inquiry_info = pi_info()->getInquiryInfoForActivity($current_activity_nid);
-
-
-	$data_activities = pi_sort_data_get_activities($inquiry_info->getInquiryNid());
-	$data_activity_options = array();
-	$default_activity = FALSE;
-	foreach ($data_activities as $activity_nid) {
-		$data_activity = $inquiry_info->getActivity($activity_nid);
-		$data_activity_options[$activity_nid] = check_plain($data_activity->title);
-		if (!$default_activity) {
-			$default_activity = $activity_nid;
-		}
-	}
-
-	//function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {
-	//nquire_commons_form_set_default_link_action($form, 'submit');
-
-	$data_activity_nid = nquire_commons_form_node_default_value($measure, 'activity_nid', $form_state, 'activity_nid', $default_activity);
-	$form['activity_nid'] = array(
-			'#type' => count($data_activity_options) === 1 ? 'hidden' : 'select',
-			'#title' => t('Data gathering activity'),
-			'#description' => t('Select the data activity in which the measure will be used.'),
-			'#default_value' => $data_activity_nid,
-			'#required' => TRUE,
-			'#options' => $data_activity_options,
-			'#ahah' => array(
-					'path' => ahah_helper_path(array('measures_activity_dependent_section')),
-					'wrapper' => 'measures_activity_dependent_section',
-					'method' => 'replace',
-					'effect' => 'fade',
-			),
-	);
-
-	nquire_commons_create_form_wrapped_section($form, 'measures_activity_dependent_section');
-	$activity_dependent_form = &$form['measures_activity_dependent_section']['wrapped_content'];
-
-	$data_activity = node_load($data_activity_nid);
-	if ($data_activity) {
-		$tool = nquire_commons_read_data_value(nquire_commons_decode_data($data_activity->parameters), 'tool.type', 'none');
-		if ($tool !== 'none') {
-			$activity_dependent_form['tool'] = array(
-					'#value' => '<p>' . t('@activity uses the following instrument to collect data: @tool.', array(
-							'@activity' => $data_activity->title,
-							'@tool' => inquiry_available_features_name('tool', $tool),
-					)) . '</p>',
-			);
-		}
-
-		$title = nquire_commons_form_node_default_value($measure, 'title', $form_state, 'title', '');
-		$description = nquire_commons_form_node_default_value($measure, 'body', $form_state, 'description', '');
-		$type = nquire_commons_form_node_default_value($measure, 'measure_type', $form_state, 'measure_type', '');
-		$measure_or_type = $measure && $measure->measure_type == $type ? $measure : $type;
-
-		$activity_dependent_form['title'] = array(
-				'#type' => 'textfield',
-				'#title' => t('Measure name'),
-				'#description' => t('Write here the name that will identify the measure.'),
-				'#required' => TRUE,
-				'#default_value' => $title,
-		);
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($current_activity_nid);
 
 
-		$options = inquiry_available_features_list_measures_for_tool($tool);
+  $data_activities = pi_sort_data_get_activities($inquiry_info->getInquiryNid());
+  $data_activity_options = array();
+  $default_activity = FALSE;
+  foreach ($data_activities as $activity_nid) {
+    $data_activity = $inquiry_info->getActivity($activity_nid);
+    $data_activity_options[$activity_nid] = check_plain($data_activity->title);
+    if (!$default_activity) {
+      $default_activity = $activity_nid;
+    }
+  }
 
-		if (!isset($options[$type])) {
-			if ($type === '') {
-				$options[$type] = t('- Select a measure type');
-			} else {
-				$required_tool = inquiry_available_features_measure_required_tool($type);
-				$options[$type] = inquiry_available_features_name('measure', $type) . t(' (unavailable as @tool is not used)', array('@tool' => inquiry_available_features_name('tool', $required_tool)));
-			}
-		}
+  //function inquiry_creator_measure_form(&$form_state, $design, $activity, $measure) {
+  //nquire_commons_form_set_default_link_action($form, 'submit');
 
-		ksort($options);
+  $data_activity_nid = nquire_commons_form_node_default_value($measure, 'activity_nid', $form_state, 'activity_nid', $default_activity);
+  $form['activity_nid'] = array(
+      '#type' => count($data_activity_options) === 1 ? 'hidden' : 'select',
+      '#title' => t('Data gathering activity'),
+      '#description' => t('Select the data activity in which the measure will be used.'),
+      '#default_value' => $data_activity_nid,
+      '#required' => TRUE,
+      '#options' => $data_activity_options,
+      '#ahah' => array(
+          'path' => ahah_helper_path(array('measures_activity_dependent_section')),
+          'wrapper' => 'measures_activity_dependent_section',
+          'method' => 'replace',
+          'effect' => 'fade',
+      ),
+  );
+
+  nquire_commons_create_form_wrapped_section($form, 'measures_activity_dependent_section');
+  $activity_dependent_form = &$form['measures_activity_dependent_section']['wrapped_content'];
+
+  $data_activity = node_load($data_activity_nid);
+  if ($data_activity) {
+    $tool = nquire_commons_read_data_value(nquire_commons_decode_data($data_activity->parameters), 'tool.type', 'none');
+    if ($tool !== 'none') {
+      $activity_dependent_form['tool'] = array(
+          '#value' => '<p>' . t('@activity uses the following instrument to collect data: @tool.', array(
+              '@activity' => $data_activity->title,
+              '@tool' => inquiry_available_features_name('tool', $tool),
+          )) . '</p>',
+      );
+    }
+
+    $title = nquire_commons_form_node_default_value($measure, 'title', $form_state, 'title', '');
+    $description = nquire_commons_form_node_default_value($measure, 'body', $form_state, 'description', '');
+    $type = nquire_commons_form_node_default_value($measure, 'measure_type', $form_state, 'measure_type', '');
+    $measure_or_type = $measure && $measure->measure_type == $type ? $measure : $type;
+
+    $activity_dependent_form['title'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Measure name'),
+        '#description' => t('Write here the name that will identify the measure.'),
+        '#required' => TRUE,
+        '#default_value' => $title,
+    );
 
 
-		$activity_dependent_form['measure_type'] = array(
-				'#type' => 'select',
-				'#title' => t('Measure type'),
-				'#description' => t('Select the measure type. Some measure types are only available when certain intruments are used to collect data.'),
-				'#default_value' => $type,
-				'#required' => TRUE,
-				'#options' => $options,
-				'#ahah' => array(
-						'path' => ahah_helper_path(array('measures_activity_dependent_section', 'wrapped_content', 'measures_type_dependent_section')),
-						'wrapper' => 'measures_type_dependent_section',
-						'method' => 'replace',
-						'effect' => 'fade',
-				),
-		);
-		
-		
-		$activity_dependent_form['description'] = array(
-				'#type' => 'textarea',
-				'#title' => t('Measure description'),
-				'#description' => t('Write here the description of the measure. This could include, for instance, an explanation of how to use this measure.'),
-				'#default_value' => $description,
-				'#required' => FALSE
-		);
+    $options = inquiry_available_features_list_measures_for_tool($tool);
 
-		nquire_commons_create_form_wrapped_section($activity_dependent_form, 'measures_type_dependent_section');
-		$type_dependent_form = &$activity_dependent_form['measures_type_dependent_section']['wrapped_content'];
+    if (!isset($options[$type])) {
+      if ($type === '') {
+        $options[$type] = t('- Select a measure type');
+      } else {
+        $required_tool = inquiry_available_features_measure_required_tool($type);
+        $options[$type] = inquiry_available_features_name('measure', $type) . t(' (unavailable as @tool is not used)', array('@tool' => inquiry_available_features_name('tool', $required_tool)));
+      }
+    }
 
-		$type_dependent_form['#tree'] = TRUE;
+    ksort($options);
 
-		$type_dependent_form['help'] = array(
-				'#value' => '<p><b>' . check_plain(inquiry_available_features_invoke('measure', 'description', $type)) . '</b></p>',
-		);
 
-		inquiry_available_features_invoke('measure', 'form', $measure_or_type, $type_dependent_form, $form_state);
-	}
+    $activity_dependent_form['measure_type'] = array(
+        '#type' => 'select',
+        '#title' => t('Measure type'),
+        '#description' => t('Select the measure type. Some measure types are only available when certain intruments are used to collect data.'),
+        '#default_value' => $type,
+        '#required' => TRUE,
+        '#options' => $options,
+        '#ahah' => array(
+            'path' => ahah_helper_path(array('measures_activity_dependent_section', 'wrapped_content', 'measures_type_dependent_section')),
+            'wrapper' => 'measures_type_dependent_section',
+            'method' => 'replace',
+            'effect' => 'fade',
+        ),
+    );
 
-	return $form;
+
+    $activity_dependent_form['description'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Measure description'),
+        '#description' => t('Write here the description of the measure. This could include, for instance, an explanation of how to use this measure.'),
+        '#default_value' => $description,
+        '#required' => FALSE
+    );
+
+    nquire_commons_create_form_wrapped_section($activity_dependent_form, 'measures_type_dependent_section');
+    $type_dependent_form = &$activity_dependent_form['measures_type_dependent_section']['wrapped_content'];
+
+    $type_dependent_form['#tree'] = TRUE;
+
+    $type_dependent_form['help'] = array(
+        '#value' => '<p><b>' . check_plain(inquiry_available_features_invoke('measure', 'description', $type)) . '</b></p>',
+    );
+
+    inquiry_available_features_invoke('measure', 'form', $measure_or_type, $type_dependent_form, $form_state);
+  }
+
+  return $form;
 }
 
 /**
  * Implementation of pi_available_measures_valiate().
  */
 function pi_available_measures_validate($node, &$form, &$form_state) {
-	//$type = $form['values']['measure_type'];
-	//inquiry_available_features_invoke('measure', 'form_validate', $type, $node, $form);
+  //$type = $form['values']['measure_type'];
+  //inquiry_available_features_invoke('measure', 'form_validate', $type, $node, $form);
 }
 
 /**
  * hook_insert() for available_measures: adds image node if needed
  */
 function _pi_available_measures_form_process(&$node) {
-	inquiry_available_features_invoke('measure', 'form_process', $node, $node->wrapped_content);
+  inquiry_available_features_invoke('measure', 'form_process', $node, $node->wrapped_content);
 }
 
 function pi_available_measures_insert($node) {
-	if ($node->current_activity_nid) {
-		_pi_available_measures_form_process($node);
-	}
+  if ($node->current_activity_nid) {
+    _pi_available_measures_form_process($node);
+  }
 
-	db_query("INSERT INTO {pi_available_measures} (nid, vid, mandatory, script_measure, measure_type, data, activity_nid) VALUES (%d, %d, %d, %d, '%s', '%s', %d)", $node->nid, $node->vid, $node->mandatory ? 1 : 0, $node->script_measure ? 1 : 0, $node->measure_type, $node->data, $node->activity_nid);
+  db_query("INSERT INTO {pi_available_measures} (nid, vid, mandatory, script_measure, measure_type, data, activity_nid) VALUES (%d, %d, %d, %d, '%s', '%s', %d)", $node->nid, $node->vid, $node->mandatory ? 1 : 0, $node->script_measure ? 1 : 0, $node->measure_type, $node->data, $node->activity_nid);
 
-	if ($node->current_activity_nid) {
-		$activity = node_load($node->current_activity_nid);
-		//	drupal_goto('activity/' . $activity->parent_activity);
-	}
+  if ($node->current_activity_nid) {
+    $activity = node_load($node->current_activity_nid);
+    //	drupal_goto('activity/' . $activity->parent_activity);
+  }
 }
 
 /**
  * Implementation of pi_available_measures_update().
  */
 function pi_available_measures_update($node) {
-	if ($node->revision) {
-		pi_available_measures_insert($node);
-	} else {
-		if ($node->current_activity_nid) {
-			_pi_available_measures_form_process($node);
-		}
-		db_query("UPDATE {pi_available_measures} SET mandatory='%d', script_measure='%d', measure_type='%s', data='%s', activity_nid='%d' WHERE vid=%d", $node->mandatory ? 1 : 0, $node->script_measure ? 1 : 0, $node->measure_type, $node->data, $node->activity_nid, $node->vid);
-		if ($node->current_activity_nid) {
-			$activity = node_load($node['current_activity_nid']);
-			//	drupal_goto('activity/' . $activity->parent_activity);
-		}
-	}
+  if ($node->revision) {
+    pi_available_measures_insert($node);
+  } else {
+    if ($node->current_activity_nid) {
+      _pi_available_measures_form_process($node);
+    }
+    db_query("UPDATE {pi_available_measures} SET mandatory='%d', script_measure='%d', measure_type='%s', data='%s', activity_nid='%d' WHERE vid=%d", $node->mandatory ? 1 : 0, $node->script_measure ? 1 : 0, $node->measure_type, $node->data, $node->activity_nid, $node->vid);
+    if ($node->current_activity_nid) {
+      $activity = node_load($node['current_activity_nid']);
+      //	drupal_goto('activity/' . $activity->parent_activity);
+    }
+  }
 }
 
 /**
  * Implementation of pi_available_measures_delete().
  */
 function pi_available_measures_delete(&$node) {
-	// Delete the related information we were saving for this node.
-	db_query('DELETE FROM {pi_available_measures} WHERE nid = %d', $node->nid);
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_available_measures} WHERE nid = %d', $node->nid);
 }
 
 /**
  * Implementation of pi_available_measures_load().
  */
 function pi_available_measures_load($node) {
-	// drupal_add_js('misc/collapse.js');
-	return db_fetch_object(db_query('SELECT * FROM {pi_available_measures} WHERE vid = %d', $node->vid));
+  // drupal_add_js('misc/collapse.js');
+  return db_fetch_object(db_query('SELECT * FROM {pi_available_measures} WHERE vid = %d', $node->vid));
 }
 
 /**
  * Implementation of hook_view().
  */
 function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
-	global $user;
-	$node = node_prepare($node, $teaser);
+  global $user;
+  $node = node_prepare($node, $teaser);
 
-	$node->content['pi_available_measures_description'] = array(
-			'#value' => theme('pi_available_measures', $node),
-			'#weight' => -1
-	);
+  $node->content['pi_available_measures_description'] = array(
+      '#value' => theme('pi_available_measures', $node),
+      '#weight' => -1
+  );
 
-	return $node;
+  return $node;
 }
 
 /**
@@ -256,28 +254,28 @@ function pi_available_measures_view($node, $teaser = FALSE, $page = FALSE) {
  * @return array of theme data as per drupal 6 api
  */
 function pi_available_measures_theme() {
-	return array(
-			'pi_available_measures' => array(
-					'arguments' => array('node'),
-			),
-	);
+  return array(
+      'pi_available_measures' => array(
+          'arguments' => array('node'),
+      ),
+  );
 }
 
 function theme_pi_available_measures($node) {
-	$output = '<b>' . check_plain($node->title) . '</b> (' . inquiry_available_features_name('measure', $node->measure_type) . ')<br/>' . nl2br(check_plain($node->body));
+  $output = '<b>' . check_plain($node->title) . '</b> (' . inquiry_available_features_name('measure', $node->measure_type) . ')<br/>' . nl2br(check_plain($node->body));
 
-	return $output;
+  return $output;
 }
 
 function pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) {
-	$nids = array();
+  $nids = array();
 
-	$query = "SELECT DISTINCT nid FROM {pi_available_measures} WHERE activity_nid=%d AND script_measure=1";
-	$result = db_query($query, $sort_data_activity_nid);
-	while ($row = db_fetch_array($result)) {
-		$nids[] = $row['nid'];
-	}
+  $query = "SELECT DISTINCT nid FROM {pi_available_measures} WHERE activity_nid=%d AND script_measure=1";
+  $result = db_query($query, $sort_data_activity_nid);
+  while ($row = db_fetch_array($result)) {
+    $nids[] = $row['nid'];
+  }
 
-	return $nids;
+  return $nids;
 }
 

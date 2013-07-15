@@ -26,6 +26,16 @@ function pi_inquiry_manager_menu() {
           'access arguments' => array(1),
           'weight' => 1,
       ),
+      'inquiry/%/participants/admins' => array(
+          'title' => t('Inquiry admins'),
+          'file' => 'pi_inquiry_manager.participants.inc',
+          'page callback' => 'pi_inquiry_manager_participants_edit_admins',
+          'page arguments' => array(1),
+          'type' => MENU_CALLBACK,
+          'access callback' => 'pi_inquiry_manager_participants_group_configure_inquiry_participants_access',
+          'access arguments' => array(1),
+          'weight' => 1,
+      ),
       'inquiry/%/participants/supervise' => array(
           'title' => t('Inquiry monitoring'),
           'file' => 'pi_inquiry_manager.participants.inc',
@@ -373,8 +383,8 @@ function pi_inquiry_manager_stage_access() {
 function pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid) {
   if (user_is_logged_in()) {
     global $user;
-    $node = node_load($inquiry_nid);
-    return $node->uid === $user->uid;
+    $inquiry_info = pi_info()->getInquiryInfo($inquiry_nid);
+    return $inquiry_info->userIsInquiryAdmin($user->uid);
   }
   return FALSE;
 }
@@ -446,7 +456,7 @@ function pi_inquiry_manager_participants_group_manageuser_access($inquiry_nid, $
     if ($inquiry->type === 'pi_inquiry') {
       $group_check = pi_inquiry_groupings_check_group($inquiry, $group_nid);
       if ($group_check) {
-        return $user->uid === $group_check['manager'];
+        return pi_inquiry_groupings_check_is_admin($user->uid, $inquiry, $group_nid);
       }
     }
   }
@@ -492,7 +502,7 @@ function pi_inquiry_manager_participants_subgroups_edit_access($inquiry_nid, $gr
 
     $inquiry_node = node_load($inquiry_nid);
     $group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
-    return $group_check && $group_check['type'] === 'group' && $group_check['manager'] === $user->uid;
+    return $group_check && $group_check['type'] === 'group' && pi_inquiry_groupings_check_is_admin($user->uid, $inquiry_node, $group_nid);
   }
   return FALSE;
 }
