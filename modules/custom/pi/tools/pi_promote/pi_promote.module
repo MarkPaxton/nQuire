@@ -7,7 +7,7 @@ define('PI_PROMOTE_REQUESTED', 2);
 function pi_promote_menu() {
   $items = array();
 
-  
+
 
   $items['home'] = array(
       'title' => 'Home',
@@ -43,22 +43,49 @@ function pi_promote_shop_page() {
       $inquiries[] = $inquiry;
     }
   }
-  
-  $default_image = base_path() . drupal_get_path('module', 'pi_promote') . '/images/default.png';
 
+  $default_image = base_path() . drupal_get_path('module', 'pi_promote') . '/images/default.png';
+  
+  $max_width = 290;
+  $max_height = 165;
+  $aspect_ratio = $max_width/$max_height;
+  
   $output = '<div class="pi_promote_shop">';
   for ($i = 0; $i < count($inquiries); $i++) {
     $output .= '<div class="pi_promote_shop_row"><div class="pi_promote_shop_row_inner">';
     for ($j = 0; $j < 3; $j++, $i++) {
       if ($i < count($inquiries)) {
+        $inquiry = $inquiries[$i];
         $path = 'inquiry/' . $inquiry->nid;
         $url = url($path);
-        $inquiry = $inquiries[$i];
         $title = l(check_plain($inquiry->title), $path);
         $info = 'info';
 
+        if ($inquiry->image) {
+          $image = file_create_url($inquiry->image);
+          $size = getimagesize($image);
+          $ar = $size[0] / $size[1];
+          if ($ar > $aspect_ratio) {
+            $scale = $max_width / $size[0];
+            $w = $max_width;
+            $h = $size[1] * $scale;
+            $px = 0;
+            $py = .5 * ($max_height - $h);
+          } else {
+            $scale = $max_height / $size[1];
+            $h = $max_height;
+            $w = $size[0] * $scale;
+            $px = .5 * ($max_width - $w);
+            $py = 0;
+          }
+          $image_style = "width:{$w}px;height:{$h}px;top:{$py}px;left:{$px}px";
+        } else {
+          $image = $default_image;
+          $image_style = '';
+        }
+
         $output .= '<div class="pi_promote_shop_item">'
-                . '<div class="pi_promote_shop_item_image"><a href="' . $url . '"><img src="' . $default_image . '"></img></a></div>'
+                . '<div class="pi_promote_shop_item_image"><a href="' . $url . '"><img src="' . $image . '" style="' . $image_style . '"></img></a></div>'
                 . '<div class="pi_promote_shop_item_title">' . $title . '</div>'
                 . '<div class="pi_promote_shop_item_info">' . $info . '</div>'
                 . '</div>';
