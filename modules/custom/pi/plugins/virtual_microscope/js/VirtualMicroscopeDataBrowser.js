@@ -11,32 +11,32 @@ $(function() {
     this._styles = {
       'normal': {
         label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'normal', fontSize: 12, fill: 'black', 'dominant-baseline': 'middle', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'normal', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       },
       'hover': {
         label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'middle', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       },
       'selected': {
         label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'middle', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#373', strokeWidth: 3, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
       },
       'selected_active': {
         label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'middle', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#373', strokeWidth: 3, strokeOpacity: .2, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
       },
       'other': {
         label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'normal', fontSize: 12, fill: 'black', 'dominant-baseline': 'middle', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'normal', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 0, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       },
       'other_hover': {
         label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'dominant-baseline': 'middle', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       }
     };
@@ -121,7 +121,7 @@ $(function() {
       type: 'text',
       text: "" + (1 + index),
       x: .5 * labelSize,
-      y: .5 * labelSize,
+      y: .65 * labelSize,
       settings: settings.text
     });
 
