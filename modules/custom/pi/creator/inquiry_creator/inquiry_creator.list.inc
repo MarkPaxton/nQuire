@@ -6,6 +6,14 @@ function inquiry_creator_home() {
 
   $designs = nquire_commons_nodes_by_type_and_user('pi_inquiry', $user->uid);
 
+  $admin_groups = pi_inquiry_groupings_get_groups_for_user($user->uid, NQUIRE_GROUP_TYPE_INQUIRY, TRUE, TRUE);
+  $admin_designs = pi_inquiry_groupings_get_inquiries_for_groups($admin_groups['active']);
+  foreach ($admin_designs as $nid) {
+    if (!in_array($nid, $designs)) {
+      $designs[$nid] = node_load($nid);
+    }
+  }
+
   return theme('inquiry_creator_design_list', $designs);
 }
 
@@ -17,13 +25,20 @@ function theme_inquiry_creator_design_list($design_list) {
   if (count($design_list) == 0) {
     $content = t('You have no designs. Click <a href="!url">here</a> to create your first design.', array('!url' => url('creator/new')));
   } else {
-    $header = array(t('Title'), t('Description'));
+    global $user;
 
+    $header = array(t('Title'), t('Description'));
     $rows = array();
     foreach ($design_list as $nid => $node) {
       $links = l(t('edit'), "creator/$nid");
+      $inquiry_title = '<b>' . $node->title . '</b>';
+      if ($node->uid !== $user->uid) {
+        $inquiry_title .= '<br/><small>' . t('Created by !user', array('!user' => l(nquire_commons_user_name_or_me($node->uid), 'user/' . $node->uid, array('html' => TRUE)))) . '</small>';
+      }
+      $inquiry_title .= '<br/><small>' . $links . '</small>';
+
       $rows[] = array(
-          '<b>' . $node->title . '</b><br/><small>' . $links . '</small>',
+          $inquiry_title,
           nl2br(check_plain($node->body)),
       );
     }

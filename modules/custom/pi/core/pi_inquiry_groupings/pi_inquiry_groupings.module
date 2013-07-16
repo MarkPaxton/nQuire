@@ -115,11 +115,18 @@ function pi_inquiry_groupings_user_is_in_participants_target_group($uid, $inquir
   return $row ? TRUE : FALSE;
 }
 
-function pi_inquiry_groupings_get_groups_for_user($uid, $group_type) {
+function pi_inquiry_groupings_get_groups_for_user($uid, $group_type, $require_active = FALSE, $require_admin = FALSE) {
   $groups_query = "SELECT {nquire_group}.nid, {nquire_group_participant}.active FROM {node} "
           . "LEFT JOIN {nquire_group} ON {node}.vid={nquire_group}.vid "
           . "LEFT JOIN {nquire_group_participant} ON {nquire_group_participant}.nid={nquire_group}.nid "
           . "WHERE {nquire_group}.group_type=%d AND {nquire_group_participant}.uid=%d";
+  
+  if ($require_active) {
+    $groups_query .= " AND {nquire_group_participant}.active=1";
+    if ($require_admin) {
+      $groups_query .= " AND {nquire_group_participant}.admin=1";
+    }
+  }
 
   $user_groups = array(
       'active' => array(),

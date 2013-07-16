@@ -31,7 +31,7 @@ $(function() {
 		},
 		/* drawing functions */
 
-		_createSvgElement: function(parent, shape, name) {
+		_createSvgElement: function(parent, shape, name, index) {
 			var obj = null;
 			switch (shape.type) {
 				case 'circle':
@@ -59,6 +59,7 @@ $(function() {
 
 			if (obj && shape.callbacks) {
 				var element = $(obj);
+        element.attr('id', name + '_' + index);
 				element.addClass('whiteboard-active-element');
 
 				if (shape.callbacks.hover) {
@@ -99,7 +100,7 @@ $(function() {
 				for (var i in paint.shapes) {
 					var shape = paint.shapes[i];
 					var parent = hasNoScaleShapes ? (shape.dontScale ? inverseScaleElement : normalScaleElement) : group;
-					this._createSvgElement(parent, shape, name);
+					this._createSvgElement(parent, shape, name, i);
 				}
 
 				this._shapes[name] = hasNoScaleShapes ?

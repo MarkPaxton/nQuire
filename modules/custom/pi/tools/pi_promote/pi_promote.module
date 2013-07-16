@@ -45,11 +45,11 @@ function pi_promote_shop_page() {
   }
 
   $default_image = base_path() . drupal_get_path('module', 'pi_promote') . '/images/default.png';
-  
+
   $max_width = 290;
   $max_height = 165;
-  $aspect_ratio = $max_width/$max_height;
-  
+  $aspect_ratio = $max_width / $max_height;
+
   $output = '<div class="pi_promote_shop">';
   for ($i = 0; $i < count($inquiries); $i++) {
     $output .= '<div class="pi_promote_shop_row"><div class="pi_promote_shop_row_inner">';
@@ -59,7 +59,8 @@ function pi_promote_shop_page() {
         $path = 'inquiry/' . $inquiry->nid;
         $url = url($path);
         $title = l(check_plain($inquiry->title), $path);
-        $info = 'info';
+        $member_count = count(nquire_group_get_member_uids($inquiry->actor_gid, TRUE));
+        $info = $member_count === 1 ? t('One member') : t('!n members.', array('!n' => $member_count));
 
         if ($inquiry->image) {
           $image = file_create_url($inquiry->image);

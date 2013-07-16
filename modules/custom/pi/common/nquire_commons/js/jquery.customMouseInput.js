@@ -1,6 +1,8 @@
 
 (function($) {
 
+  var hoverdata = {};
+
   var directBinds = {
     touch: {
       down: 'touchstart',
@@ -55,12 +57,31 @@
       });
     },
     'hover': function(callback) {
-      this.customMouseInput('_directBind', 'mouseenter', function() {
-        callback(true);
-      });
-      this.customMouseInput('_directBind', 'mouseleave', function() {
-        callback(false);
-      });
+      var id = this.attr('id');
+      if (id && id.length > 0) {
+        var in_f = function() {
+          if (!hoverdata[id]) {
+            hoverdata[id] = true;
+            callback(true);
+          }
+        };
+        var out_f = function() {
+          if (hoverdata[id]) {
+            hoverdata[id] = false;
+            callback(false);
+          }
+        };
+      } else {
+        var in_f = function() {
+          callback(true);
+        };
+        var out_f = function() {
+          callback(false);
+        };
+      }
+
+      this.customMouseInput('_directBind', 'mouseenter', in_f);
+      this.customMouseInput('_directBind', 'mouseleave', out_f);
     },
     'click': function(callback) {
       var self = this;
@@ -159,10 +180,6 @@
           var mouseEventType = directBinds.mouse[eventType];
           if (mouseEventType) {
             this.bind(directBinds.mouse[eventType], function(event) {
-              if (eventType === 'up') {
-                var a = 1;
-                a = 2;
-              }
               callback(event, event);
             });
           }
