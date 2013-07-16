@@ -13,8 +13,7 @@ $(function() {
     var baseStyle = {
       fill: 'none',
       'stroke-linecap': 'butt',
-      'stroke-linejoin': 'round',
-      'vector-effect': 'non-scaling-stroke'
+      'stroke-linejoin': 'round'
     };
 
     var darkColor = color.replace(/f/g, 'a');
@@ -54,8 +53,11 @@ $(function() {
       var length = .1 * Math.sqrt(xl * xl + yl * yl);
       var dx = length * Math.cos(angle);
       var dy = length * Math.sin(angle);
-
-
+      
+      var scaleFunction = function(group, scale, zoom) {
+        $(group).children().attr('stroke-width', settings.strokeWidth * scale);
+      };
+      
       var output = {
         pos: {x: 0, y: 0},
         shapes: [{
@@ -73,7 +75,8 @@ $(function() {
             points: {x1: value.x12 - dx, y1: value.y12 - dy, x2: value.x12 + dx, y2: value.y12 + dy},
             settings: settings,
             callbacks: this._actionCallbacks
-          }]
+          }],
+        scaleFunction: scaleFunction
       };
       return output;
     }

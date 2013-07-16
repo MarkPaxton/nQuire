@@ -212,7 +212,7 @@ $(function() {
           msg.value = value;
         }
         if (iframe && iframe.postMessage && this._iframeOrigin) {
-          iframe.postMessage(msg, this._iframeOrigin);
+          iframe.postMessage(JSON.stringify(msg), this._iframeOrigin);
         } else {
           console.log('ERROR: Messaging is not available');
         }
