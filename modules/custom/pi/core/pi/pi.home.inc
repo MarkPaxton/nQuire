@@ -55,7 +55,7 @@ function pi_home_view($type) {
                           'description' => nl2br(check_plain($node->body)),
                           'usercount' => count(nquire_group_get_member_uids($node->actor_gid, TRUE)),
                           'created' => $node->created,
-                          'rating' => 0,
+                          'rating' => pi_promote_inquiry_rating($inquiry_nid),
                       );
                     }, $inquiries_for_user));
 
@@ -75,7 +75,9 @@ function pi_home_view($type) {
           break;
         case 'rating':
           $sf = function($a, $b) {
-                    return ($a['rating'] - $b['rating']) * 10;
+                    return $a['rating'] === FALSE ?
+                            ($b['rating'] === FALSE ? 0 : -1) :
+                            ($b['rating'] === FALSE ? 1 : ($a['rating']['r'] - $b['rating']['r']) * 10);
                   };
           break;
         default:
@@ -112,14 +114,14 @@ function pi_home_view($type) {
         }
 
         $output .= implode(' | ', $order_links);
-        
+
         $max_per_page = 5;
         $page_links_distance = 4;
         $pages = ceil(count($inquiries_data) / $max_per_page);
         if ($pages > 1) {
           $last_page = $pages;
           $show_page = max(1, min($last_page, $page));
-          
+
           $from_page = max(1, $show_page - $page_links_distance);
           if ($from_page <= 3) {
             $from_page = 1;
@@ -132,12 +134,12 @@ function pi_home_view($type) {
           } else {
             $show_last_page = TRUE;
           }
-          
+
           $show_previous = $show_page > 1;
           $show_next = $show_page < $last_page;
-          
+
           $paginator = '';
-          
+
           if ($show_previous) {
             $paginator .= _pi_home_create_link('<', $active_list, $keyword, $sort, $desc, $show_page - 1) . '&nbsp;&nbsp;';
           } else {
@@ -157,14 +159,14 @@ function pi_home_view($type) {
             $paginator .= '&nbsp;...&nbsp;' . _pi_home_create_link($last_page, $active_list, $keyword, $sort, $desc, $last_page);
           }
           if ($show_next) {
-            $paginator .= '&nbsp;&nbsp;' . _pi_home_create_link('>', $active_list, $keyword, $sort, $desc, $show_page+1);
+            $paginator .= '&nbsp;&nbsp;' . _pi_home_create_link('>', $active_list, $keyword, $sort, $desc, $show_page + 1);
           } else {
             $paginator .= '&nbsp;&nbsp;<span style="color:gray">&gt;</span>';
           }
-          
-          
+
+
           $output .= '<p>' . $paginator . '</p>';
-          
+
           $from_inquiry = $max_per_page * ($show_page - 1);
           $to_inquiry = min($from_inquiry + $max_per_page, count($inquiries_data));
         } else {

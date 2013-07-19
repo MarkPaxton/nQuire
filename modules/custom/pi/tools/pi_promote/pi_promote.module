@@ -165,6 +165,12 @@ function _pi_promote_set_rating($inquiry_nid, $uid, $rating) {
   db_query($query, $inquiry_nid, $uid, $_rating, $_rating);
 }
 
+function pi_promote_inquiry_rating($inquiry_nid) {
+  $query = "SELECT AVG(rating) as r, COUNT(rating) as n FROM {pi_promote_ratings} WHERE inquiry_id=%d";
+  $row = db_fetch_array(db_query($query, $inquiry_nid));
+  return $row && $row['n'] ? $row : FALSE;
+}
+
 function _pi_promote_get_value($inquiry_nid) {
   $query = "SELECT status FROM {pi_promote} WHERE inquiry_id=%d LIMIT 1";
   $row = db_fetch_array(db_query($query, $inquiry_nid));
