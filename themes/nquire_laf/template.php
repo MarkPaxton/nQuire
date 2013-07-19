@@ -208,7 +208,12 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
   $inner_circle_diameter = 2 * $inner_circle_radius;
   $outer_circle_radius = $circle_radius + .5 * $circle_stroke;
 
+  $text_d = $inner_circle_diameter * $scale;
+  $text_r = $inner_circle_radius * $scale;
+
+
   $svg = "<svg width='$svg_width' height='$svg_height' viewBox='0 0 $net_width $net_height' xmlns='http://www.w3.org/2000/svg'>";
+  $text_container = "<div style='position: absolute;left: 0px; top: 0px'>";
 
   $i = 0;
   $a0 = PI / $phase_count;
@@ -249,26 +254,43 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
 
 
   foreach ($points as $i => $point) {
-    $tx = $point['x'] - $inner_circle_radius;
-    $ty = $point['y'] - $inner_circle_radius;
 
     $cs = _nquire_laf_color($point['phase_key']);
 
     if ($point['url']) {
       $svg .= "<a xlink:href='{$point['url']}'>";
     }
-    $svg .= "<circle id='circle_phase_{$point['phase_nid']}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>"
-            . "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
-            . "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_circle_diameter}px;height:{$inner_circle_diameter}px;line-height:{$inner_circle_diameter}px;text-align: center;'>"
-            . "<div class='nquire_diagram_text' style='color: black; font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.2em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
-            . $point['label']
-            . "</div>"
-            . "</div>"
-            . "</foreignObject>";
+    $svg .= "<circle id='circle_phase_{$point['phase_nid']}' r='$circle_radius' cy='{$point['y']}' cx='{$point['x']}' stroke-width='$circle_stroke' stroke='{$cs[0]}' fill='{$cs[1]}'/>";
 
     if ($point['url']) {
       $svg .= "</a>";
     }
+
+    $tx = ($point['x'] - $inner_circle_radius) * $scale;
+    $ty = ($point['y'] - $inner_circle_radius) * $scale;
+
+    if ($point['url']) {
+      $text_container .= "<a style='color:black;' href='{$point['url']}'>";
+    }
+    
+    $text_container .= "<div style='position: absolute;top:{$ty}px;left:{$tx}px;width:{$text_d}px;height:{$text_d}px;line-height:{$text_d}px;text-align: center;'>"
+            . "<div class='nquire_diagram_text' style='color: black; font-family: sans-serif; white-space: pre-wrap;max-height: {$text_d}px;font-size:1em;font-weight: bold;border-radius:{$text_r}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
+            . $point['label']
+            . "</div>"
+            . "</div>";
+
+    if ($point['url']) {
+      $text_container .= "</a>";
+    }
+
+
+    /*            . "<foreignObject x='$tx' y='$ty' width='$inner_circle_diameter' height='$inner_circle_diameter'>"
+      . "<div xmlns='http://www.w3.org/1999/xhtml' style='width:{$inner_circle_diameter}px;height:{$inner_circle_diameter}px;line-height:{$inner_circle_diameter}px;text-align: center;'>"
+      . "<div class='nquire_diagram_text' style='color: black; font-family: sans-serif; white-space: pre-wrap;max-height: {$inner_circle_diameter}px;font-size:1.2em;font-weight: bold;border-radius:{$inner_circle_radius}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
+      . $point['label']
+      . "</div>"
+      . "</div>"
+      . "</foreignObject>"; */
   }
 
   $arrow_length = 123.5;
@@ -302,8 +324,9 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
   }
 
   $svg .= '</svg>';
+  $text_container .= '</div>';
 
-  $output = '<div><div style="max-width: 900px; max-height:512px;">' . $svg . '</div></div>';
+  $output = '<div><div style="position:relative; max-width: 900px; max-height:512px;">' . $svg . $text_container . '</div></div>';
 
   return $output;
 }

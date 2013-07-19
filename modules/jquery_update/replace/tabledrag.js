@@ -87,10 +87,12 @@ Drupal.tableDrag = function(table, tableSettings) {
   // Hide columns containing affected form elements.
   this.hideColumns();
 
+  var touch = navigator.userAgent.match(/iPad/i) != null || navigator.userAgent.match(/Android/i) != null;
+
   // Add mouse bindings to the document. The self variable is passed along
   // as event handlers do not have direct access to the tableDrag object.
-  $(document).bind('mousemove', function(event) { return self.dragRow(event, self); });
-  $(document).bind('mouseup', function(event) { return self.dropRow(event, self); });
+  $(document).bind(touch ? 'touchmove' : 'mousemove', function(event) { return self.dragRow(event, self); });
+  $(document).bind(touch ? 'touchend' : 'mouseup', function(event) { return self.dropRow(event, self); });
 };
 
 /**
@@ -165,6 +167,7 @@ Drupal.tableDrag.prototype.rowSettings = function(group, row) {
  */
 Drupal.tableDrag.prototype.makeDraggable = function(item) {
   var self = this;
+  var touch = navigator.userAgent.match(/iPad/i) != null || navigator.userAgent.match(/Android/i) != null;
 
   // Create the handle.
   var handle = $('<a href="#" class="tabledrag-handle"><div class="handle">&nbsp;</div></a>').attr('title', Drupal.t('Drag to re-order'));
@@ -183,9 +186,9 @@ Drupal.tableDrag.prototype.makeDraggable = function(item) {
   }, function() {
     self.dragObject == null ? $(this).removeClass('tabledrag-handle-hover') : null;
   });
-
+  
   // Add the mousedown action for the handle.
-  handle.mousedown(function(event) {
+  handle.bind(touch ? 'touchstart' : 'mousedown', function(event) {
     // Create a new dragObject recording the event information.
     self.dragObject = new Object();
     self.dragObject.initMouseOffset = self.getMouseOffset(item, event);

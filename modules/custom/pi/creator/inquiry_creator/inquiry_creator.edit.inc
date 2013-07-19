@@ -140,9 +140,12 @@ function theme_inquiry_creator_inquiry_metadata($node, $editable = FALSE) {
   $content = nquire_commons_create_not_expanding_table_block(theme('table', NULL, $content_cells, array('id' => 'inquiry_creator_metadata_table')));
 
   if ($editable) {
+    $frontpage_label = $node->frontpage ? t('Edit front page') : t('Create front page');
     $content .= '<small>'
             . nquire_commons_form_submit_link(t('Edit'), "creator/{$node->nid}/edit")
-            . '&nbsp;&nbsp;&nbsp;'
+            . '&nbsp;&nbsp;&nbsp;&nbsp;'
+            . nquire_commons_form_submit_link($frontpage_label, "creator/{$node->nid}/frontpage")
+            . '&nbsp;&nbsp;&nbsp;&nbsp;'
             . nquire_commons_form_submit_link(t('Delete inquiry'), "creator/{$node->nid}/delete")
             . '</small>';
 
@@ -261,7 +264,7 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
 
   $new_ids = array('phase' => array(), 'activity' => array());
 
-  if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
+  if ($node && $node->type === 'pi_inquiry') {
     $current_phases = inquiry_creator_get_inquiry_structure($node->nid);
 
     $activity_phases = array();
@@ -353,7 +356,7 @@ function inquiry_creator_groups_form(&$form_state, $node) {
 function inquiry_creator_groups_form_submit($form, $form_state) {
   global $user;
   $node = node_load($form_state['values']['inquiry_design']);
-  if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
+  if ($node && $node->type === 'pi_inquiry') {
     $groups = nquire_commons_decode_data($form_state['values']['groups']);
     if (isset($groups[0]['values'])) {
       foreach ($groups[0]['values'] as $phase_nid => $collaboration) {
@@ -386,7 +389,7 @@ function inquiry_creator_roles_form(&$form_state, $node) {
 function inquiry_creator_roles_form_submit($form, $form_state) {
   global $user;
   $node = node_load($form_state['values']['inquiry_design']);
-  if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
+  if ($node && $node->type === 'pi_inquiry') {
     $old_roles = nquire_commons_decode_data($node->roles);
     $default_roles = array();
     foreach ($old_roles as $role) {
@@ -453,7 +456,7 @@ function inquiry_creator_defaultroles_form(&$form_state, $node) {
 function inquiry_creator_defaultroles_form_submit($form, $form_state) {
   global $user;
   $node = node_load($form_state['values']['inquiry_design']);
-  if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
+  if ($node && $node->type === 'pi_inquiry') {
     $roles = nquire_commons_decode_data($node->roles);
     foreach ($roles as &$role) {
       if (isset($form_state['values']['defaultroles'][$role['id']])) {
@@ -507,7 +510,7 @@ function inquiry_creator_stages_form(&$form_state, $node) {
 function inquiry_creator_stages_form_submit($form, $form_state) {
   global $user;
   $node = node_load($form_state['values']['inquiry_design']);
-  if ($node && $node->type === 'pi_inquiry' && $node->uid === $user->uid) {
+  if ($node && $node->type === 'pi_inquiry') {
     $inquiry_info = pi_info()->getInquiryInfo($node->nid);
     $current_stages = $inquiry_info->getStageNodes();
 

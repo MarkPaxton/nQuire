@@ -16,7 +16,7 @@ function pi_inquiry_menu_block($op = 'list') {
 
     case 'view':
       global $user;
-      if ($user->uid > 1 && arg(0) !== 'home') {
+      if (arg(0) !== 'home' && $user->uid !== 1) {
         if (arg(0) === 'inquiry' || arg(0) === 'phase' || arg(0) === 'activity') {
           $block = _pi_inquiry_block_inquiry($user->uid);
         } else if (arg(0) === 'creator') {
@@ -24,7 +24,6 @@ function pi_inquiry_menu_block($op = 'list') {
         } else {
           $block = _pi_inquiry_block_my_inquiries($user->uid);
         }
-
         return $block;
       }
 
@@ -37,14 +36,21 @@ function _pi_inquiry_block_my_inquiries($uid) {
   $inquiry_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_INQUIRY);
   $joined_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups['active']);
 
-  if (count($joined_inquiries) > 0) {
-    $list = array_map(function($nid) {
-              $node = node_load($nid);
-              return l(check_plain($node->title), "inquiry/$nid/structure");
-            }, $joined_inquiries);
-    $content = theme('item_list', $list);
+  if ($uid) {
+    if (count($joined_inquiries) > 0) {
+      $list = array_map(function($nid) {
+                $node = node_load($nid);
+                return l(check_plain($node->title), "inquiry/$nid/structure");
+              }, $joined_inquiries);
+      $content = theme('item_list', $list);
+    } else {
+      $content = t('You have not joined any inquiry yet.');
+    }
   } else {
-    $content = t('You have not joined any inquiry yet.');
+    $content = t('<a href="!login">Login</a> or <a href="!register">register</a> to work on your inquiries.', array(
+        '!login' => url('user'),
+        '!register' => url('user/register'),
+    ));
   }
 
   return array(
@@ -95,55 +101,66 @@ function _pi_inquiry_block_inquiry($uid) {
 }
 
 function _pi_inquiry_block_inquiry_join($inquiry_info, $uid, $status) {
+  if ($uid) {
 
-  $group_selective = pi_inquiry_groupings_get_group_selective_type($inquiry_info->getInquiryNode());
+    $group_selective = pi_inquiry_groupings_get_group_selective_type($inquiry_info->getInquiryNode());
 
-  $title = NULL;
-  $intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry_info->getInquiryNode());
-  $links = array();
-  if ($status === 'awaiting') {
-    if ($group_selective == OG_MODERATED) {
-      $title = t('Awaiting decision');
-      $intro .= ' ' . t('You have requested access to this inquiry.');
-      $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Cancel request'), $inquiry_info->getInquiryNid(), FALSE, 'leave');
+    $title = NULL;
+    $intro = theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry_info->getInquiryNode());
+    $links = array();
+    if ($status === 'awaiting') {
+      if ($group_selective == OG_MODERATED) {
+        $title = t('Awaiting decision');
+        $intro .= ' ' . t('You have requested access to this inquiry.');
+        $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Cancel request'), $inquiry_info->getInquiryNid(), FALSE, 'leave');
+      } else {
+        $title = t('Invitation to inquiry');
+        $intro .= ' ' . t('You have been invited to join this inquiry.');
+        $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Accept invitation'), $inquiry_info->getInquiryNid(), FALSE, 'acceptinvitation');
+        $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Decline invitation'), $inquiry_info->getInquiryNid(), FALSE, 'leave');
+      }
     } else {
-      $title = t('Invitation to inquiry');
-      $intro .= ' ' . t('You have been invited to join this inquiry.');
-      $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Accept invitation'), $inquiry_info->getInquiryNid(), FALSE, 'acceptinvitation');
-      $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Decline invitation'), $inquiry_info->getInquiryNid(), FALSE, 'leave');
+      $title = t('Join inquiry');
+      switch ($group_selective) {
+        case OG_OPEN:
+          $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Join inquiry'), $inquiry_info->getInquiryNid(), FALSE, 'join');
+          break;
+        case OG_MODERATED:
+          $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Request access'), $inquiry_info->getInquiryNid(), FALSE, 'join');
+          break;
+        default:
+          break;
+      }
     }
+
+    $content = $intro . '<p/>' . theme('item_list', $links);
   } else {
     $title = t('Join inquiry');
-    switch ($group_selective) {
-      case OG_OPEN:
-        $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Join inquiry'), $inquiry_info->getInquiryNid(), FALSE, 'join');
-        break;
-      case OG_MODERATED:
-        $links[] = pi_inquiry_manager_partipants_group_operation_link(t('Request access'), $inquiry_info->getInquiryNid(), FALSE, 'join');
-        break;
-      default:
-        break;
-    }
+    $content = t('<a href="!login">Login</a> or <a href="!register">register</a> to join this inquiry.', array(
+        '!login' => url('user'),
+        '!register' => url('user/register'),
+    ));
   }
 
   return array(
       'subject' => $title,
-      'content' => $intro . '<p/>' . theme('item_list', $links),
+      'content' => $content,
   );
 }
 
 function _pi_inquiry_block_inquiry_member($inquiry_info) {
   $sections = array();
-  $notAtHome = arg(1);
 
-  if ($notAtHome) {
-    $homeLinkSection = '<div>' . theme('item_list', array(l(t('Inquiry home'), 'inquiry/' . $inquiry_info->getInquiryNid()))) . '</div>';
-    $sections[] = $homeLinkSection;
+  if (!arg(2) || arg(2) === 'structure') {
+    $homeLinkSection = '<div>' . theme('item_list', array(l(t('Inquiry front page'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/home'))) . '</div>';
+  } else {
+    $homeLinkSection = '<div>' . theme('item_list', array(l(t('Inquiry structure'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure'))) . '</div>';
+  }
+  $sections[] = $homeLinkSection;
 
-    $navigationSection = _pi_inquiry_block_inquiry_member_navigation($inquiry_info);
-    if ($navigationSection) {
-      $sections[] = $navigationSection;
-    }
+  $navigationSection = _pi_inquiry_block_inquiry_member_navigation($inquiry_info);
+  if ($navigationSection) {
+    $sections[] = $navigationSection;
   }
 
   $managementSection = _pi_inquiry_block_inquiry_member_management($inquiry_info);

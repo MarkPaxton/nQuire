@@ -27,7 +27,7 @@ function pi_inquiry_groupings_check_is_admin($uid, $inquiry_node, $group_nid = F
   } else {
     return nquire_group_user_is_admin($inquiry_node->actor_gid, $uid);
   }
-  
+
   return FALSE;
 }
 
@@ -120,7 +120,7 @@ function pi_inquiry_groupings_get_groups_for_user($uid, $group_type, $require_ac
           . "LEFT JOIN {nquire_group} ON {node}.vid={nquire_group}.vid "
           . "LEFT JOIN {nquire_group_participant} ON {nquire_group_participant}.nid={nquire_group}.nid "
           . "WHERE {nquire_group}.group_type=%d AND {nquire_group_participant}.uid=%d";
-  
+
   if ($require_active) {
     $groups_query .= " AND {nquire_group_participant}.active=1";
     if ($require_admin) {
@@ -128,14 +128,11 @@ function pi_inquiry_groupings_get_groups_for_user($uid, $group_type, $require_ac
     }
   }
 
-  $user_groups = array(
-      'active' => array(),
-      'inactive' => array(),
-  );
+  $user_groups = array();
 
   $result = db_query($groups_query, $group_type, $uid);
   while ($row = db_fetch_array($result)) {
-    $user_groups[$row['active'] ? 'active' : 'inactive'][] = $row['nid'];
+    $user_groups[] = $row['nid'];
   }
 
   return $user_groups;
@@ -163,30 +160,28 @@ function pi_inquiry_groupings_get_inquiries_for_anyone() {
   return $inquiry_nids;
 }
 
-function pi_inquiry_groupings_get_inquiries_for_user($uid) {
+function pi_inquiry_groupings_get_inquiries_for_user($uid, $active) {
   $inquiry_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_INQUIRY);
-  $joined_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups['active']);
-  $awaiting_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups['inactive']);
 
-  $user_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_NORMAL);
-  $available_inquiries = array_merge(pi_inquiry_groupings_get_inquiries_for_groups($user_groups['active']), pi_inquiry_groupings_get_inquiries_for_anyone());
+  if ($active) {
+    $active_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups);
+    return $active_inquiries;
+  } else {
+    $joined_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups);
+    $user_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_NORMAL);
+    $available_inquiries = array_merge(pi_inquiry_groupings_get_inquiries_for_groups($user_groups), pi_inquiry_groupings_get_inquiries_for_anyone());
+    $filtered_available_inquiries = array_filter($available_inquiries, function($nid) use($joined_inquiries) {
+              if (in_array($nid, $joined_inquiries)) {
+                return FALSE;
+              }
+              $node = node_load($nid);
+              $selective = pi_inquiry_groupings_get_group_selective_type($node);
+              return $selective == OG_OPEN || $selective == OG_MODERATED;
+            });
 
-  $filtered_available_inquiries = array_filter($available_inquiries, function($nid) use($joined_inquiries, $awaiting_inquiries) {
-            if (in_array($nid, $joined_inquiries) || in_array($nid, $awaiting_inquiries)) {
-              return FALSE;
-            }
-            $node = node_load($nid);
-            $selective = pi_inquiry_groupings_get_group_selective_type($node);
-            return $selective == OG_OPEN || $selective == OG_MODERATED;
-          });
+    return $filtered_available_inquiries;
+  }
 
-  $output = array(
-      'joined' => $joined_inquiries,
-      'awaiting' => $awaiting_inquiries,
-      'available' => $filtered_available_inquiries,
-  );
-
-  return $output;
 }
 
 function pi_inquiry_groupings_get_inquiry_roles($inquiry_node) {

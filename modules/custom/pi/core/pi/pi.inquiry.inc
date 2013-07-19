@@ -3,36 +3,71 @@
 /** @file This file contains all the functions that display the inquiry level view.
  * This is the page where the phases will be listed, e.g. with the octagon layout 
  */
-function pi_inquiry_structure_view($node) {
-  global $user;
+function pi_inquiry_home_view($node) {
 
-  $inquiry_info = pi_info()->getCurrentInquiryInfo();
-  $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+  $view = pi_inquiry_determine_home_view($node);
+  if ($view === 'structure') {
+    return pi_inquiry_structure_view($node);
+  } else if ($view === 'presentation') {
+    return pi_inquiry_presentation_view($node);
+  }
+}
+
+function pi_inquiry_determine_home_view($node) {
+  $inquiry_info = pi_info()->getInquiryInfo($node->nid);
+  if ($inquiry_info) {
+    global $user;
+    $status = nquire_group_get_user_status_in_group($node->actor_gid, $user->uid);
+    $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+
+    if ($status === 'member' && arg(2) !== 'home' && $access_data->hasInquiryAccess()) {
+      return 'structure';
+    } else {
+      return 'presentation';
+    }
+  }
+  return FALSE;
+}
+
+function pi_inquiry_structure_view($node) {
+  $inquiry_info = pi_info()->getInquiryInfo($node->nid);
+
 
   $output = '';
 
-  $title = check_plain($inquiry_info->getInquiryNode()->title);
-  $description = nl2br(check_plain($inquiry_info->getInquiryNode()->body));
+  $title = check_plain($node->title);
+
+
+  $phases = $inquiry_info->getPhases();
+  if (count($phases) > 0) {
+    $phase_nodes = $inquiry_info->getPhases();
+    $phase_node = array_shift($phase_nodes);
+    $description = '<p>' . t('To view any phase of this inquiry, click on its circle. You can start at <b>@phase</b>.', array(
+                '@phase' => $phase_node->title,
+            ))
+            . '</p>';
+  } else {
+    $description = '<p>' . t('This inquiry has not phases or activities yet.') . '</p>';
+  }
 
   $output .= nquire_commons_create_page_section($description, $title);
-
-  if ($access_data->hasInquiryAccess()) {
-    $phases = $inquiry_info->getPhases();
-    if (count($phases) > 0) {
-      $phase_nodes = $inquiry_info->getPhases();
-      $phase_node = array_shift($phase_nodes);
-      $output .= '<p>' . t('To view any phase of this inquiry, click on its circle. You can start at <b>@phase</b>.', array(
-                  '@phase' => $phase_node->title,
-              ))
-              . '</p>';
-    } else {
-      $output .= '<p>' . t('This inquiry has not phases or activities yet.') . '</p>';
-    }
-  }
 
   $output .= theme('pi_inquiry_structure', $node);
 
   return $output;
+}
+
+function pi_inquiry_presentation_view($node) {
+  if ($node->frontpage) {
+    return $node->frontpage;
+  } else {
+    $output = '';
+    $title = check_plain($node->title);
+    $description = nl2br(check_plain($node->body));
+
+    $output .= nquire_commons_create_page_section($description, $title);
+    return $output;
+  }
 }
 
 function theme_pi_inquiry_structure($node) {
