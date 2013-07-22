@@ -437,7 +437,6 @@ jQuery.ui || (function($) {
         this._mouseStarted = (this._mouseStart(event) !== false);
         if (!this._mouseStarted) {
           event.preventDefault();
-          alert(3);
           return true;
         }
       }
@@ -449,7 +448,7 @@ jQuery.ui || (function($) {
       this._mouseUpDelegate = function(event) {
         return self._mouseUp(event);
       };
-      
+
       $(document)
               .bind((touch ? 'touchmove' : 'mousemove') + '.' + this.widgetName, this._mouseMoveDelegate)
               .bind((touch ? 'touchend' : 'mouseup') + '.' + this.widgetName, this._mouseUpDelegate);
@@ -482,9 +481,11 @@ jQuery.ui || (function($) {
       return !this._mouseStarted;
     },
     _mouseUp: function(event) {
+      var touch = navigator.userAgent.match(/iPad/i) != null || navigator.userAgent.match(/Android/i) != null;
+
       $(document)
-              .unbind('mousemove.' + this.widgetName, this._mouseMoveDelegate)
-              .unbind('mouseup.' + this.widgetName, this._mouseUpDelegate);
+              .unbind((touch ? 'touchmove' : 'mousemove') + '.' + this.widgetName, this._mouseMoveDelegate)
+              .unbind((touch ? 'touchend' : 'mouseup') + '.' + this.widgetName, this._mouseUpDelegate);
 
       if (this._mouseStarted) {
         this._mouseStarted = false;

@@ -120,6 +120,11 @@
   <?php print $scripts; ?>
 </head>
 <body class="<?php print $classes; ?>">
+  <?php if ($top_menu): ?>
+  <div id="top-menu">
+    <?php print $top_menu; ?>
+  </div>
+  <?php endif; ?>
 
   <?php if ($primary_links): ?>
     <div id="skip-link"><a href="#main-menu"><?php print t('Jump to Navigation'); ?></a></div>

@@ -4,8 +4,7 @@
 
 define('NQUIRE_VERSION', 'BETA3 2013-05-02');
 
-function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
-  global $user;
+function pi_header_block($op = 'list') {
   switch ($op) {
     case 'list':
       $blocks = array();
@@ -18,82 +17,34 @@ function pi_header_block($op = 'list', $delta = 0, $edit = array()) {
       drupal_add_css($module_path . '/pi_header.css');
 
 
-      $details = get_inquiry_details_from_current_path();
-      $inquiry = node_load($details->inquiry_id);
-
-
-      $output = '<div class="nquire_header">';
-
-      $output .= "<div>" . l('<img src="' . $image_path . 'logo.png" height="50px" >', '/', array('html' => TRUE)) . "</div>";
-
-      if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
-        $output .= '<div>'
-                . l('<img src="' . $image_path . 'nQuire_diagram_icon.png" height="50px">', "inquiry/{$inquiry->nid}", array('html' => TRUE))
-                . '</div>';
-        $output .= "<div>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
-      }
-
-      $output .= '</div>';
-
-
-      if ($user->uid) {
-        $output .= '<div class="nquire_username_block">'
-                . '<div class="nquire_username_username">' . l(check_plain($user->name), 'user/' . $user->uid) . "</div>"
-                . '<div class="nquire_username_logout">' . l(t('logout'), "logout", array('attributes' => array('class' => 'nquire_username_action'))) . "</div>"
-                . "</div>";
-      } else {
-        $output .= '<div class="nquire_username_block">'
-                . _pi_header_get_login_form()
-                . "</div>";
-      }
-
       if (arg(0) === 'home') {
-        $output .= '<div>'
-                . '<div style="text-align: center;margin: 1em 1em 0 0; display:inline-block; width: 300px; height: 200px; background: #ddd"><div style="vertical-align: middle;">a cool picture could go here</div></div>'
-                . '<div style="text-align: center;margin: 1em 1em 0 0; display:inline-block; width: 300px; height: 200px; background: #ddd"><div style="vertical-align: middle;">another nice pic?</div></div>'
+        $output = '<div style="height:281px;width:100%;text-align:center;">'
+                . '<div style="height:281px;width:960px;display:inline-block;text-align:left;padding-left:25px;">'
+                . '<img width="924" src="' . $image_path . 'home_' . rand(1, 4) . '.png' . '"></img>'
+                . '</div>'
                 . '</div>';
+      } else {
+
+        $details = get_inquiry_details_from_current_path();
+        $inquiry = node_load($details->inquiry_id);
+
+
+        $output = '<div class="nquire_header">';
+
+        $output .= "<div>" . l('<img src="' . $image_path . 'logo.png" height="50px" >', '/', array('html' => TRUE)) . "</div>";
+
+        if (arg(0) == 'inquiry' || arg(0) == 'phase' || arg(0) == 'activity') {
+          $output .= '<div>'
+                  . l('<img src="' . $image_path . 'nQuire_diagram_icon.png" height="50px">', "inquiry/{$inquiry->nid}", array('html' => TRUE))
+                  . '</div>';
+          $output .= "<div>" . l(check_plain($inquiry->title), "inquiry/{$inquiry->nid}") . '</div>';
+        }
+
+        $output .= '</div>';
       }
+
 
       $block['content'] = $output;
       return $block;
   }
-}
-
-function pi_header_theme() {
-  return array(
-      'pi_header_user_form' => array(
-          'arguments' => array('form' => NULL),
-      ),
-  );
-}
-
-function _pi_header_get_login_form() {
-  $attr = array('attributes' => array('class' => 'nquire_username_action'));
-
-  return '<div style="color: white">'
-          . l(t('login'), 'user', $attr)
-          . ' | '
-          . l(t('create new account'), 'user/register', $attr)
-          . '</div>';
-}
-
-function pi_header_form_user_login_alter(&$form) {
-  $form['name']['#size'] = $form['pass']['#size'] = 15;
-  return;
-}
-
-function theme_pi_header_user_form($form) {
-  $form['name']['#description'] = '';
-  $form['pass']['#description'] = '';
-  $form['name']['#size'] = $form['pass']['#size'] = 12;
-
-
-  $output = '<div style="color:white; padding: 0px !important;">'
-          . '<div style="display: inline-block;">' . drupal_render($form['name']) . '</div>'
-          . '<div style="display: inline-block;">' . drupal_render($form['pass']) . '</div>'
-          . drupal_render($form)
-          . '</div>';
-
-
-  return $output;
 }

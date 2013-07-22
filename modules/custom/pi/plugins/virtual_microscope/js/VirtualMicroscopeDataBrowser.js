@@ -11,32 +11,32 @@ $(function() {
     this._styles = {
       'normal': {
         label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'normal', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'normal', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       },
       'hover': {
         label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       },
       'selected': {
         label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#373', strokeWidth: 3, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
       },
       'selected_active': {
         label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#373', strokeWidth: 3, strokeOpacity: .2, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
       },
       'other': {
         label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'normal', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'normal', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 0, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       },
       'other_hover': {
         label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
-        text: {fontWeight: 'bold', fontSize: 12, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
+        text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
         shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
       }
     };
@@ -81,8 +81,7 @@ $(function() {
       position: 'front'
     };
 
-    var labelSize = 24;
-
+    var labelSize = 32;
 
     if (bbox) {
       var scale = this._whiteboard.getScaleAtZoom(position.zoom);

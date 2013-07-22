@@ -32,25 +32,18 @@ function pi_inquiry_determine_home_view($node) {
 function pi_inquiry_structure_view($node) {
   $inquiry_info = pi_info()->getInquiryInfo($node->nid);
 
-
   $output = '';
-
-  $title = check_plain($node->title);
-
 
   $phases = $inquiry_info->getPhases();
   if (count($phases) > 0) {
     $phase_nodes = $inquiry_info->getPhases();
     $phase_node = array_shift($phase_nodes);
-    $description = '<p>' . t('To view any phase of this inquiry, click on its circle. You can start at <b>@phase</b>.', array(
+    $output .= '<p>' . t('To view any phase of this inquiry, click on its circle. You can start at <b>@phase</b>.', array(
                 '@phase' => $phase_node->title,
-            ))
-            . '</p>';
+            )) . '</p>';
   } else {
-    $description = '<p>' . t('This inquiry has not phases or activities yet.') . '</p>';
+    $output .= '<p>' . t('This inquiry has not phases or activities yet.') . '</p>';
   }
-
-  $output .= nquire_commons_create_page_section($description, $title);
 
   $output .= theme('pi_inquiry_structure', $node);
 
@@ -319,4 +312,19 @@ function display_phases_activity_box($activity_count, $new_activity_count) {
   return $output;
 }
 
-?>
+
+function pi_inquiry_home_get_started($inquiry) {
+  if ($inquiry->type === 'pi_inquiry') {
+    global $user;
+    if ($user->uid) {
+      $status = nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid);
+      if ($status === 'none') {
+        drupal_goto('inquiry/' . $inquiry->nid . '/participants/join');
+      } else {
+        drupal_goto('inquiry/' . $inquiry->nid);
+      }
+    } else {
+      drupal_goto('user');
+    } 
+  }
+}
