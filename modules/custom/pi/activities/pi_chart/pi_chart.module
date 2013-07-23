@@ -64,7 +64,7 @@ function pi_chart_create_png($activity_node, $chart_node) {
     $headers[] = pi_data_tools_measure_plugin_submeasure_get_title_for_chart($submeasure_key);
   }
 
-  $data_nids = pi_sort_data_get_all_data_for_use_in_activity_nid($activity_node->nid, $user->uid, $chart_node->data_activity_nid);
+  $data_nids = pi_sort_data_get_all_data_for_use_in_activity_nid($activity_node->nid, $chart_node->uid, $chart_node->data_activity_nid);
 
   $data = array_map(function($nid) {
             return node_load($nid);
@@ -127,7 +127,7 @@ function pi_chart_create_png($activity_node, $chart_node) {
 
     for ($i = 0; $i < 2; $i++) {
       if (pi_data_tools_measure_plugin_submeasure_is_numeric($measures[$i])) {
-        $min = 0.0;
+        $min = INF;
         $max = 0.0;
         foreach ($rows as $row) {
           if (strlen($row[$i]) > 0) {
@@ -139,7 +139,7 @@ function pi_chart_create_png($activity_node, $chart_node) {
         $max_abs_value = max(abs($max), abs($min));
         if ($max_abs_value > 0) {
           $log = log10($max_abs_value);
-          $f10 = pow(10, ceil($log));
+          $f10 = pow(10, ceil($log) - 2);
           $min = floor($min / $f10) * $f10;
           $max = ceil($max / $f10) * $f10;
         }

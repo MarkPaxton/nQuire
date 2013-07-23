@@ -174,14 +174,30 @@ function pi_home_view($type) {
           $to_inquiry = count($inquiries_data);
         }
 
-        $header = array(t('Inquiry'), $active_list ? t('Status') : t('Join'));
-
-        $rows = array();
         for ($i = $from_inquiry; $i < $to_inquiry; $i++) {
-          $rows[] = _pi_home_inquiry_presentation_in_list($inquiries_data[$i], $active_uid);
-        }
+          $inquiry_data = $inquiries_data[$i];
+          $content = '';
 
-        $output .= nquire_commons_create_not_expanding_table_block(theme('table', $header, $rows));
+          if ($inquiry_data['node']->image) {
+            $image = file_create_url($inquiry_data['node']->image);
+            $content .= '<img src="' . $image . '" style="float:right;border: 1px solid gray;background: white;margin: 0 0 10px 10px;" height="75px" />';
+          }
+
+          $content .= '<p>' . l($inquiry_data['title'], "inquiry/{$inquiry_data['nid']}", array('attributes' => array('style' => 'font-size: 1.5em;font-weight: bold;'))) . '</p>'
+                  . '<p><b>' . $inquiry_data['description'] . '</b></p>'
+                  . '<small>' . t('Created by !user. ', array('!user' => l(nquire_commons_user_name_or_me($inquiry_data['uid']), 'user/' . $inquiry_data['uid'], array('html' => TRUE)))) . '<br/>'
+                  . t('Number of participants: !n', array('!n' => $inquiry_data['usercount'])) . '</small>';
+
+          if ($user->uid) {
+            $user_status = nquire_group_get_user_status_in_group($inquiry_data['node']->actor_gid, $user->uid);
+            if ($user_status !== 'member') {
+              $content .= theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_data['node'], $user->uid);
+            }
+          }
+
+
+          $output .= '<div style="padding:10px;border: 1px solid gray;margin-bottom: 10px;background: #eee;">' . $content . '</div>';
+        }
       }
     }
   }
@@ -218,6 +234,6 @@ function _pi_home_inquiry_presentation_in_list($inquiry_data, $uid) {
   if ($uid) {
     return array($output, theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_data['node'], $uid));
   } else {
-    return array($output);
+    return array($output, FALSE);
   }
 }

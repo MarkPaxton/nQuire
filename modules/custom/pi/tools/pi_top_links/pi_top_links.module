@@ -15,9 +15,9 @@ function pi_top_links_block($op = 'list') {
 
     case 'view':
       drupal_add_css(drupal_get_path('module', 'pi_top_links') . '/css/pi_top_links.css');
-      
+
       $links = _pi_top_links_format_menu() . _pi_top_links_format_user_block();
-      
+
       if (arg(0) === 'home') {
         $content = '<div class="pi-top-links-fixed-container"><div class="pi-top-links-fixed-container-inner">' . $links . '</div></div>';
       } else {
@@ -43,7 +43,7 @@ function _pi_top_links_format_menu() {
       ),
       'journal' => array(
           'checkaccess' => FALSE,
-          'title' => t('Inquiry journal'),
+          'title' => t('Inquiry results'),
       ),
       'forum' => array(
           'checkaccess' => FALSE,
@@ -55,15 +55,18 @@ function _pi_top_links_format_menu() {
           'title' => t('Inquiry creator'),
       ),
   );
-  
-  
-  foreach(forum_get_forums() as $tid => $forum) {
+
+
+  foreach (forum_get_forums() as $tid => $forum) {
     $paths['forum']['children']['forum/' . $tid] = check_plain($forum->name);
   }
 
   $items = array();
   foreach ($paths as $path => $data) {
-    $items[] = _pi_top_links_format_menu_item($path, $data);
+    $item = _pi_top_links_format_menu_item($path, $data);
+    if ($item) {
+      $items[] = $item;
+    }
   }
 
   $output = implode('<div class="pi-top-links-separator"></div>', $items);
@@ -73,7 +76,10 @@ function _pi_top_links_format_menu() {
 
 function _pi_top_links_format_menu_item($path, $data) {
   if ($data['checkaccess']) {
-    
+    $item = menu_get_item($path);
+    if (!$item || !$item['access']) {
+      return FALSE;
+    }
   }
 
   $label = $data['title'];

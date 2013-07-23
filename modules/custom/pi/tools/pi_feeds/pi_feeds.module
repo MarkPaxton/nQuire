@@ -154,14 +154,18 @@ function _pi_feeds_format_topic($type, $context, $topic) {
 
   if ($type === 'journalcontribution') {
     $contribution = node_load($row['topic']);
-    $contribution_title = l(check_plain($contribution->title), 'journal/contribution/' . $contribution->nid);
-    $text = _pi_feeds_contribution_event_text($contribution_title, $row['event'], $row['object_type']);
-    $n = comment_num_new($contribution->nid);
-    if ($n > 0) {
-      $text .= '<br/><small>' . ($n == 1 ? t('(One new comment)') : t('(!n new comments)', array('!n' => $n))) . '</small>';
+    if ($contribution->shared) {
+      $contribution_title = l($contribution->title ? check_plain($contribution->title) : t('Investigation results'), 'journal/contribution/' . $contribution->nid);
+      $text = _pi_feeds_contribution_event_text($contribution_title, $row['event'], $row['object_type']);
+      $n = comment_num_new($contribution->nid);
+      if ($n > 0) {
+        $text .= '<br/><small>' . ($n == 1 ? t('(One new comment)') : t('(!n new comments)', array('!n' => $n))) . '</small>';
+      }
+      $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
+      return $text;
+    } else {
+      return FALSE;
     }
-    $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
-    return $text;
   } else if ($type === 'forum') {
     $forum = node_load($row['topic']);
     $forum_title = l(check_plain($forum->title), 'node/' . $forum->nid);

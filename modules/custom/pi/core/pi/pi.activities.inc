@@ -83,7 +83,7 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
     }
 
 
-    $activities = $mode === $separate_page ? array($activity_node->nid => $activity_node) : $inquiry_info->getActivitiesForPhase($phase_node->nid);
+    $activities = $separate_page ? array($activity_node->nid => $activity_node) : $inquiry_info->getActivitiesForPhase($phase_node->nid);
 
     foreach ($activities as $a_nid => $a_node) {
       $active_activity = $a_nid == $node->nid;
