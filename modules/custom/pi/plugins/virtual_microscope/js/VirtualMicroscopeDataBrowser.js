@@ -10,34 +10,34 @@ $(function() {
 
     this._styles = {
       'normal': {
-        label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
+        label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1},
         text: {fontWeight: 'normal', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
-        shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
+        shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2}
       },
       'hover': {
-        label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
+        label: {fill: 'orange', stroke: '#dd6000', strokeWidth: 1},
         text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
-        shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
+        shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2}
       },
       'selected': {
-        label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3, 'vector-effect': 'non-scaling-stroke'},
+        label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3},
         text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
-        shadow: {stroke: '#373', strokeWidth: 3, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
+        shadow: {stroke: '#373', strokeWidth: 3, fill: 'none'}
       },
       'selected_active': {
-        label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3, 'vector-effect': 'non-scaling-stroke'},
+        label: {fill: 'yellow', stroke: 'orange', strokeWidth: 3},
         text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
-        shadow: {stroke: '#373', strokeWidth: 3, strokeOpacity: .2, fill: 'none', 'vector-effect': 'non-scaling-stroke'}
+        shadow: {stroke: '#373', strokeWidth: 3, strokeOpacity: .2, fill: 'none'}
       },
       'other': {
-        label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
+        label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1},
         text: {fontWeight: 'normal', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
-        shadow: {stroke: '#333', strokeWidth: 0, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
+        shadow: {stroke: '#333', strokeWidth: 0, fill: 'gray', 'fill-opacity': .2}
       },
       'other_hover': {
-        label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1, 'vector-effect': 'non-scaling-stroke'},
+        label: {fill: 'orange', stroke: 'darkorange', strokeWidth: 1},
         text: {fontWeight: 'bold', fontSize: 14, fill: 'black', 'text-anchor': 'middle', style: 'pointer-events: none;'},
-        shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2, 'vector-effect': 'non-scaling-stroke'}
+        shadow: {stroke: '#333', strokeWidth: 1, fill: 'gray', 'fill-opacity': .2}
       }
     };
   };
@@ -78,7 +78,11 @@ $(function() {
     var shape = {
       pos: null,
       shapes: [],
-      position: 'front'
+      position: 'front',
+      scaleFunction: function(group, scale, zoom) {
+        var g = $(group);
+        g.find('[sid="shadow"]').attr('stroke-width', settings.shadow.strokeWidth * scale);
+      }
     };
 
     var labelSize = 32;
@@ -86,7 +90,6 @@ $(function() {
     if (bbox) {
       var scale = this._whiteboard.getScaleAtZoom(position.zoom);
       var labelVmHeight = labelSize * scale;
-      var labelVmWidth = labelSize * this._whiteboard.getScaleAtZoom(0);
       var gap = 10 * scale;
 
       bbox.x0 -= gap;
@@ -101,6 +104,7 @@ $(function() {
       var points = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
       shape.shapes.push({
         type: 'polygon',
+        sid: 'shadow',
         points: points,
         settings: settings.shadow
       });

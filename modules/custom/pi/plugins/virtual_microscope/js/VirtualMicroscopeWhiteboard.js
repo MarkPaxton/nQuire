@@ -57,24 +57,31 @@ $(function() {
           break;
       }
 
-      if (obj && shape.callbacks) {
+      if (obj) {
         var element = $(obj);
-        element.attr('id', name + '_' + index);
-        element.addClass('whiteboard-active-element');
-
-        if (shape.callbacks.hover) {
-          element.customMouseInput('hover', function(inside) {
-            shape.callbacks.hover(name, inside);
-          });
+        if (shape.sid) {
+          element.attr('sid', shape.sid);
         }
+        
+        if (shape.callbacks) {
+          element.attr('id', name + '_' + index);
+          element.addClass('whiteboard-active-element');
 
-        if (shape.callbacks.click) {
-          element.addClass('whiteboard-active-element-pointer');
-          element.customMouseInput('click', function() {
-            shape.callbacks.click(name);
-          });
+          if (shape.callbacks.hover) {
+            element.customMouseInput('hover', function(inside) {
+              shape.callbacks.hover(name, inside);
+            });
+          }
+
+          if (shape.callbacks.click) {
+            element.addClass('whiteboard-active-element-pointer');
+            element.customMouseInput('click', function() {
+              shape.callbacks.click(name);
+            });
+          }
         }
       }
+
 
       return obj;
     },
@@ -106,7 +113,7 @@ $(function() {
         this._shapes[name] = hasNoScaleShapes ?
                 {group: group, dontScale: true, object: inverseScaleElement} :
                 {group: group, dontScale: false};
-        
+
         if (paint.scaleFunction) {
           this._shapes[name].scaleFunction = paint.scaleFunction;
         }
