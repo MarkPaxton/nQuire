@@ -9,34 +9,89 @@ $(function() {
     this._element = $(element);
     this._tableBodyElement = this._element.find('table.food_table > tbody');
     this._addButton = this._element.find('a.add_food');
+
     this._addButton.nQuireDynamicMeasureLink({
       callback: function() {
-
         self._addButton.nQuireTooltip({
           creationCallback: function(content) {
-            var c1 = $('<div style="display:inline-block;width: 250px;">').appendTo(content);
-            var c2 = $('<div style="display:inline-block;width: 250px;">').appendTo(content);
-            var l1 = $('<ul>').appendTo(c1);
-            var l2 = $('<ul>').appendTo(c2);
+            var t = $('<p>').appendTo(content).html('Search food by letter:<br/>');
+            var c = $('<div>').appendTo(content);
 
-            for (var key in data.foods) {
-              var link = $('<a>').attr('href', '#').attr('food', key).html(data.foods[key].title);
-              link.click(function() {
-                self._addFood($(this).attr('food'));
-                self._addButton.nQuireTooltip('close');
+            var str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            for (var i = 0; i < str.length; i++) {
+              var char = str.charAt(i);
+              $('<a>').attr('href', false).css('padding', '0px 5px').attr('letter', char).html(char).appendTo(t).click(function() {
+                self._selectFoodLetterPage($(this).attr('letter'), 0, c);
               });
-              $('<li>').appendTo(key % 2 ? l1 : l2).append(link);
             }
 
-            $('<a>').attr('href', '#').html('Cancel').click(function() {
+            $('<a>').attr('href', false).html('Cancel').click(function() {
               self._addButton.nQuireTooltip('close');
             }).appendTo($('<p>').appendTo(content));
+
+            self._selectFoodLetterPage('A', 0, c);
           }
         });
       },
       disabled: false
     });
     this._value = null;
+  };
+  NutritionalInformationMeasureManager.prototype._selectFoodLetterPage = function(letter, page, container) {
+    var self = this;
+
+    container.html('');
+
+    var sc = 0;
+
+    var filtered = [];
+    for (var key in this._data.foods) {
+      if (this._data.foods[key].title.charAt(0) === letter) {
+        filtered.push(key);
+      }
+    }
+
+    var max = 20;
+    var pages = Math.ceil(filtered.length / max);
+
+    if (pages > 1) {
+      var showpage = Math.max(0, Math.min(pages - 1, page));
+      var from = max * showpage;
+      var to = Math.min(filtered.length, from + max);
+
+      var ps = $('<p>').appendTo(container).html('Browser foods starting with <i>' + letter + '</i>:<br/>');
+      for (var i = 0; i < pages; i++) {
+        var style = {padding: '0px 5px'};
+        if (i == showpage) {
+          style['color'] = 'black';
+        }
+        $('<a>').attr('href', false).attr('page', i).css(style).appendTo(ps).click(function() {
+          self._selectFoodLetterPage(letter, $(this).attr('page'), container);
+        }).html(i + 1);
+      }
+
+    } else {
+      var from = 0;
+      var to = filtered.length;
+    }
+
+    var c1 = $('<div style="display:inline-block;width: 300px;">').appendTo(container);
+    var c2 = $('<div style="display:inline-block;width: 300px;">').appendTo(container);
+    var ls = [$('<ul>').appendTo(c1), $('<ul>').appendTo(c2)];
+
+
+    for (var i = from; i < to; i++) {
+      var key = filtered[i];
+      var link = $('<a>').attr('href', false).attr('food', key).html(this._data.foods[key].title);
+      link.click(function() {
+        self._addFood($(this).attr('food'));
+        self._addButton.nQuireTooltip('close');
+      });
+      $('<li>').appendTo(ls[sc % ls.length]).append(link);
+      sc++;
+    }
+
+    this._addButton.nQuireTooltip('reposition');
   };
   NutritionalInformationMeasureManager.prototype.setServiceDelegate = function(delegate) {
     this._serviceDelegate = delegate;
@@ -130,7 +185,7 @@ $(function() {
               } else {
                 total[i] = compAmount;
               }
-              
+
               compAmount += ' ' + this._data.units[i];
 
               if (count !== 1) {
@@ -147,7 +202,7 @@ $(function() {
       tr.append($('<td>').html('Total'));
       for (var i in this._data.components) {
         var td = $('<td>').appendTo(tr);
-        td.html(total[i] + ' ' + this._data.units[i]);
+        td.html(Math.round(100*total[i])*.01 + ' ' + this._data.units[i]);
       }
     }
   };

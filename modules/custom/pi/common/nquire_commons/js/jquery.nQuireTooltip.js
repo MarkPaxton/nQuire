@@ -40,6 +40,9 @@
       }
       return tooltip;
     },
+    reposition: function() {
+      this.nQuireTooltip('_position', $('#nquire-tooltip'));
+    },
     _position: function(tooltip) {
       var pos = this.offset();
       var params = [['top', 'height', true, true], ['left', 'width', false, false]];
