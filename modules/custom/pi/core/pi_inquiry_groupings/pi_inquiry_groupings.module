@@ -181,7 +181,6 @@ function pi_inquiry_groupings_get_inquiries_for_user($uid, $active) {
 
     return $filtered_available_inquiries;
   }
-
 }
 
 function pi_inquiry_groupings_get_inquiry_roles($inquiry_node) {
@@ -293,6 +292,13 @@ function pi_inquiry_groupings_create_inquiry_subgroup($inquiry_nid, $owner, $tit
 }
 
 function pi_inquiry_groupings_add_user_to_group($group_check, $uid, $active) {
+  if ($group_check['type'] === 'group') {
+    $gids = pi_inquiry_groupings_get_user_anystate_subgroups($group_check['inquiry_node'], $uid);
+    foreach ($gids as $gid) {
+      nquire_group_delete_user_from_group($gid, $uid);
+    }
+  }
+
   nquire_group_add_user_to_group($group_check['gid'], $uid, $active);
 
   if ($active && $group_check['type'] === 'inquiry') {
@@ -313,8 +319,6 @@ function pi_inquiry_groupings_add_user_to_group($group_check, $uid, $active) {
 }
 
 function pi_inquiry_groupings_remove_user_from_group($group_check, $uid) {
-  $goto = FALSE;
-
   if ($group_check['type'] === 'inquiry') {
     $gids = pi_inquiry_groupings_get_user_anystate_subgroups($group_check['inquiry_node'], $uid);
     global $user;

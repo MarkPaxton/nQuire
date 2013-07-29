@@ -781,6 +781,17 @@ function pi_inquiry_manager_participants_group_join($inquiry_nid, $group_nid = F
         $label = t('Join');
         drupal_set_title(t('Do you want to join @group?', $group_param));
       }
+      
+      if ($group_nid) {
+        $user_gid = pi_inquiry_groupings_get_user_subgroup($inquiry, $user->uid);
+        if ($user_gid) {
+          $user_group = node_load($user_gid);
+          $output .= '<p>' . t('You are a member of group <i>@g</i>. ', array('@g' => $user_group->title));
+          $output .= $group_check['group']->selective == OG_MODERATED ? 
+                  t(' If you request membership for a different group, you will leave your current group.') :
+                  t(' If you join a different group, you will leave your current group.');  
+        }
+      }
 
       $output .= drupal_get_form('pi_inquiry_manager_participants_group_confirm_form', 'pi_inquiry_manager_participants_group_join_form_submit', $label);
     }
@@ -1248,7 +1259,7 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 
     $rows = array_map(function($group) use ($user, $inquiry_node) {
               $title = pi_inquiry_manager_partipants_group_operation_link($group->title, $inquiry_node->nid, $group->nid, FALSE, FALSE);
-              $title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid, FALSE);
+              $title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid);
 
               $members = nquire_group_get_member_uids($group->nid, TRUE);
               $members_names = nquire_commons_user_names($members, $user->uid);
