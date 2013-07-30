@@ -42,8 +42,6 @@ $(function() {
 
     container.html('');
 
-    var sc = 0;
-
     var filtered = [];
     for (var key in this._data.foods) {
       if (this._data.foods[key].title.charAt(0) === letter) {
@@ -77,8 +75,10 @@ $(function() {
 
     var c1 = $('<div style="display:inline-block;width: 300px;">').appendTo(container);
     var c2 = $('<div style="display:inline-block;width: 300px;">').appendTo(container);
-    var ls = [$('<ul>').appendTo(c1), $('<ul>').appendTo(c2)];
-
+    var l1 = $('<ul>').appendTo(c1);
+    var l2 = $('<ul>').appendTo(c2);
+    
+    var l1limit = from + Math.ceil((to - from)/2) - 1;
 
     for (var i = from; i < to; i++) {
       var key = filtered[i];
@@ -87,8 +87,7 @@ $(function() {
         self._addFood($(this).attr('food'));
         self._addButton.nQuireTooltip('close');
       });
-      $('<li>').appendTo(ls[sc % ls.length]).append(link);
-      sc++;
+      $('<li>').appendTo(i > l1limit ? l2 : l1).append(link);
     }
 
     this._addButton.nQuireTooltip('reposition');
