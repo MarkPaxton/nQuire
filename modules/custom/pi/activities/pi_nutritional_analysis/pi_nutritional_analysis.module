@@ -1,0 +1,273 @@
+<?php
+
+// $Id: pi_nutritional_analysis.module,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Module for creating "pi_nutritional_analysis" node type
+ */
+
+/**
+ * Implementation of hook_node_info().
+ */
+function pi_nutritional_analysis_node_info() {
+
+  return array(
+      'pi_nutritional_analysis' => array(
+          'name' => t('Inquiry nutritional analysis'), // Required.
+          'module' => 'pi_nutritional_analysis', // Required.
+          'description' => t('Keep notes related to a topic'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Nutritional analysis'),
+          'has_body' => TRUE,
+          'body_label' => t('Nutritional analysis'),
+          'locked' => TRUE)
+  );
+}
+
+/**
+ * Implementation of hook_access().
+ */
+function pi_nutritional_analysis_access($op, $node, $account) {
+  return FALSE;
+}
+
+function pi_nutritional_analysis_edit_content_label() {
+  return t('Edit');
+}
+
+/**
+ * Implementation of hook_form().
+ */
+function pi_nutritional_analysis_form(&$node) {
+  $type = node_get_types('type', $node);
+
+  $form['title'] = array(
+      '#type' => 'hidden',
+      '#title' => check_plain($type->title_label),
+      '#required' => FALSE,
+      '#default_value' => $type->title_label,
+      '#weight' => -5
+  );
+
+  $form['gender'] = array(
+      '#type' => 'select',
+      '#required' => TRUE,
+      '#title' => t('Gender'),
+      '#options' => array(1 => t('Female'), 2 => t('Male')),
+      '#default_value' => $node->gender,
+      '#description' => t('Select the gender of the person for analysis.'),
+  );
+  $form['age'] = array(
+      '#type' => 'textfield',
+      '#required' => TRUE,
+      '#title' => t('Age'),
+      '#default_value' => $node->age,
+      '#description' => t('Select the age of the person for analysis.'),
+  );
+
+  $form['#validate'][] = 'pi_nutritional_analysis_form_validate';
+
+  return $form;
+}
+
+function pi_nutritional_analysis_form_validate($form, &$form_state) {
+  if (strlen($form_state['values']['age']) > 0) {
+    if (!is_numeric($form_state['values']['age']) || $form_state['values']['age'] < 0) {
+      form_set_error("age", t("Age must be a positive number!"));
+    }
+  }
+}
+
+/**
+ * Implementation of hook_insert().
+ */
+function pi_nutritional_analysis_insert($node) {
+  db_query("INSERT INTO {pi_nutritional_analysis} (nid, vid, gender, age) VALUES ('%d', '%d', '%d', '%d')", $node->nid, $node->vid, $node->gender, $node->age);
+}
+
+/**
+ * Implementation of hook_update().
+ */
+function pi_nutritional_analysis_update($node) {
+  if ($node->revision) {
+    pi_nutritional_analysis_insert($node);
+  } else {
+    db_query("UPDATE {pi_nutritional_analysis} SET gender='%d', age='%d' WHERE vid=%d", $node->gender, $node->age, $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_delete().
+ */
+function pi_nutritional_analysis_delete(&$node) {
+// Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_nutritional_analysis} WHERE nid=%d', $node->nid);
+}
+
+/**
+ * Implementation of hook_load().
+ */
+function pi_nutritional_analysis_load($node) {
+  return db_fetch_object(db_query('SELECT * FROM {pi_nutritional_analysis} WHERE vid=%d', $node->vid));
+}
+
+/**
+ * Implementation of hook_view().
+ */
+function pi_nutritional_analysis_view($node, $teaser = FALSE, $page = FALSE) {
+  $node = node_prepare($node, $teaser);
+  return $node;
+}
+
+function pi_nutritional_analysis_dri($age, $gender) {
+  // Energy, Water, Protein, Carb., Sugar, Fat, Saturated, Monoun., Polyun., Cholest., Fiber
+  // kcal    g      g        g      g      g    g          g        g        mg        g
+  // carb  fiber fat protein
+  // 3     10    5   2
+
+  static $data = array(
+'a.5' => array(60, 0, 31, 9.1),
+ 'a1.' => array(95, 0, 30, 11),
+ 'a03' => array(130, 19, 35, 13),
+ 'a08' => array(130, 25, 30, 19),
+ 'f13' => array(130, 26, 30, 34),
+ 'm13' => array(130, 31, 30, 34),
+ 'f18' => array(130, 26, 30, 46),
+ 'm18' => array(130, 38, 30, 52),
+ 'f30' => array(130, 25, 27.5, 46),
+ 'm30' => array(130, 38, 27.5, 56),
+ 'f50' => array(130, 25, 27.5, 46),
+ 'm50' => array(130, 38, 27.5, 56),
+ 'f70' => array(130, 21, 27.5, 46),
+ 'm70' => array(130, 50, 27.5, 56),
+ 'f>>' => array(130, 21, 27.5, 46),
+ 'm>>' => array(130, 50, 27.5, 56),
+  );
+
+
+  if ($age <= .5)
+    $key = 'a.5';
+  else if ($age <= 1)
+    $key = 'a1.';
+  else if ($age < 4)
+    $key = 'a03';
+  else if ($age < 9)
+    $key = 'a08';
+  else {
+    $key = $gender == 1 ? 'f' : 'm';
+    if ($age < 14)
+      $key .= '13';
+    else if ($age < 19)
+      $key .= '18';
+    else if ($age < 31)
+      $key .= '30';
+    else if ($age < 51)
+      $key .= '50';
+    else if ($age < 71)
+      $key .= '70';
+    else
+      $key .= '>>';
+  }
+
+  return $data[$key];
+}
+
+function pi_nutritional_analysis_display_content_in_activity($node, $options) {
+  if ($options['edit']) {
+    $rows = array(array(t('Configure:'), node_page_edit($node)));
+  } else if ($node) {
+    $data = pi_nutritional_analysis_get_data($node);
+
+    if (count($data) > 0) {
+      $dri = pi_nutritional_analysis_dri($node->age, $node->gender);
+      $analysis_headers = array(t('Date'), t('Meals'), t('Carbohydrates'), t('Fiber'), t('Fats'), t('Protein'));
+      $rows = array();
+      foreach ($data as $date => $intake) {
+        $row = array($date, $intake[4]);
+        for($i = 0; $i < 4; $i++) {
+          $c = round(100 * $intake[$i] / $dri[$i], 1);
+          $row[] = t('Intake: !in g<br/>DRI: !dri g<br/>Comparison: <b>!c%</b>', array('!in' => $intake[$i], '!dri' => $dri[$i], '!c' => $c));
+        }
+        $rows[] = $row;
+      }
+
+      $analysis .= theme('table', $analysis_headers, $rows);
+    } else {
+      $analysis = t('There is no data with diet information.');
+    }
+
+
+    $rows = array(
+        array(t('Configuration:'), t('Gender: <b>!g</b>, Age: <b>@a</b>', array('!g' => $node->gender === 1 ? t('Female') : t('Male'), '@a' => $node->age))),
+        array(t('Analysis:'), $analysis),
+    );
+  } else {
+    $rows = array(array(t('Analysis:'), FALSE));
+  }
+
+  return array(
+      'mode' => 'twocolumns',
+      'rows' => $rows,
+  );
+}
+
+function pi_nutritional_analysis_get_data($node) {
+  $output = array();
+
+  $activity_id_for_this_node = pi_activity_get_activity_nid_for_content_nid($node->nid);
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($activity_id_for_this_node);
+
+  if ($inquiry_info->getInquiryNode()) {
+    $data_activities = array_filter(array_map(function($data_activity_nid) {
+                      $measures = pi_methodology_get_measures_for_use_in_content_node($node->nid, $data_activity_nid);
+                      $date_measure = FALSE;
+                      $nutr_measure = FALSE;
+                      foreach ($measures as $measure_nid => $_) {
+                        $measure = node_load($measure_nid);
+                        if ($measure->measure_type === '_nutritionalinformation') {
+                          if ($nutr_measure) {
+                            return FALSE;
+                          } else {
+                            $nutr_measure = $measure_nid;
+                          }
+                        } else if ($measure->measure_type === '_date') {
+                          if ($date_measure) {
+                            return FALSE;
+                          } else {
+                            $date_measure = $measure_nid;
+                          }
+                        }
+                      }
+
+                      return ($date_measure && $nutr_measure) ? array($data_activity_nid, $date_measure, $nutr_measure) : FALSE;
+                    }, pi_sort_data_get_activities($inquiry_info->getInquiryNid())));
+
+    //   carb  fiber fat protein
+    $components = array(3, 10, 5, 2);
+
+    foreach ($data_activities as $data_activity) {
+      $data_nids = pi_sort_data_get_all_data_for_use_in_content_nid($node->nid, $data_activity[0]);
+      foreach ($data_nids as $data_nid) {
+        $data = node_load($data_nid);
+        $date = $data->values[$data_activity[1]];
+        if (strlen($date) > 0) {
+          if (!isset($output[$date])) {
+            $output[$date] = array(0, 0, 0, 0, 0);
+          }
+
+          $output[$date][4]++;
+
+          foreach ($components as $i => $ix) {
+            $key = "{$data_activity[2]}:{$ix}";
+            $output[$date][$i] += pi_data_tools_measure_plugin_submeasure_get_value_for_chart_from_data($key, $data);
+          }
+        }
+      }
+    }
+
+    ksort($output);
+  }
+
+  return $output;
+}

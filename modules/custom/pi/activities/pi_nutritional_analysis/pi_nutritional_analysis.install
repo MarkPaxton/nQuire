@@ -1,0 +1,82 @@
+<?php
+
+// $Id: pi_nutritional_analysis.install,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Install....
+ */
+
+/**
+ * Implementation of pi_nutritional_analysis_install().
+ *
+ * @return unknown_type
+ */
+function pi_nutritional_analysis_install() {
+  // Create tables.
+  drupal_install_schema('pi_nutritional_analysis');
+
+  variable_set("og_content_type_usage_pi_nutritional_analysis", 'group_post');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_pi_nutritional_analysis", array('status', 'revision'));
+  variable_set("comment_pi_nutritional_analysis", COMMENT_NODE_DISABLED);
+  variable_set("upload_pi_nutritional_analysis", 0);
+}
+
+/**
+ * Implementation of pi_nutritional_analysis_uninstall().
+ */
+function pi_nutritional_analysis_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pi_nutritional_analysis');
+  variable_del('pi_nutritional_analysis');
+
+  variable_del("og_content_type_usage_pi_nutritional_analysis");
+  variable_del("node_options_pi_nutritional_analysis");
+  variable_del("comment_pi_nutritional_analysis");
+  variable_del("upload_pi_nutritional_analysis");
+
+  //$activities = variable_get('pi_activities', array() );
+  //unset( $activities['pi_nutritional_analysis'] );
+  //variable_set('pi_activities', $activities);
+}
+
+/**
+ * Implementation of pi_nutritional_analysis_schema().
+ */
+function pi_nutritional_analysis_schema() {
+
+  $schema['pi_nutritional_analysis'] = array(
+      'description' => t('Nutritional analysis'),
+      'fields' => array(
+          'nid' => array(
+              'description' => t('node id'),
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+          ),
+          'vid' => array(
+              'description' => t('The current vid version identifier'),
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+          ),
+          'gender' => array(
+              'description' => t('Gender'),
+              'type' => 'int',
+              'unsigned' => TRUE,
+          ),
+          'age' => array(
+              'description' => t('Age'),
+              'type' => 'int',
+              'unsigned' => TRUE,
+          ),
+      ),
+      'primary key' => array('vid'),
+      'indexes' => array(
+          'nid' => array('nid'),
+      ),
+  );
+
+  return $schema;
+}

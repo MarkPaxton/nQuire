@@ -59,6 +59,11 @@ $(function() {
           title: 'Data chart analysis',
           multiplicity: '*',
           requires: []
+				},
+				pi_nutritional_analysis : {
+          title: 'Nutritional value analysis',
+          multiplicity: '*',
+          requires: []
 				}
       },
       phase: {
