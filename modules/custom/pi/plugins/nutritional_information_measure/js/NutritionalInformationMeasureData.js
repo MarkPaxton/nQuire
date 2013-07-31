@@ -899,7 +899,7 @@ nQuireJsSupport.register('NutritionalInformationMeasureData', {
     897: {title: "Yogurt, plain, no-fat", portion: "serving", value: [66.0, 180.0, 6.8, 9.0, 8.0, 0.2, 0.2, 0.0, 0.0, 11.0, 0.0]},
     898: {title: "Yogurt, plain, reduced fat", portion: "serving", value: [98.0, 177.4, 7.0, 10.4, 9.4, 3.2, 2.0, 1.0, 0.0, 10.4, 0.0]},
     899: {title: "Yogurt, vanilla flavor, reduced fat, ", portion: "serving", value: [160.0, 161.8, 6.4, 27.0, 25.4, 2.8, 1.6, 0.8, 0.0, 8.0, 0.0]},
-    900: {title: "Zucchini, raw", portion: "serving", value: [27.0, 91.6, 1.8, 4.5, 4.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.1]},
+    900: {title: "Zucchini, raw", portion: "serving", value: [27.0, 91.6, 1.8, 4.5, 4.5, 0.0, 0.0, 0.0, 0.0, 0.0, 1.1]}
   },
   components: ['Energy', 'Water', 'Protein', 'Carb.', 'Sugar', 'Fat', 'Saturated', 'Monoun.', 'Polyun.', 'Cholest.', 'Fiber'],
   units: ['kcal', 'g', 'g', 'g', 'g', 'g', 'g', 'g', 'g', 'mg', 'g'],

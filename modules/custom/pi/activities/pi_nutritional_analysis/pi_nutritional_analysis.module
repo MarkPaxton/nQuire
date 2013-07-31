@@ -58,13 +58,13 @@ function pi_nutritional_analysis_form(&$node) {
       '#default_value' => $node->gender,
       '#description' => t('Select the gender of the person for analysis.'),
   );
-  $form['age'] = array(
-      '#type' => 'textfield',
-      '#required' => TRUE,
-      '#title' => t('Age'),
-      '#default_value' => $node->age,
-      '#description' => t('Select the age of the person for analysis.'),
-  );
+  /* $form['age'] = array(
+    '#type' => 'textfield',
+    '#required' => TRUE,
+    '#title' => t('Age'),
+    '#default_value' => $node->age,
+    '#description' => t('Select the age of the person for analysis.'),
+    ); */
 
   $form['#validate'][] = 'pi_nutritional_analysis_form_validate';
 
@@ -72,11 +72,11 @@ function pi_nutritional_analysis_form(&$node) {
 }
 
 function pi_nutritional_analysis_form_validate($form, &$form_state) {
-  if (strlen($form_state['values']['age']) > 0) {
+  /* if (strlen($form_state['values']['age']) > 0) {
     if (!is_numeric($form_state['values']['age']) || $form_state['values']['age'] < 0) {
-      form_set_error("age", t("Age must be a positive number!"));
+    form_set_error("age", t("Age must be a positive number!"));
     }
-  }
+    } */
 }
 
 /**
@@ -145,30 +145,32 @@ function pi_nutritional_analysis_dri($age, $gender) {
  'm>>' => array(130, 50, 27.5, 56),
   );
 
+  $key = $gender == 1 ? 'f18' : 'm18';
 
-  if ($age <= .5)
+  /*
+    if ($age <= .5)
     $key = 'a.5';
-  else if ($age <= 1)
+    else if ($age <= 1)
     $key = 'a1.';
-  else if ($age < 4)
+    else if ($age < 4)
     $key = 'a03';
-  else if ($age < 9)
+    else if ($age < 9)
     $key = 'a08';
-  else {
+    else {
     $key = $gender == 1 ? 'f' : 'm';
     if ($age < 14)
-      $key .= '13';
+    $key .= '13';
     else if ($age < 19)
-      $key .= '18';
+    $key .= '18';
     else if ($age < 31)
-      $key .= '30';
+    $key .= '30';
     else if ($age < 51)
-      $key .= '50';
+    $key .= '50';
     else if ($age < 71)
-      $key .= '70';
+    $key .= '70';
     else
-      $key .= '>>';
-  }
+    $key .= '>>';
+    } */
 
   return $data[$key];
 }
@@ -177,31 +179,81 @@ function pi_nutritional_analysis_display_content_in_activity($node, $options) {
   if ($options['edit']) {
     $rows = array(array(t('Configure:'), node_page_edit($node)));
   } else if ($node) {
+    $rows = array(
+        array(t('Configuration:'), t('Gender: <b>!g</b>'/* , Age: <b>@a</b> */, array('!g' => $node->gender === 1 ? t('Female') : t('Male')/* , '@a' => $node->age */))),
+    );
+
     $data = pi_nutritional_analysis_get_data($node);
 
     if (count($data) > 0) {
-      $dri = pi_nutritional_analysis_dri($node->age, $node->gender);
-      $analysis_headers = array(t('Date'), t('Meals'), t('Carbohydrates'), t('Fiber'), t('Fats'), t('Protein'));
-      $rows = array();
-      foreach ($data as $date => $intake) {
+      /*
+        $rows = array();
+        foreach ($data as $date => $intake) {
         $row = array($date, $intake[4]);
         for($i = 0; $i < 4; $i++) {
-          $c = round(100 * $intake[$i] / $dri[$i], 1);
-          $row[] = t('Intake: !in g<br/>DRI: !dri g<br/>Comparison: <b>!c%</b>', array('!in' => $intake[$i], '!dri' => $dri[$i], '!c' => $c));
+        $c = round(100 * $intake[$i] / $dri[$i], 1);
+        $row[] = t('Intake: !in g<br/>DRI: !dri g<br/>Comparison: <b>!c%</b>', array('!in' => $intake[$i], '!dri' => $dri[$i], '!c' => $c));
         }
         $rows[] = $row;
+        }
+
+        $analysis .= theme('table', $analysis_headers, $rows); */
+
+      $dri = pi_nutritional_analysis_dri($node->age, $node->gender);
+      $analysis_headers = array(t('Carbohydrates'), t('Fiber'), t('Fats'), t('Protein'));
+
+      foreach ($data as $date => $intake) {
+        $c1 = $date . '<br/>' . $intake[4] . ($intake[4] === 1 ? t(' meal') : t(' meals'));
+
+        $c2 = '<div style="position: relative; width: 500px; height: 150px; border: 1px solid gray;">'
+                . '<div style="position: absolute; top: 10px; right: 10px; border: 1px solid lightgray;padding: 5px;">'
+                . '<div style="font-size: 0.8em;"><div style="display: inline-block;width: 10px; height: 10px; background: #f00;"></div> ' . t('My data') . '</div>'
+                . '<div style="font-size: 0.8em;"><div style="display: inline-block;width: 10px; height: 10px; background: #0f0;"></div> ' . t('RDI') . '</div>'
+                . '</div>';
+
+        $max = max(max($dri), max($intake));
+
+        for ($i = 0; $i < 4; $i++) {
+
+          for ($j = 0; $j < 2; $j++) {
+            $value = $j === 0 ? $intake[$i] : $dri[$i];
+            $color = $j === 0 ? '#f00' : '#0f0';
+            $text_align = $j === 0 ? 'right' : 'left';
+            $height = 120 * $value / $max;
+            $width = 10;
+            $bar_center = 100 * $i + $j * 20 + 40;
+            $left = $bar_center - .5 * $width;
+
+            $text_x = $j === 0 ? 500 - $bar_center - 5 : $bar_center - 5;
+            $text_y = 120 - $height;
+
+            $c2 .= '<div style="position:absolute;top: 0px;' . $text_align . ':' . $text_x . 'px;top:' . $text_y . 'px;text-align: ' . $text_align . ' ; font-size: .8em;">'
+                    . round($value, 2) . ' g</div>';
+
+            $c2 .= '<div style="position:absolute;bottom: 15px;left:' . $left . 'px;background: ' . $color . ';width:' . $width . 'px;height:' . $height . 'px;"></div>';
+          }
+
+
+          $c2 .= '<div style="position: absolute; bottom: 0px; left: ' . (100 * $i) . 'px; width: 100px; text-align: center; font-size: .8em">'
+                  . $analysis_headers[$i]
+                  . '</div>';
+        }
+
+        $c2 .= '<div style="position:absolute; width:380px;height: 1px; left:10px;bottom: 15px; background: lightgray;"></div>';
+
+        $c2 .= '</div>';
+
+        $rows[] = array($c1, $c2);
+        /*        $row = array($date, $intake[4]);
+          for($i = 0; $i < 4; $i++) {
+          $c = round(100 * $intake[$i] / $dri[$i], 1);
+          $row[] = t('Intake: !in g<br/>DRI: !dri g<br/>Comparison: <b>!c%</b>', array('!in' => $intake[$i], '!dri' => $dri[$i], '!c' => $c));
+          }
+          $rows[] = $row; */
       }
-
-      $analysis .= theme('table', $analysis_headers, $rows);
     } else {
-      $analysis = t('There is no data with diet information.');
+      $rows[] = array(t('Analysis:'), t('There is no data with diet information.'));
     }
-
-
-    $rows = array(
-        array(t('Configuration:'), t('Gender: <b>!g</b>, Age: <b>@a</b>', array('!g' => $node->gender === 1 ? t('Female') : t('Male'), '@a' => $node->age))),
-        array(t('Analysis:'), $analysis),
-    );
   } else {
     $rows = array(array(t('Analysis:'), FALSE));
   }

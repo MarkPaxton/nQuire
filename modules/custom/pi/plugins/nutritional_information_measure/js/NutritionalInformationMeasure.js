@@ -152,6 +152,10 @@ $(function() {
       var self = this;
 
       var total = {};
+      for (var i in this._data.components) {
+        total[i] = 0;
+      }
+      
       var odd = true;
       for (var key in this._value) {
         var count = this._value[key];
@@ -201,7 +205,7 @@ $(function() {
       tr.append($('<td>').html('Total'));
       for (var i in this._data.components) {
         var td = $('<td>').appendTo(tr);
-        td.html(Math.round(100*total[i])*.01 + ' ' + this._data.units[i]);
+        td.html(Math.round(100*total[i]) / 100 + ' ' + this._data.units[i]);
       }
     }
   };
