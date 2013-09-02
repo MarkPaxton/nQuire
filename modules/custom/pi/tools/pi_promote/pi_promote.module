@@ -50,10 +50,20 @@ function pi_promote_shop_page() {
   $max_height = 165;
   $aspect_ratio = $max_width / $max_height;
 
-  $output = '<div class="pi_promote_shop">';
-  for ($i = 0; $i < count($inquiries); $i++) {
+  $output = "";
+
+  $output .= '<div class="pi_logos_bar">'
+          . '<a href="http://www.nominettrust.org.uk/" target="_blank"><img src="' . base_path() . drupal_get_path('module', 'pi_promote') . '/images/nt.jpg' . '"/></a>'
+          . '<a href="https://learn5.open.ac.uk/course/view.php?id=2" target="_blank"><img class="pi_logos_center" src="' . base_path() . drupal_get_path('module', 'pi_promote') . '/images/osl.jpg' . '"/></a>'
+          . '<a href="http://www.open.ac.uk/" target="_blank"><img src="' . base_path() . drupal_get_path('module', 'pi_promote') . '/images/ou.jpg' . '"/></a>'
+          . '</div>';
+
+  $output .= '<div class="pi_promote_main"><div class="pi_promote_fixed_width_container">';
+
+  $output .= '<div class="pi_promote_shop">';
+  for ($i = 0; $i < count($inquiries);) {
     $output .= '<div class="pi_promote_shop_row"><div class="pi_promote_shop_row_inner">';
-    for ($j = 0; $j < 3; $j++, $i++) {
+    for ($j = 0; $j < 2; $j++, $i++) {
       if ($i < count($inquiries)) {
         $inquiry = $inquiries[$i];
         $path = 'inquiry/' . $inquiry->nid;
@@ -98,7 +108,23 @@ function pi_promote_shop_page() {
     $output .= '</div></div>';
   }
 
-  $output .= '</div>';
+
+  $output .= '</div>'
+          . '<div class="pi_promote_links">';
+
+  $links = array(
+      array('What is nQuire?', 'nQuire is ...', '25/06/2013', 1),
+      array('First steps', 'New to nQuire? Here you can find some help about getting started...', '08/07/2013', 1),
+      array('Read about the OpenScience Lab project', 'nQuire has been developed as part of the Open Science Laboratory, funded by The Open University and the Wolfson foundation.', '24/07/2013', ),
+      array('Young Citizen Inquiry project', 'The Young Citizen Inquiry project has just kicked off!', '02/09/2013', 1),
+  );
+
+  $output .= implode('', array_map(function($l) {
+                    return '<div class="pi_promote_links_title">' . $l[0] . '</div><div class="pi_promote_links_body">' . $l[1] . '</div><div class="pi_promote_links_read">'
+                            . $l[2] . '&nbsp;&nbsp;&nbsp;' . l(t('Read'), 'node/' . $l[3]) . '</div>';
+                  }, $links));
+
+  $output .= '</div></div>';
 
   return $output;
 }
