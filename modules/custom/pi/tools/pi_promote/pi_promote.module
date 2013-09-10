@@ -116,21 +116,23 @@ function pi_promote_shop_page() {
     $output .= '</div></div>';
   }
 
+  $news = array();
+
+  $news_result = db_query("SELECT node.nid FROM {node} LEFT JOIN {pi_promote_news} ON node.nid=pi_promote_news.news_id WHERE pi_promote_news.selected=1 ORDER BY pi_promote_news.weight ASC");
+  while ($row = db_fetch_array($news_result)) {
+    $node = node_load($row['nid']);
+    $teaser_pos = strpos($node->body, '<!--break-->');
+    $body = nl2br(check_plain($teaser_pos === FALSE ? $node->body : substr($node->body, 0, $teaser_pos)));
+    $news[] = array(check_plain($node->title), $body, format_date($node->created, 'small'), $row['nid']);
+  }
 
   $output .= '</div>'
           . '<div class="pi_promote_links"><div class="p_promote_links_head">' . t('News') . '</div>';
 
-  $links = array(
-      array('What is nQuire?', 'nQuire is ...', '25/06/2013', 1),
-      array('First steps', 'New to nQuire? Here you can find some help about getting started...', '08/07/2013', 1),
-      array('Read about the OpenScience Lab project', 'nQuire has been developed as part of the Open Science Laboratory, funded by The Open University and the Wolfson foundation.', '24/07/2013',),
-      array('Young Citizen Inquiry project', 'The Young Citizen Inquiry project has just kicked off!', '02/09/2013', 1),
-  );
-
   $output .= implode('', array_map(function($l) {
                     return '<div class="pi_promote_links_title">' . $l[0] . '</div><div class="pi_promote_links_body">' . $l[1] . '</div><div class="pi_promote_links_read">'
                             . $l[2] . '&nbsp;&nbsp;&nbsp;' . l(t('Read'), 'node/' . $l[3]) . '</div>';
-                  }, $links));
+                  }, $news));
 
   $output .= '</div></div></div>';
 
@@ -317,6 +319,8 @@ function pi_promote_nodeapi($node, $op) {
 }
 
 function pi_promote_admin_news() {
+  drupal_add_js(drupal_get_path('module', 'pi_promote') . '/js/pi_promote_news_admin.js');
+
   $node_type = "story";
   $result = db_query("SELECT node.nid, pi_promote_news.selected, pi_promote_news.weight FROM node LEFT JOIN pi_promote_news ON node.nid=pi_promote_news.news_id WHERE type = '%s' ", $node_type);
   $news = array();
@@ -345,8 +349,7 @@ function pi_promote_admin_news() {
 }
 
 function pi_promote_admin_news_form($form_state, $news) {
-  drupal_add_js(drupal_get_path('module', 'pi_promote') . '/js/pi_promote_news_admin.js');
-  
+
   $form = array(
       'intro' => array(
           '#value' => '<p>' . t('Click <a href="!url">here</a> to create a new story.', array('!url' => url('node/add/story', array('query' => array('destination' => 'admin/nquire/news'))))) . '</p>'
@@ -365,9 +368,9 @@ function pi_promote_admin_news_form($form_state, $news) {
   }
 
   foreach ($news as $item) {
-    
+
     $form['stories'][$item['node']->nid] = array(
-        '#prefix' => '<li class="news_item_selector"><b>' . check_plain($item['node']->title) . '</b>&nbsp;&nbsp;&nbsp;<small>' . l(t('edit'), 'node/' . $item['node']->nid . '/edit', array('query' => array('destination' => 'admin/nquire/news'))) . '</small>',        
+        '#prefix' => '<li class="news_item_selector"><b>' . check_plain($item['node']->title) . '</b>&nbsp;&nbsp;&nbsp;<small>' . l(t('edit'), 'node/' . $item['node']->nid . '/edit', array('query' => array('destination' => 'admin/nquire/news'))) . '</small>',
         '#type' => 'select',
         '#suffix' => '</li>',
         '#options' => $options,
@@ -381,9 +384,12 @@ function pi_promote_admin_news_form($form_state, $news) {
 
 function pi_promote_admin_news_form_submit($form, $form_state) {
   $query = "INSERT INTO pi_promote_news (news_id, selected, weight) VALUES ('%d', '%d', '%d') ON DUPLICATE KEY UPDATE selected='%d', weight='%d'";
-  
-  foreach($form_state['values']['stories'] as $nid => $weight) {
+
+  asort($form_state['values']['stories']);
+  $i = 1;
+  foreach ($form_state['values']['stories'] as $nid => $weight) {
     $selected = $weight > 0;
+    $weight = $selected ? $i++ : 0;
     db_query($query, $nid, $selected, $weight, $selected, $weight);
   }
 }

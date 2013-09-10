@@ -168,14 +168,18 @@ function _pi_feeds_format_topic($type, $context, $topic) {
     }
   } else if ($type === 'forum') {
     $forum = node_load($row['topic']);
-    $forum_title = l(check_plain($forum->title), 'node/' . $forum->nid);
-    $text = _pi_feeds_forum_event_text($forum_title, $row['event']);
-    $n = comment_num_new($contribution->nid);
-    if ($n > 0) {
-      $text .= '<br/><small>' . ($n == 1 ? t('(One new reply)') : t('(!n new replies)', array('!n' => $n))) . '</small>';
+    if ($forum && $forum->status != 0) {
+      $forum_title = l(check_plain($forum->title), 'node/' . $forum->nid);
+      $text = _pi_feeds_forum_event_text($forum_title, $row['event']);
+      $n = comment_num_new($contribution->nid);
+      if ($n > 0) {
+        $text .= '<br/><small>' . ($n == 1 ? t('(One new reply)') : t('(!n new replies)', array('!n' => $n))) . '</small>';
+      }
+      $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
+      return $text;
+    } else {
+      return FALSE;
     }
-    $text .= '<br/><small>' . _pi_feeds_format_time($row['timestamp']) . '</small>';
-    return $text;
   } else if ($type === 'sharedactivity') {
     $activity = node_load($row['context']);
     $activity_title = l(check_plain($activity->title), "phase/{$activity->phase_nid}/shared", array('fragment' => $activity->nid));

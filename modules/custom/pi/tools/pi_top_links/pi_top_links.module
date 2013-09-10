@@ -64,9 +64,10 @@ function _pi_top_links_format_menu() {
       ),
   );
 
-
+  $depths = array('', '&nbsp;&nbsp;&#149;&nbsp;', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- ');
+  
   foreach (forum_get_forums() as $tid => $forum) {
-    $paths['forum']['children']['forum/' . $tid] = check_plain($forum->name);
+    $paths['forum']['children']['forum/' . $tid] = $depths[min($forum->depth, 2)] . check_plain($forum->name);
   }
 
   $items = array();
@@ -100,7 +101,7 @@ function _pi_top_links_format_menu_item($path, $data) {
   if ($data['children']) {
     $output .= '<div class="pi-top-links-children">';
     foreach ($data['children'] as $cpath => $label) {
-      $output .= '<div class="pi-top-links-child">' . l($label, $cpath) . '</div>';
+      $output .= '<div class="pi-top-links-child">' . l($label, $cpath, array('html' => TRUE)) . '</div>';
     }
     $output .= '</div>';
   }
