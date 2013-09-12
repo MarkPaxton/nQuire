@@ -96,7 +96,7 @@ function _drupalchat_get_sid($create = TRUE) {
  * Implementation of hook_perm().
  */
 function drupalchat_perm() {
-  return array('administer drupalchat', 'access drupalchat');
+  return array('access drupalchat', 'administer drupalchat', 'access drupalchat own logs', 'access drupalchat all logs');
 }
 
 /**
@@ -216,7 +216,8 @@ function drupalchat_menu() {
     'title' => 'Chat Messages',
     'type' => MENU_NORMAL_ITEM,
     'page callback' => 'drupalchat_get_messages',
-	'access arguments' => array('access drupalchat'),
+	  'access callback' => 'drupalchat_verify_access_callback', 
+    'access arguments' => array('or', array('access drupalchat own logs', 'access drupalchat all logs')),
   );
   
   $items['drupalchat/messages/inbox'] = array(
@@ -227,9 +228,10 @@ function drupalchat_menu() {
   $items['drupalchat/messages/message/%drupalchatmsgid'] = array(
     'title' => 'View Message',
     'type' => MENU_LOCAL_TASK,
-	'page callback' => 'drupalchat_get_messages_specific',
-	'access arguments' => array('access drupalchat'), 
-	'page arguments' => array(3),
+	  'page callback' => 'drupalchat_get_messages_specific',
+	  'access callback' => 'drupalchat_verify_access_callback', 
+    'access arguments' => array('or', array('access drupalchat own logs', 'access drupalchat all logs')),
+	  'page arguments' => array(3),
   );  
   return $items;
 }
@@ -241,6 +243,18 @@ function drupalchatmsgid_to_arg($arg) {
   else {
     return $arg;
   }
+}
+
+function drupalchat_verify_access_callback($case = 'or', $perm = array()) {
+  $check = false;
+  if($case == 'or') {
+    foreach($perm as $p) {
+      if(user_access($p)) {
+        return true;
+      }
+    }
+  }
+  return $check;
 }
 
 /**
@@ -266,8 +280,7 @@ function _drupalchat_ur_autocomplete($string) {
 /**
 * Implementaiton of hook_cron()
 */	
-/* FIX eloy prevent message loses */
-function ___drupalchat_cron() {
+function drupalchat_cron() {
   if(variable_get('drupalchat_log_messages', 1) != 1) { 
     db_query('DELETE FROM {drupalchat_msg} WHERE timestamp < %d', (time() - 10));
     db_query('DELETE FROM {drupalchat_users} WHERE timestamp < %d', (time() - 10));
@@ -408,6 +421,7 @@ function drupalchat_init() {
         $my_settings['admin'] = "0";
       }
 	  $my_settings['iup'] = variable_get('drupalchat_user_picture', 1);
+    $my_settings['open_chatlist_default'] = (variable_get('drupalchat_minimize_chat_user_list', 2)==2)?'1':'2'; 
 	  if(variable_get('drupalchat_user_picture', 1) == 1) {
 		if(isset($user->picture) && ($user->picture)) {
 	      $my_settings['up'] = base_path() . $user->picture;
@@ -741,30 +755,40 @@ function _drupalchat_get_username($uid) {
 }
 
 function drupalchat_get_messages() {
-  global $user;
-  if(($user->uid > 0) || (_drupalchat_get_sid() != -1)) {
-    $output = '';
-	if (variable_get('drupalchat_polling_method', DRUPALCHAT_LONGPOLL) == DRUPALCHAT_COMMERCIAL) {
-	  global $user;
-      $data = json_encode(array(
-        'uid' => ($user->uid)?$user->uid:'0-'._drupalchat_get_sid(),
-        'api_key' => variable_get('drupalchat_external_api_key', NULL),));
-      $options = array(
-        'method' => 'POST',
-        'data' => $data,
-        'timeout' => 15,
-        'headers' => array('Content-Type' => 'application/json'),
-      );
-
-      $result = drupal_http_request(DRUPALCHAT_EXTERNAL_A_HOST . '/r/', array('Content-Type' => 'application/json'), 'POST', $data, 15);
-	  $query = json_decode($result->data);
-	  foreach($query as $record) {
-        $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 10px;"><div style="font-size:130%; display: inline;">' . l($record->name,'drupalchat/messages/message/' . $record->uid) . '</div><div style="float:right;color:#AAA; font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding: 10px;">' . $record->message . '</div></div>';
+  if(!(user_access('access drupalchat own logs') || user_access('access drupalchat all logs'))) {
+    drupal_access_denied();
+  }
+  else {
+    global $user;
+    if(($user->uid > 0) || (_drupalchat_get_sid() != -1)) {
+      $output = '';
+	    if (variable_get('drupalchat_polling_method', DRUPALCHAT_LONGPOLL) == DRUPALCHAT_COMMERCIAL) {
+	      global $user;
+        if(!isset($_SESSION['drupalchat_switch_user'])) {
+          $_SESSION['drupalchat_switch_user'] = ($user->uid)?$user->uid:'0-'._drupalchat_get_sid();
+        }
+        $data = json_encode(array(
+          'uid' => $_SESSION['drupalchat_switch_user'],
+          'api_key' => variable_get('drupalchat_external_api_key', NULL),));
+        $options = array(
+          'method' => 'POST',
+          'data' => $data,
+          'timeout' => 15,
+          'headers' => array('Content-Type' => 'application/json'),
+        );
+        if(user_access('access drupalchat all logs')) {
+          //$output .= drupal_render(drupal_get_form('drupalchat_user_entry_form'));
+          $output .= drupal_get_form('drupalchat_user_entry_form');
+        }
+        $result = drupal_http_request(DRUPALCHAT_EXTERNAL_A_HOST . '/r/', array('Content-Type' => 'application/json'), 'POST', $data, 15);
+	      $query = json_decode($result->data);
+	      foreach($query as $record) {
+          $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 10px;"><div style="font-size:130%; display: inline;">' . l($record->name,'drupalchat/messages/message/' . $record->uid) . '</div><div style="float:right;color:#AAA; font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding: 10px;">' . $record->message . '</div></div>';
+        }
       }
-    }
-    else {	
-      $guid = ($user->uid)?($user->uid):('0-'._drupalchat_get_sid());
-	  $query = db_query('SELECT u.name as name, g.uid as uid, g.message as message, g.TIMESTAMP as timestamp 
+      else {	
+        $guid = ($user->uid)?($user->uid):('0-'._drupalchat_get_sid());
+	      $query = db_query('SELECT u.name as name, g.uid as uid, g.message as message, g.TIMESTAMP as timestamp 
 	                     FROM (
 						   SELECT uid, message, TIMESTAMP 
 						     FROM (
@@ -797,74 +821,114 @@ function drupalchat_get_messages() {
 						  ) AS g INNER JOIN {drupalchat_users} u ON 
 						  (g.uid = u.uid AND u.uid!= 0) OR (u.uid = 0 AND g.uid = CONCAT(\'0-\', u.session))
 						GROUP BY uid', $guid, $guid);
-	  while($record = db_fetch_object($query)) {
-        $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 10px;"><div style="font-size:130%; display: inline;">' . l($record->name,'drupalchat/messages/message/' . $record->uid) . '</div><div style="float:right;color:#AAA; font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding: 10px;">' . $record->message . '</div></div>';
+	      while($record = db_fetch_object($query)) {
+          $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 10px;"><div style="font-size:130%; display: inline;">' . l($record->name,'drupalchat/messages/message/' . $record->uid) . '</div><div style="float:right;color:#AAA; font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding: 10px;">' . $record->message . '</div></div>';
+        }
       }
-    }
     
-    //$output .= '</tbody></table>';
-    //$user_item = user_load($user->uid);
-	//$output .= '<pre>' . print_r($user_item,true) . '</pre>';
-    //$output .= theme('user_picture', array('account' =>$user_item));	
+      //$output .= '</tbody></table>';
+      //$user_item = user_load($user->uid);
+	    //$output .= '<pre>' . print_r($user_item,true) . '</pre>';
+      //$output .= theme('user_picture', array('account' =>$user_item));	
+    }
+    return $output;
   }
-  return $output;
+}
+
+function drupalchat_user_entry_form() {
+  $form['description'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Switch to another user to view his/her chat transcript'),
+    '#collapsible' => true,
+  );
+
+  $form['description']['name'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Username'),
+    '#autocomplete_path' => 'user/autocomplete', 
+  );
+
+  $form['description']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Switch',
+  );
+  return $form;
+}
+
+function drupalchat_user_entry_form_submit($form, &$form_state) {
+  if(user_access('access drupalchat all logs')) {
+    $account = user_load(array('name' => check_plain($form_state['values']['name']),));
+    $_SESSION['drupalchat_switch_user'] = $account->uid;
+    drupal_goto('drupalchat/messages');
+  }
+  else {
+    drupal_access_denied();
+  }
 }
 
 function drupalchat_get_messages_specific($id = "1") {
-  global $user;
-  if(($user->uid > 0) || (_drupalchat_get_sid() != -1)) {
-    $guid = ($user->uid)?($user->uid):('0-'._drupalchat_get_sid());
-    $output = '';
-	if (variable_get('drupalchat_polling_method', DRUPALCHAT_LONGPOLL) == DRUPALCHAT_COMMERCIAL) {
-	  global $user;
-      $data = json_encode(array(
-        'uid1' => ($user->uid)?$user->uid:'0-'._drupalchat_get_sid(),
-		'uid2' => $id,
-        'api_key' => variable_get('drupalchat_external_api_key', NULL),));
-      $options = array(
-        'method' => 'POST',
-        'data' => $data,
-        'timeout' => 15,
-        'headers' => array('Content-Type' => 'application/json'),
-      );
-
-      $result = drupal_http_request(DRUPALCHAT_EXTERNAL_A_HOST . ':' . DRUPALCHAT_EXTERNAL_A_PORT .  '/q/', array('Content-Type' => 'application/json'), 'POST', $data, 15);
-	  $q = json_decode($result->data);
-	  $oldname = NULL;
-    foreach($q as $record) {
-	  if($oldname == $record->from_name) {
-	    $output .= '<div style="display: block; padding-top: 0%; padding-bottom: 0%;">' . $record->message . '</div>';
-	  }
-	  else {
-        $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 1% 0% 1% 0%;"></div><div style="display:block; padding-top: 1%; padding-bottom: 0%"><div style="font-size:100%; display: inline;"><a href="#">' . $record->from_name . '</a></div><div style="float:right;font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding-top: 1%; padding-bottom: 0%">' . $record->message . '</div></div>';
-	  }
-	  $oldname = $record->from_name;
-    }
-    }
-	else {
-	  $result = db_query('SELECT u.name AS from_name, 
-	  v.name AS to_name, 
-	  m.uid1 AS uid1, 
-	  m.uid2 AS uid2, 
-	  m.message AS message, 
-	  m.timestamp AS timestamp 
-	  FROM {drupalchat_msg} m 
-	  INNER JOIN drupalchat_users u 
-	  ON (m.uid1 = u.uid AND u.uid!= 0) 
-	    OR (u.uid = 0 AND m.uid1 = CONCAT(\'0-\', u.session)) 
-	  INNER JOIN drupalchat_users v 
-	  ON (m.uid2 = v.uid AND v.uid!= 0) 
-	    OR (v.uid = 0 AND m.uid2 = CONCAT(\'0-\', v.session)) 
-	  WHERE (((uid1 = \'%s\') 
-	    AND (uid2 = \'%s\'))
-	  OR((uid1 = \'%s\') AND (uid2 = \'%s\')))', $guid, $id, $id, $guid);
-    while($record = db_fetch_object($result)) {
-      $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 10px;"><div style="font-size:100%; display: inline; color: #3B5998;">' . $record->from_name . '</div><div style="float:right;color:#AAA; font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding: 10px;">' . $record->message . '</div></div>';
-    }
-    }
-    $output .= '';
+  if(!(user_access('access drupalchat own logs') || user_access('access drupalchat all logs'))) {
+    drupal_access_denied();
   }
-  return $output;
+  else {
+    global $user;
+    if(($user->uid > 0) || (_drupalchat_get_sid() != -1)) {
+      $guid = ($user->uid)?($user->uid):('0-'._drupalchat_get_sid());
+      $output = '';
+	    if (variable_get('drupalchat_polling_method', DRUPALCHAT_LONGPOLL) == DRUPALCHAT_COMMERCIAL) {
+	      global $user;
+		  if(!isset($_SESSION['drupalchat_switch_user'])) {
+            $_SESSION['drupalchat_switch_user'] = ($user->uid)?$user->uid:'0-'._drupalchat_get_sid();
+          }
+        $data = json_encode(array(
+          'uid1' => $_SESSION['drupalchat_switch_user'],
+		      'uid2' => $id,
+          'api_key' => variable_get('drupalchat_external_api_key', NULL),));
+        $options = array(
+          'method' => 'POST',
+          'data' => $data,
+          'timeout' => 15,
+          'headers' => array('Content-Type' => 'application/json'),
+        );
+
+        $result = drupal_http_request(DRUPALCHAT_EXTERNAL_A_HOST . ':' . DRUPALCHAT_EXTERNAL_A_PORT .  '/q/', array('Content-Type' => 'application/json'), 'POST', $data, 15);
+	      $q = json_decode($result->data);
+	      $oldname = NULL;
+        foreach($q as $record) {
+	        if($oldname == $record->from_name) {
+	          $output .= '<div style="display: block; padding-top: 0%; padding-bottom: 0%;">' . $record->message . '</div>';
+	        }
+	        else {
+            $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 1% 0% 1% 0%;"></div><div style="display:block; padding-top: 1%; padding-bottom: 0%"><div style="font-size:100%; display: inline;"><a href="#">' . $record->from_name . '</a></div><div style="float:right;font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding-top: 1%; padding-bottom: 0%">' . $record->message . '</div></div>';
+	        }
+	        $oldname = $record->from_name;
+        }
+      }
+	    else {
+	      $result = db_query('SELECT u.name AS from_name, 
+	        v.name AS to_name, 
+	        m.uid1 AS uid1, 
+	        m.uid2 AS uid2, 
+	        m.message AS message, 
+	        m.timestamp AS timestamp 
+	        FROM {drupalchat_msg} m 
+	        INNER JOIN drupalchat_users u 
+	        ON (m.uid1 = u.uid AND u.uid!= 0) 
+	        OR (u.uid = 0 AND m.uid1 = CONCAT(\'0-\', u.session)) 
+	        INNER JOIN drupalchat_users v 
+	        ON (m.uid2 = v.uid AND v.uid!= 0) 
+	        OR (v.uid = 0 AND m.uid2 = CONCAT(\'0-\', v.session)) 
+	        WHERE (((uid1 = \'%s\') 
+	        AND (uid2 = \'%s\'))
+	        OR((uid1 = \'%s\') AND (uid2 = \'%s\')))', $guid, $id, $id, $guid);
+        while($record = db_fetch_object($result)) {
+          $output .= '<div style="display:block;border-bottom: 1px solid #ccc; padding: 10px;"><div style="font-size:100%; display: inline; color: #3B5998;">' . $record->from_name . '</div><div style="float:right;color:#AAA; font-size: 70%;">' . format_date($record->timestamp,'long') . '</div><div style="display: block; padding: 10px;">' . $record->message . '</div></div>';
+        }
+      }
+      $output .= '';
+    }
+    return $output;
+  }
 }
 
 function _drupalchat_get_auth($name) {

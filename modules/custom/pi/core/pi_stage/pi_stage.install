@@ -6,24 +6,24 @@
  * Implementation of hook_install().
  */
 function pi_stage_install() {
-	// Create tables.
-	drupal_install_schema('pi_stage');
-	//Options are status, promote, sticky, revision
-	variable_set("node_options_pi_stage", array('status'));
-	variable_set("comment_pi_stage", COMMENT_NODE_DISABLED);
-	variable_set('upload_pi_stage', 0);
+  // Create tables.
+  drupal_install_schema('pi_stage');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_pi_stage", array('status'));
+  variable_set("comment_pi_stage", COMMENT_NODE_DISABLED);
+  variable_set('upload_pi_stage', 0);
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function pi_stage_uninstall() {
-	// Remove tables.
-	drupal_uninstall_schema('pi_stage');
-	//Options are status, promote, sticky, revision
-	variable_del("node_options_pi_stage");
-	variable_del("comment_pi_stage");
-	variable_del('upload_pi_stage');
+  // Remove tables.
+  drupal_uninstall_schema('pi_stage');
+  //Options are status, promote, sticky, revision
+  variable_del("node_options_pi_stage");
+  variable_del("comment_pi_stage");
+  variable_del('upload_pi_stage');
 }
 
 /**
@@ -31,91 +31,92 @@ function pi_stage_uninstall() {
  */
 function pi_stage_schema() {
 
-	$schema = array();
+  $schema = array();
 
-	$schema['pi_stage'] = array(
-			'description' => 'PI Inquiry Stage',
-			'fields' => array(
-					'nid' => array(
-							'description' => t('node id'),
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0),
-					'vid' => array(
-							'description' => t('The current vid version identifier'),
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0),
-					'inquiry_nid' => array(
-							'description' => 'The nid for the inquiry this stage is attached to.',
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE),
-					'weight' => array(
-							'description' => 'The order of the stage in the inquiry.',
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => 0)),
-			'primary key' => array('nid', 'vid'),
-			'unique keys' => array('vid' => array('vid')),
-			'indexes' => array('nid' => array('nid'))
-	);
-
-
-	$schema['pi_stage_phase'] = array(
-			'description' => 'nQuire Stage-Phase link table',
-			'fields' => array(
-					'stage_id' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Stage node id'),
-					'phase_id' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'description' => 'Phase node id'),
-					'access' => array(
-							'type' => 'text',
-							'size' => 'small',
-							'description' => 'Phase access in stage.')),
-			'primary key' => array('stage_id', 'phase_id'),
-			'indexes' => array(
-					'stage_id' => array('stage_id'),
-					'phase_id' => array('phase_id'),
-			),
-	);
+  $schema['pi_stage'] = array(
+      'description' => 'PI Inquiry Stage',
+      'fields' => array(
+          'nid' => array(
+              'description' => t('node id'),
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'vid' => array(
+              'description' => t('The current vid version identifier'),
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0),
+          'inquiry_nid' => array(
+              'description' => 'The nid for the inquiry this stage is attached to.',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE),
+          'weight' => array(
+              'description' => 'The order of the stage in the inquiry.',
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0)),
+      'primary key' => array('nid', 'vid'),
+      'unique keys' => array('vid' => array('vid')),
+      'indexes' => array('nid' => array('nid'))
+  );
 
 
-	$schema['pi_stage_current'] = array(
-			'description' => 'PI grouping group.',
-			'fields' => array(
-					'inquiry_id' => array(
-							'type' => 'int',
-							'size' => 'normal',
-							'unsigned' => TRUE,
-							'not null' => FALSE,
-							'description' => 'Inquiry id.'),
-					'stage_id' => array(
-							'type' => 'int',
-							'unsigned' => TRUE,
-							'not null' => TRUE,
-							'default' => NULL,
-							'description' => 'Stage id.'),
-			),
-			'primary key' => array('inquiry_id'),
-			'indexes' => array('inquiry_id' => array('inquiry_id'),
-			),
-	);
+  $schema['pi_stage_phase'] = array(
+      'description' => 'nQuire Stage-Phase link table',
+      'fields' => array(
+          'stage_id' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Stage node id'),
+          'phase_id' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'description' => 'Phase node id'),
+          'access' => array(
+              'type' => 'text',
+              'size' => 'small',
+              'description' => 'Phase access in stage.')),
+      'primary key' => array('stage_id', 'phase_id'),
+      'indexes' => array(
+          'stage_id' => array('stage_id'),
+          'phase_id' => array('phase_id'),
+      ),
+  );
 
-	return $schema;
+
+  $schema['pi_stage_current'] = array(
+      'description' => 'PI grouping group.',
+      'fields' => array(
+          'inquiry_id' => array(
+              'type' => 'int',
+              'size' => 'normal',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => 0,
+              'description' => 'Inquiry id.'),
+          'stage_id' => array(
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'default' => NULL,
+              'description' => 'Stage id.'),
+      ),
+      'primary key' => array('inquiry_id'),
+      'indexes' => array('inquiry_id' => array('inquiry_id'),
+      ),
+  );
+
+  return $schema;
 }

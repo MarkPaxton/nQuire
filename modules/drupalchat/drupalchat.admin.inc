@@ -137,6 +137,14 @@ function drupalchat_settings_form() {
     '#default_value' => variable_get('drupalchat_load_chat_async', 1),
   );
   
+  $form['drupalchat_minimize_chat_user_list'] = array(
+    '#type' => 'select',
+    '#title' => t('Minimize online user list by default'),
+    '#description' => t('Select whether to minimize online user list in chat by default.'),
+    '#options' => array(1 => 'Yes', 2 => 'No'),
+    '#default_value' => variable_get('drupalchat_minimize_chat_user_list', 2),
+  );
+  
   $form['drupalchat_pc'] = array(
     '#type' => 'fieldset',
     '#title' => t('Chat Moderation'),
@@ -174,6 +182,20 @@ function drupalchat_settings_form() {
     '#description' => t('Select whether to apply above defined block hyperlinks setting only to anonymous users.'),
     '#options' => array('1' => t('Yes, apply only to anonymous users'), '2' => t('No, apply to all users'),),
     '#default_value' => variable_get('drupalchat_allow_anon_links', '1'),
+  );
+  $form['drupalchat_pc']['drupalchat_allow_single_message_delete'] = array(
+    '#type' => 'select',
+    '#title' => t('Allow users to delete messages selectively when in private conversation'),
+    '#description' => t('Select whether to apply above defined block hyperlinks setting only to anonymous users.'),
+    '#options' => array('1' => t('Allow all users'), '2' => t('Allow only moderators'), '3' => t('Disable'),),
+    '#default_value' => variable_get('drupalchat_allow_single_message_delete', '1'),
+  );
+  $form['drupalchat_pc']['drupalchat_allow_clear_room_history'] = array(
+    '#type' => 'select',
+    '#title' => t('Allow users to clear all messages in a room'),
+    '#description' => t('Select whether to allow users to clear all messages in a room'),
+    '#options' => array('1' => t('Allow all users'), '2' => t('Allow only moderators'), '3' => t('Disable'),),
+    '#default_value' => variable_get('drupalchat_allow_clear_room_history', '1'),
   );
   $form['drupalchat_path'] = array(
     '#type' => 'fieldset',
@@ -288,7 +310,7 @@ function drupalchat_settings_form() {
     '#title' => t('Relationship method'),
     '#default_value' => variable_get('drupalchat_rel', DRUPALCHAT_REL_AUTH),
     '#options' => array(
-      DRUPALCHAT_REL_AUTH => t('All authenticated users'),
+      DRUPALCHAT_REL_AUTH => t('All users'),
     ),
     '#description' => t('This determines the method for creating the chat buddylist.'),
   );
@@ -303,7 +325,7 @@ function drupalchat_settings_form() {
     '#title' => t('User Relationships Role Names to integrate with'),
     '#description' => t('The singular form of User Relationships Role Names (e.g. buddy, friend, coworker, spouse) separated by comma.'),
     '#default_value' => variable_get('drupalchat_ur_name', NULL),
-	'#autocomplete_path' => 'drupalchat/ur-autocomplete',
+	  '#autocomplete_path' => 'drupalchat/ur-autocomplete',
     //'#disabled' => variable_get('drupalchat_rel', DRUPALCHAT_REL_AUTH) == DRUPALCHAT_REL_UR ? FALSE : TRUE,
   );
   
@@ -336,19 +358,21 @@ function drupalchat_settings_form_validate($form, &$form_state) {
   if(($form_state['values']['drupalchat_polling_method'] == DRUPALCHAT_COMMERCIAL) && ($form_state['values']['drupalchat_external_api_key'])) {
     $data = array(
       'api_key' => $form_state['values']['drupalchat_external_api_key'],
-	  'enable_chatroom' => $form_state['values']['drupalchat_enable_chatroom'],
-	  'theme' => $form_state['values']['drupalchat_theme'],
-	  'notify_sound' => $form_state['values']['drupalchat_notification_sound'],
-	  'smileys' => $form_state['values']['drupalchat_enable_smiley'],
-	  'log_chat' => $form_state['values']['drupalchat_log_messages'],
-	  'chat_topbar_color' => $form_state['values']['drupalchat_chat_topbar_color'],
-	  'chat_topbar_text_color' => $form_state['values']['drupalchat_chat_topbar_text_color'],
-	  'font_color' => $form_state['values']['drupalchat_font_color'],
-	  'chat_list_header' => $form_state['values']['drupalchat_chat_list_header'],
-	  'public_chatroom_header' => $form_state['values']['drupalchat_public_chatroom_header'],
-	  'rel' => $form_state['values']['drupalchat_rel'],
-	  'version' => '6.x-2.0-beta17',
-	  'show_admin_list' => $form_state['values']['drupalchat_show_admin_list'],
+	    'enable_chatroom' => $form_state['values']['drupalchat_enable_chatroom'],
+	    'theme' => $form_state['values']['drupalchat_theme'],
+	    'notify_sound' => $form_state['values']['drupalchat_notification_sound'],
+	    'smileys' => $form_state['values']['drupalchat_enable_smiley'],
+	    'log_chat' => $form_state['values']['drupalchat_log_messages'],
+	    'chat_topbar_color' => $form_state['values']['drupalchat_chat_topbar_color'],
+	    'chat_topbar_text_color' => $form_state['values']['drupalchat_chat_topbar_text_color'],
+	    'font_color' => $form_state['values']['drupalchat_font_color'],
+	    'chat_list_header' => $form_state['values']['drupalchat_chat_list_header'],
+	    'public_chatroom_header' => $form_state['values']['drupalchat_public_chatroom_header'],
+	    'rel' => $form_state['values']['drupalchat_rel'],
+	    'version' => '6.x-2.0-beta20',
+	    'show_admin_list' => $form_state['values']['drupalchat_show_admin_list'],
+      'clear' => $form_state['values']['drupalchat_allow_single_message_delete'],
+      'delmessage' => $form_state['values']['drupalchat_allow_clear_room_history'],
     );
     if($form_state['values']['drupalchat_rel'] > DRUPALCHAT_REL_AUTH) {
       $new_valid_uids = _drupalchat_get_buddylist($user->uid, $form_state['values']['drupalchat_ur_name']);

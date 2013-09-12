@@ -1,5 +1,4 @@
 <?php
-
 /**
  * @file
  *
@@ -24,31 +23,36 @@
 <?php
 // Gather other possible class list variables into ours. This must be done here
 // rather than in the preprocess because themes run after the AF preprocess.
-  $all_classes = "";
-  if (!empty($advanced_forum_classes)) {
-    $all_classes = $advanced_forum_classes;
-  }
+$all_classes = "";
+if (!empty($advanced_forum_classes)) {
+  $all_classes = $advanced_forum_classes;
+}
 
-  if (!empty($classes)) {
-    $all_classes .= ' ' . $classes;
-  }
+if (!empty($classes)) {
+  $all_classes .= ' ' . $classes;
+}
 
-  if (!empty($node_classes)) {
-    $all_classes .= ' ' . $node_classes;
-  }
+if (!empty($node_classes)) {
+  $all_classes .= ' ' . $node_classes;
+}
 
-  if (!empty($comment_classes)) {
-    $all_classes .= ' ' . $comment_classes;
-  }
+if (!empty($comment_classes)) {
+  $all_classes .= ' ' . $comment_classes;
+}
 ?>
 
 <div id="<?php print $post_id; ?>" class="<?php print $all_classes; ?>">
   <div class="forum-post-info clear-block">
-    <div class="forum-posted-on">
+    <div class="forum-posted-on <?php if ($top_post) {
+  print 'forum-posted-on-top';
+} ?> ">
       <?php print $date ?>
 
-      <?php print $new_marker ?>
+    <?php print $new_marker ?>
     </div>
+    <?php if ($top_post): ?>
+      <span class="forum-main-title"><?php print $title; ?></span>
+    <?php endif; ?>
 
     <?php if (!empty($in_reply_to)): ?>
       <span class="forum-in-reply-to"><?php print $in_reply_to; ?></span>
@@ -57,59 +61,53 @@
     <?php // Add a note when a post is unpublished so it doesn't rely on theming. ?>
     <?php if (!$node->status): ?>
       <span class="unpublished-post-note"><?php print t("Unpublished post") ?></span>
-    <?php endif; ?>
+<?php endif; ?>
 
     <span class="forum-post-number"><?php print $post_link; ?></span>
-  </div> <?php // End of post info div ?>
+  </div> <?php // End of post info div  ?>
 
   <div class="forum-post-wrapper">
     <div class="forum-post-panel-sub">
       <?php if (!empty($author_pane)): ?>
         <?php print $author_pane; ?>
-      <?php endif; ?>
+<?php endif; ?>
     </div>
 
     <div class="forum-post-panel-main clear-block">
-      <?php if (!empty($title)): ?>
-        <div class="forum-post-title">
-          <?php print $title ?>
-        </div>
-      <?php endif; ?>
-
       <div class="forum-post-content">
-        <?php print $content ?>
+<?php print $content ?>
       </div>
 
-      <?php if (!empty($post_edited)): ?>
+        <?php if (!empty($post_edited)): ?>
         <div class="post-edited">
-          <?php print $post_edited ?>
+        <?php print $post_edited ?>
         </div>
       <?php endif; ?>
 
-      <?php if (!empty($signature)): ?>
+        <?php if (!empty($signature)): ?>
         <div class="author-signature">
-          <?php print $signature ?>
+        <?php print $signature ?>
         </div>
-      <?php endif; ?>
+<?php endif; ?>
     </div>
-  </div> <?php // End of post wrapper div ?>
+  </div> <?php // End of post wrapper div  ?>
 
   <div class="forum-post-footer clear-block">
     <div class="forum-jump-links">
       <a href="#forum-topic-top" title="<?php print t('Jump to top of page'); ?>" class="af-button-small"><span><?php print t("Top"); ?></span></a>
     </div>
 
-    <?php if (!empty($links)): ?>
+      <?php if (!empty($links)): ?>
       <div class="forum-post-links">
-        <?php print $links ?>
+      <?php print $links ?>
       </div>
-    <?php endif; ?>
-  </div> <?php // End of footer div ?>
-</div> <?php // End of main wrapping div ?>
+<?php endif; ?>
+  </div> <?php // End of footer div  ?>
+</div> <?php // End of main wrapping div  ?>
 
 
 <?php if ($top_post): ?>
-  <?php print $topic_header ?>
+  <div class="forum-comment-separator">Comments:</div>
 
 <?php else: ?>
   <?php // If using nodecomment, add the anchor that comment normally provides ?>

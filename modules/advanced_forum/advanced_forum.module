@@ -880,6 +880,24 @@ function advanced_forum_last_post_link($node) {
 
   return theme('advanced_forum_l', t('Last comment'), "node/$node->nid", $options, 'large');
 }
+function advanced_forum_first_post_link($node) {
+  $last_comment_id = advanced_forum_first_post_in_topic($node->nid);
+  // Return empty link if post doesn't have comments.
+  if (empty($last_comment_id)) {
+    return;
+  }
+  $last_page = advanced_forum_get_last_page($node);
+  $query = ($last_page > 0) ? "page=$last_page" : '';
+
+  $options = array(
+    'html' => TRUE,
+    'query' => $query,
+    'fragment' => "comment-$last_comment_id",
+  );
+
+  return theme('advanced_forum_l', t('First comment'), "node/$node->nid", $options, 'large');
+}
+
 
 /**
  * Returns a link directly to the first new post in a topic.
@@ -1001,6 +1019,38 @@ function advanced_forum_last_post_in_topic($nid) {
               FROM {comments} c
               WHERE c.nid = %d AND c.status = %d
               ORDER BY c.cid DESC';
+    $result = db_result(db_query_range($query, $nid, COMMENT_PUBLISHED, 0, 1));
+  }
+
+  return $result;
+}
+
+
+/**
+ * Get the comment id of the last post in a topic.
+ *
+ * @param $node
+ *   Node object
+ * @return
+ *   cid of last post.
+ */
+function advanced_forum_first_post_in_topic($nid) {
+  $node = node_load($nid);
+  if (module_exists('nodecomment') && nodecomment_get_comment_type($node->type)) {
+    // Nodecomment module version
+    $query = 'SELECT nc.cid
+              FROM {node_comments} nc
+                INNER JOIN {node} n ON nc.nid = n.nid
+              WHERE nc.nid = %d AND n.status = 1
+              ORDER BY nc.cid ASC';
+    $result = db_result(db_query_range($query, $nid, 0, 1));
+  }
+  else {
+    // Comment module version
+    $query = 'SELECT c.cid
+              FROM {comments} c
+              WHERE c.nid = %d AND c.status = %d
+              ORDER BY c.cid ASC';
     $result = db_result(db_query_range($query, $nid, COMMENT_PUBLISHED, 0, 1));
   }
 

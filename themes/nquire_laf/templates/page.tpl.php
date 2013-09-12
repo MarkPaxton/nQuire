@@ -177,13 +177,11 @@
         <?php print $highlight; ?>
 
         <?php print $breadcrumb; ?>
-        <?php if ($title && !($node && ($node->type === 'page' || $node->type === 'pi_activity' || $node->type === 'pi_phase')) && $menu_item['path'] !== 'home' && $menu_item['path'] !== "journal/contribution/%"): ?>
+        <?php if ($title && !$node && $menu_item['path'] !== 'home' && $menu_item['path'] !== "journal/contribution/%"): ?>
           <h1 class="title"><?php print $title; ?></h1>
         <?php endif; ?>
         <?php print $messages; ?>
-        <?php if ($tabs): ?>
-          <div class="tabs"><?php print $tabs; ?></div>
-        <?php endif; ?>
+        
         <?php print $help; ?>
 
         <?php print $content_top; ?>

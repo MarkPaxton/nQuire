@@ -117,6 +117,10 @@ function theme_inquiry_creator_inquiry_metadata_form($form) {
 function theme_inquiry_creator_inquiry_metadata($node, $editable = FALSE) {
   drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/inquiry_creator_metadata.css');
 
+  $forums = forum_get_forums();// node_load($node->forum);
+  
+  $forum_title = isset($forums[$node->forum]) ? l($forums[$node->forum]->name, "forum/{$node->forum}") : t('No forum selected');
+
   $title = t('Inquiry description');
   $content_cells = array(
       array(
@@ -127,17 +131,20 @@ function theme_inquiry_creator_inquiry_metadata($node, $editable = FALSE) {
           array('data' => t('Description:'), 'class' => 'inquiry_creator_metadata_table_header'),
           array('data' => nl2br(check_plain($node->body)), 'class' => 'inquiry_creator_metadata_table_value'),
       ),
+      array(
+          array('data' => t('Forum:'), 'class' => 'inquiry_creator_metadata_table_header'),
+          array('data' => $forum_title, 'class' => 'inquiry_creator_metadata_table_value'),
+      ),
   );
-
+  
+  $content_blocks = array();
   if ($node->image) {
-    array_splice($content_cells[0], 0, 0, array(array(
-        'data' => '<img src="' . file_create_url($node->image) . '"></img>', 
-        'rowspan' => 2, 
-        'id' => 'inquiry_creator_metadata_table_image',
-        )));
+    $content_blocks[] = '<img class="inquiry_creator_metadata_table_image" src="' . file_create_url($node->image) . '"></img>';
   }
-
-  $content = nquire_commons_create_not_expanding_table_block(theme('table', NULL, $content_cells, array('id' => 'inquiry_creator_metadata_table')));
+ 
+  $content_blocks[] = theme('table', NULL, $content_cells, array('id' => 'inquiry_creator_metadata_table'));
+  
+  $content = nquire_commons_create_inline_blocks($content_blocks);
 
   if ($editable) {
     $frontpage_label = $node->frontpage ? t('Edit front page') : t('Create front page');
@@ -578,6 +585,22 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
       '#default_value' => nquire_commons_form_node_default_value($node, 'body', $form_state, 'body', ''),
       '#required' => TRUE
   );
+  
+  $forum_options = array(0 => t('No forum'));
+  foreach (forum_get_forums() as $tid => $forum) {
+    if ($forum->depth == 1) {
+      $forum_options[$tid] = check_plain($forum->name);
+    }      
+  }
+  
+  $form['forum'] = array(
+      '#type' => 'select',
+      '#title' => t('Related forum'),
+      '#description' => t('Select the forum related to this inquiry. Please note that new forums need to be created by the site administrator.'),
+      '#required' => FALSE,
+      '#options' => $forum_options,
+      '#default_value' => $node->forum,
+  );
 
   if ($node->image) {
     $form['image_pre'] = array(
@@ -616,6 +639,7 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
     $node->uid = $user->uid;
     $node->title = $form_state['values']['title'];
     $node->body = $form_state['values']['body'];
+    $node->forum = $form_state['values']['forum'];
 
     $node->roles = json_encode(array());
 
@@ -641,6 +665,12 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
         $node->body = $form_state['values']['body'];
         $save = TRUE;
       }
+      
+      if ($node->forum !== $form_state['values']['forum']) {
+        $node->forum = $form_state['values']['forum'];
+        $save = TRUE;
+      }      
+
 
       if (_pi_inquiry_creator_metadata_save_image_file($node, $form, $form_state)) {
         $save = TRUE;
