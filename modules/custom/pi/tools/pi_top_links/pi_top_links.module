@@ -54,18 +54,25 @@ function _pi_top_links_format_menu() {
           'checkaccess' => TRUE,
           'title' => t('Inquiry creator'),
       ),
-      'admin/nquire' => array(
-          'checkaccess' => TRUE,
-          'title' => t('Configure nQuire'),
-          'children' => array(
-              'admin/nquire/promote' => t('Promote inquiries'),
-              'admin/nquire/news' => t('Select news'),
-          ),
+  );
+
+  if (function_exists('pi_promote_get_menu_items')) {
+    $paths = array_merge($paths, pi_promote_get_menu_items());
+  }
+
+  $paths['admin/nquire'] = array(
+      'checkaccess' => TRUE,
+      'title' => t('Configure nQuire'),
+      'children' => array(
+          'admin/nquire/promote' => t('Promote inquiries'),
+          'admin/nquire/news' => t('Select news'),
       ),
   );
 
+
+
   $depths = array('', '&nbsp;&nbsp;&#149;&nbsp;', '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- ');
-  
+
   foreach (forum_get_forums() as $tid => $forum) {
     $paths['forum']['children']['forum/' . $tid] = $depths[min($forum->depth, 2)] . check_plain($forum->name);
   }
@@ -113,11 +120,20 @@ function _pi_top_links_format_user_block() {
   global $user;
 
   if ($user->uid) {
-    $l1 = l(check_plain($user->name), 'user/' . $user->uid, array('attributes' => array('class' => 'pi-top-links-username')));
+    $l1 = l(check_plain($user->name), 'user/' . $user->uid, array(
+        'attributes' => array('class' => 'pi-top-links-username'),
+    ));
+
     $l2 = l(t('logout'), "logout", array('attributes' => array('class' => 'pi-top-links-user-action')));
   } else {
-    $l1 = l(t('login'), "user", array('attributes' => array('class' => 'pi-top-links-user-action')));
-    $l2 = l(t('create new account'), "user/register", array('attributes' => array('class' => 'pi-top-links-user-action')));
+    $l1 = l(t('login'), "user", array(
+        'attributes' => array('class' => 'pi-top-links-user-action'),
+        'query' => drupal_get_destination(),
+    ));
+    $l2 = l(t('create new account'), "user/register", array(
+        'attributes' => array('class' => 'pi-top-links-user-action'),
+        'query' => drupal_get_destination(),
+    ));
   }
 
   $output = '<div class="pi-top-links-user-block">'

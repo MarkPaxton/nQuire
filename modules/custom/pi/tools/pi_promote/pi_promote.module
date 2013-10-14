@@ -43,12 +43,29 @@ function pi_promote_shop_page() {
 
   $inquiries = array();
 
-  $query = "SELECT inquiry_id FROM {pi_promote} WHERE status=%d";
+  $query = "SELECT inquiry_id FROM {pi_promote} WHERE status=%d ORDER BY weight";
   $result = db_query($query, PI_PROMOTE_SELECTED);
   while ($row = db_fetch_array($result)) {
+    if ($row['inquiry_id'] == 0) {
+      $access = user_access('access inquiry_creator content');
+      $inquiries[] = array(
+          'path' => $access ? 'creator' : FALSE,
+          'title' => t('Inquiry creator'),
+          'image' => url(drupal_get_path('module', 'pi_promote') . '/images/editor.png', array('absolute' => TRUE)),
+          'info' => $access ? t('Create new inquiries.') : t('Login or register to access.'),
+      );
+    }
     $inquiry = node_load($row['inquiry_id']);
     if ($inquiry) {
-      $inquiries[] = $inquiry;
+      $member_count = count(nquire_group_get_member_uids($inquiry->actor_gid, TRUE));
+      $info = $member_count === 1 ? t('One member') : t('!n members.', array('!n' => $member_count));
+
+      $inquiries[] = array(
+          'path' => "inquiry/{$inquiry->nid}",
+          'title' => check_plain($inquiry->title),
+          'info' => $info,
+          'image' => file_create_url($inquiry->image),
+      );
     }
   }
 
@@ -74,14 +91,11 @@ function pi_promote_shop_page() {
     for ($j = 0; $j < 2; $j++, $i++) {
       if ($i < count($inquiries)) {
         $inquiry = $inquiries[$i];
-        $path = 'inquiry/' . $inquiry->nid;
-        $url = url($path);
-        $title = l(check_plain($inquiry->title), $path);
-        $member_count = count(nquire_group_get_member_uids($inquiry->actor_gid, TRUE));
-        $info = $member_count === 1 ? t('One member') : t('!n members.', array('!n' => $member_count));
+        $url = $inquiry['path'] ? url($inquiry['path']) : FALSE;
+        $title = $inquiry['path'] ? l($inquiry['title'], $inquiry['path']) : $inquiry['title'];
 
-        if ($inquiry->image) {
-          $image = file_create_url($inquiry->image);
+        if ($inquiry['image']) {
+          $image = $inquiry['image'];
           $size = getimagesize($image);
           $ar = $size[0] / $size[1];
           if ($ar > $aspect_ratio) {
@@ -104,9 +118,18 @@ function pi_promote_shop_page() {
         }
 
         $output .= '<div class="pi_promote_shop_item">'
-                . '<div class="pi_promote_shop_item_image"><a href="' . $url . '"><img src="' . $image . '" style="' . $image_style . '"></img></a></div>'
+                . '<div class="pi_promote_shop_item_image">';
+        if ($url) {
+          $output .= '<a href="' . $url . '">';
+        }
+        $output .= '<img src="' . $image . '" style="' . $image_style . '"></img>';
+        if ($url) {
+          $output .= '</a>';
+        }
+
+        $output .= '</div>'
                 . '<div class="pi_promote_shop_item_title">' . $title . '</div>'
-                . '<div class="pi_promote_shop_item_info">' . $info . '</div>'
+                . '<div class="pi_promote_shop_item_info">' . $inquiry['info'] . '</div>'
                 . '</div>';
       } else {
         $output .= '<div class="pi_promote_shop_item">'
@@ -122,17 +145,33 @@ function pi_promote_shop_page() {
   while ($row = db_fetch_array($news_result)) {
     $node = node_load($row['nid']);
     $teaser_pos = strpos($node->body, '<!--break-->');
-    $body = nl2br(check_plain($teaser_pos === FALSE ? $node->body : substr($node->body, 0, $teaser_pos)));
+    if ($teaser_pos === FALSE) {
+      $teaser_text = $node->body;
+    } else {
+      $teaser_pos_2 = strpos($node->body, '<!--break-->', $teaser_pos + 1);
+      if ($teaser_pos_2 === FALSE) {
+        $teaser_text = substr($node->body, 0, $teaser_pos);
+      } else {
+        $teaser_text = substr($node->body, $teaser_pos, $teaser_pos_2 - $teaser_pos);
+      }
+    }
+
+    $body = strip_tags(nl2br($teaser_text)); // nl2br(check_plain());
     $news[] = array(check_plain($node->title), $body, format_date($node->created, 'small'), $row['nid']);
   }
 
   $output .= '</div>'
           . '<div class="pi_promote_links"><div class="p_promote_links_head">' . t('News') . '</div>';
 
+
   $output .= implode('', array_map(function($l) {
-                    return '<div class="pi_promote_links_title">' . $l[0] . '</div><div class="pi_promote_links_body">' . $l[1] . '</div><div class="pi_promote_links_read">'
-                            . $l[2] . '&nbsp;&nbsp;&nbsp;' . l(t('Read'), 'node/' . $l[3]) . '</div>';
-                  }, $news));
+            return '<div class="pi_promote_links_title">' . $l[0] . '</div><div class="pi_promote_links_body">' . $l[1] . '</div><div class="pi_promote_links_read">'
+                    . $l[2] . '&nbsp;&nbsp;&nbsp;' . l(t('Read'), 'node/' . $l[3]) . '</div>';
+          }, $news));
+
+  $output .= '<div class="p_promote_links_head" style="padding-top:10px;">' . t('Recent activity') . '</div>';
+  $output .= pi_feeds_recent_activity();
+
 
   $output .= '</div></div></div>';
 
@@ -144,35 +183,53 @@ function pi_promote_shop_page_callback() {
 }
 
 function pi_promote_admin_page() {
+  drupal_add_js(drupal_get_path('module', 'pi_promote') . '/js/pi_promote_inquiry_admin.js');
   $output = drupal_get_form('pi_promote_admin_form');
   return $output;
 }
 
 function pi_promote_admin_form(&$form_state) {
-  $query = "SELECT inquiry_id, status FROM {pi_promote} WHERE status>0 ORDER BY status";
 
-  $options = array();
-  $values = array();
+  $form = array(
+      'inquiries' => array(
+          '#prefix' => '<ul class="item-list">',
+          '#suffix' => '</ul>',
+          '#tree' => TRUE,
+      ),
+  );
 
-  $result = db_query($query);
-  while ($row = db_fetch_array($result)) {
-    $inquiry = node_load($row['inquiry_id']);
-    if ($inquiry && $inquiry->type === 'pi_inquiry') {
-      $options[$inquiry->nid] = check_plain($inquiry->title);
-      if ($row['status'] == PI_PROMOTE_SELECTED) {
-        $values[] = $inquiry->nid; //[$inquiry->nid] = $row['status'] == PI_PROMOTE_SELECTED;
-      }
-    }
+  $options = array(0 => t('Not shown'));
+  for ($i = 1; $i <= 10; $i++) {
+    $options[$i] = t('Position: !p', array('!p' => $i));
   }
 
-  $form = array();
-  $form['selected'] = array(
-      '#type' => 'checkboxes',
-      '#title' => t('Promoted inquiries'),
-      '#description' => t('This list includes only inquiries whose owners have proposed for promotion.'),
-      '#options' => $options,
-      '#default_value' => $values
-  );
+  $query = "SELECT inquiry_id, status, weight FROM {pi_promote} WHERE status>0 ORDER BY status, weight";
+  $result = db_query($query);
+
+  while ($row = db_fetch_array($result)) {
+    $id = FALSE;
+    if ($row['inquiry_id'] == 0) {
+      $id = 0;
+      $title = t('Authoring tool');
+    } else {
+      $inquiry = node_load($row['inquiry_id']);
+      if ($inquiry && $inquiry->type === 'pi_inquiry') {
+        $id = $inquiry->nid;
+        $title = check_plain($inquiry->title);
+      }
+    }
+
+    if ($id !== FALSE) {
+      $value = $row['status'] == PI_PROMOTE_SELECTED ? $row['weight'] : 0;
+      $form['inquiries'][$id] = array(
+          '#prefix' => '<li class="inquiry_item_selector"><b>' . $title . '</b>',
+          '#type' => 'select',
+          '#suffix' => '</li>',
+          '#options' => $options,
+          '#default_value' => $value,
+      );
+    }
+  }
 
   nquire_commons_create_form_save_cancel_buttons($form, 'pi_promote_admin_form_submit', "admin/nquire/promote");
 
@@ -180,19 +237,14 @@ function pi_promote_admin_form(&$form_state) {
 }
 
 function pi_promote_admin_form_submit($form, $form_state) {
-  foreach ($form_state['values']['selected'] as $inquiry_nid => $selected) {
-    $current_value = _pi_promote_get_value($inquiry_nid);
-    if ($current_value === PI_PROMOTE_SELECTED && !$selected) {
-      _pi_promote_set_value($inquiry_nid, PI_PROMOTE_REQUESTED);
-    } else if ($current_value === PI_PROMOTE_REQUESTED && $selected) {
-      _pi_promote_set_value($inquiry_nid, PI_PROMOTE_SELECTED);
-    }
+  foreach ($form_state['values']['inquiries'] as $inquiry_nid => $weight) {
+    _pi_promote_set_value($inquiry_nid, $weight ? PI_PROMOTE_SELECTED : PI_PROMOTE_REQUESTED, $weight);
   }
 }
 
-function _pi_promote_set_value($inquiry_nid, $status) {
-  $query = "INSERT INTO pi_promote (inquiry_id, status) VALUES (%d, %d) ON DUPLICATE KEY UPDATE status=%d";
-  db_query($query, $inquiry_nid, $status, $status);
+function _pi_promote_set_value($inquiry_nid, $status, $weight = 0) {
+  $query = "INSERT INTO pi_promote (inquiry_id, status, weight) VALUES (%d, %d, %d) ON DUPLICATE KEY UPDATE status=%d, weight=%d";
+  db_query($query, $inquiry_nid, $status, $weight, $status, $weight);
 }
 
 function _pi_promote_set_rating($inquiry_nid, $uid, $rating) {
@@ -327,25 +379,50 @@ function pi_promote_admin_news() {
   while ($row = db_fetch_array($result)) {
     $news[] = array(
         'node' => node_load($row['nid']),
-        'pos' => isset($row['selected']) && isset($row['weight']) && $row['selected'] ? $row['weight'] : 0,
+        'pos' => isset($row['selected']) && isset($row['weight']) && $row['selected'] ? ($row['selected'] == 1 ? $row['weight'] : $row['weight'] - 11) : 0,
     );
   }
 
   usort($news, function($a, $b) {
-            if ($a['pos'] == $b['pos']) {
-              return $b['node']->created - $a['node']->created;
-            } else if ($a['pos'] && $b['pos']) {
-              return $a['pos'] - $b['pos'];
-            } else if ($a['pos']) {
-              return -1;
-            } else if ($b['pos']) {
-              return 1;
-            } else {
-              return 0;
-            }
-          });
+    if ($a['pos'] == $b['pos']) {
+      return $b['node']->created - $a['node']->created;
+    } else if ($a['pos'] && $b['pos']) {
+      return $a['pos'] - $b['pos'];
+    } else if ($a['pos']) {
+      return -1;
+    } else if ($b['pos']) {
+      return 1;
+    } else {
+      return 0;
+    }
+  });
 
   return drupal_get_form('pi_promote_admin_news_form', $news);
+}
+
+function pi_promote_get_menu_items() {
+  $paths = array();
+  $result = db_query("SELECT node.nid FROM {node} LEFT JOIN {pi_promote_news} ON node.nid=pi_promote_news.news_id WHERE pi_promote_news.selected=2 ORDER BY pi_promote_news.weight ASC");
+  $first = true;
+  $main_path = NULL;
+
+  while ($row = db_fetch_array($result)) {
+    $node = node_load($row['nid']);
+    $path = "node/{$row['nid']}";
+    $title = check_plain($node->title);
+
+    if ($first) {
+      $main_path = $path;
+      $paths[$main_path] = array(
+          'title' => $title,
+          'children' => array(),
+      );
+      $first = false;
+    } else {
+      $paths[$main_path]['children'][$path] = $title;
+    }
+  }
+  return $paths;
 }
 
 function pi_promote_admin_news_form($form_state, $news) {
@@ -363,8 +440,11 @@ function pi_promote_admin_news_form($form_state, $news) {
   );
 
   $options = array(0 => t('Not shown'));
+  for ($i = -10; $i < 0; $i++) {
+    $options[$i] = t('Top menu item: !p', array('!p' => $i + 11));
+  }
   for ($i = 1; $i <= 10; $i++) {
-    $options[$i] = t('Shown at position: !p', array('!p' => $i));
+    $options[$i] = t('News item: !p', array('!p' => $i));
   }
 
   foreach ($news as $item) {
@@ -386,10 +466,19 @@ function pi_promote_admin_news_form_submit($form, $form_state) {
   $query = "INSERT INTO pi_promote_news (news_id, selected, weight) VALUES ('%d', '%d', '%d') ON DUPLICATE KEY UPDATE selected='%d', weight='%d'";
 
   asort($form_state['values']['stories']);
-  $i = 1;
+  $newsIndex = 1;
+  $menuIndex = 1;
   foreach ($form_state['values']['stories'] as $nid => $weight) {
-    $selected = $weight > 0;
-    $weight = $selected ? $i++ : 0;
-    db_query($query, $nid, $selected, $weight, $selected, $weight);
+    if ($weight > 0) {
+      $selected = 1;
+      $i = $newsIndex ++;
+    } else if ($weight < 0) {
+      $selected = 2;
+      $i = $menuIndex ++;
+    } else {
+      $selected = 0;
+      $i = 0;
+    }
+    db_query($query, $nid, $selected, $i, $selected, $i);
   }
 }

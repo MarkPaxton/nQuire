@@ -14,14 +14,30 @@ function pi_header_block($op = 'list') {
     case 'view':
       $module_path = drupal_get_path('module', 'pi_header');
       $image_path = base_path() . $module_path . '/images/';
-      drupal_add_css($module_path . '/pi_header.css');
+      drupal_add_css($module_path . '/css/pi_header.css');
 
 
       if (arg(0) === 'home') {
+        nquire_commons_load_javascript_support();
+        $module = "{"
+                . "  init: function() {"
+                . "    this.path = '$image_path';"
+                . "  }"
+                . "}";
+        nquire_commons_inject_inline_javascript_module('HeaderCarouselPath', $module);
+        drupal_add_js(drupal_get_path('module', 'pi_header') . '/js/pi_header_carousel.js');
+
         $output = '<div style="height:281px;width:100%;text-align:center;">'
-                . '<div style="height:281px;width:960px;display:inline-block;text-align:left;padding-left:25px;">'
-                . '<img width="924" src="' . $image_path . 'home_' . rand(1, 4) . '.png' . '"></img>'
+                . '<div class="pi_header_image_container">'
+                . '<img id="pi_header_image" width="924" src="' . $image_path . 'home_1' . '.png' . '"></img>'
+                . '<img id="pi_header_image_top" width="924" src="' . $image_path . 'home_1' . '.png' . '"></img>'
                 . '</div>'
+                . '</div>'
+                . '<div class="pi_header_carousel">'
+                . '<div item="1" class="pi_header_carousel_item"></div>'
+                . '<div item="2" class="pi_header_carousel_item"></div>'
+                . '<div item="3" class="pi_header_carousel_item"></div>'
+                . '<div item="4" class="pi_header_carousel_item"></div>'
                 . '</div>';
       } else {
 

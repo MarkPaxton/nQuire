@@ -324,7 +324,7 @@ function pi_inquiry_home_get_started($inquiry) {
         drupal_goto('inquiry/' . $inquiry->nid);
       }
     } else {
-      drupal_goto('user');
+      drupal_goto('user', array('destination' => "inquiry/{$inquiry->nid}/home"));
     } 
   }
 }
