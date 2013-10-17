@@ -117,8 +117,8 @@ function theme_inquiry_creator_inquiry_metadata_form($form) {
 function theme_inquiry_creator_inquiry_metadata($node, $editable = FALSE) {
   drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/inquiry_creator_metadata.css');
 
-  $forums = forum_get_forums();// node_load($node->forum);
-  
+  $forums = forum_get_forums(); // node_load($node->forum);
+
   $forum_title = isset($forums[$node->forum]) ? l($forums[$node->forum]->name, "forum/{$node->forum}") : t('No forum selected');
 
   $title = t('Inquiry description');
@@ -136,14 +136,14 @@ function theme_inquiry_creator_inquiry_metadata($node, $editable = FALSE) {
           array('data' => $forum_title, 'class' => 'inquiry_creator_metadata_table_value'),
       ),
   );
-  
+
   $content_blocks = array();
   if ($node->image) {
     $content_blocks[] = '<img class="inquiry_creator_metadata_table_image" src="' . file_create_url($node->image) . '"></img>';
   }
- 
+
   $content_blocks[] = theme('table', NULL, $content_cells, array('id' => 'inquiry_creator_metadata_table'));
-  
+
   $content = nquire_commons_create_inline_blocks($content_blocks);
 
   if ($editable) {
@@ -255,6 +255,11 @@ function inquiry_creator_activities_form(&$form_state, $node) {
   $form = array();
 
   nquire_commons_form_set_default_link_action($form, 'submit');
+  
+  $form['intro'] = array(
+      '#value' => '<p>' . t('Click on the links below to add new phases and activities. You can change the name of the activities and phases by clicking on them. They can be reorganized or deleted by dragging with the mouse. To edit the details of each activity, click \'Save\' and then \'edit\' on the desired activity.') . '</p>'
+      . '<p>' . t('Alternatively, click <a href="!url">here</a> to add the phases and activities from existing inquiries.', array('!url' => url("creator/{$node->nid}/copy"))) . '</p>',
+  );
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   $structure = json_encode(inquiry_creator_get_inquiry_structure($node->nid));
@@ -585,14 +590,14 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
       '#default_value' => nquire_commons_form_node_default_value($node, 'body', $form_state, 'body', ''),
       '#required' => TRUE
   );
-  
+
   $forum_options = array(0 => t('No forum'));
   foreach (forum_get_forums() as $tid => $forum) {
     if ($forum->depth == 1) {
       $forum_options[$tid] = check_plain($forum->name);
-    }      
+    }
   }
-  
+
   $form['forum'] = array(
       '#type' => 'select',
       '#title' => t('Related forum'),
@@ -665,11 +670,11 @@ function inquiry_creator_metadata_form_submit($form, $form_state) {
         $node->body = $form_state['values']['body'];
         $save = TRUE;
       }
-      
+
       if ($node->forum !== $form_state['values']['forum']) {
         $node->forum = $form_state['values']['forum'];
         $save = TRUE;
-      }      
+      }
 
 
       if (_pi_inquiry_creator_metadata_save_image_file($node, $form, $form_state)) {
