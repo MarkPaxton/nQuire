@@ -22,7 +22,7 @@ $(function() {
       clearInterval(this.task);
       this.task = setInterval(function() {
         self.setItem(self.currentItem === 4 ? 1 : self.currentItem + 1, true);
-      }, 10000);
+      }, 7000);
     },
     setItem: function(index, animate) {
       if (index !== this.currentItem) {

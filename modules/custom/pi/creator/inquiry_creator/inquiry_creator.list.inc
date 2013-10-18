@@ -20,6 +20,14 @@ function inquiry_creator_home() {
 function theme_inquiry_creator_design_list($design_list) {
   $output = '<p>' . t('Create and edit new inquiries.') . '</p>';
 
+  $help_story = pi_promote_get_story('help_authoring_tool');
+  if ($help_story) {
+    $help_content = t('Read the <a href="!url" target="_blank">tutorial</a> to learn about creating and editing your own inquiries.', array(
+        '!url' => url("node/$help_story"),
+    ));
+    $output .= nquire_commons_create_page_section($help_content, t('Learn'));
+  }
+
   $title = t('My designs');
 
   if (count($design_list) == 0) {
