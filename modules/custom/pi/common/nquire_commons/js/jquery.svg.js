@@ -160,7 +160,6 @@
         }
       }
       catch (e) {
-        console.log(e.stack);
         alert(e);
       }
     },

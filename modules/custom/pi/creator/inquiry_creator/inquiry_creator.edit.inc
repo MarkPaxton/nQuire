@@ -215,6 +215,7 @@ function theme_inquiry_creator_side_form($design, $item, $type, $form) {
   nquire_commons_load_javascript_support();
   nquire_commons_load_ahah_fix();
 
+  drupal_add_js(drupal_get_path('module', 'inquiry_creator') . '/js/jquery.scrollTo.min.js');
   drupal_add_js(drupal_get_path('module', 'inquiry_creator') . '/js/editFormPosition.js');
   drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/sideForm.css');
 

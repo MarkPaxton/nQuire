@@ -464,7 +464,7 @@ jQuery.ui || (function($) {
     _mouseMove: function(event) {
       // IE mouseup check - mouseup happened when mouse was out of window
       if ($.browser.msie && !event.button) {
-        return this._mouseUp(event);
+        //return this._mouseUp(event);
       }
 
       if (this._mouseStarted) {

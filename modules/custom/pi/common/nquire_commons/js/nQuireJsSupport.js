@@ -20,7 +20,6 @@ var nQuireJsSupport = {
           }
         }
         if (ready) {
-          console.log('init: ' + item.name);
           item.object.init(dependencies);
           this._ready[item.name] = item.object;
           this._queue.splice(i, 1);

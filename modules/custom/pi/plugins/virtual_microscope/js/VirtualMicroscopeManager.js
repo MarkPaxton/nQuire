@@ -214,7 +214,7 @@ $(function() {
         if (iframe && iframe.postMessage && this._iframeOrigin) {
           iframe.postMessage(JSON.stringify(msg), this._iframeOrigin);
         } else {
-          console.log('ERROR: Messaging is not available');
+          alert('ERROR: Messaging is not available, nQuire cannot collect data from the microscope in this browser.');
         }
       } catch (err) {
         console.log(err);

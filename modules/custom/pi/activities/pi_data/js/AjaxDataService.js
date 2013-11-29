@@ -207,7 +207,7 @@ $(function() {
 						self._fireDataChangeEvent('modified', data);
 					});
 				} else {
-					console.log(data);
+					//console.log(data);
 				}
 
 				self._measuresService.submitComplete();
