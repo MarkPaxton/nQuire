@@ -52,8 +52,6 @@
 				}
 			}
 
-			this.nquireStructureWidget('_updateView');
-
 			this.nquireStructureWidget('_enableSaveButton', false);
 
 			return this;
@@ -283,8 +281,6 @@
 				});
 				data.push(phaseItem);
 			});
-
-			this.nquireStructureWidget('_updateView');
 
 			this.nQuireWidget('setDataValue', data);
 			this.nquireStructureWidget('_enableSaveButton', true);
