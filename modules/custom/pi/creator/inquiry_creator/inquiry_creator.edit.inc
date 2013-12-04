@@ -20,6 +20,7 @@ function inquiry_creator_edit($nid) {
   return $output;
 }
 
+
 function inquiry_creator_inquiry_delete($nid) {
   include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 
@@ -179,7 +180,7 @@ function theme_inquiry_creator_edit_menu($node, $current_op, $content) {
       '' => t('Edit phases and activities'),
       'stages' => t('Edit temporal organization'),
       'groups' => t('Edit collaboration organization'),
-      'roles' => t('Edit roles'),
+      /*'roles' => t('Edit roles'),*/
   );
 
   $output = '<div class="edit-link-menu-container">';

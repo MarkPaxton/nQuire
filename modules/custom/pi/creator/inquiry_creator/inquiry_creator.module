@@ -83,6 +83,27 @@ function inquiry_creator_menu() {
       'access arguments' => array('access inquiry_creator content'),
       'weight' => 1,
   );
+  
+  $items['creator/copy'] = array(
+      'title' => 'Inquiry Creator - copy inquiry',
+      'file' => 'inquiry_creator.copy.inc',
+      'page callback' => 'inquiry_creator_copy_new',
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+  $items['creator/copy/%'] = array(
+      'title' => 'Inquiry Creator - confirm copy',
+      'file' => 'inquiry_creator.copy.inc',
+      'page callback' => 'inquiry_creator_copy_new_confirm',
+      'page arguments' => array(2),
+      'type' => MENU_CALLBACK,
+      'access_callback' => TRUE,
+      'access arguments' => array('access inquiry_creator content'),
+      'weight' => 1,
+  );
+  
 
   $items['creator/%'] = array(
       'title' => 'Inquiry Creator - inquiry view',
@@ -266,11 +287,10 @@ function inquiry_creator_create_activity_stub($phase_nid, $type, $title, $weight
   $node->type = 'pi_activity';
   $node->activity_type = $type;
   $node->title = $title;
-  $node->uid = $user->uid;
-  $node->script_activity = TRUE;
   $node->phase_nid = $phase_nid;
   $node->weight = $weight;
   $node->body = $body;
+  $node->parameters = "";
 
   node_save($node);
 

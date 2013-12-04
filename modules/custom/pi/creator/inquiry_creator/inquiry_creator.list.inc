@@ -31,7 +31,7 @@ function theme_inquiry_creator_design_list($design_list) {
   $title = t('My designs');
 
   if (count($design_list) == 0) {
-    $content = t('You have no designs. Click <a href="!url">here</a> to create your first design.', array('!url' => url('creator/new')));
+    $content = t('You have created no designs yet.');
   } else {
     global $user;
 
@@ -50,11 +50,21 @@ function theme_inquiry_creator_design_list($design_list) {
           nl2br(check_plain($node->body)),
       );
     }
-    $content = nquire_commons_create_not_expanding_table_block(theme_table($header, $rows))
-            . l(t('Create new inquiry'), 'creator/new');
+    
+    $content = nquire_commons_create_not_expanding_table_block(theme_table($header, $rows));
   }
 
   $output .= nquire_commons_create_page_section($content, $title);
 
+  $create_sectio_content = t('Here you can create new investigations for yourself, a group of friends, or for the whole community of nQuire users.')
+          .'<ul><li>'
+          . t('<a href="!url">Create</a> a new inquiry from scratch.', array('!url' => url('creator/new')))
+          . '</li><li>'
+          . t('<a href="!url">Copy</a> an existing inquiry. ', array('!url' => url('creator/copy'))) 
+          . t('Please note that this will create a new independent inquiry with the same title, front page and structure. Users and their content will not be copied.')
+          . '</li></ul>';
+  
+  $output .= nquire_commons_create_page_section($create_sectio_content, t('Create new inquiry'));
+  
   return $output;
 }

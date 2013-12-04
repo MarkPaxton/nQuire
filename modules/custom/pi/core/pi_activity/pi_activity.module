@@ -69,7 +69,7 @@ function pi_activity_tabs_access_to_content($node, $function) {
 
     $access = $access_data->getAccessToItem($node);
 
-    return ($node->script_activity || pi_info()->getContentManager()->getContent($node->nid, $user->uid, FALSE)) && ($access === 'edit' || ($access === 'view' && $function === 'view'));
+    return ($access === 'edit' || ($access === 'view' && $function === 'view'));
   }
 
   return FALSE;
@@ -212,21 +212,18 @@ function _pi_activity_form_data_to_pi_activity_row($node) {
   $data_to_save = new StdClass();
 
   $property_to_column = array(
-      'nid' => 'nid',
-      'vid' => 'vid',
-      'activity_type' => 'activity_type',
-      'node_type' => 'node_type',
-      'parameters' => 'parameters',
-      'script_activity' => 'script_activity',
-      'parent_activity' => 'parent_activity',
-      'phase_nid' => 'phase_nid',
-      'show_children_in_phase' => 'show_children_in_phase',
-      'weight' => 'weight',
-      'referenced_node' => 'referenced_node',
+      'nid',
+      'vid',
+      'activity_type',
+      'node_type',
+      'parameters',
+      'phase_nid',
+      'weight',
+      'referenced_node',
   );
 
-  foreach ($property_to_column as $column => $property) {
-    $data_to_save->$column = $node->$property;
+  foreach ($property_to_column as $property) {
+    $data_to_save->$property = $node->$property;
   }
 
   return $data_to_save;
@@ -243,11 +240,6 @@ function pi_activity_delete(&$node) {
   db_query("DELETE FROM {pi_activity} WHERE nid = %d AND vid = %d", $node->nid, $node->vid);
   db_query("DELETE FROM {pi_activity_node} WHERE activity_id = %d", $node->nid);
   db_query("DELETE FROM {pi_activity_share} WHERE activity_id = %d", $node->nid);
-
-  $children_result = db_query("SELECT {node}.nid FROM {node} LEFT JOIN {pi_activity} ON node.vid=pi_activity.vid WHERE pi_activity.parent_activity=%d", $node->nid);
-  while ($child_row = db_fetch_array($children_result)) {
-    //node_delete($child_row['nid']);
-  }
 
   $custom_delete_function = "{$node->activity_type}_delete_activity";
   if (function_exists($custom_delete_function)) {

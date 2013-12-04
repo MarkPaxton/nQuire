@@ -780,18 +780,15 @@ class PiInquiryAccess {
   }
 
   public function getAccessReason($item) {
-    $access = $this->getItemAccess($item);
+    $access = $this->calculateAccess($item);
     return $access['reason'];
   }
 
   public function getAccessToItem($item) {
-    $access = $this->getItemAccess($item);
+    $access = $this->calculateAccess($item);
     return $access['access'];
   }
 
-  private function getItemAccess($item) {
-    return $this->calculateAccess(($item->type === 'pi_activity' && $item->parent_activity) ? $this->inquiry_info->getActivity($item->parent_activity) : $item);
-  }
 
   private function calculateAccess($item) {
     if (!isset($this->item_access[$item->nid])) {
