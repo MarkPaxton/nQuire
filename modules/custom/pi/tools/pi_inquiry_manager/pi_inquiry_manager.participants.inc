@@ -276,78 +276,69 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
 
     $im_owner = pi_inquiry_groupings_check_is_admin($user->uid, $inquiry_node, $group_nid);
 
-    $roles = pi_inquiry_groupings_get_inquiry_role_names($inquiry_node);
-    $has_roles = count($roles) > 0;
-
     $members = nquire_group_get_member_uids($group_check['gid']);
 
-    if (count($members) > 0) {
-      $members_data = array_map(function($uid) use ($group_check, $user) {
-        $u = user_load($uid);
-        return array(
-            'uid' => $uid,
-            'status' => nquire_group_get_user_status_in_group($group_check['gid'], $uid),
-            'name' => $user->uid === $uid ? t('Me') : check_plain($u->name),
-        );
-      }, $members);
+    $members_data = array_map(function($uid) use ($group_check, $user) {
+      $u = user_load($uid);
+      return array(
+          'uid' => $uid,
+          'status' => nquire_group_get_user_status_in_group($group_check['gid'], $uid),
+          'name' => $user->uid === $uid ? t('Me') : check_plain($u->name),
+      );
+    }, $members);
 
-      usort($members_data, function($a, $b) use($user) {
-        if ($a['uid'] === $user->uid) {
+    $sort = function($a, $b) use($user) {
+      if ($a['uid'] === $user->uid) {
+        return -1;
+      } else if ($b['uid'] === $user->uid) {
+        return 1;
+      }
+
+      if ($a['status'] !== $b['status']) {
+        if ($a['status'] === 'member') {
           return -1;
-        } else if ($b['uid'] === $user->uid) {
+        } else if ($b['status'] === 'member') {
           return 1;
         }
+      }
 
-        if ($a['status'] !== $b['status']) {
-          if ($a['status'] === 'member') {
-            return -1;
-          } else if ($b['status'] === 'member') {
-            return 1;
-          }
-        }
+      return strcmp($a['name'], $b['name']);
+    };
 
-        return strcmp($a['name'], $b['name']);
+    $to_row = function($member_data) use ($inquiry_node, $group_nid) {
+      $status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $member_data['uid'], $group_nid);
+      return $member_data['name'] . '&nbsp' . $status;
+    };
+
+    $to_table = function($member_list, $header) use ($sort, $to_row) {
+      if (is_array($member_list)) {
+        usort($member_list, $sort);
+        $items = array_map($to_row, $member_list);
+        $content = theme('item_list', $items);
+      } else {
+        $content = $member_list;
+      }
+      return nquire_commons_create_not_expanding_table_block(theme_table(array($header), array(array($content))));
+    };
+
+    $output = '';
+
+    if ($im_owner) {
+      $pending_members = array_filter($members_data, function($member) {
+        return $member['status'] !== 'member';
       });
 
-      $rows = array();
-
-      foreach ($members_data as $member_data) {
-        $status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $member_data['uid'], $group_nid);
-        $row = array($member_data['name'], $status);
-
-        if ($has_roles && $member_data['status'] === 'member') {
-          $user_roles = nquire_group_get_user_roles($group_check['gid'], $member_data['uid']);
-          $user_role_list = array_map(function($role_id) use ($roles, $inquiry_node, $group_nid, $member_data, $im_owner) {
-            $role_output = $roles[$role_id];
-            if ($im_owner) {
-              $role_output .= '<small>&nbsp;&nbsp;&nbsp;&nbsp;'
-                      . pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $member_data['uid'], $role_id))
-                      . '</small>';
-            }
-            return $role_output;
-          }, $user_roles);
-
-          $user_role_list_output = theme_item_list($user_role_list);
-          if ($im_owner) {
-            $user_role_list_output .= '<div><small>'
-                    . pi_inquiry_manager_partipants_group_operation_link(t('Add role'), $inquiry_node->nid, $group_nid, array('addrolestouser', $member_data['uid']))
-                    . '</small></div>';
-          }
-          $row[] = $user_role_list_output;
-        }
-
-        $rows[] = $row;
+      if (count($pending_members) > 0) {
+        $output .= $to_table($pending_members, t('Membership pending users'));
       }
-
-      $header = array(t('User'), t('Status'));
-      if ($has_roles) {
-        $header[] = t('Roles');
-      }
-
-      $output = nquire_commons_create_not_expanding_table_block(theme_table($header, $rows));
-    } else {
-      $output = t('No participants yet.');
     }
+
+    $active_members = array_filter($members_data, function($member) {
+      return $member['status'] === 'member';
+    });
+
+    $output .= $to_table(count($active_members) > 0 ? $active_members : t('No active participants yet.'), t('Active members'));
+
 
     if ($group_check['group']->selective == OG_INVITE_ONLY && pi_inquiry_manager_participants_group_manageuser_access($inquiry_node->nid, $group_nid)) {
       $label = $group_check['normal_management'] ? t('Invite users') : t('Add users');
@@ -364,6 +355,104 @@ function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = 
     return nquire_commons_create_page_section($output, t('Participant list'));
   }
 }
+
+/*
+  function theme_pi_inquiry_manager_participants_list($inquiry_node, $group_nid = FALSE) {
+  $group_check = pi_inquiry_groupings_check_group($inquiry_node, $group_nid);
+  if ($group_check) {
+  global $user;
+
+  $im_owner = pi_inquiry_groupings_check_is_admin($user->uid, $inquiry_node, $group_nid);
+
+  $roles = pi_inquiry_groupings_get_inquiry_role_names($inquiry_node);
+  $has_roles = count($roles) > 0;
+
+  $members = nquire_group_get_member_uids($group_check['gid']);
+
+  if (count($members) > 0) {
+  $members_data = array_map(function($uid) use ($group_check, $user) {
+  $u = user_load($uid);
+  return array(
+  'uid' => $uid,
+  'status' => nquire_group_get_user_status_in_group($group_check['gid'], $uid),
+  'name' => $user->uid === $uid ? t('Me') : check_plain($u->name),
+  );
+  }, $members);
+
+  usort($members_data, function($a, $b) use($user) {
+  if ($a['uid'] === $user->uid) {
+  return -1;
+  } else if ($b['uid'] === $user->uid) {
+  return 1;
+  }
+
+  if ($a['status'] !== $b['status']) {
+  if ($a['status'] === 'member') {
+  return -1;
+  } else if ($b['status'] === 'member') {
+  return 1;
+  }
+  }
+
+  return strcmp($a['name'], $b['name']);
+  });
+
+  $rows = array();
+
+  foreach ($members_data as $member_data) {
+  $status = theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $member_data['uid'], $group_nid);
+  $row = array($member_data['name'], $status);
+
+  if ($has_roles && $member_data['status'] === 'member') {
+  $user_roles = nquire_group_get_user_roles($group_check['gid'], $member_data['uid']);
+  $user_role_list = array_map(function($role_id) use ($roles, $inquiry_node, $group_nid, $member_data, $im_owner) {
+  $role_output = $roles[$role_id];
+  if ($im_owner) {
+  $role_output .= '<small>&nbsp;&nbsp;&nbsp;&nbsp;'
+  . pi_inquiry_manager_partipants_group_operation_link(t('remove'), $inquiry_node->nid, $group_nid, array('removeuserrole', $member_data['uid'], $role_id))
+  . '</small>';
+  }
+  return $role_output;
+  }, $user_roles);
+
+  $user_role_list_output = theme_item_list($user_role_list);
+  if ($im_owner) {
+  $user_role_list_output .= '<div><small>'
+  . pi_inquiry_manager_partipants_group_operation_link(t('Add role'), $inquiry_node->nid, $group_nid, array('addrolestouser', $member_data['uid']))
+  . '</small></div>';
+  }
+  $row[] = $user_role_list_output;
+  }
+
+  $rows[] = $row;
+  }
+
+  $header = array(t('User'), t('Status'));
+  if ($has_roles) {
+  $header[] = t('Roles');
+  }
+
+  $output = nquire_commons_create_not_expanding_table_block(theme_table($header, $rows));
+  } else {
+  $output = t('No participants yet.');
+  }
+
+  if ($group_check['group']->selective == OG_INVITE_ONLY && pi_inquiry_manager_participants_group_manageuser_access($inquiry_node->nid, $group_nid)) {
+  $label = $group_check['normal_management'] ? t('Invite users') : t('Add users');
+  $output .= '<p>'
+  . pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_node->nid, $group_nid, 'invite')
+  . '</p>';
+  }
+
+  if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_node->nid)) {
+  $output .= '<br/>' . pi_inquiry_manager_partipants_group_operation_link(t('Select admins'), $inquiry_node->nid, FALSE, "admins");
+  }
+
+
+  return nquire_commons_create_page_section($output, t('Participant list'));
+  }
+  }
+ */
 
 function pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_nid, $group_nid = FALSE, $elements = FALSE, $add_destination = TRUE) {
   // if ($add_destination) {
@@ -411,9 +500,9 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
     $link_params = array('query' => array('cancel' => $_GET['q']));
 
     if ($user_status === 'member') {
-      $status .= t('Active');
+      //$status .= t('Active');
       if ($its_owner) {
-        $status .= '&nbsp;' . t('(admin)');
+        $status .= t('(admin) ');
       }
 
       if ($its_me) {
@@ -428,7 +517,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
     } else if ($user_status === 'awaiting') {
       if ($group_check['normal_management']) {
         if ($join_mode == OG_MODERATED) {
-          $status .= t('Awaiting approval');
+          $status .= t(' - Awaiting approval');
           if ($im_owner) {
             $buttons[] = l(t('accept'), $path('accept', $uid), $link_params);
             $buttons[] = l(t('reject'), $path('reject', $uid), $link_params);
@@ -436,7 +525,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
             $buttons[] = l(t('cancel request'), $path('leave'), $link_params);
           }
         } else if ($join_mode == OG_INVITE_ONLY) {
-          $status .= t('Invitation to join received');
+          $status .= t(' - Invited to join');
           if ($im_owner) {
             $buttons[] = l(t('cancel invitation'), $path('reject', $uid), $link_params);
           } else if ($its_me) {
@@ -458,7 +547,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
     }
 
     if (count($buttons) > 0) {
-      $status .= '<br/><small>' . implode('&nbsp;&nbsp;&nbsp;', $buttons) . '</small>';
+      $status .= '<small>&nbsp;&nbsp;&nbsp;' . implode('&nbsp;&nbsp;&nbsp;', $buttons) . '</small>';
     }
 
     return $status;
@@ -1300,12 +1389,12 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
 }
 
 /*
-function pi_inquiry_manager_participants_subgroups_edit_policy($inquiry_nid) {
+  function pi_inquiry_manager_participants_subgroups_edit_policy($inquiry_nid) {
   $inquiry_node = node_load($inquiry_nid);
   return drupal_get_form('pi_inquiry_manager_participants_subgroups_edit_policy_form', $inquiry_node);
-}
+  }
 
-function pi_inquiry_manager_participants_subgroups_edit_policy_form(&$form_state, $inquiry_node) {
+  function pi_inquiry_manager_participants_subgroups_edit_policy_form(&$form_state, $inquiry_node) {
   $form = array();
 
   ahah_helper_register($form, $form_state);
@@ -1315,34 +1404,34 @@ function pi_inquiry_manager_participants_subgroups_edit_policy_form(&$form_state
   $policy = nquire_commons_form_node_default_value($inquiry_node, 'group_creation', $form_state, 'group_creation', 'controlled');
 
   $form['group_creation'] = array(
-      '#type' => 'select',
-      '#title' => t('Who can join this inquiry'),
-      '#description' => t('Select the group of users that may become participants of this inquiry.'),
-      '#options' => array('controlled' => t('Controlled by owner'), 'normal' => t('Free')),
-      '#default_value' => $policy,
-      '#required' => TRUE,
+  '#type' => 'select',
+  '#title' => t('Who can join this inquiry'),
+  '#description' => t('Select the group of users that may become participants of this inquiry.'),
+  '#options' => array('controlled' => t('Controlled by owner'), 'normal' => t('Free')),
+  '#default_value' => $policy,
+  '#required' => TRUE,
   );
 
   nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_participants_subgroups_edit_policy_form_submit', $_REQUEST['destination']);
 
   return $form;
-}
+  }
 
-function pi_inquiry_manager_participants_subgroups_edit_policy_form_submit($form, $form_state) {
+  function pi_inquiry_manager_participants_subgroups_edit_policy_form_submit($form, $form_state) {
   $inquiry_nid = arg(1);
   if (pi_inquiry_manager_participants_subgroups_edit_policy_access($inquiry_nid)) {
-    $inquiry = node_load($inquiry_nid);
-    $new_policy = $form_state['values']['group_creation'];
+  $inquiry = node_load($inquiry_nid);
+  $new_policy = $form_state['values']['group_creation'];
 
-    $inquiry->group_creation = $new_policy;
+  $inquiry->group_creation = $new_policy;
 
-    $inquiry->revision = TRUE;
-    node_save($inquiry);
+  $inquiry->revision = TRUE;
+  node_save($inquiry);
   }
 
   nquire_commons_form_close($form, $form_state);
-}
-*/
+  }
+ */
 /*
   function pi_inquiry_manager_participants_edit_supervision($inquiry_nid) {
   $inquiry_node = node_load($inquiry_nid);
