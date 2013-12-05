@@ -8,7 +8,7 @@ function pi_inquiry_manager_participants($nid) {
 
   //$output .= theme('pi_inquiry_manager_participants_view_inquiry_group', $inquiry, TRUE);
   $output .= theme('pi_inquiry_manager_participants_list', $inquiry);
-  $output .= theme('pi_inquiry_manager_participants_roles', $inquiry);
+  //$output .= theme('pi_inquiry_manager_participants_roles', $inquiry);
 
   $output .= theme('pi_inquiry_manager_participants_groups', $inquiry);
 
@@ -50,6 +50,7 @@ function theme_pi_inquiry_manager_participants_view_inquiry_group($inquiry_node,
         break;
     }
   }
+
 
   if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_node->nid)) {
     $output .= '<br/>' . pi_inquiry_manager_partipants_group_operation_link(t('Edit'), $inquiry_node->nid, FALSE, "access");
@@ -120,7 +121,9 @@ function pi_inquiry_manager_participants_edit_inquiry_group($inquiry_nid) {
   return drupal_get_form('pi_inquiry_manager_participants_edit_inquiry_group_form', $inquiry_node);
 }
 
-function pi_inquiry_manager_participants_edit_inquiry_group_form(&$form_state, $inquiry_node) {
+/*
+
+  function pi_inquiry_manager_participants_edit_inquiry_group_form(&$form_state, $inquiry_node) {
   $form = array();
 
   ahah_helper_register($form, $form_state);
@@ -133,18 +136,18 @@ function pi_inquiry_manager_participants_edit_inquiry_group_form(&$form_state, $
   $has_changed = $current_participants_selection !== $participants_selection;
 
   $form['target'] = array(
-      '#type' => 'select',
-      '#title' => t('Who can join this inquiry'),
-      '#description' => t('Select the group of users that may become participants of this inquiry.'),
-      '#options' => array('justme' => t('Just me'), /* 'group' => t('Members of a group'), */ 'anyone' => t('Anyone')),
-      '#default_value' => $participants_selection,
-      '#ahah' => array(
-          'path' => ahah_helper_path(array('target_dependent_section')),
-          'wrapper' => 'target_dependent_section',
-          'method' => 'replace',
-          'effect' => 'fade',
-      ),
-      '#required' => TRUE,
+  '#type' => 'select',
+  '#title' => t('Who can join this inquiry'),
+  '#description' => t('Select the group of users that may become participants of this inquiry.'),
+  '#options' => array('justme' => t('Just me'), /* 'group' => t('Members of a group'), *//* 'anyone' => t('Anyone')),
+  '#default_value' => $participants_selection,
+  '#ahah' => array(
+  'path' => ahah_helper_path(array('target_dependent_section')),
+  'wrapper' => 'target_dependent_section',
+  'method' => 'replace',
+  'effect' => 'fade',
+  ),
+  '#required' => TRUE,
   );
 
   nquire_commons_create_form_wrapped_section($form, 'target_dependent_section');
@@ -153,96 +156,98 @@ function pi_inquiry_manager_participants_edit_inquiry_group_form(&$form_state, $
   $participants_cohort = nquire_commons_form_node_default_value($inquiry_node, 'participants_cohort', $form_state, 'cohort_group', 0);
 
   if ($participants_selection === 'group') {
-    $groups = array('' => t('- Select group')) + pi_inquiry_groupings_get_normal_groups();
+  $groups = array('' => t('- Select group')) + pi_inquiry_groupings_get_normal_groups();
 
-    $form['target_dependent_section']['wrapped_content']['cohort_group'] = array(
-        '#type' => 'select',
-        '#title' => t('User group'),
-        '#description' => t('Select the group whose participants may join this inquiry.'),
-        '#options' => $groups,
-        '#default_value' => $participants_cohort,
-        '#required' => TRUE,
-        '#ahah' => array(
-            'path' => ahah_helper_path(array('target_dependent_section', 'wrapped_content', 'cohort_dependent_section')),
-            'wrapper' => 'cohort_dependent_section',
-            'method' => 'replace',
-            'effect' => 'fade',
-        ),
-    );
+  $form['target_dependent_section']['wrapped_content']['cohort_group'] = array(
+  '#type' => 'select',
+  '#title' => t('User group'),
+  '#description' => t('Select the group whose participants may join this inquiry.'),
+  '#options' => $groups,
+  '#default_value' => $participants_cohort,
+  '#required' => TRUE,
+  '#ahah' => array(
+  'path' => ahah_helper_path(array('target_dependent_section', 'wrapped_content', 'cohort_dependent_section')),
+  'wrapper' => 'cohort_dependent_section',
+  'method' => 'replace',
+  'effect' => 'fade',
+  ),
+  );
 
-    if (!$has_changed) {
-      $has_changed = $participants_cohort !== $inquiry_node->participants_cohort;
-    }
+  if (!$has_changed) {
+  $has_changed = $participants_cohort !== $inquiry_node->participants_cohort;
+  }
   }
 
 
-  _pi_inquiry_manager_participants_create_group_join_mode_form_item($form['target_dependent_section']['wrapped_content'], $form_state, $inquiry_node->actor_gid, 'join_mode', t('How to join the inquiry'), t('Select how users can join this inquiry.'), $participants_selection === 'justme');
+  pi_inquiry_manager_participants_create_group_join_mode_form_item($form['target_dependent_section']['wrapped_content'], $form_state, $inquiry_node->actor_gid, 'join_mode', t('How to join the inquiry'), t('Select how users can join this inquiry.'), $participants_selection === 'justme', FALSE);
 
   nquire_commons_create_form_wrapped_section($form['target_dependent_section']['wrapped_content'], 'cohort_dependent_section');
   if ($has_changed) {
-    $to_be_expelled = _pi_inquiry_manager_participants_get_participants_to_be_expelled($inquiry_node, $participants_selection, $participants_cohort);
+  $to_be_expelled = _pi_inquiry_manager_participants_get_participants_to_be_expelled($inquiry_node, $participants_selection, $participants_cohort);
 
-    if (count($to_be_expelled) > 0) {
-      $message = '<div><p>' . t('The following users will be expelled from the inquiry:') . '</p>'
-              . theme_item_list(array_map(function($uid) {
-                        $u = user_load($uid);
-                        return check_plain($u->name);
-                      }, $to_be_expelled))
-              . '<div>';
+  if (count($to_be_expelled) > 0) {
+  $message = '<div><p>' . t('The following users will be expelled from the inquiry:') . '</p>'
+  . theme_item_list(array_map(function($uid) {
+  $u = user_load($uid);
+  return check_plain($u->name);
+  }, $to_be_expelled))
+  . '<div>';
 
-      $form['target_dependent_section']['wrapped_content']['cohort_dependent_section']['wrapped_content'] = array(
-          '#value' => $message,
-      );
-    }
+  $form['target_dependent_section']['wrapped_content']['cohort_dependent_section']['wrapped_content'] = array(
+  '#value' => $message,
+  );
+  }
   }
 
 
   nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_participants_edit_inquiry_group_form_submit', "inquiry/{$inquiry_node->nid}/participants");
 
   return $form;
-}
+  }
 
-function _pi_inquiry_manager_participants_get_participants_to_be_expelled($inquiry_node, $new_participant_selection, $new_participant_cohort) {
+  function _pi_inquiry_manager_participants_get_participants_to_be_expelled($inquiry_node, $new_participant_selection, $new_participant_cohort) {
   $to_be_expelled = array();
   $new_allowed_members = pi_inquiry_groupings_get_allowed_participants($new_participant_selection, $inquiry_node->uid, $new_participant_cohort);
   if ($new_allowed_members !== FALSE) {
-    $current_members = nquire_group_get_member_uids($inquiry_node->actor_gid);
-    foreach ($current_members as $member_uid) {
-      if (!in_array($member_uid, $new_allowed_members)) {
-        $to_be_expelled[] = $member_uid;
-      }
-    }
+  $current_members = nquire_group_get_member_uids($inquiry_node->actor_gid);
+  foreach ($current_members as $member_uid) {
+  if (!in_array($member_uid, $new_allowed_members)) {
+  $to_be_expelled[] = $member_uid;
+  }
+  }
   }
   return $to_be_expelled;
-}
+  }
 
-function pi_inquiry_manager_participants_edit_inquiry_group_form_submit($form, $form_state) {
+  function pi_inquiry_manager_participants_edit_inquiry_group_form_submit($form, $form_state) {
   $inquiry_nid = arg(1);
   if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid)) {
-    $inquiry = node_load($inquiry_nid);
-    $new_participant_selection = $form_state['values']['target'];
-    $new_participant_cohort = $form_state['values']['cohort_group'];
+  $inquiry = node_load($inquiry_nid);
+  $new_participant_selection = $form_state['values']['target'];
+  $new_participant_cohort = $form_state['values']['cohort_group'];
 
-//$to_be_expelled = _pi_inquiry_manager_participants_get_participants_to_be_expelled($inquiry, $new_participant_selection, $new_participant_cohort);
+  $inquiry->participants_selection = $new_participant_selection;
+  $inquiry->participants_cohort = $new_participant_cohort;
 
-    $inquiry->participants_selection = $new_participant_selection;
-    $inquiry->participants_cohort = $new_participant_cohort;
-
-    $inquiry->revision = TRUE;
-    node_save($inquiry);
+  $inquiry->revision = TRUE;
+  node_save($inquiry);
 
 
-    _pi_inquiry_manager_participants_process_join_mode_form_value($inquiry->actor_gid, $form_state['values']['join_mode']);
+  _pi_inquiry_manager_participants_process_join_mode_form_value($inquiry->actor_gid, $form_state['values']['join_mode']);
   }
 
   nquire_commons_form_close($form, $form_state);
-}
+  }
 
-function _pi_inquiry_manager_participants_create_group_join_mode_form_item(&$form, $form_state, $group_nid, $id, $title, $description, $closed = FALSE) {
+ */
+
+function pi_inquiry_manager_participants_create_group_join_mode_form_item(&$form, $form_state, $group_nid, $id, $title, $description, $closed, $closed_notice) {
   if ($closed) {
-    $form[$id] = array(
-        '#value' => '<p>' . t('Group members are managed by the inquiry owner.') . '</p>',
-    );
+    if ($closed_notice) {
+      $form[$id] = array(
+          '#value' => '<p>' . $closed_notice . '</p>',
+      );
+    }
   } else {
     $group = node_load($group_nid);
     $selective = nquire_commons_form_node_default_value($group, 'selective', $form_state, $id, '');
@@ -260,10 +265,6 @@ function _pi_inquiry_manager_participants_create_group_join_mode_form_item(&$for
         '#required' => TRUE,
     );
   }
-}
-
-function _pi_inquiry_manager_participants_process_join_mode_form_value($group_nid, $value) {
-  nquire_group_set_join_mode($group_nid, $value);
 }
 
 /* Participant list */
@@ -1298,6 +1299,7 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
   return $output;
 }
 
+/*
 function pi_inquiry_manager_participants_subgroups_edit_policy($inquiry_nid) {
   $inquiry_node = node_load($inquiry_nid);
   return drupal_get_form('pi_inquiry_manager_participants_subgroups_edit_policy_form', $inquiry_node);
@@ -1340,13 +1342,14 @@ function pi_inquiry_manager_participants_subgroups_edit_policy_form_submit($form
 
   nquire_commons_form_close($form, $form_state);
 }
-
-function pi_inquiry_manager_participants_edit_supervision($inquiry_nid) {
+*/
+/*
+  function pi_inquiry_manager_participants_edit_supervision($inquiry_nid) {
   $inquiry_node = node_load($inquiry_nid);
   return drupal_get_form('pi_inquiry_manager_participants_edit_supervision_form', $inquiry_node);
-}
+  }
 
-function pi_inquiry_manager_participants_edit_supervision_form(&$form_state, $inquiry_node) {
+  function pi_inquiry_manager_participants_edit_supervision_form(&$form_state, $inquiry_node) {
   $form = array();
 
   ahah_helper_register($form, $form_state);
@@ -1354,37 +1357,37 @@ function pi_inquiry_manager_participants_edit_supervision_form(&$form_state, $in
   nquire_commons_load_ahah_fix();
 
   $form['intro'] = array(
-      '#value' => t('The inquiry supervisor can access all content that the inquiry members select.') . '<br/>'
-      . t('This feature can be used to give the inquiry owner access to content that is private for the rest or participants.'),
+  '#value' => t('The inquiry supervisor can access all content that the inquiry members select.') . '<br/>'
+  . t('This feature can be used to give the inquiry owner access to content that is private for the rest or participants.'),
   );
   $form['supervision'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Inquiry monitoring'),
-      '#description' => t('Check this option if you wish to be the supervisor of this inquiry.'),
-      '#default_value' => nquire_commons_form_node_default_value($inquiry_node, 'supervised', $form_state, 'supervision', FALSE),
-      '#required' => FALSE,
+  '#type' => 'checkbox',
+  '#title' => t('Inquiry monitoring'),
+  '#description' => t('Check this option if you wish to be the supervisor of this inquiry.'),
+  '#default_value' => nquire_commons_form_node_default_value($inquiry_node, 'supervised', $form_state, 'supervision', FALSE),
+  '#required' => FALSE,
   );
 
   nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_participants_edit_supervision_form_submit', 'inquiry/' . $inquiry_node->nid . '/participants');
 
   return $form;
-}
+  }
 
-function pi_inquiry_manager_participants_edit_supervision_form_submit($form, $form_state) {
+  function pi_inquiry_manager_participants_edit_supervision_form_submit($form, $form_state) {
   $inquiry_nid = arg(1);
   if (pi_inquiry_manager_participants_group_configure_inquiry_participants_access($inquiry_nid)) {
-    $inquiry = node_load($inquiry_nid);
-    $supervision = $form_state['values']['supervision'] ? TRUE : FALSE;
+  $inquiry = node_load($inquiry_nid);
+  $supervision = $form_state['values']['supervision'] ? TRUE : FALSE;
 
-    if ($inquiry->supervised !== $supervision) {
-      $inquiry->supervised = $supervision;
-      $inquiry->revision = TRUE;
-      node_save($inquiry);
-    }
+  if ($inquiry->supervised !== $supervision) {
+  $inquiry->supervised = $supervision;
+  $inquiry->revision = TRUE;
+  node_save($inquiry);
+  }
   }
 
   nquire_commons_form_close($form, $form_state);
-}
+  } */
 
 function pi_inquiry_manager_participants_subgroups_create($inquiry_nid) {
   global $user;
@@ -1439,7 +1442,7 @@ function pi_inquiry_manager_participants_subgroup_form(&$form_state, $inquiry_no
       '#required' => TRUE,
   );
 
-  _pi_inquiry_manager_participants_create_group_join_mode_form_item($form, $form_state, $group_nid, 'join_mode', t('Join mode'), t('Select how inquiry members can join this node.'), $inquiry_node->group_creation === 'controlled');
+  pi_inquiry_manager_participants_create_group_join_mode_form_item($form, $form_state, $group_nid, 'join_mode', t('Join mode'), t('Select how inquiry members can join this node.'), $inquiry_node->group_creation === 'controlled', t('Groups are set up by the inquiry owner.'));
 
   nquire_commons_create_form_save_cancel_buttons($form, 'pi_inquiry_manager_participants_subgroup_form_submit', $_REQUEST['destination']);
 
@@ -1478,7 +1481,7 @@ function pi_inquiry_manager_participants_subgroup_form_submit($form, $form_state
   }
 
   if ($save_group_nid && isset($form_state['values']['join_mode'])) {
-    _pi_inquiry_manager_participants_process_join_mode_form_value($save_group_nid, $form_state['values']['join_mode']);
+    nquire_group_set_join_mode($save_group_nid, $form_state['values']['join_mode']);
   }
 
   nquire_commons_form_close($form, $form_state);

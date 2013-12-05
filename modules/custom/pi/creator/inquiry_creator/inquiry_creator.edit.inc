@@ -83,7 +83,7 @@ function inquiry_creator_main($nid, $op = '', $item = '') {
       $content = theme('inquiry_creator_settings_panel', $design);
       break;
     case 'settings':
-      $content = '!';
+      $content = drupal_get_form('inquiry_creator_settings_panel_form', $design);
       break;
     case 'activities':
       $content = drupal_get_form('inquiry_creator_activities_form', $design);
@@ -181,8 +181,12 @@ function theme_inquiry_creator_edit_menu($node, $current_op, $content) {
   drupal_add_css(drupal_get_path('module', 'inquiry_creator') . '/css/editMenu.css');
   nquire_commons_load_submit_form_links();
 
+  if ($current_op === '') {
+    $current_op = 'settings';
+  }
+  
   $ops = array(
-      '' => t('Settings panel'),
+      'settings' => t('Settings panel'),
       'activities' => t('Edit phases and activities'),
       'stages' => t('Edit temporal organization'),
       'groups' => t('Edit collaboration organization'),
