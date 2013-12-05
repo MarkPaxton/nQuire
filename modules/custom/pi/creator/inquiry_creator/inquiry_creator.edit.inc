@@ -20,7 +20,6 @@ function inquiry_creator_edit($nid) {
   return $output;
 }
 
-
 function inquiry_creator_inquiry_delete($nid) {
   include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 
@@ -81,6 +80,12 @@ function inquiry_creator_main($nid, $op = '', $item = '') {
 
   switch ($op) {
     case '':
+      $content = theme('inquiry_creator_settings_panel', $design);
+      break;
+    case 'settings':
+      $content = '!';
+      break;
+    case 'activities':
       $content = drupal_get_form('inquiry_creator_activities_form', $design);
       break;
     case 'stages':
@@ -177,10 +182,11 @@ function theme_inquiry_creator_edit_menu($node, $current_op, $content) {
   nquire_commons_load_submit_form_links();
 
   $ops = array(
-      '' => t('Edit phases and activities'),
+      '' => t('Settings panel'),
+      'activities' => t('Edit phases and activities'),
       'stages' => t('Edit temporal organization'),
       'groups' => t('Edit collaboration organization'),
-      /*'roles' => t('Edit roles'),*/
+          /* 'roles' => t('Edit roles'), */
   );
 
   $output = '<div class="edit-link-menu-container">';
@@ -257,7 +263,7 @@ function inquiry_creator_activities_form(&$form_state, $node) {
   $form = array();
 
   nquire_commons_form_set_default_link_action($form, 'submit');
-  
+
   $form['intro'] = array(
       '#value' => '<p>' . t('Click on the links below to add new phases and activities. You can change the name of the activities and phases by clicking on them. They can be reorganized or deleted by dragging with the mouse. To edit the details of each activity, click \'Save\' and then \'edit\' on the desired activity.') . '</p>'
       . '<p>' . t('Alternatively, click <a href="!url">here</a> to add the phases and activities from existing inquiries.', array('!url' => url("creator/{$node->nid}/copy"))) . '</p>',
