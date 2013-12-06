@@ -1,169 +1,184 @@
 <?php
 
 function inquiry_basic_activities_designer_menu() {
-	$items['creator/toolform'] = array(
-			'page callback' => 'inquiry_basic_activities_designer_update_toolform',
-			'access arguments' => array('access inquiry_creator content'),
-			'type' => MENU_CALLBACK,
-			'file' => 'inquiry_basic_activities_designer.tools.inc',
-	);
-	return $items;
+  $items['creator/toolform'] = array(
+      'page callback' => 'inquiry_basic_activities_designer_update_toolform',
+      'access arguments' => array('access inquiry_creator content'),
+      'type' => MENU_CALLBACK,
+      'file' => 'inquiry_basic_activities_designer.tools.inc',
+  );
+  return $items;
 }
 
-
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_read_information_create_activity(&$stub) {
-	$content_node = new stdClass();
-	$content_node->type = 'pi_read_information';
-	$content_node->uid = $stub->uid;
-	$content_node->title = t('Information');
-	$content_node->body = '';
+  $content_node = new stdClass();
+  $content_node->type = 'pi_read_information';
+  $content_node->uid = $stub->uid;
+  $content_node->title = t('Information');
+  $content_node->body = '';
 
-	node_save($content_node);
+  node_save($content_node);
 
-	$stub->referenced_node = $content_node->nid;
-	node_save($stub);
+  $stub->referenced_node = $content_node->nid;
+  node_save($stub);
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_read_information_form($activity, $design, &$form, &$form_state) {
-		
-	$content_node = node_load($activity->referenced_node);
-	
-	$form['data']['information']['activity-read-information'] = array(
-			'#type' => 'textarea',
-			'#title' => t('Information'),
-			'#description' => t('Write here the content you would like participants to read.'),
-			'#default_value' => nquire_commons_form_node_default_value($content_node, 'body', $form_state, 'activity-read-information', ''),
-			'#required' => FALSE,
-	);
-	$form['data']['information']['format'] = filter_form(2);
+
+  $content_node = node_load($activity->referenced_node);
+
+  $form['data']['information']['activity-read-information'] = array(
+      '#type' => 'textarea',
+      '#title' => t('Information'),
+      '#description' => t('Write here the content you would like participants to read.'),
+      '#default_value' => nquire_commons_form_node_default_value($content_node, 'body', $form_state, 'activity-read-information', ''),
+      '#required' => FALSE,
+  );
+  $form['data']['information']['format'] = filter_form(2);
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_read_information_form_process(&$activity, $design, $form_values) {
-	$content_node = node_load($activity->referenced_node);
-	$info = $form_values['activity-read-information'];
+  $content_node = node_load($activity->referenced_node);
+  $info = $form_values['activity-read-information'];
 
-	if ($content_node->body !== $info) {
-		$content_node->body = $info;
-		node_save($content_node);
-	}
-	return FALSE;
+  if ($content_node->body !== $info) {
+    $content_node->body = $info;
+    node_save($content_node);
+  }
+  return FALSE;
 }
 
-
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_explore_tool_form($activity, $design, &$form, &$form_state) {
-	$title = t('Scientific instrument');
-	$description = t('Select a scientific instrument that the participants will explore. ');
+  $title = t('Scientific instrument');
+  $description = t('Select a scientific instrument that the participants will explore. ');
 
-	module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
-	_inquiry_basic_activities_designer_tool_form($form, $form_state, $activity, $title, $description, FALSE, "creator/{$design->nid}/activity/{$activity->nid}");
+  module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
+  _inquiry_basic_activities_designer_tool_form($form, $form_state, $activity, $title, $description, FALSE, "creator/{$design->nid}/activity/{$activity->nid}");
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_exploretool_form_process(&$activity, $design, $form_values) {
-	module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
-	return _inquiry_basic_activities_designer_tool_form_process($activity, $design, $form_values);
+  module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
+  return _inquiry_basic_activities_designer_tool_form_process($activity, $design, $form_values);
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_exploretool_deployed_activity_content($activity) {
-	$data = nquire_commons_decode_data($activity->data);
-	if (isset($data['tool'])) {
-		inquiry_available_features_invoke('tool', 'process_deployed_activity_data', $data['tool']['type'], $data['tool']);
-		$data_str = json_encode($data);
-	} else {
-		$data_str = $activity->data;
-	}
+  $data = nquire_commons_decode_data($activity->data);
+  if (isset($data['tool'])) {
+    inquiry_available_features_invoke('tool', 'process_deployed_activity_data', $data['tool']['type'], $data['tool']);
+    $data_str = json_encode($data);
+  } else {
+    $data_str = $activity->data;
+  }
 
-	return array(
-			'type' => 'pi_explore_tool',
-			'title' => '',
-			'body' => '',
-			'data' => $data_str,
-	);
+  return array(
+      'type' => 'pi_explore_tool',
+      'title' => '',
+      'body' => '',
+      'data' => $data_str,
+  );
 }
-
 
 /* * **********************
  * **** COLLECT DATA *****
  * ********************** */
 
-
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_sort_data_form($activity, $design, &$form, &$form_state) {
-	$title = t('Scientific instrument');
-	$description = t('Select a scientific instrument that the participants will use to collect data. ')
-					. '<br/>' . t('Alternatively, select \'No instrument\' if data will be manually entered by the users.');
+  $title = t('Scientific instrument');
+  $description = t('Select a scientific instrument that the participants will use to collect data. ')
+          . '<br/>' . t('Alternatively, select \'No instrument\' if data will be manually entered by the users.');
 
-	module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
-	_inquiry_basic_activities_designer_tool_form($form, $form_state, $activity, $title, $description, TRUE, "creator/{$design->nid}/activity/{$activity->nid}");
+  module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
+  _inquiry_basic_activities_designer_tool_form($form, $form_state, $activity, $title, $description, TRUE, "creator/{$design->nid}/activity/{$activity->nid}");
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_sort_data_form_process(&$activity, $design, $form_values) {
-	global $user;
-	module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
-	$modified = _inquiry_basic_activities_designer_tool_form_process($activity, $design, $form_values);
-	
-	$data = nquire_commons_decode_data($activity->parameters);
-	if (isset($data['tool']['type']) && $data['tool']['type'] !== 'none') {
-		$measures = inquiry_available_features_invoke('tool', 'mandatory_measures', $data['tool']['type'], $data['tool'], $form_values);
-	} 
-	if (!is_array($measures)) {
-		$measures = array();
-	}
-	if (!is_array($data['mandatory_measures'])) {
-		$data['mandatory_measures'] = array();
-	}
-	foreach($data['mandatory_measures'] as $key => $measure_nid) {
-		if (!isset($measures[$key])) {
-			node_delete($measure_nid);
-		}
-	}
-	foreach($measures as $key => $measure_parameters) {
-		if (!isset($data['mandatory_measures'][$key])) {
-			$measure = new stdClass();
-			$measure->type = 'pi_available_measures';
-			$measure->uid = $user->uid;
-			$measure->measure_type = $measure_parameters['type'];
-			$measure->title = $measure_parameters['title'];
-			$measure->script_measure = TRUE;
-			$measure->mandatory = TRUE;
-			$measure->body = $measure_parameters['description'];
-			$measure->data = $measure_parameters['data'];
-			$measure->activity_nid = $activity->nid;
-			
-			node_save($measure);
-			$data['mandatory_measures'][$key] = $measure->nid;			
-		}
-	}
-	
-	$new_data = json_encode($data);
-	if ($new_data !== $activity->parameters) {
-		$activity->parameters = $new_data;
-		$modified = TRUE;
-	}
-	
-	
-	
-	return $modified;	
+  global $user;
+  module_load_include('inc', 'inquiry_basic_activities_designer', 'inquiry_basic_activities_designer.tools');
+  $modified = _inquiry_basic_activities_designer_tool_form_process($activity, $design, $form_values);
+
+  $data = nquire_commons_decode_data($activity->parameters);
+  if (isset($data['tool']['type']) && $data['tool']['type'] !== 'none') {
+    $measures = inquiry_available_features_invoke('tool', 'mandatory_measures', $data['tool']['type'], $data['tool'], $form_values);
+  }
+  if (!is_array($measures)) {
+    $measures = array();
+  }
+  if (!is_array($data['mandatory_measures'])) {
+    $data['mandatory_measures'] = array();
+  }
+  foreach ($data['mandatory_measures'] as $key => $measure_nid) {
+    if (!isset($measures[$key])) {
+      node_delete($measure_nid);
+    }
+  }
+  foreach ($measures as $key => $measure_parameters) {
+    if (!isset($data['mandatory_measures'][$key])) {
+      $measure = new stdClass();
+      $measure->type = 'pi_available_measures';
+      $measure->uid = $user->uid;
+      $measure->measure_type = $measure_parameters['type'];
+      $measure->title = $measure_parameters['title'];
+      $measure->script_measure = TRUE;
+      $measure->mandatory = TRUE;
+      $measure->body = $measure_parameters['description'];
+      $measure->data = $measure_parameters['data'];
+      $measure->activity_nid = $activity->nid;
+
+      node_save($measure);
+      $data['mandatory_measures'][$key] = $measure->nid;
+    }
+  }
+
+  $new_data = json_encode($data);
+  if ($new_data !== $activity->parameters) {
+    $activity->parameters = $new_data;
+    $modified = TRUE;
+  }
+
+
+
+  return $modified;
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_methodology_form($activity, $design, &$form, &$form_state) {
-	$data = nquire_commons_decode_data($activity->parameters);
+  $data = nquire_commons_decode_data($activity->parameters);
 
-	$form['data']['own_measures'] = array(
-			'#type' => 'checkbox',
-			'#title' => t('Users can create measures'),
-			'#description' => t('Select whether users can create their own measures. '),
-			'#default_value' => nquire_commons_form_data_default_value($data, 'own_measures', $form_state, 'own_measures', FALSE),
-	);
+  $form['data']['own_measures'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Users can create measures'),
+      '#description' => t('Select whether users can create their own measures. '),
+      '#default_value' => nquire_commons_form_data_default_value($data, 'own_measures', $form_state, 'own_measures', FALSE),
+  );
+
+
+  $data_activitiy_nids = pi_info()->getInquiryInfo($design->nid)->getActivityNidsByType('pi_sort_data');
+  if (count($data_activitiy_nids) == 0) {
+    $info = '<p>' . t('There are no data gathering activities in this investigation. This means that there is no task in this methodology activity for the participants.') . '</p>'
+            . t('You can create data gathering tasks by adding activities of type "Collect my data" in any phase of this inquiry.') . '</p>';
+  } else {
+    $items = array_map(function($nid) use($design) {
+      $node = node_load($nid);
+      return '<b>' . check_plain($node->title) . '&nbsp;&nbsp;&nbsp;' . nquire_commons_form_submit_link(t('edit'), "creator/{$design->nid}/activity/{$nid}");
+    }, $data_activitiy_nids);
+    
+    $info = '<p>' . t('When participants visit this activity, they will have the task of selecting/creating measures for the following activities.<br/>Edit them to select the instruments used to collect data, as well as the default measures available to all participants.') . '</p>'
+            . theme('item_list', $items);
+  }
+
+  $form['data']['info'] = array(
+      '#value' => $info,
+  );
 }
 
 function inquiry_basic_activities_designer_nquire_creator_activity_pi_methodology_form_process(&$activity, $design, $form_values) {
-	$data = array();
-	$data['own_measures'] = $form_values['own_measures'];
+  $data = array();
+  $data['own_measures'] = $form_values['own_measures'];
 
-	$new_data = json_encode($data);
-	if ($activity->parameters !== $new_data) {
-		$activity->parameters = $new_data;
-		return TRUE;
-	} else {
-		return FALSE;
-	}
+  $new_data = json_encode($data);
+  if ($activity->parameters !== $new_data) {
+    $activity->parameters = $new_data;
+    return TRUE;
+  } else {
+    return FALSE;
+  }
 }

@@ -45,24 +45,30 @@ function pi_inquiry_form($node) {
   return $form;
 }
 
-function _pi_inquiry_prepare_participants_to_save($node, &$data_to_write) {
+function _pi_inquiry_prepare_participants_to_save(&$node, &$data_to_write) {
   if (!isset($node->participants_selection)) {
-    $data_to_write->participants_selection = 'justme';
-    $data_to_write->participants_cohort = nquire_group_create_group($node->uid, "Participants of {$node->nid}", TRUE);
-    $data_to_write->actor_gid = $data_to_write->participants_cohort;
-    $data_to_write->group_creation = 'controlled';
-  } else {
-    $data_to_write->participants_selection = $node->participants_selection;
-    $data_to_write->participants_cohort = $node->participants_cohort;
-    $data_to_write->actor_gid = $node->actor_gid;
-    $data_to_write->group_creation = $node->group_creation;
+    $node->participants_selection = 'justme';
+    $node->participants_cohort = NULL;
   }
+  $data_to_write->participants_selection = $node->participants_selection;
+  $data_to_write->participants_cohort = $node->participants_cohort;
+
+
+  if (!isset($node->actor_gid)) {
+    $node->actor_gid = nquire_group_create_group($node->uid, "Participants of {$node->nid}", TRUE);
+  }
+  $data_to_write->actor_gid = $node->actor_gid;
+
+  if (!isset($node->group_creation)) {
+    $node->group_creation = 'controlled';
+  }
+  $data_to_write->group_creation = $node->group_creation;
 }
 
 /**
  * INSERT command for a new inquiry
  */
-function pi_inquiry_insert($node) {
+function pi_inquiry_insert(&$node) {
   // Query the database first to set the weight to place the item at the end of lists.
   // If the query result is NULL then the the field will to default=0 since the weight
   // column is defined with NOT NULL DEFAULT 0
@@ -91,7 +97,7 @@ function pi_inquiry_insert($node) {
 /**
  * UPDATE command for an existing inquiry
  */
-function pi_inquiry_update($node) {
+function pi_inquiry_update(&$node) {
   if ($node->revision) {
     // New revision; treat it as a new record.
     pi_inquiry_insert($node);
