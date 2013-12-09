@@ -46,7 +46,7 @@ function inquiry_creator_phase_form(&$form_state, $design, $node) {
       '#required' => FALSE,
   );
 
-  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_phase_form_submit', "creator/{$design->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_phase_form_submit', "creator/{$design->nid}/activities");
 
   return $form;
 }

@@ -610,10 +610,13 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
     }
   }
 
+  $forum_desc = t('Select the forum you would like you inquiry to be related to. If you need to create a new forum, please ask the site <a href="@url">admin</a>.', array('@url' => 'mailto:' . variable_get('site_mail', ini_get('sendmail_from'))));
+          
+          
   $form['forum'] = array(
       '#type' => 'select',
       '#title' => t('Related forum'),
-      '#description' => t('Select the forum related to this inquiry. Please note that new forums need to be created by the site administrator.'),
+      '#description' => $forum_desc,
       '#required' => FALSE,
       '#options' => $forum_options,
       '#default_value' => $node->forum,
@@ -626,14 +629,14 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
     $form['image'] = array(
         '#type' => 'file',
         '#title' => t('Inquiry image'),
-        '#description' => t('Select an image if you want to replace the current one.'),
+        '#description' => t('Select an image if you want to replace the current one. This image is used when showing inquiry lists. '),
         '#required' => FALSE,
     );
   } else {
     $form['image'] = array(
         '#type' => 'file',
         '#title' => t('Inquiry image'),
-        '#description' => t('Select an image for the inquiry front page.'),
+        '#description' => t('Select an image for the inquiry. This image is used when showing inquiry lists. '),
         '#required' => FALSE,
         '#default_value' => '',
     );

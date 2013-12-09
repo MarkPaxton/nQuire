@@ -13,8 +13,8 @@ $(function() {
       allowEmpty: false,
       values: {
         hidden: 'Not visible',
-        view: 'View',
-        edit: 'Edit'
+        view: 'Visible',
+        edit: 'Editable'
       },
       forItemType: 'phase'
     },

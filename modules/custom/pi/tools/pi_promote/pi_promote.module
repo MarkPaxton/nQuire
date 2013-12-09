@@ -52,7 +52,10 @@ function pi_promote_shop_page() {
           'path' => $access ? 'creator' : FALSE,
           'title' => t('Inquiry creator'),
           'image' => url(drupal_get_path('module', 'pi_promote') . '/images/editor.png', array('absolute' => TRUE)),
-          'info' => $access ? t('Create new inquiries.') : t('Login or register to access.'),
+          'info' => $access ? t('Create new inquiries.') : t('<a href="!u1">Login</a> or <a href="!u2">register</a> to access.', array(
+                      '!u1' => url('user'),
+                      '!u2' => url('user/register'),
+                  )),
       );
     }
     $inquiry = node_load($row['inquiry_id']);
@@ -410,7 +413,6 @@ function pi_promote_admin_news() {
   return drupal_get_form('pi_promote_admin_news_form', $news);
 }
 
-
 function pi_promote_get_story($function) {
   $query = "SELECT node.nid FROM {node} LEFT JOIN {pi_promote_news} ON node.nid=pi_promote_news.news_id WHERE pi_promote_news.storyusage='%s' LIMIT 1";
   $result = db_query($query, $function);
@@ -512,7 +514,7 @@ function pi_promote_admin_news_form_submit($form, $form_state) {
   foreach ($form_state['values']['stories'] as $nid => $values) {
     $weight = $values['position'];
     $usage = $values['usage'];
-    
+
     if ($weight > 0) {
       $selected = 1;
       $i = $newsIndex ++;

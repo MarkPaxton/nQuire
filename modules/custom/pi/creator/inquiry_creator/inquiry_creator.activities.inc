@@ -53,7 +53,7 @@ function _inquiry_creator_activity_form(&$form_state, $design, $node) {
 
   inquiry_available_features_invoke('activity', 'form', $node, $design, $form, $form_state);
 
-  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_activity_form_submit', "creator/{$design->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_activity_form_submit', "creator/{$design->nid}/activities");
 
   return $form;
 }

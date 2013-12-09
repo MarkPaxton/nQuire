@@ -78,10 +78,11 @@ function inquiry_creator_copy_new_form_submit($form, $form_state) {
   $node->title = $source_node->title . t(' (copy)');
   $node->body = '';$source_node->body;
   $node->forum = $source_node->forum;
-  $node->frontpage = '';$source_node->frontpage;
+  $node->image = $source_node->image;
+  $node->frontpage = '';
 
-  $node->participants_selection = $source_node->participants_selection;
-  $node->participants_cohort = $source_node->participants_cohort;
+  $node->participants_selection = 'justme';//$source_node->participants_selection;
+  $node->participants_cohort = NULL;//$source_node->participants_cohort;
   $node->group_creation = $source_node->group_creation;
   $node->supervised = $source_node->supervised;
   /* do not set up actor_gid, this is done when saving */
@@ -97,10 +98,12 @@ function inquiry_creator_copy_new_form_submit($form, $form_state) {
   node_save($node);
   
   
+  /*
   $group = node_load($node->actor_gid);
   $source_group = node_load($source_node->actor_gid);
   $group->selective = $source_group->selective;
   node_save($group);
+   */
   
   
 
@@ -131,6 +134,8 @@ function inquiry_creator_copy_new_form_submit($form, $form_state) {
     }
     node_save($stage);
   }
+  
+  $form_state['values']['form_destination'] = "creator/{$node->nid}";
   
   nquire_commons_form_close($form, $form_state);
 }

@@ -39,9 +39,9 @@ function _pi_inquiry_block_my_inquiries($uid) {
   if ($uid) {
     if (count($joined_inquiries) > 0) {
       $list = array_map(function($nid) {
-                $node = node_load($nid);
-                return l(check_plain($node->title), "inquiry/$nid/structure");
-              }, $joined_inquiries);
+        $node = node_load($nid);
+        return l(check_plain($node->title), "inquiry/$nid/structure");
+      }, $joined_inquiries);
       $content = theme('item_list', $list);
     } else {
       $content = t('You have not joined any inquiry yet.');
@@ -60,30 +60,40 @@ function _pi_inquiry_block_my_inquiries($uid) {
 }
 
 function _pi_inquiry_block_my_designs($current) {
-  if ($current == 'home') {
-    return array(
-        'subject' => t('My designs'),
-        'content' => t('Browse your inquiry designs.'),
-    );
-  } else {
-    $inquiry = node_load($current);
-    if ($inquiry) {
-      $subject = l(t('Design: @design', array('@design' => $inquiry->title)), "creator/$current");
+  $subject = t('Inquiry creator');
+  $content = '';
 
-      $items = array(
-          l(t('Go to live inquiry'), "inquiry/$current"),
-          l(t('Browser my designs'), "creator"),
-      );
-      $content = theme('item_list', $items);
 
-      return array(
-          'subject' => $subject,
-          'content' => $content,
-      );
-    } else {
-      return NULL;
-    }
+
+  $items = array();
+  $help_story = pi_promote_get_story('help_authoring_tool');
+  if ($help_story) {
+    $items [] = l(t('Browser my designs'), "creator");
   }
+  $items[] = l(t('Tutorial'), "node/$help_story", array('attributes' => array('target' => '_blank')));
+  $items[] = l(t('Create new inquiry'), "creator/new");
+  $items[] = l(t('Copy existing inquiry'), "creator/cope");
+
+  $content .= theme('item_list', $items);
+
+
+
+  if ($current !== 'home') {
+    $content .= '<div class="block_inner_separator"></div>';
+
+    $inquiry = node_load($current);
+    $items = array(
+        l(t('Go to live inquiry "@title"', array('@title' => $inquiry->title)), "inquiry/$current"),
+    );
+
+    $content .= theme('item_list', $items);
+  }
+
+
+  return array(
+      'subject' => $subject,
+      'content' => $content,
+  );
 }
 
 function _pi_inquiry_block_inquiry($uid) {

@@ -120,10 +120,11 @@
 
 			var buttons = element.find('.nquire-item-buttons');
 			buttons.html('');
-
-			var path = 'creator/' + inquiry + '/' + type + '/' + itemId;
-			var baseHref = window.location.pathname + (window.location.pathname.match(/\/$/) ? '' : '/') + type + '/' + itemId;
-
+      
+      var itemPathSection = (type === 'phase' ? 'phase/' : '') + itemId;
+			var path = 'creator/' + inquiry + '/activities/' + itemPathSection;
+			var baseHref = window.location.pathname + (window.location.pathname.match(/\/$/) ? '' : '/') + itemPathSection;
+      console.log(itemPathSection + "\n" + path + "\n" + baseHref);
 			buttons.append('&nbsp;&nbsp;');
 
 			$('<a>').html('edit')
