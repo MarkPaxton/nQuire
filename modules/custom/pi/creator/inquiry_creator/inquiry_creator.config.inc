@@ -170,7 +170,7 @@ function _inquiry_creator_settings_panel_form(&$form_state, $inquiry_node) {
 
 
   $form['supervision_intro'] = array(
-      '#value' => '<b>' . t('Inquiry supervision:') . '<b>',
+      '#value' => '<b>' . t('Inquiry supervision:') . '</b>',
   );
   
   $form['supervision'] = array(

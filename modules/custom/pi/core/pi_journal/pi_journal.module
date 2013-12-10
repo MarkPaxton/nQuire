@@ -164,9 +164,40 @@ function theme_pi_journal_share_information($inquiry_node) {
 	return $output;
 }
 
+function pi_journal_item_table_row_format($node) {
+  
+	$title = strlen($node->title) > 0 ? check_plain($node->title) : t('Investigation results');
+	$args = array(
+			'@url' => url(),
+			'@title' => $title,
+	);
+	
+  $cell1 = '<b>' . l($title, "journal/contribution/{$node->nid}") . '</b>';
+  if (strlen($node->body) > 0) {
+    $cell1 .= '<p>' . check_markup(nl2br($node->body)) . '</p>';
+  }
+  
+	switch ($node->collaboration) {
+		case 'individual':
+			$u = user_load($node->actor);
+      $cell2 = check_plain($u->name);
+			break;
+		case 'group':
+			$g = node_load($node->actor);
+			$cell2 = t('Group @group', array('@group' => $g->title));
+			break;
+		case 'all':
+      $cell2 = '';
+			break;
+	}
+
+  return array($cell1, $cell2);
+}
+
 function theme_pi_journal_list($items, $inquiry_page_links) {
 	$output = '';
 	foreach ($items as $inquiry_nid => $contributions_data) {
+    
 		$inquiry = node_load($inquiry_nid);
 		if ($inquiry_page_links) {
 			$url = url('journal/inquiry/' . $inquiry_nid, array('absolute' => TRUE));
@@ -176,11 +207,11 @@ function theme_pi_journal_list($items, $inquiry_page_links) {
 		}
 
 		$output .= '<h3>' . $inquiry_title_text . '</h3>';
+    
+    
 
-		$formatted_inquiry_items = array_map(function($node) {
-							return theme('pi_journal_contribution_teaser', $node, $inquiry);
-						}, $contributions_data['contributions']);
-		$output .= theme('item_list', $formatted_inquiry_items);
+		$formatted_inquiry_items = array_map(pi_journal_item_table_row_format, $contributions_data['contributions']);
+		$output .= nquire_commons_create_not_expanding_table_block(theme('table', array(t('Investigation'), t('Author')), $formatted_inquiry_items));
 	}
 
 	return $output;

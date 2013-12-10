@@ -7,18 +7,18 @@
  * @return array of node data as per hook_node api 
  */
 function pi_methodology_node_info() {
-	return array(
-			'pi_methodology' => array(
-					'name' => t('Inquiry methodology'), // Required.
-					'module' => 'pi_methodology', // Required.
-					'description' => t('Inquiry methodology.'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Methodology'),
-					'has_body' => TRUE,
-					'body_label' => t('Methodology description'),
-					'locked' => TRUE,
-			),
-	);
+  return array(
+      'pi_methodology' => array(
+          'name' => t('Inquiry methodology'), // Required.
+          'module' => 'pi_methodology', // Required.
+          'description' => t('Inquiry methodology.'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Methodology'),
+          'has_body' => TRUE,
+          'body_label' => t('Methodology description'),
+          'locked' => TRUE,
+      ),
+  );
 }
 
 /*
@@ -27,15 +27,15 @@ function pi_methodology_node_info() {
  */
 
 function pi_methodology_access($op, $node) {
-	return FALSE;
+  return FALSE;
 }
 
 function pi_methodology_add_content_label() {
-	return t('Add new measure');
+  return t('Add new measure');
 }
 
 function pi_methodology_edit_content_label() {
-	return t('Organize measures');
+  return t('Organize measures');
 }
 
 /**
@@ -43,11 +43,11 @@ function pi_methodology_edit_content_label() {
  * @return unknown_type
  */
 function pi_methodology_theme() {
-	return array(
-			'pi_methodology_node_form' => array(
-					'arguments' => array('form'),
-			),
-	);
+  return array(
+      'pi_methodology_node_form' => array(
+          'arguments' => array('form'),
+      ),
+  );
 }
 
 /**
@@ -57,40 +57,40 @@ function pi_methodology_theme() {
  */
 function pi_methodology_form(&$node) {
 
-	if (is_array($node->measures)) {
-		$activity_measures = $node->measures;
-	} else {
-		$activity_measures = _pi_methodology_load_default_measures();
-	}
+  if (is_array($node->measures)) {
+    $activity_measures = $node->measures;
+  } else {
+    $activity_measures = _pi_methodology_load_default_measures();
+  }
 
-	$form = array();
-	$form['measures_edit'] = array(
-			'#tree' => TRUE,
-	);
+  $form = array();
+  $form['measures_edit'] = array(
+      '#tree' => TRUE,
+  );
 
-	foreach ($activity_measures as $measures) {
-		$regions = array('key', 'dependent', 'unselected');
+  foreach ($activity_measures as $measures) {
+    $regions = array('key', 'dependent', 'unselected');
 
-		foreach ($regions as $region) {
-			foreach ($measures[$region] as $weight => $measure_nid) {
-				$form_item_id = _pi_methodology_format_measure_form_id_attribute($measure_nid);
+    foreach ($regions as $region) {
+      foreach ($measures[$region] as $weight => $measure_nid) {
+        $form_item_id = _pi_methodology_format_measure_form_id_attribute($measure_nid);
 
-				$form['measures_edit'][$form_item_id] = array(
-						'#tree' => TRUE,
-						'region' => array(
-								'#type' => 'hidden',
-								'#default_value' => $region,
-						),
-						'weight' => array(
-								'#type' => 'hidden',
-								'#default_value' => $weight,
-						),
-				);
-			}
-		}
-	}
+        $form['measures_edit'][$form_item_id] = array(
+            '#tree' => TRUE,
+            'region' => array(
+                '#type' => 'hidden',
+                '#default_value' => $region,
+            ),
+            'weight' => array(
+                '#type' => 'hidden',
+                '#default_value' => $weight,
+            ),
+        );
+      }
+    }
+  }
 
-	return $form;
+  return $form;
 }
 
 /**
@@ -99,20 +99,20 @@ function pi_methodology_form(&$node) {
  * @return unknown_type
  */
 function theme_pi_methodology_node_form($form) {
-	nquire_commons_load_javascript_support();
-	jquery_ui_add(array('ui.draggable', 'ui.droppable', 'ui.sortable'));
-	drupal_add_js(drupal_get_path('module', 'pi_methodology') . '/js/pi_methodology.js');
+  nquire_commons_load_javascript_support();
+  jquery_ui_add(array('ui.draggable', 'ui.droppable', 'ui.sortable'));
+  drupal_add_js(drupal_get_path('module', 'pi_methodology') . '/js/pi_methodology.js');
 
-	$output = drupal_render($form['measures']);
+  $output = drupal_render($form['measures']);
 
-	$tables = _pi_methodology_get_measures_table($form['#node'], TRUE);
-	foreach ($tables as $table) {
-		$output .= $table;
-	}
+  $tables = _pi_methodology_get_measures_table($form['#node'], TRUE);
+  foreach ($tables as $table) {
+    $output .= $table;
+  }
 
-	$output .= drupal_render($form);
+  $output .= drupal_render($form);
 
-	return $output;
+  return $output;
 }
 
 /**
@@ -121,13 +121,13 @@ function theme_pi_methodology_node_form($form) {
  * @return null
  */
 function pi_methodology_insert($node) {
-	if (isset($node->measures_edit)) {
-		foreach ($node->measures_edit as $measure_key => $measure_values) {
-			$measure_nid = _pi_methodology_decode_measure_form_id_attribute($measure_key);
-			$query = "INSERT INTO {pi_methodology_measures} (nid, vid, measure_nid, status, weight) VALUES (%d, %d, %d, '%s', %d)";
-			db_query($query, $node->nid, $node->vid, $measure_nid, $measure_values['region'], $measure_values['weight']);
-		}
-	}
+  if (isset($node->measures_edit)) {
+    foreach ($node->measures_edit as $measure_key => $measure_values) {
+      $measure_nid = _pi_methodology_decode_measure_form_id_attribute($measure_key);
+      $query = "INSERT INTO {pi_methodology_measures} (nid, vid, measure_nid, status, weight) VALUES (%d, %d, %d, '%s', %d)";
+      db_query($query, $node->nid, $node->vid, $measure_nid, $measure_values['region'], $measure_values['weight']);
+    }
+  }
 }
 
 /**
@@ -137,12 +137,12 @@ function pi_methodology_insert($node) {
  */
 function pi_methodology_update($node) {
 // if this is a new node or we're adding a new revision,
-	if ($node->revision) {
-		pi_methodology_insert($node);
-	} else {
-		db_query("DELETE FROM {pi_methodology_measures} WHERE vid = %d", $node->vid);
-		pi_methodology_insert($node);
-	}
+  if ($node->revision) {
+    pi_methodology_insert($node);
+  } else {
+    db_query("DELETE FROM {pi_methodology_measures} WHERE vid = %d", $node->vid);
+    pi_methodology_insert($node);
+  }
 }
 
 /**
@@ -151,7 +151,7 @@ function pi_methodology_update($node) {
  * @return unknown_type
  */
 function pi_methodology_delete(&$node) {
-	db_query("DELETE FROM pi_methodology_measures WHERE nid = %d", $node->nid);
+  db_query("DELETE FROM pi_methodology_measures WHERE nid = %d", $node->nid);
 }
 
 /**
@@ -160,117 +160,117 @@ function pi_methodology_delete(&$node) {
  * @return object
  */
 function pi_methodology_load($node) {
-	$output = new stdClass;
-	$output->measures = array();
+  $output = new stdClass;
+  $output->measures = array();
 
 
-	$data_activities = pi_sort_data_get_activities(pi_inquiry_find_inquiry_for_content($node->nid));
-	$all_measures = array();
-	foreach ($data_activities as $activity_nid) {
-		$output->measures[$activity_nid] = array(
-				'key' => array(),
-				'dependent' => array(),
-				'unselected' => array(),
-		);
+  $data_activities = pi_sort_data_get_activities(pi_inquiry_find_inquiry_for_content($node->nid));
+  $all_measures = array();
+  foreach ($data_activities as $activity_nid) {
+    $output->measures[$activity_nid] = array(
+        'key' => array(),
+        'dependent' => array(),
+        'unselected' => array(),
+    );
 
-		$measures_for_activity = pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($activity_nid);
-		foreach ($measures_for_activity as $measure_nid) {
-			$all_measures[$measure_nid] = $activity_nid;
-		}
-	}
+    $measures_for_activity = pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($activity_nid);
+    foreach ($measures_for_activity as $measure_nid) {
+      $all_measures[$measure_nid] = $activity_nid;
+    }
+  }
 
-	$user_created_measures = pi_node_hierarchy_get_children($node->nid);
-	if ($user_created_measures) {
-		foreach ($user_created_measures as $user_created_measure_nid) {
-			$user_created_measure_node = node_load($user_created_measure_nid);
-			$all_measures[$user_created_measure_nid] = $user_created_measure_node->activity_nid;
-		}
-	}
+  $user_created_measures = pi_node_hierarchy_get_children($node->nid);
+  if ($user_created_measures) {
+    foreach ($user_created_measures as $user_created_measure_nid) {
+      $user_created_measure_node = node_load($user_created_measure_nid);
+      $all_measures[$user_created_measure_nid] = $user_created_measure_node->activity_nid;
+    }
+  }
 
-	$query = "SELECT measure_nid, status FROM {pi_methodology_measures} WHERE vid=%d ORDER BY weight ASC";
-	$result = db_query($query, $node->vid);
-	while ($row = db_fetch_array($result)) {
-		$nid = $row['measure_nid'];
-		if (isset($all_measures[$nid])) {
-			$activity_nid = $all_measures[$nid];
-			unset($all_measures[$nid]);
-			$output->measures[$activity_nid][$row['status']][] = $nid;
-		}
-	}
+  $query = "SELECT measure_nid, status FROM {pi_methodology_measures} WHERE vid=%d ORDER BY weight ASC";
+  $result = db_query($query, $node->vid);
+  while ($row = db_fetch_array($result)) {
+    $nid = $row['measure_nid'];
+    if (isset($all_measures[$nid])) {
+      $activity_nid = $all_measures[$nid];
+      unset($all_measures[$nid]);
+      $output->measures[$activity_nid][$row['status']][] = $nid;
+    }
+  }
 
-	foreach ($all_measures as $measure_nid => $activity_nid) {
-		$measure = node_load($measure_nid);
-		$region = $measure->mandatory ? 'key' : 'dependent';
-		$output->measures[$activity_nid][$region][] = $measure_nid;
-	}
+  foreach ($all_measures as $measure_nid => $activity_nid) {
+    $measure = node_load($measure_nid);
+    $region = $measure->mandatory ? 'key' : 'dependent';
+    $output->measures[$activity_nid][$region][] = $measure_nid;
+  }
 
 
-	return $output;
+  return $output;
 }
 
 function _pi_methodology_get_measures_from_measure_content_nodes($methodology_nids, $sort_data_activity_nid) {
-	$measures = array();
-	foreach ($methodology_nids as $methology_content_nid) {
-		$methodology_node = node_load($methology_content_nid);
+  $measures = array();
+  foreach ($methodology_nids as $methology_content_nid) {
+    $methodology_node = node_load($methology_content_nid);
 
-		if (isset($methodology_node->measures[$sort_data_activity_nid]['key'])) {
-			foreach ($methodology_node->measures[$sort_data_activity_nid]['key'] as $measure_nid) {
-				$measures[$measure_nid] = TRUE;
-			}
-		}
-		if (isset($methodology_node->measures[$sort_data_activity_nid]['dependent'])) {
-			foreach ($methodology_node->measures[$sort_data_activity_nid]['dependent'] as $measure_nid) {
-				if (!isset($measures[$measure_nid])) {
-					$measures[$measure_nid] = FALSE;
-				}
-			}
-		}
-	}
-	return $measures;
+    if (isset($methodology_node->measures[$sort_data_activity_nid]['key'])) {
+      foreach ($methodology_node->measures[$sort_data_activity_nid]['key'] as $measure_nid) {
+        $measures[$measure_nid] = TRUE;
+      }
+    }
+    if (isset($methodology_node->measures[$sort_data_activity_nid]['dependent'])) {
+      foreach ($methodology_node->measures[$sort_data_activity_nid]['dependent'] as $measure_nid) {
+        if (!isset($measures[$measure_nid])) {
+          $measures[$measure_nid] = FALSE;
+        }
+      }
+    }
+  }
+  return $measures;
 }
 
 function pi_methodology_get_measures_for_use_in_content_node($using_content_nid, $sort_data_activity_nid) {
-	$node = node_load($using_content_nid);
-	$using_activity_nid = pi_activity_get_activity_nid_for_content_nid($using_content_nid);
-	return pi_methodology_get_measures_for_use_in_activity($using_activity_nid, $node->uid, $sort_data_activity_nid);
+  $node = node_load($using_content_nid);
+  $using_activity_nid = pi_activity_get_activity_nid_for_content_nid($using_content_nid);
+  return pi_methodology_get_measures_for_use_in_activity($using_activity_nid, $node->uid, $sort_data_activity_nid);
 }
 
 function pi_methodology_get_measures_for_use_in_activity($using_activity_nid, $using_uid, $sort_data_activity_nid) {
-	$inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
-	$content_access = pi_info()->getContentManager();
+  $inquiry_info = pi_info()->getInquiryInfoForActivity($using_activity_nid);
+  $content_access = pi_info()->getContentManager();
 
-	$activity = $inquiry_info->getActivityByType('pi_methodology');
+  $activity = $inquiry_info->getActivityByType('pi_methodology');
 
-	if ($activity) {
-		$measure_content_nids = $content_access->getContentFromForUsingActivityActor($activity->nid, $using_activity_nid, $using_uid);
-		$measures = _pi_methodology_get_measures_from_measure_content_nodes($measure_content_nids, $sort_data_activity_nid);
-	} else {
-		$measures = array();
-		foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) as $measure_nid) {
-			$measures[$measure_nid] = FALSE;
-		}
-	}
-	return $measures;
+  if ($activity) {
+    $measure_content_nids = $content_access->getContentFromForUsingActivityActor($activity->nid, $using_activity_nid, $using_uid);
+    $measures = _pi_methodology_get_measures_from_measure_content_nodes($measure_content_nids, $sort_data_activity_nid);
+  } else {
+    $measures = array();
+    foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($sort_data_activity_nid) as $measure_nid) {
+      $measures[$measure_nid] = FALSE;
+    }
+  }
+  return $measures;
 }
 
 function _pi_methodology_load_default_measures() {
-	$details = get_inquiry_details_from_current_path();
-	$data_activities = pi_sort_data_get_activities($details->inquiry_id);
-	$output = array();
-	foreach ($data_activities as $activity_nid) {
-		$output[$activity_nid] = array(
-				'key' => array(),
-				'dependent' => array(),
-				'unselected' => array(),
-		);
+  $details = get_inquiry_details_from_current_path();
+  $data_activities = pi_sort_data_get_activities($details->inquiry_id);
+  $output = array();
+  foreach ($data_activities as $activity_nid) {
+    $output[$activity_nid] = array(
+        'key' => array(),
+        'dependent' => array(),
+        'unselected' => array(),
+    );
 
-		foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($activity_nid) as $measure_nid) {
-			$measure = node_load($measure_nid);
-			$region = $measure->mandatory ? 'key' : 'dependent';
-			$output[$activity_nid][$region][] = $measure_nid;
-		}
-	}
-	return $output;
+    foreach (pi_available_measures_get_script_measure_nids_for_sort_data_activity_nid($activity_nid) as $measure_nid) {
+      $measure = node_load($measure_nid);
+      $region = $measure->mandatory ? 'key' : 'dependent';
+      $output[$activity_nid][$region][] = $measure_nid;
+    }
+  }
+  return $output;
 }
 
 /**
@@ -281,112 +281,112 @@ function _pi_methodology_load_default_measures() {
  * @return unknown_type
  */
 function pi_methodology_view($node, $teaser, $page = FALSE) {
-	$node = node_prepare($node, $teaser);
-	return $node;
+  $node = node_prepare($node, $teaser);
+  return $node;
 }
 
 function pi_methodology_display_content_in_activity($node, $options) {
-	$rows = NULL;
+  $rows = NULL;
 
-	if ($options['edit']) {
-		$rows = array(array(t('Organize<br/>measures:'), node_page_edit($node)));
-	} else {
-		$activity = node_load(pi_activity_get_activity_nid_for_content_nid($node->nid));
+  if ($options['edit']) {
+    $rows = array(array(t('Organize<br/>measures:'), node_page_edit($node)));
+  } else {
+    $activity = node_load(pi_activity_get_activity_nid_for_content_nid($node->nid));
 
-		if ($options['child_delete']) {
-			$child_measure_delete = node_load($options['child_delete']);
-			$content = '<div class="measure_item_content"><b>' . check_plain($child_measure_delete->title) . '</b>: ' . inquiry_available_features_name('measure', $child_measure_delete->measure_type) . '</div>'
-							. pi_activity_get_child_content_delete_form($activity, t('Are you sure you want to delete this measure?'));
-			$rows = array(array(t('Delete measure:'), $content));
-		} else {
-			$child_measure_edit = NULL;
-			if ($options['child_edit']) {
-				$child_measure_edit = node_load($options['child_edit']);
-			} else if ($options['add_child']) {
+    if ($options['child_delete']) {
+      $child_measure_delete = node_load($options['child_delete']);
+      $content = '<div class="measure_item_content"><b>' . check_plain($child_measure_delete->title) . '</b>: ' . inquiry_available_features_name('measure', $child_measure_delete->measure_type) . '</div>'
+              . pi_activity_get_child_content_delete_form($activity, t('Are you sure you want to delete this measure?'));
+      $rows = array(array(t('Delete measure:'), $content));
+    } else {
+      $child_measure_edit = NULL;
+      if ($options['child_edit']) {
+        $child_measure_edit = node_load($options['child_edit']);
+      } else if ($options['add_child']) {
 
-				$data = nquire_commons_decode_data($activity->parameters);
-				if ($data['own_measures']) {
-					$child_measure_edit = 'pi_available_measures';
-				}
-			}
+        $data = nquire_commons_decode_data($activity->parameters);
+        if ($data['own_measures']) {
+          $child_measure_edit = 'pi_available_measures';
+        }
+      }
 
-			if ($child_measure_edit) {
-				$label = $options['child_edit'] ? t('New measure:') : t('Edit measure:');
-				$rows = array(array($label, pi_activity_get_children_activity_edit_form($child_measure_edit)));
-			} else if (is_array($node->measures) && count($node->measures) > 0) {
-				$rows = array();
+      if ($child_measure_edit) {
+        $label = $options['child_edit'] ? t('New measure:') : t('Edit measure:');
+        $rows = array(array($label, pi_activity_get_children_activity_edit_form($child_measure_edit)));
+      } else if (is_array($node->measures) && count($node->measures) > 0) {
+        $rows = array();
 
-				$tables = _pi_methodology_get_measures_table($node, $options['editable']);
-				foreach ($tables as $data_activity_nid => $table) {
-					$data_activity_node = node_load($data_activity_nid);
-					$label = t('Measures for<br/><i>@activity</i>:', array('@activity' => $data_activity_node->title));
-					$rows[] = array($label, $table);
-				}
-			} else {
-				$rows[] = array('Measures', array('content' => t('There are no data collection activities to configure.'), 'empty' => TRUE));
-			}
-		}
-	}
+        $tables = _pi_methodology_get_measures_table($node, $options['editable']);
+        foreach ($tables as $data_activity_nid => $table) {
+          $data_activity_node = node_load($data_activity_nid);
+          $label = t('Measures for<br/><i>@activity</i>:', array('@activity' => $data_activity_node->title));
+          $rows[] = array($label, $table);
+        }
+      } else {
+        $rows[] = array('Measures', array('content' => t('There are no data collection activities to configure.'), 'empty' => TRUE));
+      }
+    }
+  }
 
-	return array(
-			'mode' => 'twocolumns',
-			'rows' => $rows,
-	);
+  return array(
+      'mode' => 'twocolumns',
+      'rows' => $rows,
+  );
 }
 
 function _pi_methodology_get_measures_table($node, $editable) {
-	drupal_add_css(drupal_get_path('module', 'pi_methodology') . '/css/pi_methodology.css');
+  drupal_add_css(drupal_get_path('module', 'pi_methodology') . '/css/pi_methodology.css');
 
-	$tables = array();
+  $tables = array();
 
-	foreach ($node->measures as $activity_nid => $activity_measures) {
-		$table = '<div class="measure_table">';
+  foreach ($node->measures as $activity_nid => $activity_measures) {
+    $table = '<div class="measure_table">';
 
-		foreach ($activity_measures as $region => $list) {
-			$table .= '<div class="measure_region">'
-							. '<div class="measure_region_title"><b>' . pi_methodology_get_region_label($region) . '</b> - '
-							. pi_methodology_get_region_description($region) . '</div>'
-							. '<div region_id="' . $region . '" class="measure_container">';
-
-
-			if (count($list) > 0) {
-				foreach ($list as $measure_nid) {
-					$measure_node = node_load($measure_nid);
-					if (!$measure_node->script_measure && $editable) {
-						$label = pi_activity_build_link_for_child($measure_node->nid, $measure_node->title);
-					} else {
-						$label = check_plain($measure_node->title);
-					}
-
-					$classname = 'measure_item nquire_list_item ' .
-									($measure_node->mandatory ? 'measure_mandatory' : 'measure_selectable');
+    foreach ($activity_measures as $region => $list) {
+      $table .= '<div class="measure_region">'
+              . '<div class="measure_region_title"><b>' . pi_methodology_get_region_label($region) . '</b> - '
+              . pi_methodology_get_region_description($region) . '</div>'
+              . '<div region_id="' . $region . '" class="measure_container">';
 
 
-					$table .= '<div measure_id="' . $measure_nid . '" class="' . $classname . '">'
-									. '<div class="measure_item_content"><b>' . $label . '</b> (' . inquiry_available_features_name('measure', $measure_node->measure_type) . ') ' 
-                  . check_plain($measure_node->body) . '</div>'
-									. '</div>';
-				}
-			}/* else {
-			  $region_section['children'][] = array(
-			  'data' => '<i><small>' . pi_methodology_get_empty_region_label($region) . '</small></i>',
-			  'style' => 'list-style-type: none;',
-			  );
-			  } */
-			$table .= '</div></div>';
-		}
+      if (count($list) > 0) {
+        foreach ($list as $measure_nid) {
+          $measure_node = node_load($measure_nid);
+          $label = '<b>' . check_plain($measure_node->title) . '</b> (' 
+                  . inquiry_available_features_name('measure', $measure_node->measure_type) . ') ' 
+                  . check_plain($measure_node->body);
+          
+          if (!$measure_node->script_measure && $editable) {
+            $label .= '<div style="padding-top: 5px;font-weight: bold;">' . pi_activity_build_link_for_child($measure_node->nid, t('Edit')) . '</div>';
+          }
 
-		$table .= '</div>';
+          $classname = 'measure_item nquire_list_item ' .
+                  ($measure_node->mandatory ? 'measure_mandatory' : 'measure_selectable');
 
-		$tables[$activity_nid] = $table;
-	}
 
-	return $tables;
+          $table .= '<div measure_id="' . $measure_nid . '" class="' . $classname . '">'
+                  . '<div class="measure_item_content">' . $label . '</div>'
+                  . '</div>';
+        }
+      }/* else {
+        $region_section['children'][] = array(
+        'data' => '<i><small>' . pi_methodology_get_empty_region_label($region) . '</small></i>',
+        'style' => 'list-style-type: none;',
+        );
+        } */
+      $table .= '</div></div>';
+    }
+
+    $table .= '</div>';
+
+    $tables[$activity_nid] = $table;
+  }
+
+  return $tables;
 }
 
-
 function pi_methodology_create_shared_view($node) {
-	return theme('pi_methodology', $node, FALSE);
+  return theme('pi_methodology', $node, FALSE);
 }
 
 /**
@@ -395,12 +395,12 @@ function pi_methodology_create_shared_view($node) {
  * @return string Translated string using t()
  */
 function pi_methodology_get_region_label($region) {
-	$labels = array(
-			'key' => t('Key measures'),
-			'dependent' => t('Dependent measures'),
-			'unselected' => t('Not used')
-	);
-	return $labels[$region];
+  $labels = array(
+      'key' => t('Key measures'),
+      'dependent' => t('Dependent measures'),
+      'unselected' => t('Not used')
+  );
+  return $labels[$region];
 }
 
 /**
@@ -409,11 +409,11 @@ function pi_methodology_get_region_label($region) {
  * @return string Translated string using t()
  */
 function pi_methodology_get_region_description($region) {
-	$region_descriptions = array(
-			'key' => t('Key measures are how you organise the data you collect.'),
-			'dependent' => t('Dependent measures are collected with key measures.'),
-			'unselected' => t('These measurements will not be collected.'));
-	return $region_descriptions[$region];
+  $region_descriptions = array(
+      'key' => t('Key measures are how you organise the data you collect.'),
+      'dependent' => t('Dependent measures are collected with key measures.'),
+      'unselected' => t('These measurements will not be collected.'));
+  return $region_descriptions[$region];
 }
 
 /**
@@ -423,18 +423,18 @@ function pi_methodology_get_region_description($region) {
  */
 function pi_methodology_get_empty_region_label($region) {
 
-	$labels = array(
-			'key' => t('No key measures have been chosen'),
-			'dependent' => t('No measures have been selected'),
-			'unselected' => t('All available measures are being used')
-	);
-	return $labels[$region];
+  $labels = array(
+      'key' => t('No key measures have been chosen'),
+      'dependent' => t('No measures have been selected'),
+      'unselected' => t('All available measures are being used')
+  );
+  return $labels[$region];
 }
 
 function _pi_methodology_format_measure_form_id_attribute($activity_nid) {
-	return "measure_{$activity_nid}";
+  return "measure_{$activity_nid}";
 }
 
 function _pi_methodology_decode_measure_form_id_attribute($value) {
-	return substr($value, 8);
+  return substr($value, 8);
 }

@@ -82,9 +82,6 @@ function pi_journal_contributions_find_shared_contributions_for_inquiry($inquiry
 
 function pi_journal_contribution_theme() {
 	return array(
-			'pi_journal_contribution_teaser' => array(
-					'arguments' => array('node' => NULL, 'inquiry_node' => NULL),
-			),
 			'pi_journal_contribution_display' => array(
 					'arguments' => array('node' => NULL),
 			),
@@ -119,37 +116,7 @@ function pi_journal_contribution_form_comment_form_alter(&$form, &$form_state) {
 	}
 }
 
-function theme_pi_journal_contribution_teaser($node) {
-	drupal_add_css(drupal_get_path('module', 'pi_journal_contribution') . '/css/pi_journal_contribution.css');
-	
-	$title = strlen($node->title) > 0 ? check_plain($node->title) : t('Investigation results');
-	$args = array(
-			'@url' => url('journal/contribution/' . $node->nid),
-			'@title' => $title,
-	);
-	
-	$output = '<div class="pi_journal_contribution_title_section">';
 
-	switch ($node->collaboration) {
-		case 'individual':
-			$u = user_load($node->actor);
-			$args['@user'] = $u->name;
-			$t = t('<a href="@url"><b>@title</b></a> by @user', $args);
-			break;
-		case 'group':
-			$g = node_load($node->actor);
-			$args['@group'] = $g->title;
-			$t = t('<a href="@url"><b>@title</b></a> by group @group', $args);
-			break;
-		case 'all':
-			$t = t('<a href="@url"><b>@title</b></a>', $args);
-			break;
-	}
-	
-	$output .= $t . check_markup($node->body) . '</div>';
-
-	return $output;
-}
 
 function theme_pi_journal_contribution_summary($node) {
 	drupal_add_css(drupal_get_path('module', 'pi_journal_contribution') . '/css/pi_journal_contribution.css');
@@ -158,7 +125,7 @@ function theme_pi_journal_contribution_summary($node) {
 
 	$title = strlen($node->title) > 0 ? check_plain($node->title) : t('Investigation results');
 	$summary = check_markup($node->body);
-	$subtitle = t('Investigation results of inquiry @inquiry', array('@inquiry' => $inquiry_node->title));
+	$subtitle = t('Inquiry @inquiry', array('@inquiry' => $inquiry_node->title));
 
 	switch ($node->collaboration) {
 		case 'individual':
