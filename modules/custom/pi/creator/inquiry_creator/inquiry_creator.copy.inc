@@ -149,7 +149,7 @@ function inquiry_creator_copy($design_nid) {
 
   $content = t('<h1 class="title">Copy structure from an existing inquiry</h1>')
           . '<p>' . t('Here you can select one existing inquiry.') . '</p>'
-          . '<p>' . t('Phases and activities from your selected inquiry will be copied into your design.') . '</p>'
+          . '<p>' . t('Phases and activities from the selected inquiry will be copied into your own.') . '</p>'
           . '<ul>';
 
 
@@ -181,7 +181,7 @@ function inquiry_creator_copy_confirm($design_nid, $source_nid) {
 
 
   $content = t('<h1 class="title">Copy structure from inquiry <i>@title</i></h1>', array('@title' => $source_info->getInquiryNode()->title))
-          . '<p>' . t('The following phases and activities will be copied into your design.') . '</p>'
+          . '<p>' . t('The following phases and activities will be copied into your inquiry.') . '</p>'
           . '<ul>';
 
   foreach ($source_info->getPhases() as $phase_nid => $phase) {

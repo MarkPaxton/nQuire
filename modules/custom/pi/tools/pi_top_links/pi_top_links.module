@@ -32,29 +32,43 @@ function pi_top_links_block($op = 'list') {
 
 function _pi_top_links_format_menu() {
 
-  $paths = array(
-      'home' => array(
-          'checkaccess' => FALSE,
-          'title' => t('Home'),
-      ),
-      'inquiries' => array(
-          'checkaccess' => FALSE,
-          'title' => t('My inquiries'),
-      ),
-      'creator' => array(
-          'checkaccess' => TRUE,
-          'title' => t('Inquiry creator'),
-      ),
-      'journal' => array(
-          'checkaccess' => FALSE,
-          'title' => t('Inquiry results'),
-      ),
-      'forum' => array(
-          'checkaccess' => FALSE,
-          'title' => t('Forums'),
-          'children' => array(),
+  $paths = array();
+
+  $paths['home'] = array(
+      'checkaccess' => FALSE,
+      'title' => t('Home'),
+  );
+
+  $paths['inquiries'] = array(
+      'checkaccess' => FALSE,
+      'title' => t('My inquiries'),
+  );
+
+  $paths['creator'] = array(
+      'checkaccess' => TRUE,
+      'title' => t('Inquiry creator'),
+      'children' => array(
+          'creator' => t('Browse my inquiries'),
+          'creator/new' => t('Create new inquiry'),
+          'creator/copy' => t('Copy existing inquiry'),
       ),
   );
+  $help_story = pi_promote_get_story('help_authoring_tool');
+  if ($help_story) {
+    $paths['creator']['children']["node/$help_story"] = t('Creator tutorial');
+  }
+
+
+  $paths['journal'] = array(
+      'checkaccess' => FALSE,
+      'title' => t('Inquiry results'),
+  );
+  $paths['forum'] = array(
+      'checkaccess' => FALSE,
+      'title' => t('Forums'),
+      'children' => array(),
+  );
+
 
   if (function_exists('pi_promote_get_menu_items')) {
     $paths = array_merge($paths, pi_promote_get_menu_items());
@@ -130,7 +144,7 @@ function _pi_top_links_format_user_block() {
         'attributes' => array('class' => 'pi-top-links-user-action'),
         'query' => drupal_get_destination(),
     ));
-    $l2 = l(t('create new account'), "user/register", array(
+    $l2 = l(t(/* create new account */'new user'), "user/register", array(
         'attributes' => array('class' => 'pi-top-links-user-action'),
         'query' => drupal_get_destination(),
     ));

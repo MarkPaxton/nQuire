@@ -28,10 +28,10 @@ function theme_inquiry_creator_design_list($design_list) {
     $output .= nquire_commons_create_page_section($help_content, t('Learn'));
   }
 
-  $title = t('My designs');
+  $title = t('My inquiries');
 
   if (count($design_list) == 0) {
-    $content = t('You have created no designs yet.');
+    $content = t('You have created no inquiries yet.');
   } else {
     global $user;
 

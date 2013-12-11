@@ -84,7 +84,7 @@ function user_spamapi($op, $arg1 = NULL, $arg2 = NULL, $arg3 = NULL) {
       // Hook to scan user before it is inserted into the database.
       if ($arg1 == 'user_register' && is_array($arg2)) {
         $user = $arg2['#post'];
-        if (is_array($user) && $user['op'] == t('Create new account')) {
+        if (is_array($user) && $user['op'] == t(/*create new account*/'New user')) {
           $_SESSION['spam_form'] = $arg2;
           spam_scan($user, 'user');
         }
@@ -242,7 +242,7 @@ function user_spamapi_form_alter(&$form, &$form_state, $form_id) {
  * Scan user before it is created in the database.
  */
 function user_spam_scan($form, &$form_state) {
-  if ($form_state['clicked_button']['#value'] == t('Create new account')) {
+  if ($form_state['clicked_button']['#value'] == t(/*create new account*/'New user')) {
     $account = $form['#post'];
     $_SESSION['spam_form'] = $form;
     spam_scan($account, 'user');

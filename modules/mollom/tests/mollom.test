@@ -2624,7 +2624,7 @@ class MollomUserFormsTestCase extends MollomWebTestCase {
       'name' => $name,
       'mail' => $name . '@example.com',
     );
-    $this->postIncorrectCaptcha('user/register', $edit, t('Create new account'));
+    $this->postIncorrectCaptcha('user/register', $edit, t(/*create new account*/'New user'));
     $this->assertFalse(user_load(array('name' => $name)), t('The user who attempted to register cannot be found in the database when the CAPTCHA is invalid.'));
 
     // Verify that user count is still the same.
@@ -2633,7 +2633,7 @@ class MollomUserFormsTestCase extends MollomWebTestCase {
 
     // Try to register with a valid CAPTCHA. Make sure the user was able
     // to successfully register.
-    $this->postCorrectCaptcha('user/register', $edit, t('Create new account'));
+    $this->postCorrectCaptcha('user/register', $edit, t(/*create new account*/'New user'));
     $this->assertRaw(t('Thank you for applying for an account. Your account is currently pending approval by the site administrator.<br />In the meantime, a welcome message with further instructions has been sent to your e-mail address.'));
     $account = user_load(array('name' => $name));
     $this->assertTrue($account, 'New user found after solving CAPTCHA.');
@@ -2678,7 +2678,7 @@ class MollomUserFormsTestCase extends MollomWebTestCase {
       'name' => 'spam',
       'mail' => 'spam@example.com',
     );
-    $this->drupalPost(NULL, $edit, t('Create new account'));
+    $this->drupalPost(NULL, $edit, t(/*create new account*/'New user'));
     $this->assertNoCaptchaField();
     $this->assertText($this->spam_message);
     $count_new = db_result(db_query("SELECT COUNT(uid) FROM {users}"));
@@ -2692,7 +2692,7 @@ class MollomUserFormsTestCase extends MollomWebTestCase {
       'name' => 'unsure',
       'mail' => 'unsure@example.com',
     );
-    $this->drupalPost(NULL, $edit, t('Create new account'));
+    $this->drupalPost(NULL, $edit, t(/*create new account*/'New user'));
     $this->assertCaptchaField();
 
     // Verify that user count is still the same.
@@ -2700,7 +2700,7 @@ class MollomUserFormsTestCase extends MollomWebTestCase {
     $this->assertEqual($count_initial, $count_new, 'Existing user count found.');
 
     // Verify that solving the CAPTCHA registers the user.
-    $this->postCorrectCaptcha(NULL, array(), t('Create new account'));
+    $this->postCorrectCaptcha(NULL, array(), t(/*create new account*/'New user'));
     $account = user_load(array('name' => $edit['name']));
     $this->assertTrue($account, 'New user found after solving CAPTCHA.');
     $this->assertEqual($account->status, 1, 'New user account is active.');
@@ -2797,11 +2797,11 @@ class MollomProfileFormsTestCase extends MollomWebTestCase {
         'mail' => $name . '@example.com',
         $key => $field['type'] != 'url' ? 'unsure' : 'http://example.com/unsure',
       );
-      $this->drupalPost(NULL, $edit, t('Create new account'));
+      $this->drupalPost(NULL, $edit, t(/*create new account*/'New user'));
       $this->assertCaptchaField();
     }
 
-    $this->postCorrectCaptcha(NULL, array(), t('Create new account'));
+    $this->postCorrectCaptcha(NULL, array(), t(/*create new account*/'New user'));
     $this->assertText(t('Your password and further instructions have been sent to your e-mail address.'));
     $this->assertTrue(user_load(array('name' => $name)), t('New user was found in database.'));
   }
@@ -4778,7 +4778,7 @@ class MollomModerateUserTestCase extends MollomWebTestCase {
       'pass[pass2]' => $password,
       'mail' => 'spam@example.com',
     );
-    $this->postCorrectCaptcha('user/register', $edit, t('Create new account'));
+    $this->postCorrectCaptcha('user/register', $edit, t(/*create new account*/'New user'));
 
     // Determine new uid.
     $uid = db_result(db_query("SELECT uid FROM {users} WHERE name = '%s'", array($edit['name'])));
@@ -4830,7 +4830,7 @@ abstract class MollomModerationBaseTestCase extends MollomWebTestCase {
       'mail' => $this->randomName(6) . '@example.com',
     );
     $edit['pass[pass1]'] = $edit['pass[pass2]'] = user_password();
-    $this->drupalPost('user/register', $edit, t('Create new account'));
+    $this->drupalPost('user/register', $edit, t(/*create new account*/'New user'));
     $this->assertText(t('Registration successful. You are now logged in.'));
 
     $account = user_load(array('mail' => $edit['mail']));
