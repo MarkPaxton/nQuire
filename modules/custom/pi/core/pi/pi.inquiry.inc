@@ -313,8 +313,23 @@ function display_phases_activity_box($activity_count, $new_activity_count) {
 }
 
 
-function pi_inquiry_home_get_started($inquiry) {
-  if ($inquiry->type === 'pi_inquiry') {
+function pi_inquiry_home_get_started($inquiry = FALSE) {
+  if (!$inquiry) {
+    $ref = $_SERVER['HTTP_REFERER'];
+    $p = strpos($ref, "inquiry/");
+    if ($p !== FALSE) {
+      $p1 = $p + 8;
+      $p2 = strpos($ref, '/', $p1);
+      $l = $p2 ? $p2 - $p1 : NULL;
+      $nid = substr($ref, $p1, $l);
+      $inquiry = node_load($nid);
+      if (!pi_inquiry_home_view_access($inquiry)) {
+        drupal_goto('home');
+      }
+    }
+  }
+  
+  if ($inquiry && $inquiry->type === 'pi_inquiry') {
     global $user;
     if ($user->uid) {
       $status = nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid);
@@ -326,5 +341,5 @@ function pi_inquiry_home_get_started($inquiry) {
     } else {
       drupal_goto('user', array('destination' => "inquiry/{$inquiry->nid}/home"));
     } 
-  }
+  } 
 }

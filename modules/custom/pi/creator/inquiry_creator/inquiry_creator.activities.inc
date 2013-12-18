@@ -112,7 +112,7 @@ function inquiry_creator_activity_delete_form(&$form_state, $design, $node) {
       '#value' => $info,
   );
 
-  nquire_commont_create_form_delete_cancel_buttons($form, 'inquiry_creator_activity_delete_form_submit', "creator/{$design->nid}");
+  nquire_commont_create_form_delete_cancel_buttons($form, 'inquiry_creator_activity_delete_form_submit', "creator/{$design->nid}/activities");
 
   return $form;
 }

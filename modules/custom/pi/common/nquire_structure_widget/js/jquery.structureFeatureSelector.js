@@ -14,7 +14,8 @@
 				defaultValueForItem: false,
 				validValuesForItem: false,
 				defaultValue: '0',
-				forItemType: 'all'
+				forItemType: 'all',
+        selectedLabel: 'Selected'
 			}, options);
 
 

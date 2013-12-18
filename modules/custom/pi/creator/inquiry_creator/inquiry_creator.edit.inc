@@ -155,10 +155,10 @@ function theme_inquiry_creator_inquiry_metadata($node, $editable = FALSE) {
   if ($editable) {
     $frontpage_label = $node->frontpage ? t('Edit front page') : t('Create front page');
     $content .= '<small>'
-            . nquire_commons_form_submit_link(t('Edit'), "creator/{$node->nid}/edit")
-            . '&nbsp;&nbsp;&nbsp;&nbsp;'
+            . nquire_commons_form_submit_link(t('Edit description'), "creator/{$node->nid}/edit")
+            . '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
             . nquire_commons_form_submit_link($frontpage_label, "creator/{$node->nid}/frontpage")
-            . '&nbsp;&nbsp;&nbsp;&nbsp;'
+            . '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
             . nquire_commons_form_submit_link(t('Delete inquiry'), "creator/{$node->nid}/delete")
             . '</small>';
 
@@ -184,7 +184,7 @@ function theme_inquiry_creator_edit_menu($node, $current_op, $content) {
   if ($current_op === '') {
     $current_op = 'settings';
   }
-  
+
   $ops = array(
       'settings' => t('Settings panel'),
       'activities' => t('Edit phases and activities'),
@@ -269,14 +269,18 @@ function inquiry_creator_activities_form(&$form_state, $node) {
   nquire_commons_form_set_default_link_action($form, 'submit');
 
   $form['intro'] = array(
-      '#value' => '<p>' . t('Click on the links below to add new phases and activities. You can change the name of the activities and phases by clicking on them. They can be reorganized or deleted by dragging with the mouse. To edit the details of each activity, click \'Save\' and then \'edit\' on the desired activity.') . '</p>'
-      . '<p>' . t('Alternatively, click <a href="!url">here</a> to add the phases and activities from existing inquiries.', array('!url' => url("creator/{$node->nid}/copy"))) . '</p>',
+      '#value' => '<p>' . t('Click on the links below to change the activities of this inquiry. nQuire inquiries are always structured using:') . '</p>'
+      . '<ul>'
+      . '<li style="margin-bottom:5px;"><div class="nquire-structure-activity"><div class="item-data"><div class="nquire-activity-icon">Activities</div></div></div> Each activity represents a task that the participants can complete.</li>'
+      . '<li><div class="nquire-structure-phase"><div class="item-data"><div class="nquire-phase-icon">&nbsp;&nbsp;Phases&nbsp;&nbsp;</div></div></div> Phases are used to group activities.</li>'
+      . '</ul>'
+      . '<div style="margin-bottom:30px;">' . t('Use the links below to add new phases and activities. They can be rearranged by dragging the <div class="nquire-item-handle" style="display:inline-block"></div> handle with the mouse.') . '</div>',
   );
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   $structure = json_encode(inquiry_creator_get_inquiry_structure($node->nid));
   nquire_structure_widget_create_form_item($form, 'structure', $structure);
-  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_activities_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_activities_form_submit', "creator/{$node->nid}/activities");
 
   return $form;
 }
@@ -344,9 +348,19 @@ function inquiry_creator_activities_form_submit($form, $form_state) {
   }
 
   $destination_parts = explode('/', $form_state['values']['form_destination']);
-  if (count($destination_parts) >= 4 && isset($new_ids[$destination_parts[2]][$destination_parts[3]])) {
-    $destination_parts[3] = $new_ids[$destination_parts[2]][$destination_parts[3]];
-    $form_state['values']['form_destination'] = implode('/', $destination_parts);
+  if (count($destination_parts) >= 4) {
+    $change = FALSE;
+    if (isset($new_ids['activity'][$destination_parts[3]])) {
+      $change = TRUE;
+      $destination_parts[3] = $new_ids['activity'][$destination_parts[3]];
+    } else if ($destination_parts[3] === 'phase' && count($destination_parts) >= 5 && isset($new_ids['phase'][$destination_parts[4]])) {
+      $change = TRUE;
+      $destination_parts[3] = $new_ids['phase'][$destination_parts[4]];
+    }
+
+    if ($change) {
+      $form_state['values']['form_destination'] = implode('/', $destination_parts);
+    }
   }
 
   nquire_commons_form_close($form, $form_state);
@@ -372,7 +386,7 @@ function inquiry_creator_groups_form(&$form_state, $node) {
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   nquire_structure_groups_table_create_form_item($form, 'groups', $structure, $groups);
-  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_groups_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_groups_form_submit', "creator/{$node->nid}/groups");
 
   return $form;
 }
@@ -405,7 +419,7 @@ function inquiry_creator_roles_form(&$form_state, $node) {
   $structure = json_encode(inquiry_creator_get_inquiry_structure($node->nid));
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   nquire_structure_roles_table_create_form_item($form, 'roles', $structure, $node->roles);
-  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_roles_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_roles_form_submit', "creator/{$node->nid}/roles");
 
   return $form;
 }
@@ -524,7 +538,7 @@ function inquiry_creator_stages_form(&$form_state, $node) {
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
   nquire_structure_stages_table_create_form_item($form, 'stages', $structure, json_encode($stage_structure));
-  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_stages_form_submit', "creator/{$node->nid}/");
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_stages_form_submit', "creator/{$node->nid}/stages");
 
   $form['#theme'] = 'inquiry_creator_inquiry_metadata_form';
 
@@ -611,8 +625,8 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
   }
 
   $forum_desc = t('Select the forum you would like you inquiry to be related to. If you need to create a new forum, please ask the site <a href="@url">admin</a>.', array('@url' => 'mailto:' . variable_get('site_mail', ini_get('sendmail_from'))));
-          
-          
+
+
   $form['forum'] = array(
       '#type' => 'select',
       '#title' => t('Related forum'),
@@ -642,7 +656,8 @@ function inquiry_creator_metadata_form(&$form_state, $node) {
     );
   }
 
-  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', "creator/");
+  $destination = $node ? "creator/{$node->nid}" : "creator/";
+  nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_metadata_form_submit', $destination);
 
   $form['#theme'] = 'inquiry_creator_inquiry_metadata_form';
 

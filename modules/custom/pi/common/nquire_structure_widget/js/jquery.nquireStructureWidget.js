@@ -41,6 +41,7 @@
 			}
 			this.data('status', status);
 			this.nquireStructureWidget('_buildStructure', originalData);
+      this.nquireStructureWidget('_updatePhaseNumbers');
 			return this;
 		},
 		_buildStructure: function(data) {
@@ -98,9 +99,9 @@
 				}
 			};
 
-			this.sortable({items: ".nquire-structure-phase-container", handle: '.nquire-item-handle', revert: 100, start: start, stop: stop});
+			this.sortable({items: ".nquire-structure-phase-container", /*handle: '.nquire-item-handle', */revert: 100, start: start, stop: stop});
 			this.children().each(function() {
-				$(this).sortable({items: ".nquire-structure-activity-container", connectWith: '.nquire-structure-phase-container', handle: '.nquire-item-handle', revert: 100, start: start, stop: stop});
+				$(this).sortable({items: ".nquire-structure-activity-container", connectWith: '.nquire-structure-phase-container', /*handle: '.nquire-item-handle',*/ revert: 100, start: start, stop: stop});
 			});
 
 
@@ -126,7 +127,7 @@
 			var baseHref = window.location.pathname + (window.location.pathname.match(/\/$/) ? '' : '/') + itemPathSection;
 			buttons.append('&nbsp;&nbsp;');
 
-			$('<a>').html('edit')
+			$('<a>').html('[edit]')
 							.attr('href', baseHref)
 							.attr('form_destination', path)
 							.click(function() {
@@ -135,7 +136,7 @@
 
 			buttons.append('&nbsp;&nbsp;&nbsp;');
 
-			var deleteButton = $('<a>').html('delete');
+			var deleteButton = $('<a>').html('[delete]');
 			if (status === 'new') {
 				deleteButton.attr('href', '#').click(function() {
 					self.nquireStructureWidget('_itemAction', $(this), itemId, 'delete');
@@ -152,7 +153,7 @@
 
 			if (type === 'phase') {
 				buttons.append('&nbsp;&nbsp;&nbsp;');
-				$('<a>').html('add activity').attr('href', '#').click(function() {
+				$('<a>').html('[add new activity to this phase]').attr('href', '#').click(function() {
 					self.nquireStructureWidget('_itemAction', $(this), itemId, 'addactivity');
 					return false;
 				}).appendTo(buttons);
@@ -263,11 +264,14 @@
 		},
 		_updatePhaseNumbers: function() {
 			var i = 0;
-			$('.nquire-phase-icon').each(function() {
+			this.find('.nquire-phase-icon').each(function() {
 				$(this).removeClass().addClass('nquire-phase-icon')
 								.html('Phase ' + (i + 1) + ':&nbsp;');
 				i++;
 			});
+      
+      $('#nquire-creator-bottom-add-phase').css({'display': i > 0 ? 'block' : 'none'});
+      
 		},
 		_dataModified: function() {
 			var data = [];
@@ -284,6 +288,7 @@
 
 			this.nQuireWidget('setDataValue', data);
 			this.nquireStructureWidget('_enableSaveButton', true);
+			this.nquireStructureWidget('_updatePhaseNumbers');
 			return this;
 		},
 		_enableSaveButton: function(enabled) {

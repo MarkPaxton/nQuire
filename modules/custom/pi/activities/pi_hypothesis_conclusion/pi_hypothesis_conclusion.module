@@ -11,142 +11,145 @@
  * Implementation of hook_node_info().
  */
 function pi_hypothesis_conclusion_node_info() {
-	return array(
-			'pi_hypothesis_conclusion' => array(
-					'name' => t('Inquiry hypothesis conclusion'), // Required.
-					'module' => 'pi_hypothesis_conclusion', // Required.
-					'description' => t('What is your conclusion?'), // Required.
-					'has_title' => TRUE,
-					'title_label' => t('Inquiry conclusion'),
-					'has_body' => TRUE,
-					'body_label' => t('My conclusion is'),
-					'locked' => TRUE
-			)
-	);
+  return array(
+      'pi_hypothesis_conclusion' => array(
+          'name' => t('Inquiry hypothesis conclusion'), // Required.
+          'module' => 'pi_hypothesis_conclusion', // Required.
+          'description' => t('What is your conclusion?'), // Required.
+          'has_title' => TRUE,
+          'title_label' => t('Inquiry conclusion'),
+          'has_body' => TRUE,
+          'body_label' => t('My conclusion is'),
+          'locked' => TRUE
+      )
+  );
 }
 
 /**
  * Implementation of hook_access().
  */
 function pi_hypothesis_conclusion_access($op, $node, $account) {
-	return FALSE;
+  return FALSE;
 }
 
 function pi_hypothesis_conclusion_edit_content_label() {
-	return t('Edit');
+  return t('Edit');
 }
 
 /**
  * Implementation of hook_form() for pi_hypothesis_conclusion
  */
 function pi_hypothesis_conclusion_form(&$node) {
-	global $user;
-	$current_path = pi_info()->getCurrentPath();
+  global $user;
+  $current_path = pi_info()->getCurrentPath();
 
-	$type = node_get_types('type', $node);
-	$node_title = $type->name;
+  $type = node_get_types('type', $node);
+  $node_title = $type->name;
 
-	$form['title'] = array(
-			'#type' => 'hidden',
-			'#title' => check_plain($type->title_label),
-			'#required' => FALSE,
-			'#default_value' => $node_title,
-			'#weight' => -5
-	);
+  $form['title'] = array(
+      '#type' => 'hidden',
+      '#title' => check_plain($type->title_label),
+      '#required' => FALSE,
+      '#default_value' => $node_title,
+      '#weight' => -5
+  );
 
-	$form['conclusion'] = array(
-			'#type' => 'textarea',
-			'#title' => $type->body_label,
-			'#required' => FALSE,
-			'#default_value' => $node->conclusion,
-			'#description' => t('Type your answer into the above box and click on the Save button when you are finished'),
-			'#resizable' => FALSE,
-			'#rows' => 8,
-			'#cols' => 40,
-			'#weight' => -2
-	);
+  $form['conclusion'] = array(
+      '#type' => 'textarea',
+      '#title' => $type->body_label,
+      '#required' => FALSE,
+      '#default_value' => $node->conclusion,
+      '#description' => t('Type your answer into the above box and click on the Save button when you are finished'),
+      '#resizable' => FALSE,
+      '#rows' => 8,
+      '#cols' => 40,
+      '#weight' => -2
+  );
 
-	return $form;
+  return $form;
 }
 
 /**
  * Implementation of hook_insert().
  */
 function pi_hypothesis_conclusion_insert($node) {
-	db_query("INSERT INTO {pi_hypothesis_conclusion} (nid, vid, conclusion) VALUES ('%d', '%d', '%s')", $node->nid, $node->vid, $node->conclusion);
+  db_query("INSERT INTO {pi_hypothesis_conclusion} (nid, vid, conclusion) VALUES ('%d', '%d', '%s')", $node->nid, $node->vid, $node->conclusion);
 }
 
 /**
  * Implementation of hook_update().
  */
 function pi_hypothesis_conclusion_update($node) {
-	if ($node->revision) {
-		pi_hypothesis_conclusion_insert($node);
-	} else {
-		db_query("UPDATE {pi_hypothesis_conclusion} SET conclusion = '%s' WHERE vid = %d", $node->conclusion, $node->vid);
-	}
+  if ($node->revision) {
+    pi_hypothesis_conclusion_insert($node);
+  } else {
+    db_query("UPDATE {pi_hypothesis_conclusion} SET conclusion = '%s' WHERE vid = %d", $node->conclusion, $node->vid);
+  }
 }
 
 /**
  * Implementation of hook_delete().
  */
 function pi_hypothesis_conclusion_delete(&$node) {
-	// Delete the related information we were saving for this node.
-	db_query('DELETE FROM {pi_hypothesis_conclusion} WHERE nid = %d', $node->nid);
+  // Delete the related information we were saving for this node.
+  db_query('DELETE FROM {pi_hypothesis_conclusion} WHERE nid = %d', $node->nid);
 }
 
 /**
  * Implementation of hook_load().
  */
 function pi_hypothesis_conclusion_load($node) {
-	return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis_conclusion} WHERE vid = %d', $node->vid));
+  return db_fetch_object(db_query('SELECT * FROM {pi_hypothesis_conclusion} WHERE vid = %d', $node->vid));
 }
 
 function pi_hypothesis_conclusion_display_content_in_activity($node, $options) {
-	global $user;
-  
-	$hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($options['activity_node']->nid, $user->uid);
+  global $user;
 
-	$rows = array();
+  $hypothesis_nids = pi_hypothesis_get_hypothesis_nids_for_use_in_activity($options['activity_node']->nid, $user->uid);
 
-	if ($hypothesis_nids) {
-		$hypotheses = array_filter(array_map(function($nid) {
-											$node = node_load($nid);
-											return trim(check_plain($node->hypothesis));
-										}, $hypothesis_nids));
+  $rows = array();
 
-		if (count($hypotheses) === 1) {
-			$h_content = $hypotheses[0];
-		} else if (count($hypotheses) > 0) {
-			$h_content = theme('item_list', $hypotheses);
-		} else {
-			$h_content = FALSE;
-		}
+  if ($options['editable']) {
 
-		if ($h_content) {
-			$rows[] = array(t('Hypothesis:'), $h_content);
-		}
-	}
+    if ($hypothesis_nids) {
+      $hypotheses = array_filter(array_map(function($nid) {
+                $node = node_load($nid);
+                return trim(check_plain($node->hypothesis));
+              }, $hypothesis_nids));
 
-	if ($options['edit']) {
-		$c_content = node_page_edit($node);
-	} else if ($node) {
-		$c_content = check_plain($node->conclusion);
-	} else {
-		$c_content = FALSE;
-	}
+      if (count($hypotheses) === 1) {
+        $h_content = $hypotheses[0];
+      } else if (count($hypotheses) > 0) {
+        $h_content = theme('item_list', $hypotheses);
+      } else {
+        $h_content = FALSE;
+      }
 
-	$rows[] = array(t('Conclusion:'), $c_content);
+      if ($h_content) {
+        $rows[] = array(t('Hypothesis:'), $h_content);
+      }
+    }
+  }
 
-	return array(
-			'mode' => 'twocolumns',
-			'rows' => $rows,
-	);
+  if ($options['edit']) {
+    $c_content = node_page_edit($node);
+  } else if ($node) {
+    $c_content = check_plain($node->conclusion);
+  } else {
+    $c_content = FALSE;
+  }
+
+  $rows[] = array(t('Conclusion:'), $c_content);
+
+  return array(
+      'mode' => 'twocolumns',
+      'rows' => $rows,
+  );
 }
 
 function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
-	$node = node_prepare($node, $teaser);
-	return $node;
+  $node = node_prepare($node, $teaser);
+  return $node;
 }
 
 /**
@@ -156,16 +159,10 @@ function pi_hypothesis_conclusion_view($node, $teaser = FALSE, $page = FALSE) {
  * @return string HTML for the page content added for hypothesis conclusion data
  */
 function theme_pi_hypothesis_conclusion($node, $teaser) {
-	$output = '< 
-
-
-
-strong>' . t('Conclusion:') . '</strong> ' . nl2br($node->conclusion);
-	return $output;
-
-	return $output;
+  $output = '<strong>' . t('Conclusion:') . '</strong> ' . nl2br($node->conclusion);
+  return $output;
 }
 
 function pi_hypothesis_conclusion_create_shared_view($node) {
-	return theme('pi_hypothesis_conclusion', $node, FALSE);
+  return theme('pi_hypothesis_conclusion', $node, FALSE);
 }

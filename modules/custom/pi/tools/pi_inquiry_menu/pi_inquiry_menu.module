@@ -48,8 +48,8 @@ function _pi_inquiry_block_my_inquiries($uid) {
     }
   } else {
     $content = t('<a href="!login">Login</a> or <a href="!register">register</a> to work on your inquiries.', array(
-        '!login' => url('user'),
-        '!register' => url('user/register'),
+        '!login' => url('user', array('query' => array('destination' => "inquiries"))),
+        '!register' => url('user/register', array('query' => array('destination' => "inquiries"))),
     ));
   }
 
@@ -69,7 +69,7 @@ function _pi_inquiry_block_my_designs($current) {
   $help_story = pi_promote_get_story('help_authoring_tool');
   $items [] = l(t('Browse my inquiries'), "creator");
   $items[] = l(t('Create new inquiry'), "creator/new");
-  $items[] = l(t('Copy existing inquiry'), "creator/cope");
+  $items[] = l(t('Copy existing inquiry'), "creator/copy");
   if ($help_story) {
     $items[] = l(t('Tutorial'), "node/$help_story", array('attributes' => array('target' => '_blank')));
   }
@@ -146,9 +146,11 @@ function _pi_inquiry_block_inquiry_join($inquiry_info, $uid, $status) {
     $content = $intro . '<p/>' . theme('item_list', $links);
   } else {
     $title = t('Join inquiry');
+    $nid = $inquiry_info->getInquiryNid();
+    $options = array('query' => array('destination' => "inquiry/$nid/home"));
     $content = t('<a href="!login">Login</a> or <a href="!register">register</a> to join this inquiry.', array(
-        '!login' => url('user'),
-        '!register' => url('user/register'),
+        '!login' => url('user', $options),
+        '!register' => url('user/register', $options),
     ));
   }
 
@@ -161,11 +163,11 @@ function _pi_inquiry_block_inquiry_join($inquiry_info, $uid, $status) {
 function _pi_inquiry_block_inquiry_member($inquiry_info) {
   $sections = array();
 
-  if (!arg(2) || arg(2) === 'structure') {
-    $homeLinkSection = '<div>' . theme('item_list', array(l(t('Inquiry front page'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/home'))) . '</div>';
-  } else {
-    $homeLinkSection = '<div>' . theme('item_list', array(l(t('Inquiry structure'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure'))) . '</div>';
-  }
+  $homeLinkSection = '<div>' . theme('item_list', array(
+              l(t('Inquiry front page'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/home'),
+              l(t('Inquiry structure'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/structure'),
+          )) . '</div>';
+
   $sections[] = $homeLinkSection;
 
   $navigationSection = _pi_inquiry_block_inquiry_member_navigation($inquiry_info);
@@ -193,7 +195,10 @@ function _pi_inquiry_block_inquiry_member_editlink($inquiry_info) {
   $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
 
   if ($inquiry_access->isInquiryOwner()) {
-    return theme('item_list', array(l(t('Edit this inquiry'), 'creator/' . $inquiry_info->getInquiryNid())));
+    return theme('item_list', array(
+        l(t('Promote this inquiry'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/promote'),
+        l(t('Edit this inquiry'), 'creator/' . $inquiry_info->getInquiryNid()),
+    ));
   } else {
     return FALSE;
   }
@@ -202,16 +207,19 @@ function _pi_inquiry_block_inquiry_member_editlink($inquiry_info) {
 function _pi_inquiry_block_inquiry_member_management($inquiry_info) {
   $tools = array();
 
+  $tools[] = l(t('People and groups'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/participants');
   if ($inquiry_info->hasSeveralStages()) {
     $tools[] = l(t('Stages'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/stages');
   }
-  $tools[] = l(t('People and groups'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/participants');
+
   $tools[] = l(t('Share content'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/share');
   $tools[] = l(t('Submit inquiry results'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/publish');
 
-  if (function_exists('pi_promote_inquiry_form')) {
-    $tools[] = l(t('Promote and rate inquiry'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/promote');
+  if (function_exists('pi_promote_inquiry_rate_form')) {
+    $tools[] = l(t('Rate inquiry'), 'inquiry/' . $inquiry_info->getInquiryNid() . '/rate');
   }
+
+
   return theme('item_list', $tools, NULL, 'ul');
 }
 

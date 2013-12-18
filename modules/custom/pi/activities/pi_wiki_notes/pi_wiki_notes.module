@@ -59,12 +59,14 @@ function pi_wiki_notes_form(&$node) {
 			'#type' => 'textarea',
 			'#required' => FALSE,
 			'#default_value' => $node->notes,
-			'#description' => t('Type your group notes into the above box and click on the Save button when you are finished'),
+			'#description' => '',
 			'#resizable' => TRUE,
 			'#rows' => 8,
 			'#cols' => 40,
 			'#weight' => -2
 	);
+  
+  $form['body_filter']['format'] = filter_form(2);
 
 	return $form;
 }
@@ -116,13 +118,13 @@ function pi_wiki_notes_display_content_in_activity($node, $options) {
 	if ($options['edit']) {
 		$content = node_page_edit($node);
 	} else {
-		$content = $node ? nl2br(check_plain($node->notes)) : FALSE;
+		$content = $node ? check_markup($node->notes, 2, FALSE) : FALSE;
 	}
 	
 	return array(
 			'mode' => 'twocolumns',
 			'rows' => array(
-					array('Notes:', $content),
+					array('', $content),
 			),
 	);
 }

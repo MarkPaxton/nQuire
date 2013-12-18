@@ -11,7 +11,8 @@ $(function() {
 						hidden: 'Not visible',
 						view: 'View',
 						edit: 'Edit'
-					}
+					},
+          selectedLabel: "Active stage"
 				});
 			});
 		}

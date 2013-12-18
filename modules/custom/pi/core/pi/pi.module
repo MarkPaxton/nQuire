@@ -13,11 +13,11 @@ module_load_include('inc', 'pi', 'pi.util');
  * activity_id, parameters, destination_nid
  */
 function pi_init() {
-    drupal_add_css(drupal_get_path('module', 'pi') . '/pi.css');
+  drupal_add_css(drupal_get_path('module', 'pi') . '/pi.css');
 }
 
 function pi_perm() {
-    return array('configure nquire');
+  return array('configure nquire');
 }
 
 /**
@@ -27,306 +27,313 @@ function pi_perm() {
  */
 function pi_menu() {
 
-    $items = array();
+  $items = array();
 
-    // Do not cache this menu item during the development of this module.
+  // Do not cache this menu item during the development of this module.
 
-    $items['admin/nquire'] = array(
-        'title' => 'nQuire Admin',
-        'page callback' => 'pi_nquire_admin',
-        'access arguments' => array('configure nquire'),
-        'type' => MENU_NORMAL_ITEM,
-    );
+  $items['admin/nquire'] = array(
+      'title' => 'nQuire Admin',
+      'page callback' => 'pi_nquire_admin',
+      'access arguments' => array('configure nquire'),
+      'type' => MENU_NORMAL_ITEM,
+  );
 
-    $items['inquiries'] = array(
-        'title' => 'nQuire Inquiries',
-        'page callback' => 'pi_home_view',
-        'page arguments' => array('active'),
-        'file' => 'pi.home.inc',
-        'access arguments' => array('access content'),
-        'type' => MENU_CALLBACK,
-    );
+  $items['inquiries'] = array(
+      'title' => 'nQuire Inquiries',
+      'page callback' => 'pi_home_view',
+      'page arguments' => array('active'),
+      'file' => 'pi.home.inc',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+  );
 
-    $items['availableinquiries'] = array(
-        'title' => 'nQuire Inquiries',
-        'page callback' => 'pi_home_view',
-        'page arguments' => array('available'),
-        'file' => 'pi.home.inc',
-        'access arguments' => array('access content'),
-        'type' => MENU_CALLBACK,
-    );
+  $items['availableinquiries'] = array(
+      'title' => 'nQuire Inquiries',
+      'page callback' => 'pi_home_view',
+      'page arguments' => array('available'),
+      'file' => 'pi.home.inc',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK,
+  );
 
-    $items['inquiry/%node'] = array(
-        'page callback' => 'pi_inquiry_home_view',
-        'page arguments' => array(1),
-        'file' => 'pi.inquiry.inc',
-        'access arguments' => array(1),
-        'access callback' => 'pi_inquiry_home_view_access',
-        'type' => MENU_CALLBACK
-    );
+  $items['getstarted'] = array(
+      'page callback' => 'pi_inquiry_home_get_started',
+      'file' => 'pi.inquiry.inc',
+      'access arguments' => array('access content'),
+      'type' => MENU_CALLBACK
+  );
 
-    $items['inquiry/%node/getstarted'] = array(
-        'page callback' => 'pi_inquiry_home_get_started',
-        'page arguments' => array(1),
-        'file' => 'pi.inquiry.inc',
-        'access arguments' => array(1),
-        'access callback' => 'pi_inquiry_home_view_access',
-        'type' => MENU_CALLBACK
-    );
+  $items['inquiry/%node'] = array(
+      'page callback' => 'pi_inquiry_home_view',
+      'page arguments' => array(1),
+      'file' => 'pi.inquiry.inc',
+      'access arguments' => array(1),
+      'access callback' => 'pi_inquiry_home_view_access',
+      'type' => MENU_CALLBACK
+  );
 
-    $items['phase/%node'] = array(
-        'title' => 'Phase',
-        'page callback' => 'pi_activities_page',
-        'page arguments' => array(1, 'phase'),
-        'file' => 'pi.activities.inc',
-        'access arguments' => array(1),
-        'access callback' => 'pi_inquiry_phase_view_access',
-        'type' => MENU_CALLBACK,
-    );
+  $items['inquiry/%node/getstarted'] = array(
+      'page callback' => 'pi_inquiry_home_get_started',
+      'page arguments' => array(1),
+      'file' => 'pi.inquiry.inc',
+      'access arguments' => array(1),
+      'access callback' => 'pi_inquiry_home_view_access',
+      'type' => MENU_CALLBACK
+  );
 
-
-    $items['activity/%node'] = array(
-        'title' => 'View',
-        'file' => 'pi.activities.inc',
-        'page callback' => 'pi_activities_page',
-        'page arguments' => array(1, 'edit', NULL),
-        'access callback' => 'pi_activity_access_callback',
-        'access arguments' => array(1),
-        'type' => MENU_CALLBACK
-    );
-
-    $items['activity/%node/add'] = array(
-        'title' => 'View',
-        'file' => 'pi.activities.inc',
-        'page callback' => 'pi_activities_page',
-        'page arguments' => array(1, 'child_add', NULL),
-        'access callback' => 'pi_activity_tab_edit_access_callback',
-        'access arguments' => array(1),
-        'type' => MENU_CALLBACK
-    );
-
-    $items['activity/%node/edit/%node'] = array(
-        'title' => 'View',
-        'file' => 'pi.activities.inc',
-        'page callback' => 'pi_activities_page',
-        'page arguments' => array(1, 'child_edit', 3),
-        'access callback' => 'pi_activity_tab_edit_access_callback',
-        'access arguments' => array(1),
-        'type' => MENU_CALLBACK
-    );
-
-    $items['activity/%node/delete/%node'] = array(
-        'title' => 'Delete',
-        'file' => 'pi.activities.inc',
-        'page callback' => 'pi_activities_page',
-        'page arguments' => array(1, 'child_delete', 3),
-        'access arguments' => array(1),
-        'access callback' => 'pi_activity_tab_edit_access_callback',
-        'type' => MENU_CALLBACK,
-        'weight' => 1
-    );
+  $items['phase/%node'] = array(
+      'title' => 'Phase',
+      'page callback' => 'pi_activities_page',
+      'page arguments' => array(1, 'phase'),
+      'file' => 'pi.activities.inc',
+      'access arguments' => array(1),
+      'access callback' => 'pi_inquiry_phase_view_access',
+      'type' => MENU_CALLBACK,
+  );
 
 
-    return $items;
+  $items['activity/%node'] = array(
+      'title' => 'View',
+      'file' => 'pi.activities.inc',
+      'page callback' => 'pi_activities_page',
+      'page arguments' => array(1, 'edit', NULL),
+      'access callback' => 'pi_activity_access_callback',
+      'access arguments' => array(1),
+      'type' => MENU_CALLBACK
+  );
+
+  $items['activity/%node/add'] = array(
+      'title' => 'View',
+      'file' => 'pi.activities.inc',
+      'page callback' => 'pi_activities_page',
+      'page arguments' => array(1, 'child_add', NULL),
+      'access callback' => 'pi_activity_tab_edit_access_callback',
+      'access arguments' => array(1),
+      'type' => MENU_CALLBACK
+  );
+
+  $items['activity/%node/edit/%node'] = array(
+      'title' => 'View',
+      'file' => 'pi.activities.inc',
+      'page callback' => 'pi_activities_page',
+      'page arguments' => array(1, 'child_edit', 3),
+      'access callback' => 'pi_activity_tab_edit_access_callback',
+      'access arguments' => array(1),
+      'type' => MENU_CALLBACK
+  );
+
+  $items['activity/%node/delete/%node'] = array(
+      'title' => 'Delete',
+      'file' => 'pi.activities.inc',
+      'page callback' => 'pi_activities_page',
+      'page arguments' => array(1, 'child_delete', 3),
+      'access arguments' => array(1),
+      'access callback' => 'pi_activity_tab_edit_access_callback',
+      'type' => MENU_CALLBACK,
+      'weight' => 1
+  );
+
+
+  return $items;
 }
 
 function pi_nquire_admin() {
-    $output = '';
-    if (module_exists(pi_available_content_types)) {
-        $output .= "<p>" . l('Manage content types for use as variables', 'admin/pi-available-content-types') . "</p>";
-    }
-    return $output;
+  $output = '';
+  if (module_exists(pi_available_content_types)) {
+    $output .= "<p>" . l('Manage content types for use as variables', 'admin/pi-available-content-types') . "</p>";
+  }
+  return $output;
 }
 
 function pi_status_changer_view() {
-    $query = "SELECT nid FROM {node} WHERE type = 'pi_set_status' ORDER BY nid DESC LIMIT 1";
-    $nid = db_result(db_query($query));
-    if ($nid) {
-        $loaded_node = node_load($nid);
-        if (!function_exists("node_page_edit")) {
-            include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-        }
-        $output = node_page_edit($loaded_node);
-    } else {
-        if (!function_exists("node_add")) {
-            include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-        }
-        $output = node_add('pi_set_status');
+  $query = "SELECT nid FROM {node} WHERE type = 'pi_set_status' ORDER BY nid DESC LIMIT 1";
+  $nid = db_result(db_query($query));
+  if ($nid) {
+    $loaded_node = node_load($nid);
+    if (!function_exists("node_page_edit")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
     }
-    return $output;
+    $output = node_page_edit($loaded_node);
+  } else {
+    if (!function_exists("node_add")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+    }
+    $output = node_add('pi_set_status');
+  }
+  return $output;
 }
 
 function pi_stage_selector_view() {
-    $query = "SELECT nid FROM {node} WHERE type = 'pi_stage_selector' ORDER BY nid DESC LIMIT 1";
-    $nid = db_result(db_query($query));
-    if ($nid) {
-        $loaded_node = node_load($nid);
-        if (!function_exists("node_page_edit")) {
-            include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-        }
-        $output = node_page_edit($loaded_node);
-    } else {
-        if (!function_exists("node_add")) {
-            include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
-        }
-        $output = node_add('pi_stage_selector');
+  $query = "SELECT nid FROM {node} WHERE type = 'pi_stage_selector' ORDER BY nid DESC LIMIT 1";
+  $nid = db_result(db_query($query));
+  if ($nid) {
+    $loaded_node = node_load($nid);
+    if (!function_exists("node_page_edit")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
     }
-    return $output;
+    $output = node_page_edit($loaded_node);
+  } else {
+    if (!function_exists("node_add")) {
+      include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
+    }
+    $output = node_add('pi_stage_selector');
+  }
+  return $output;
 }
 
 // ****************************************************************
 
 
 function get_inquiry_details_from_current_path() {
-    global $user;
-    $uid = $user->uid;
+  global $user;
+  $uid = $user->uid;
 
-    $result = new stdClass();
-    $result->phase_id = NULL;
-    $result->inquiry_id = NULL;
-    $result->activity_id = NULL;
+  $result = new stdClass();
+  $result->phase_id = NULL;
+  $result->inquiry_id = NULL;
+  $result->activity_id = NULL;
 
-    switch (arg(0)) {
-        case'home':
-            //inquiry, stage, phase an activity are not set
-            break;
-        case 'inquiry':
-        case'set_stage':
-            //get inquiry from the arg
-            if (arg(1)) {
-                $result->inquiry_id = (int) arg(1);
-            }
-            break;
-        case'phase':
-            //get inquiry from the database
-            //get direct from the phase id rather than session id
-            //$sid = get_current_session_id();
-            //$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
-            //get phase from the arg
-            if (arg(1)) {
-                $result->phase_id = (int) arg(1);
-                $query = "SELECT {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
-                        "WHERE {pi_phase}.`nid` = %d";
-                $db_result = db_query($query, $result->phase_id);
+  switch (arg(0)) {
+    case'home':
+      //inquiry, stage, phase an activity are not set
+      break;
+    case 'inquiry':
+    case'set_stage':
+      //get inquiry from the arg
+      if (arg(1)) {
+        $result->inquiry_id = (int) arg(1);
+      }
+      break;
+    case'phase':
+      //get inquiry from the database
+      //get direct from the phase id rather than session id
+      //$sid = get_current_session_id();
+      //$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
+      //get phase from the arg
+      if (arg(1)) {
+        $result->phase_id = (int) arg(1);
+        $query = "SELECT {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
+                "WHERE {pi_phase}.`nid` = %d";
+        $db_result = db_query($query, $result->phase_id);
 
-                $row = db_fetch_array($db_result);
-                if ($row) {
-                    $result->inquiry_id = $row['inquiry_nid'];
-                }
-            }
-            break;
-        case 'activity':
-            if (is_numeric(arg(1))) {
+        $row = db_fetch_array($db_result);
+        if ($row) {
+          $result->inquiry_id = $row['inquiry_nid'];
+        }
+      }
+      break;
+    case 'activity':
+      if (is_numeric(arg(1))) {
 
-                $node = node_load(arg(1));
-                $phase = node_load($node->phase_nid);
+        $node = node_load(arg(1));
+        $phase = node_load($node->phase_nid);
 
-                $result->phase_id = $node->phase_nid;
-                $result->inquiry_id = $phase->inquiry_nid;
-                $result->activity_id = $node->nid;
-            }
+        $result->phase_id = $node->phase_nid;
+        $result->inquiry_id = $phase->inquiry_nid;
+        $result->activity_id = $node->nid;
+      }
 
 
-        case 'export':
-            //get inquiry from the database
-            //get direct from the activity id rather than session id
-            //$sid = get_current_session_id();
-            //$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
-            //get activity from the arg
-            /*
-              if (arg(1))
-              {
-              $result->activity_id = (int) arg(1);
-              $query = "SELECT {pi_phase}.`nid`, {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
-              "LEFT JOIN {pi_activity} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
-              "WHERE {pi_activity}.`nid` = %d";
-              $db_result = db_query($query, $result->activity_id);
+    case 'export':
+      //get inquiry from the database
+      //get direct from the activity id rather than session id
+      //$sid = get_current_session_id();
+      //$inquiry = get_current_inquiry_for_session_and_user_id($sid, $uid);
+      //get activity from the arg
+      /*
+        if (arg(1))
+        {
+        $result->activity_id = (int) arg(1);
+        $query = "SELECT {pi_phase}.`nid`, {pi_phase}.`inquiry_nid` FROM {pi_phase} " .
+        "LEFT JOIN {pi_activity} ON {pi_activity}.`phase_nid` = {pi_phase}.`nid` " .
+        "WHERE {pi_activity}.`nid` = %d";
+        $db_result = db_query($query, $result->activity_id);
 
-              $row = db_fetch_array($db_result);
-              if($row)
-              {
-              $result->phase_id = $row['nid'];
-              $result->inquiry_id = $row['inquiry_nid'];
-              }
-              }
-             */
-            if (is_numeric(arg(1))) {
+        $row = db_fetch_array($db_result);
+        if($row)
+        {
+        $result->phase_id = $row['nid'];
+        $result->inquiry_id = $row['inquiry_nid'];
+        }
+        }
+       */
+      if (is_numeric(arg(1))) {
 
-                $node = node_load(arg(1));
-                $phase = node_load($node->phase_nid);
+        $node = node_load(arg(1));
+        $phase = node_load($node->phase_nid);
 
-                $result->phase_id = $node->phase_nid;
-                $result->inquiry_id = $phase->inquiry_nid;
-                $result->activity_id = $node->nid;
-            }
+        $result->phase_id = $node->phase_nid;
+        $result->inquiry_id = $phase->inquiry_nid;
+        $result->activity_id = $node->nid;
+      }
 
-            break;
-        default:
-            $result = null;
-            break;
-    }
-    return $result;
+      break;
+    default:
+      $result = null;
+      break;
+  }
+  return $result;
 }
 
 /**
  * Functions in this block are interface where am I stuff
  */
 function pi_get_activities_for_phase($phase_nid) {
-    $activities = array();
-    $query = "SELECT {pi_activity}.`nid`, {pi_activity}.`activity_type` FROM {node} "
-            . "LEFT JOIN {pi_activity} ON {node}.`vid`={pi_activity}.`vid` "
-            . "WHERE {pi_activity}.`phase_nid`=%d "
-            . "ORDER BY {pi_activity}.`weight`";
+  $activities = array();
+  $query = "SELECT {pi_activity}.`nid`, {pi_activity}.`activity_type` FROM {node} "
+          . "LEFT JOIN {pi_activity} ON {node}.`vid`={pi_activity}.`vid` "
+          . "WHERE {pi_activity}.`phase_nid`=%d "
+          . "ORDER BY {pi_activity}.`weight`";
 
-    $result = db_query($query, $phase_nid);
-    while ($row = db_fetch_array($result)) {
-        $view_f = "{$row['activity_type']}_display_content_in_activity";
-        if (function_exists($view_f)) {
-            $activities[] = $row['nid'];
-        }
+  $result = db_query($query, $phase_nid);
+  while ($row = db_fetch_array($result)) {
+    $view_f = "{$row['activity_type']}_display_content_in_activity";
+    if (function_exists($view_f)) {
+      $activities[] = $row['nid'];
     }
+  }
 
-    return $activities;
+  return $activities;
 }
 
 function pi_get_activities_for_phase_and_type($phase_nid, $type) {
-    $activities = array();
-    $query = "SELECT {pi_activity}.`nid` FROM {node} "
-            . "LEFT JOIN {pi_activity} ON {node}.`vid`={pi_activity}.`vid` "
-            . "WHERE {pi_activity}.`phase_nid`=%d AND {pi_activity}.`activity_type`='%s' "
-            . "ORDER BY {pi_activity}.`weight`";
+  $activities = array();
+  $query = "SELECT {pi_activity}.`nid` FROM {node} "
+          . "LEFT JOIN {pi_activity} ON {node}.`vid`={pi_activity}.`vid` "
+          . "WHERE {pi_activity}.`phase_nid`=%d AND {pi_activity}.`activity_type`='%s' "
+          . "ORDER BY {pi_activity}.`weight`";
 
-    $result = db_query($query, $phase_nid, $type);
-    while ($row = db_fetch_array($result)) {
-        $activities[] = $row['nid'];
-    }
+  $result = db_query($query, $phase_nid, $type);
+  while ($row = db_fetch_array($result)) {
+    $activities[] = $row['nid'];
+  }
 
-    return $activities;
+  return $activities;
 }
 
-function pi_inquiry_home_view_access() {
-    global $user;
-    $inquiry_info = pi_info()->getCurrentInquiryInfo();
-    if ($inquiry_info) {
-        $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-        if ($access_data->hasInquiryAccess()) {
-            return TRUE;
-        }
-
-        $inquiry_node = $inquiry_info->getInquiryNode();
-        return $inquiry_node->participants_selection === 'anyone' ||
-                pi_inquiry_groupings_user_is_in_participants_target_group($user->uid, $inquiry_node);
+function pi_inquiry_home_view_access($inquiry) {
+  global $user;
+  $inquiry_info = pi_info()->getInquiryInfo($inquiry->nid);
+  if ($inquiry_info) {
+    $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    if ($access_data->hasInquiryAccess()) {
+      return TRUE;
     }
-    return FALSE;
+
+    $inquiry_node = $inquiry_info->getInquiryNode();
+    return $inquiry_node->participants_selection === 'anyone' ||
+            pi_inquiry_groupings_user_is_in_participants_target_group($user->uid, $inquiry_node);
+  }
+  return FALSE;
 }
 
 function pi_inquiry_phase_view_access($phase) {
-    global $user;
-    $inquiry_info = pi_info()->getCurrentInquiryInfo();
-    if ($inquiry_info) {
-        $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
-        return $access_data->getAccessToItem($phase) !== 'hidden';
-    }
+  global $user;
+  $inquiry_info = pi_info()->getCurrentInquiryInfo();
+  if ($inquiry_info) {
+    $access_data = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    return $access_data->getAccessToItem($phase) !== 'hidden';
+  }
 }
 
 /**
@@ -335,104 +342,105 @@ function pi_inquiry_phase_view_access($phase) {
  * @return \PiInfo
  */
 function pi_info() {
-    static $pi_info = NULL;
+  static $pi_info = NULL;
 
-    if (!$pi_info) {
-        module_load_include('inc', 'pi', 'pi.info');
-        $pi_info = new PiInfo();
-    }
+  if (!$pi_info) {
+    module_load_include('inc', 'pi', 'pi.info');
+    $pi_info = new PiInfo();
+  }
 
-    return $pi_info;
+  return $pi_info;
 }
 
 function pi_access_to_node($op, $node) {
-    global $user;
-    switch ($node->type) {
-        case 'pi_key_questions':
-        case 'pi_key_answers':
-        case 'pi_data':
-        case 'pi_result_presentations':
-        case 'pi_available_measures':
-            if ($op === 'delete' && $user->uid === $node->uid) {
-                return TRUE;
-            } else {
-                return FALSE;
-            }
-            break;
-        default:
-            return FALSE;
-            break;
-    }
+  global $user;
+  switch ($node->type) {
+    case 'pi_key_questions':
+    case 'pi_key_answers':
+    case 'pi_data':
+    case 'pi_result_presentations':
+    case 'pi_available_measures':
+      if ($op === 'delete' && $user->uid === $node->uid) {
+        return TRUE;
+      } else {
+        return FALSE;
+      }
+      break;
+    default:
+      return FALSE;
+      break;
+  }
 }
 
 function pi_theme() {
-    return array(
-        'pi_shared_content_list' => array(
-            'arguments' => array('content_list' => NULL),
-            'file' => 'pi.phase.inc',
-        ),
-        'pi_inquiry_structure' => array(
-            'arguments' => array('node' => NULL),
-            'file' => 'pi.inquiry.inc',
-        ),
-        'pi_inquiry_phase_title' => array(
-            'arguments' => array('inquiry_info' => NULL, 'phase_node' => NULL),
-            'file' => 'pi.activities.inc',
-        ),
-        'pi_activities_view_phase' => array(
-            'arguments' => array('data' => NULL),
-            'file' => 'pi.activities.inc',
-        ),
-        'pi_activities_view_contribution_content' => array(
-            'arguments' => array('phases_data' => NULL),
-            'file' => 'pi.activities.inc',
-        ),
-        'pi_activities_view_contributed_activity' => array(
-            'arguments' => array('activity_data' => NULL),
-            'file' => 'pi.activities.inc',
-        ),
-        'pi_activities_view_shared_activity' => array(
-            'arguments' => array('activity_data' => NULL),
-            'file' => 'pi.activities.inc',
-        ),
-        'pi_activities_view_activity' => array(
-            'arguments' => array('activity_data' => NULL),
-            'file' => 'pi.activities.inc',
-        ),
-    );
+  return array(
+      'pi_shared_content_list' => array(
+          'arguments' => array('content_list' => NULL),
+          'file' => 'pi.phase.inc',
+      ),
+      'pi_inquiry_structure' => array(
+          'arguments' => array('node' => NULL),
+          'file' => 'pi.inquiry.inc',
+      ),
+      'pi_inquiry_phase_title' => array(
+          'arguments' => array('inquiry_info' => NULL, 'phase_node' => NULL),
+          'file' => 'pi.activities.inc',
+      ),
+      'pi_activities_view_phase' => array(
+          'arguments' => array('data' => NULL),
+          'file' => 'pi.activities.inc',
+      ),
+      'pi_activities_view_contribution_content' => array(
+          'arguments' => array('phases_data' => NULL),
+          'file' => 'pi.activities.inc',
+      ),
+      'pi_activities_view_contributed_activity' => array(
+          'arguments' => array('activity_data' => NULL),
+          'file' => 'pi.activities.inc',
+      ),
+      'pi_activities_view_shared_activity' => array(
+          'arguments' => array('activity_data' => NULL),
+          'file' => 'pi.activities.inc',
+      ),
+      'pi_activities_view_activity' => array(
+          'arguments' => array('activity_data' => NULL),
+          'file' => 'pi.activities.inc',
+      ),
+  );
 }
 
 function pi_link_alter(&$links, $node) {
-    // remove attachment links from upload.module
-    //unset($links['upload_attachments']);
+  // remove attachment links from upload.module
+  //unset($links['upload_attachments']);
 }
 
 function pi_form_user_login_alter(&$form, &$form_state) {
-    $args = array();
-    if (isset($_GET['destination'])) {
-        $args['query']['destination'] = $_GET['destination'];
-    }
+  $args = array();
+  if (isset($_GET['destination'])) {
+    $args['query']['destination'] = $_GET['destination'];
+  }
 
-    $url = url('user/register', $args);
-    $text = '<p style="font-size: 1.25em;">' . t('If you do not have yet an account in nQuire, <b>click <a href="!url">here</a> to create a new one</b>.</p>', array('!url' => $url));
+  $url = url('user/register', $args);
+  $text = '<p>' . t('If you do not have yet an account in nQuire, <b>click <a href="!url">here</a> to create a new one</b>.', array('!url' => $url)) . '</p>'
+          . '<p>' . t('If you have forgotten your password, you can reset it <a href="!url">here</a>.', array('!url' => url('user/password'))) . '</p>';
 
-    $form['goto_register'] = array(
-        '#value' => $text,
-        '#weight' => -1000,
-    );
+  $form['goto_register'] = array(
+      '#value' => $text,
+      '#weight' => -1000,
+  );
 }
 
 function pi_form_user_register_alter(&$form, &$form_state) {
-    $args = array();
-    if (isset($_GET['destination'])) {
-        $args['query']['destination'] = $_GET['destination'];
-    }
+  $args = array();
+  if (isset($_GET['destination'])) {
+    $args['query']['destination'] = $_GET['destination'];
+  }
 
-    $url = url('user', $args);
-    $text = '<p style="font-size: 1.25em;">' . t('If you already have an account, <b>you can log in <a href="!url">here</a></b>.</p>', array('!url' => $url));
+  $url = url('user', $args);
+  $text = '<p style="font-size: 1.25em;">' . t('If you already have an account, <b>you can log in <a href="!url">here</a></b>.</p>', array('!url' => $url));
 
-    $form['goto_login'] = array(
-        '#value' => $text,
-        '#weight' => -1000,
-    );
+  $form['goto_login'] = array(
+      '#value' => $text,
+      '#weight' => -1000,
+  );
 }
