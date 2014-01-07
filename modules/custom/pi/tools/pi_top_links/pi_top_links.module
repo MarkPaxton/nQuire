@@ -31,6 +31,7 @@ function pi_top_links_block($op = 'list') {
 }
 
 function _pi_top_links_format_menu() {
+  global $user;
 
   $paths = array();
 
@@ -39,14 +40,21 @@ function _pi_top_links_format_menu() {
       'title' => t('Home'),
   );
 
-  $paths['inquiries'] = array(
-      'checkaccess' => FALSE,
-      'title' => t('My inquiries'),
-      'children' => array(
-          'inquiries' => t('Joined inquiries'),
-          'availableinquiries' => t('Available inquiries'),
-      ),
-  );
+  if ($user->uid) {
+    $paths['inquiries'] = array(
+        'checkaccess' => FALSE,
+        'title' => t('My inquiries'),
+        'children' => array(
+            'inquiries' => t('Joined inquiries'),
+            'availableinquiries' => t('Available inquiries'),
+        ),
+    );
+  } else {
+    $paths['availableinquiries'] = array(
+        'checkaccess' => FALSE,
+        'title' => t('Available inquiries'),
+    );
+  }
 
   $paths['creator'] = array(
       'checkaccess' => TRUE,
