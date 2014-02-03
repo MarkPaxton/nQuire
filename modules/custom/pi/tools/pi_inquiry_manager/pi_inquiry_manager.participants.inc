@@ -472,7 +472,7 @@ function pi_inquiry_manager_partipants_group_operation_link($label, $inquiry_nid
   // if ($add_destination) {
   //return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements), array('query' => drupal_get_destination()));
   //} else {
-  return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements));
+  return l($label, _pi_inquiry_manager_partipants_group_operation_path($inquiry_nid, $group_nid, $elements), array('attributes' => array('class' => "nquire_button_link nquire_button_link_pag")));
   // }
 }
 
@@ -511,7 +511,7 @@ function theme_pi_inquiry_manager_participants_group_status_and_options($inquiry
       return _pi_inquiry_manager_partipants_group_operation_path($inquiry_node->nid, $group_nid, $uid ? array($op, $uid) : $op);
     };
 
-    $link_params = array('query' => array('cancel' => $_GET['q']));
+    $link_params = array('query' => array('cancel' => $_GET['q']), 'attributes' => array('class' => 'nquire_button_link nquire_button_link_pag_small'));
 
     if ($user_status === 'member') {
       //$status .= t('Active');
@@ -1381,7 +1381,7 @@ function theme_pi_inquiry_manager_participants_groups($inquiry_node) {
     });
 
     $rows = array_map(function($group) use ($user, $inquiry_node) {
-      $title = pi_inquiry_manager_partipants_group_operation_link($group->title, $inquiry_node->nid, $group->nid, FALSE, FALSE);
+      $title = $group->title . '&nbsp;&nbsp;' . pi_inquiry_manager_partipants_group_operation_link(t('view'), $inquiry_node->nid, $group->nid, FALSE, FALSE);
       $title .= '<br/>' . theme('pi_inquiry_manager_participants_group_status_and_options', $inquiry_node, $user->uid, $group->nid);
 
       $members = nquire_group_get_member_uids($group->nid, TRUE);

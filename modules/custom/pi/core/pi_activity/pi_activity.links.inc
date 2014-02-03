@@ -45,7 +45,7 @@ function pi_activity_create_edit_links($activity_node, $edit_view) {
 
 function _pi_activity_links_format_link($link) {
 	$image_path = url(drupal_get_path('module', 'pi') . '/images/' . $link['image']);
-	return "<a href='{$link['url']}'><b>{$link['label']}</b>&nbsp<img width='12' src='$image_path'/></a>";
+	return "<a class='nquire_button_link nquire_button_link_activity_work' href='{$link['url']}'><b>{$link['label']}</b>&nbsp<img width='12' src='$image_path'/></a>";
 }
 
 function theme_pi_activity_links($links) {

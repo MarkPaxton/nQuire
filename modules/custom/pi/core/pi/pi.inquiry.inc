@@ -320,7 +320,7 @@ function pi_inquiry_home_get_started($inquiry = FALSE) {
     if ($p !== FALSE) {
       $p1 = $p + 8;
       $p2 = strpos($ref, '/', $p1);
-      $l = $p2 ? $p2 - $p1 : NULL;
+      $l = $p2 ? $p2 - $p1 : strlen($ref) - $p1;
       $nid = substr($ref, $p1, $l);
       $inquiry = node_load($nid);
       if (!pi_inquiry_home_view_access($inquiry)) {

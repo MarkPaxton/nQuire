@@ -31,7 +31,7 @@ function pi_activity_build_link_for_child($child_content_nid, $title) {
 
 	if ($access !== 'hidden') {
 		$url = "activity/$activity_nid/edit/$child_content_nid";
-		return l($text, $url, array('html' => TRUE, 'fragment' => $activity_nid));
+		return l($text, $url, array('html' => TRUE, 'fragment' => $activity_nid, 'attributes' => array('class' => 'nquire_button_link nquire_button_link_activity_work_small')));
 	} else {
 		return $text;
 	}

@@ -189,7 +189,7 @@ function nquire_commons_form_replace_delete_button_with_link(&$form, $activity_n
   }
 
 
-  $cancel_link = l(t('Cancel'), "phase/{$activity_node->phase_nid}", array('fragment' => $activity_node->nid));
+  $cancel_link = l(t('Cancel'), "phase/{$activity_node->phase_nid}", array('fragment' => $activity_node->nid, 'attributes' => array('class' => 'nquire_button_link nquire_button_link_form')));
 
   $form['buttons']['cancel'] = array(
       '#value' => ($sep ? '&nbsp;&nbsp;' : '') . $cancel_link,
@@ -395,7 +395,6 @@ function nquire_commons_create_form_save_cancel_buttons(&$form, $save_callback, 
           'type' => 'link',
           'label' => $cancel_label ? $cancel_label : t('Cancel'),
           'callback' => $cancel_path,
-          'parameters' => array(),
       ),
   ));
   nquire_commons_create_form_destination($form, $cancel_path);
@@ -407,7 +406,6 @@ function nquire_commons_create_form_cancel_button(&$form, $cancel_path, $cancel_
           'type' => 'link',
           'label' => $cancel_label ? $cancel_label : t('Cancel'),
           'callback' => $cancel_path,
-          'parameters' => array(),
       ),
   ));
   nquire_commons_create_form_destination($form, $cancel_path);
@@ -424,7 +422,7 @@ function nquire_commont_create_form_delete_cancel_buttons(&$form, $delete_callba
           'type' => 'link',
           'label' => t('Cancel'),
           'callback' => $cancel_path,
-          'parameters' => $cancel_path_fragment ? array('fragment' => $cancel_path_fragment) : array(),
+          'fragment' => $cancel_path_fragment ? $cancel_path_fragment : FALSE,
       ),
   ));
   nquire_commons_create_form_destination($form, $cancel_path);
@@ -451,9 +449,18 @@ function nquire_commons_create_form_buttons(&$form, $buttons) {
         );
         break;
       case 'link':
+        $options = array(
+            'attributes' => array(
+                'class' => "nquire_button_link nquire_button_link_form",
+            ),
+        );
+        
+        if ($data['fragment']) {
+          $options['fragment'] = $data['fragment'];
+        }
         $form[$button] = array(
             '#type' => 'markup',
-            '#value' => l($data['label'], $data['callback'], $data['parameters']),
+            '#value' => l($data['label'], $data['callback'], $options),
         );
         break;
     }

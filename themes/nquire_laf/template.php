@@ -341,14 +341,13 @@ function phptemplate_pi_activities_view_phase($data) {
     if ($data['phase']['description']) {
       $content .= '<p>' . $data['phase']['description'] . '</p>';
     }
+    
 
     if ($data['phase']['sharing']) {
-      $sharing .= '<p><small>' . $data['phase']['sharing'] . '</small></p>';
-    } else {
-      $sharing = '';
+      $content .= '<div class="nquire_phase_banner">' . $data['phase']['sharing'] . '</div>';
     }
 
-    $output .= nquire_commons_create_page_section($content, $data['phase']['title']) . $sharing;
+    $output .= nquire_commons_create_page_section($content, $data['phase']['title']);
   }
 
   if ($data['shared_view']) {
@@ -405,11 +404,11 @@ function phptemplate_pi_activities_view_activity($activity_data) {
 
             $node_content .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
           }
-          $links = '<tr><td class="phase_activity_label"></td><td class="phase_activity_link">' . $activity_data['links']['content'] . '</td></tr>';
+          $links = '<tr><td class="phase_activity_label"></td><td class="phase_activity_link"><div>' . $activity_data['links']['content'] . '</div></td></tr>';
 
           break;
         case 'singleblock':
-          $links = '<tr><td colspan="2" class="phase_activity_link">' . $activity_data['links']['content'] . '</td></tr>';
+          $links = '<tr><td colspan="2" class="phase_activity_link"><div>' . $activity_data['links']['content'] . '</div></td></tr>';
           $node_content = '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
           break;
       }
@@ -422,12 +421,6 @@ function phptemplate_pi_activities_view_activity($activity_data) {
     }
 
     $output .= '</table></div>';
-
-    /* 					. '<div class="phase_activity_description phase_activity_metadata">' . $activity_data['description'] . '</div>'
-      . '<div class="phase_activity_access phase_activity_metadata">' . $activity_data['access_explanation'] . '</div>'
-      . '<div class="phase_activity_link">' .  . '</div>'; */
-
-
 
     $output .= '</div>';
   }

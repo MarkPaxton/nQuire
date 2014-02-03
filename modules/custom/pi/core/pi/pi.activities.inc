@@ -19,14 +19,15 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
     include_once(drupal_get_path('module', 'node') . '/node.pages.inc');
 
     $inquiry_info = pi_info()->getCurrentInquiryInfo();
-    $inquiry_access = pi_info()->getAccessManager($inquiry_info->getInquiryNid(), $user->uid);
+    $inquiry_nid = $inquiry_info->getInquiryNid();
+    $inquiry_access = pi_info()->getAccessManager($inquiry_nid, $user->uid);
 
     $phase_node = $mode === 'phase' ? $node : $inquiry_info->getPhase($node->phase_nid);
     $activity_node = $mode === 'phase' ? NULL : $node;
 
     $shared_view = $node->type === 'pi_phase' && arg(2) === 'shared' && $phase_node->collaboration !== 'all';
 
-    pi_last_visited_phase_set($user->uid, $inquiry_info->getInquiryNid(), $phase_node->nid);
+    pi_last_visited_phase_set($user->uid, $inquiry_nid, $phase_node->nid);
 
     $phase_key = $inquiry_info->getPhaseKey($phase_node->nid);
 
@@ -50,30 +51,29 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
 
 
     if ($data['in_phase']) {
-      $link = l(t('here'), $shared_view ? "phase/{$phase_node->nid}" : "phase/{$phase_node->nid}/shared");
+      $link = l(t('here'), $shared_view ? "phase/{$phase_node->nid}" : "phase/{$phase_node->nid}/shared", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
+
       switch ($phase_node->collaboration) {
         case 'individual':
           $data['phase']['sharing'] .= $shared_view ?
-                  t('This is the content shared by other participats in this phase. Click !link to go to your activities.', array('!link' => $link)) :
-                  t('Activities in this phase are carried out individually. Click !link to see what other participants are doing.', array('!link' => $link));
+                  t('You are browsing the content shared by other participats in this phase. Click !link to go to your activities.', array('!link' => $link)) :
+                  t('Activities in this phase are individually. Click !link to see what other participants are doing.', array('!link' => $link));
           break;
         case 'group':
           $subgroup = $inquiry_access->getSubgroup();
           if ($subgroup) {
             $members = nquire_group_get_member_uids($subgroup, TRUE);
-            if (count($members) === 1 && $members[0] == $user->uid) {
-              $data['phase']['sharing'] .= $shared_view ?
-                      t('This is the content shared by other groups. Click !link to go to your activities.', array('!link' => $link)) :
-                      t('I\'m carrying out activities in this phase by myself (only me in my group). Click !link to see what other groups are doing.', array('!link' => $link));
+            if ($shared_view) {
+              $data['phase']['sharing'] .= t('This is the content shared by other groups. Click !link to go to your content.', array('!link' => $link));
             } else {
-              $data['phase']['sharing'] .= $shared_view ?
-                      t('This is the content shared by other groups. Click !link to go to your group activities.', array('!link' => $link)) :
-                      t('I\'m carrying out activities in this phase with members of my group: ') . implode(', ', nquire_commons_user_names($members, $user->uid, FALSE, TRUE)) . t('. Click !link to see what other groups are doing.', array('!link' => $link));
+              $group_link = l(t('here'), $shared_view ? "phase/{$phase_node->nid}" : "inquiry/$inquiry_nid/participants/$subgroup", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
+              $data['phase']['sharing'] .= t('Activities in this phase are carried out in groups. Click !link to see what other groups are doing, or !link2 to view your group configuration.', array('!link' => $link, '!link2' => $group_link));
             }
           } else {
+            $group_link = l(t('here'), $shared_view ? "phase/{$phase_node->nid}" : "inquiry/$inquiry_nid/participants", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
             $data['phase']['sharing'] .= $shared_view ?
                     t('This is the content shared by other groups. Click !link to go back.', array('!link' => $link)) :
-                    t('Activities in this phase are carried out in groups (you do not belong to a group yet). Click !link to see what other groups are doing.', array('!link' => $link));
+                    t('Activities in this phase are carried out in groups. Click !link to see what other groups are doing. You cannot work on activities at this phase because you do not belong to any participant group yet. Click !group_link to join a group or create your own.', array('!link' => $link, '!link2' => $group_link));
           }
           break;
         default:

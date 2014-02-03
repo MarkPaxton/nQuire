@@ -39,6 +39,8 @@ function pi_promote_front_page() {
 }
 
 function pi_promote_shop_page() {
+  global $user;
+
   drupal_add_css(drupal_get_path('module', 'pi_promote') . '/css/pi_promote_shop.css');
 
   $inquiries = array();
@@ -46,24 +48,14 @@ function pi_promote_shop_page() {
   $query = "SELECT inquiry_id FROM {pi_promote} WHERE status=%d ORDER BY weight";
   $result = db_query($query, PI_PROMOTE_SELECTED);
   while ($row = db_fetch_array($result)) {
-    if ($row['inquiry_id'] == 0) {
-      $access = user_access('access inquiry_creator content');
-      $inquiries[] = array(
-          'path' => $access ? 'creator' : 'user',
-          'title' => t('Inquiry creator'),
-          'image' => url(drupal_get_path('module', 'pi_promote') . '/images/editor.png', array('absolute' => TRUE)),
-          'info' => $access ? t('Create new inquiries.') : t('<a href="!u1">Login</a> or <a href="!u2">register</a> to access.', array(
-                      '!u1' => url('user'),
-                      '!u2' => url('user/register'),
-                  )),
-      );
-    }
+
     $inquiry = node_load($row['inquiry_id']);
     if ($inquiry) {
       $member_count = count(nquire_group_get_member_uids($inquiry->actor_gid, TRUE));
       $info = $member_count === 1 ? t('One member') : t('!n members.', array('!n' => $member_count));
 
       $inquiries[] = array(
+          'am_member' => $user->uid && nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid) == 'member',
           'path' => "inquiry/{$inquiry->nid}",
           'title' => check_plain($inquiry->title),
           'info' => $info,
@@ -130,9 +122,29 @@ function pi_promote_shop_page() {
           $output .= '</a>';
         }
 
+        if (!$user->uid) {
+          $buttonClass = "nquire_button_link_front_login";
+          $buttonLabel = t("Login");
+          $buttonPath = 'user';
+          $buttonQuery = array('destination' => $inquiry['path']);
+        } else {
+          if ($inquiry['am_member']) {
+            $buttonClass = "nquire_button_link_front_resume";
+            $buttonLabel = t("Resume");
+          } else {
+            $buttonClass = "nquire_button_link_front_join";
+            $buttonLabel = t("Join");
+          }
+          $buttonPath = $inquiry['path'];
+          $buttonQuery = FALSE;
+        }
+
+        $button = l($buttonLabel, $buttonPath, array('query' => $buttonQuery, 'attributes' => array('class' => "nquire_button_link $buttonClass")));
+
         $output .= '</div>'
                 . '<div class="pi_promote_shop_item_title">' . $title . '</div>'
                 . '<div class="pi_promote_shop_item_info">' . $inquiry['info'] . '</div>'
+                . '<div class="pi_promote_shop_item_buttons">' . $button . '</div>'
                 . '</div>';
       } else {
         $output .= '<div class="pi_promote_shop_item">'
@@ -163,8 +175,28 @@ function pi_promote_shop_page() {
     $news[] = array(check_plain($node->title), $body, format_date($node->created, 'small'), $row['nid']);
   }
 
-  $output .= '</div>'
-          . '<div class="pi_promote_links"><div class="p_promote_links_head">' . t('News') . '</div>';
+  $output .= '</div><div class="pi_promote_links">';
+
+  $creator_access = user_access('access inquiry_creator content');
+  if ($creator_access) {
+    $creator_body = '<div style="width: 120px;text-align:center"><img style="width:100px;border: 1px solid gray;" src="' . url(drupal_get_path('module', 'pi_promote') . '/images/editor.png', array('absolute' => TRUE)) . '"/><br/>'
+            . t('Inquiry designer') . '</div>';
+    $output .= '<div class="p_promote_links_head">' . t('Create inquiries') . '</div>'
+            . '<div class="pi_promote_links_body"><div class="pi_promote_links_read">' . l($creator_body, 'creator', array('html' => TRUE)) . '</div></div>';
+
+    /*    $inquiries[] = array(
+      'path' => $access ? 'creator' : 'user',
+      'title' => t('Inquiry creator'),
+      'image' => url(drupal_get_path('module', 'pi_promote') . '/images/editor.png', array('absolute' => TRUE)),
+      'info' => $access ? t('Create new inquiries.') : t('<a href="!u1">Login</a> or <a href="!u2">register</a> to access.', array(
+      '!u1' => url('user'),
+      '!u2' => url('user/register'),
+      )),
+      ); */
+  }
+
+
+  $output .= '<div class="p_promote_links_head">' . t('News') . '</div>';
 
 
   $output .= implode('', array_map(function($l) {
@@ -266,10 +298,10 @@ function pi_promote_inquiry_ratings($inquiry_nid) {
   $query = "SELECT rating, COUNT(rating) as n FROM {pi_promote_ratings} WHERE inquiry_id=%d GROUP BY rating";
   $ratings = array('1' => 0, '2' => 0, '3' => 0, '4' => 0, '5' => 0);
   $result = db_query($query, $inquiry_nid);
-  while($row = db_fetch_array($result)) {
-    $ratings[$row['rating']] = (int)$row['n'];
+  while ($row = db_fetch_array($result)) {
+    $ratings[$row['rating']] = (int) $row['n'];
   }
-  
+
   return $ratings;
 }
 
@@ -318,7 +350,7 @@ function pi_promote_inquiry_rate_form_submit($form, $form_state) {
   $inquiry_info = pi_info()->getCurrentInquiryInfo();
   if ($inquiry_info->getInquiryNode()) {
     $inquiry_nid = $inquiry_info->getInquiryNid();
-    
+
     if (isset($form_state['values']['rating'])) {
       global $user;
       _pi_promote_set_rating($inquiry_nid, $user->uid, $form_state['values']['rating']);
