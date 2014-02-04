@@ -8,7 +8,7 @@ function inquiry_creator_activity_edit($design_nid, $activity_nid) {
   $form = drupal_get_form('inquiry_creator_activity_form', $design, $node);
   $content = theme('inquiry_creator_side_form', $design, $activity_nid, 'activity', $form);
 
-  $output = theme('inquiry_creator_inquiry_main', $design, '', $content);
+  $output = theme('inquiry_creator_inquiry_main', $design, 'activities', $content);
 
   return $output;
 }
@@ -95,7 +95,7 @@ function inquiry_creator_activity_delete($design_nid, $activity_nid) {
   $form = drupal_get_form('inquiry_creator_activity_delete_form', $design, $node);
   $content = theme('inquiry_creator_side_form', $design, $activity_nid, 'activity', $form);
 
-  $output = theme('inquiry_creator_inquiry_main', $design, '', $content);
+  $output = theme('inquiry_creator_inquiry_main', $design, 'activities', $content);
   return $output;
 }
 

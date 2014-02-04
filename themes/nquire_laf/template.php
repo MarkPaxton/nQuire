@@ -347,7 +347,7 @@ function phptemplate_pi_activities_view_phase($data) {
       $content .= '<div class="nquire_phase_banner">' . $data['phase']['sharing'] . '</div>';
     }
 
-    $output .= nquire_commons_create_page_section($content, $data['phase']['title']);
+    $output .= nquire_commons_create_page_section($content, $data['phase']['formatted_title']);
   }
 
   if ($data['shared_view']) {

@@ -45,11 +45,11 @@ $(function() {
           multiplicity: '*',
           requires: []
         },
-        pi_explore_tool: {
+       /* pi_explore_tool: {
           title: 'Explore a scientific instrument',
           multiplicity: '*',
           requires: []
-        },
+        },*/
         /*pi_data_spreadsheet: {
           title: 'Data spreadsheet analysis',
           multiplicity: '*',
@@ -80,7 +80,7 @@ $(function() {
           activities: ['pi_methodology']
         },
         collectdata: {
-          title: 'Data gathering',
+          title: 'My data',
           activities: ['pi_sort_data']
         },
         chartanalysedata: {

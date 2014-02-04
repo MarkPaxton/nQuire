@@ -7,7 +7,7 @@ function inquiry_creator_phase_edit($design_nid, $phase_nid) {
   $form = drupal_get_form('inquiry_creator_phase_form', $design, $node);
   $content = theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
 
-  $output = theme('inquiry_creator_inquiry_main', $design, '', $content);
+  $output = theme('inquiry_creator_inquiry_main', $design, 'activities', $content);
   return $output;
 }
 
@@ -87,7 +87,7 @@ function inquiry_creator_phase_delete($design_nid, $phase_nid) {
   $form = drupal_get_form('inquiry_creator_phase_delete_form', $design, $node);
   $content = theme('inquiry_creator_side_form', $design, $phase_nid, 'phase', $form);
 
-  $output = theme('inquiry_creator_inquiry_main', $design, '', $content);
+  $output = theme('inquiry_creator_inquiry_main', $design, 'activities', $content);
   return $output;
 }
 

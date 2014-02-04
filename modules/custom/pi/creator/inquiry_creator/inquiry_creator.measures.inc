@@ -58,7 +58,7 @@ function inquiry_creator_measure_edit($design_nid, $activity_nid, $measure_nid) 
   $form = drupal_get_form('inquiry_creator_measure_form', $design, $activity, $measure);
   $content = theme('inquiry_creator_side_form', $design, $activity_nid, 'measure', $form);
 
-  $output = theme('inquiry_creator_inquiry_main', $design, '', $content);
+  $output = theme('inquiry_creator_inquiry_main', $design, 'activities', $content);
 
   return $output;
 }
@@ -218,7 +218,7 @@ function inquiry_creator_measure_delete($design_nid, $activity_nid, $measure_nid
   $form = drupal_get_form('inquiry_creator_measure_delete_form', $design, $activity, $measure);
   $content = theme('inquiry_creator_side_form', $design, $activity_nid, '', $form);
 
-  $output = theme('inquiry_creator_inquiry_main', $design, '', $content);
+  $output = theme('inquiry_creator_inquiry_main', $design, 'activities', $content);
 
   return $output;
 }
@@ -237,7 +237,7 @@ function inquiry_creator_measure_delete_form(&$form_state, $design, $activity, $
       . '<div>' . t('This action cannot be undone.') . '</div>',
   );
 
-  nquire_commont_create_form_delete_cancel_buttons($form, 'inquiry_creator_measure_delete_form_submit', "creator/{$design->nid}/activity/{$activity->nid}");
+  nquire_commont_create_form_delete_cancel_buttons($form, 'inquiry_creator_measure_delete_form_submit', "creator/{$design->nid}/activities/{$activity->nid}");
 
   return $form;
 }

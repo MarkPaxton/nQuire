@@ -42,7 +42,8 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
         'phase' => array(
             'node' => $phase_node,
             'phase_key' => $phase_key,
-            'title' => theme('pi_inquiry_phase_title', $inquiry_info, $phase_node),
+            'title' => check_plain($phase_node->title),
+            'formatted_title' => theme('pi_inquiry_phase_title', $inquiry_info, $phase_node),
             'description' => nl2br(check_plain($phase_node->body)),
         ),
         'activities' => array(),
@@ -57,7 +58,7 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
         case 'individual':
           $data['phase']['sharing'] .= $shared_view ?
                   t('You are browsing the content shared by other participats in this phase. Click !link to go to your activities.', array('!link' => $link)) :
-                  t('Activities in this phase are individually. Click !link to see what other participants are doing.', array('!link' => $link));
+                  t('Activities in this phase are individual. Click !link to see what other participants are doing.', array('!link' => $link));
           break;
         case 'group':
           $subgroup = $inquiry_access->getSubgroup();

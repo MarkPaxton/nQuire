@@ -20,8 +20,8 @@
 
 			var self = this;
 
-			$('#nquire-structure-add-phase').click(function(event) {
-				self.nquireStructureWidget('_openNewItemDialog', $('#nquire-structure-add-phase'), 'phase', this);
+			$('.nquire-structure-add-phase').click(function(event) {
+				self.nquireStructureWidget('_openNewItemDialog', $(this), 'phase', this);
 				event.preventDefault();
 				event.stopPropagation();
 			});
