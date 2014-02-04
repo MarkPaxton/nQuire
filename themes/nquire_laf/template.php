@@ -160,14 +160,14 @@ drupal_add_css(drupal_get_path('theme', 'nquire_laf') . '/css/color_scheme_' . (
 
 function _nquire_laf_color($key) {
   static $colors = array(
-'a' => array('#b0b70f', '#eaeccb'),
- 'b' => array('#0cadaa', '#d7ecea'),
- 'c' => array('#00ace2', '#d5ebf8'),
- 'd' => array('#756dab', '#e3e1ef'),
- 'e' => array('#c4388a', '#f7d2e3'),
- 'f' => array('#dc1340', '#f7d1c9'),
- 'g' => array('#ea620d', '#fbd4b5'),
- 'h' => array('#fcc724', '#feeec8'),
+      'a' => array('#b0b70f', '#eaeccb'),
+      'b' => array('#0cadaa', '#d7ecea'),
+      'c' => array('#00ace2', '#d5ebf8'),
+      'd' => array('#756dab', '#e3e1ef'),
+      'e' => array('#c4388a', '#f7d2e3'),
+      'f' => array('#dc1340', '#f7d1c9'),
+      'g' => array('#ea620d', '#fbd4b5'),
+      'h' => array('#fcc724', '#feeec8'),
   );
 
   return $colors[$key];
@@ -272,7 +272,7 @@ function phptemplate_pi_inquiry_structure($node = NULL) {
     if ($point['url']) {
       $text_container .= "<a style='color:black;' href='{$point['url']}'>";
     }
-    
+
     $text_container .= "<div style='position: absolute;top:{$ty}px;left:{$tx}px;width:{$text_d}px;height:{$text_d}px;line-height:{$text_d}px;text-align: center;'>"
             . "<div class='nquire_diagram_text' style='color: black; font-family: sans-serif; white-space: pre-wrap;max-height: {$text_d}px;font-size:1em;font-weight: bold;border-radius:{$text_r}px;display: inline-block; vertical-align: middle;line-height: normal;'>"
             . $point['label']
@@ -341,7 +341,7 @@ function phptemplate_pi_activities_view_phase($data) {
     if ($data['phase']['description']) {
       $content .= '<p>' . $data['phase']['description'] . '</p>';
     }
-    
+
 
     if ($data['phase']['sharing']) {
       $content .= '<div class="nquire_phase_banner">' . $data['phase']['sharing'] . '</div>';
@@ -526,5 +526,45 @@ function phptemplate_pi_activities_view_shared_activity($activity_data) {
   $output .= '</table></div>';
 
   $output .= '</div>';
+  return $output;
+}
+
+function phptemplate_pi_inquiry_phase_title($inquiry_info, $phase_node) {
+  $output = "";
+  $index = $inquiry_info->getPhaseIndex($phase_node->nid);
+  $phase_nids = array_keys($inquiry_info->getPhases());
+
+
+  if ($index > 0) {
+    $previous_phase_nid = $phase_nids[$index - 1];
+    $previous_phase_key = $inquiry_info->getPhaseKey($previous_phase_nid);
+    $previous_color = _nquire_laf_color($previous_phase_key);
+
+    $output .= l(t('Previous'), "phase/$previous_phase_nid", array(
+        'attributes' => array(
+            'class' => 'nquire_button_link nquire_button_link_previous',
+            'style' => 'background:' . $previous_color[0],
+        ),
+    ));
+  }
+
+  $output .= t('Phase @index: @title', array(
+      '@index' => 1 + $index,
+      '@title' => $phase_node->title,
+  ));
+
+  if ($index < count($phase_nids) - 1) {
+    $next_phase_nid = $phase_nids[$index + 1];
+    $next_phase_key = $inquiry_info->getPhaseKey($next_phase_nid);
+    $next_color = _nquire_laf_color($next_phase_key);
+    
+    $output .= l(t('Next'), "phase/$next_phase_nid", array(
+        'attributes' => array(
+            'class' => 'nquire_button_link nquire_button_link_next',
+            'style' => 'background:' . $next_color[0],
+        ),
+    ));
+  }
+
   return $output;
 }

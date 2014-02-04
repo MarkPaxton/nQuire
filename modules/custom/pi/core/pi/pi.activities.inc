@@ -226,8 +226,5 @@ function theme_pi_activities_view_shared_activity($activity_data) {
 }
 
 function theme_pi_inquiry_phase_title($inquiry_info, $phase_node) {
-  return t('Phase @index: @title', array(
-      '@index' => 1 + $inquiry_info->getPhaseIndex($phase_node->nid),
-      '@title' => $phase_node->title,
-  ));
+  return check_plain($phase_node->title);
 }

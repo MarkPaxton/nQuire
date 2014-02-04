@@ -123,10 +123,11 @@ function pi_promote_shop_page() {
         }
 
         if (!$user->uid) {
-          $buttonClass = "nquire_button_link_front_login";
-          $buttonLabel = t("Login");
-          $buttonPath = 'user';
-          $buttonQuery = array('destination' => $inquiry['path']);
+          //$buttonClass = "nquire_button_link_front_login";
+          //$buttonLabel = t("Login");
+          //$buttonPath = 'user';
+          //$buttonQuery = array('destination' => $inquiry['path']);
+          $buttonClass = FALSE;
         } else {
           if ($inquiry['am_member']) {
             $buttonClass = "nquire_button_link_front_resume";
@@ -139,13 +140,20 @@ function pi_promote_shop_page() {
           $buttonQuery = FALSE;
         }
 
-        $button = l($buttonLabel, $buttonPath, array('query' => $buttonQuery, 'attributes' => array('class' => "nquire_button_link $buttonClass")));
+        if ($buttonClass) {
+          $button = l($buttonLabel, $buttonPath, array('query' => $buttonQuery, 'attributes' => array('class' => "nquire_button_link $buttonClass")));
 
-        $output .= '</div>'
-                . '<div class="pi_promote_shop_item_title">' . $title . '</div>'
-                . '<div class="pi_promote_shop_item_info">' . $inquiry['info'] . '</div>'
-                . '<div class="pi_promote_shop_item_buttons">' . $button . '</div>'
-                . '</div>';
+          $output .= '</div>'
+                  . '<div class="pi_promote_shop_item_title">' . $title . '</div>'
+                  . '<div class="pi_promote_shop_item_info">' . $inquiry['info'] . '</div>'
+                  . '<div class="pi_promote_shop_item_buttons">' . $button . '</div>'
+                  . '</div>';
+        } else {
+          $output .= '</div>'
+                  . '<div class="pi_promote_shop_item_title">' . $title . '</div>'
+                  . '<div class="pi_promote_shop_item_info_nobuttons">' . $inquiry['info'] . '</div>'
+                  . '</div>';
+        }
       } else {
         $output .= '<div class="pi_promote_shop_item">'
                 . '</div>';
@@ -179,8 +187,8 @@ function pi_promote_shop_page() {
 
   $creator_access = user_access('access inquiry_creator content');
   if ($creator_access) {
-    $creator_body = '<div style="width: 120px;text-align:center"><img style="width:100px;border: 1px solid gray;" src="' . url(drupal_get_path('module', 'pi_promote') . '/images/editor.png', array('absolute' => TRUE)) . '"/><br/>'
-            . t('Inquiry designer') . '</div>';
+    $creator_body = '<div style="width: 270px;text-align:center"><img style="width:200px;border: 1px solid #bbb;" src="' . url(drupal_get_path('module', 'pi_promote') . '/images/editor.png', array('absolute' => TRUE)) . '"/><br/>'
+            . t('Inquiry creator') . '</div>';
     $output .= '<div class="p_promote_links_head">' . t('Create inquiries') . '</div>'
             . '<div class="pi_promote_links_body"><div class="pi_promote_links_read">' . l($creator_body, 'creator', array('html' => TRUE)) . '</div></div>';
 
