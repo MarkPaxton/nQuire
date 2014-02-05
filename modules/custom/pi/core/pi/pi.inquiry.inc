@@ -333,10 +333,10 @@ function pi_inquiry_home_get_started($inquiry = FALSE) {
     global $user;
     if ($user->uid) {
       $status = nquire_group_get_user_status_in_group($inquiry->actor_gid, $user->uid);
-      if ($status === 'none') {
-        drupal_goto('inquiry/' . $inquiry->nid . '/participants/join');
+      if ($status === 'member') {
+        drupal_goto('inquiry/' . $inquiry->nid . '/structure');
       } else {
-        drupal_goto('inquiry/' . $inquiry->nid);
+        drupal_goto('inquiry/' . $inquiry->nid . '/participants/join');
       }
     } else {
       drupal_goto('user', array('destination' => "inquiry/{$inquiry->nid}/home"));

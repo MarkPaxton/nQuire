@@ -537,7 +537,7 @@ function inquiry_creator_stages_form(&$form_state, $node) {
 
 
   _inquiry_creator_create_inquiry_id_form_item($node, $form);
-  nquire_structure_stages_table_create_form_item($form, 'stages', $structure, json_encode($stage_structure));
+  nquire_structure_stages_table_create_form_item($form, $node->nid, $structure, json_encode($stage_structure));
   nquire_commons_create_form_save_cancel_buttons($form, 'inquiry_creator_stages_form_submit', "creator/{$node->nid}/stages");
 
   $form['#theme'] = 'inquiry_creator_inquiry_metadata_form';
