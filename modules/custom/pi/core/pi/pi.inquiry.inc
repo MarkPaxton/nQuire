@@ -339,7 +339,7 @@ function pi_inquiry_home_get_started($inquiry = FALSE) {
         drupal_goto('inquiry/' . $inquiry->nid . '/participants/join');
       }
     } else {
-      drupal_goto('user', array('destination' => "inquiry/{$inquiry->nid}/home"));
+      drupal_goto('user', array('destination' => "inquiry/{$inquiry->nid}/structure"));
     } 
   } 
 }

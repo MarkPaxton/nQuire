@@ -145,9 +145,9 @@ function theme_pi_hypothesis_to_support_activities($hypothesis_nids) {
   if ($hypothesis_nids) {
     $output = '<b>' . t('Hypothesis: ') . '</b>';
     $output .= theme('item_list', array_map(function($nid) {
-                      $node = node_load($nid);
-                      return nl2br(check_plain($node->hypothesis));
-                    }, $hypothesis_nids));
+              $node = node_load($nid);
+              return nl2br(check_plain($node->hypothesis));
+            }, $hypothesis_nids));
     return $output;
   }
 }
@@ -157,7 +157,14 @@ function pi_hypothesis_display_content_in_activity($node, $options) {
   if ($options['edit']) {
     $content = node_page_edit($node);
   } else {
-    $content = $node ? nl2br(check_plain($node->hypothesis)) : FALSE;
+    $content = $node ? array(
+        'content' => nl2br(check_plain($node->hypothesis)),
+        'edit_link' => TRUE,
+            ) : array(
+        'content' => t('Create you hypothesis.'),
+        'empty' => TRUE,
+        'edit_link' => TRUE,
+    );
   }
 
   return array(
@@ -166,4 +173,8 @@ function pi_hypothesis_display_content_in_activity($node, $options) {
           array('Hypothesis:', $content),
       ),
   );
+}
+
+function pi_hypothesis_links_edit_content_click() {
+  return TRUE;
 }

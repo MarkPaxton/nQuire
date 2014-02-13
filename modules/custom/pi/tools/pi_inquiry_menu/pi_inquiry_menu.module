@@ -33,18 +33,20 @@ function pi_inquiry_menu_block($op = 'list') {
 
 function _pi_inquiry_block_my_inquiries($uid) {
   $subject = l(t('My inquiries'), 'inquiries');
-  $inquiry_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_INQUIRY);
-  $joined_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups['active']);
+  $inquiry_groups = pi_inquiry_groupings_get_groups_for_user($uid, NQUIRE_GROUP_TYPE_INQUIRY, TRUE);
+  $joined_inquiries = pi_inquiry_groupings_get_inquiries_for_groups($inquiry_groups);
 
   if ($uid) {
-    if (count($joined_inquiries) > 0) {
-      $list = array_map(function($nid) {
-        $node = node_load($nid);
-        return l(check_plain($node->title), "inquiry/$nid/structure");
-      }, $joined_inquiries);
-      $content = theme('item_list', $list);
-    } else {
-      $content = t('You have not joined any inquiry yet.');
+    switch (count($joined_inquiries)) {
+      case 0:
+        $content = t('You have not joined any inquiry yet.');
+        break;
+      case 1:
+        $content = t('You have joined one inquiry.');
+        break;
+      default:
+        $content = t('You have joined !n inquiries.', array('!n' => count($joined_inquiries)));
+        break;
     }
   } else {
     $content = t('<a href="!login">Login</a> or <a href="!register">register</a> to work on your inquiries.', array(

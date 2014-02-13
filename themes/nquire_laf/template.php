@@ -366,7 +366,9 @@ function phptemplate_pi_activities_view_phase($data) {
 }
 
 function phptemplate_pi_activities_view_activity($activity_data) {
-  $output = '<a name="' . $activity_data['node']->nid . '"></a>';
+  $activity_nid = $activity_data['node']->nid;
+
+  $output = '<a name="' . $activity_nid . '"></a>';
 
   if ($activity_data['content']['mode'] === 'activity_page') {
     $output .= $activity_data['content']['content'];
@@ -389,6 +391,8 @@ function phptemplate_pi_activities_view_activity($activity_data) {
 
     if ($activity_data['can_view'] && isset($activity_data['content']['mode'])) {
 
+
+
       switch ($activity_data['content']['mode']) {
         case 'twocolumns':
           $node_content = '';
@@ -396,27 +400,44 @@ function phptemplate_pi_activities_view_activity($activity_data) {
             if (is_array($row[1])) {
               $empty = $row[1]['empty'];
               $content = $row[1]['content'];
+              $edit_link = $row[1]['edit_link'];
             } else {
               $empty = $row[1] === FALSE;
               $content = $empty ? '' : $row[1];
+              $edit_link = FALSE;
             }
             $content_class = $empty ? 'phase_activity_no_content' : 'phase_activity_content';
-
-            $node_content .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell"><div class="' . $content_class . '">' . $content . '</div></td></tr>';
+            $cell_content = '<div class="' . $content_class . '">' . $content . '</div>';
+            if ($edit_link && $activity_data['content_click_edit']) {
+              $cell_content = '<a href="' . url("activity/$activity_nid", array('fragment' => $activity_nid)) . '">' . $cell_content . '</a>';
+            }
+            $node_content .= '<tr><td class="phase_activity_label"><div>' . $row[0] . '</div></td><td class="phase_activity_content_cell">' . $cell_content . '</td></tr>';
           }
-          $links = '<tr><td class="phase_activity_label"></td><td class="phase_activity_link"><div>' . $activity_data['links']['content'] . '</div></td></tr>';
 
+          if ($activity_data['links']) {
+            $links = '<tr><td class="phase_activity_label"></td><td class="phase_activity_link"><div>' . $activity_data['links']['content'] . '</div></td></tr>';
+          }
           break;
         case 'singleblock':
-          $links = '<tr><td colspan="2" class="phase_activity_link"><div>' . $activity_data['links']['content'] . '</div></td></tr>';
-          $node_content = '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['content']['content'] . '</div></td></tr>';
+          if ($activity_data['links']) {
+            $links = '<tr><td colspan="2" class="phase_activity_link"><div>' . $activity_data['links']['content'] . '</div></td></tr>';
+          }
+
+          $activity_content = $activity_data['content_click_edit'] ? '<a href="' . url("activity/$activity_nid", array('fragment' => $activity_nid)) . '">' . $activity_data['content']['content'] . '</a>' :
+                  $activity_data['content']['content'];
+
+          $node_content = '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_content . '</div></td></tr>';
           break;
       }
 
-      if ($activity_data['links']['position'] === 'before') {
-        $output .= $links . $node_content;
+      if ($links) {
+        if ($activity_data['links']['position'] === 'before') {
+          $output .= $links . $node_content;
+        } else {
+          $output .= $node_content . $links;
+        }
       } else {
-        $output .= $node_content . $links;
+        $output .= $node_content;
       }
     }
 
@@ -557,7 +578,7 @@ function phptemplate_pi_inquiry_phase_title($inquiry_info, $phase_node) {
     $next_phase_nid = $phase_nids[$index + 1];
     $next_phase_key = $inquiry_info->getPhaseKey($next_phase_nid);
     $next_color = _nquire_laf_color($next_phase_key);
-    
+
     $output .= l(t('Next'), "phase/$next_phase_nid", array(
         'attributes' => array(
             'class' => 'nquire_button_link nquire_button_link_next',

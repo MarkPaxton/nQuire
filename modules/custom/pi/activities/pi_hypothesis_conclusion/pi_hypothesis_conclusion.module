@@ -133,10 +133,12 @@ function pi_hypothesis_conclusion_display_content_in_activity($node, $options) {
 
   if ($options['edit']) {
     $c_content = node_page_edit($node);
-  } else if ($node) {
-    $c_content = check_plain($node->conclusion);
   } else {
-    $c_content = FALSE;
+    $c_content = array(
+        'content' => $node ? check_plain($node->conclusion) : t('Create your conclusion.'),
+        'empty' => ! ((bool) $node),
+        'edit_link' => TRUE,
+        );
   }
 
   $rows[] = array(t('Conclusion:'), $c_content);
@@ -165,4 +167,8 @@ function theme_pi_hypothesis_conclusion($node, $teaser) {
 
 function pi_hypothesis_conclusion_create_shared_view($node) {
   return theme('pi_hypothesis_conclusion', $node, FALSE);
+}
+
+function pi_hypothesis_conclusion_links_edit_content_click() {
+  return TRUE;
 }

@@ -52,33 +52,34 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
 
 
     if ($data['in_phase']) {
-      $link = l(t('here'), $shared_view ? "phase/{$phase_node->nid}" : "phase/{$phase_node->nid}/shared", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
+      $link_attrs = array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner"));
+      $link = $shared_view ? l(t('Go'), "phase/{$phase_node->nid}", $link_attrs) : l(t('View'), "phase/{$phase_node->nid}/shared", $link_attrs);
 
       switch ($phase_node->collaboration) {
         case 'individual':
           $data['phase']['sharing'] .= $shared_view ?
-                  t('You are browsing the content shared by other participats in this phase. Click !link to go to your activities.', array('!link' => $link)) :
-                  t('Activities in this phase are individual. Click !link to see what other participants are doing.', array('!link' => $link));
+                  t('Shared content. !link to your activities.', array('!link' => $link)) :
+                  t('Individual activities. !link work from other participants.', array('!link' => $link));
           break;
         case 'group':
           $subgroup = $inquiry_access->getSubgroup();
           if ($subgroup) {
             $members = nquire_group_get_member_uids($subgroup, TRUE);
             if ($shared_view) {
-              $data['phase']['sharing'] .= t('This is the content shared by other groups. Click !link to go to your content.', array('!link' => $link));
+              $data['phase']['sharing'] .= t('Shared content. !link to your activities.', array('!link' => $link));
             } else {
-              $group_link = l(t('here'), $shared_view ? "phase/{$phase_node->nid}" : "inquiry/$inquiry_nid/participants/$subgroup", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
-              $data['phase']['sharing'] .= t('Activities in this phase are carried out in groups. Click !link to see what other groups are doing, or !link2 to view your group configuration.', array('!link' => $link, '!link2' => $group_link));
+              $group_link = l(t('View'), $shared_view ? "phase/{$phase_node->nid}" : "inquiry/$inquiry_nid/participants/$subgroup", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
+              $data['phase']['sharing'] .= t('Group activities. !link work from other groups. !link2 your group configuration.', array('!link' => $link, '!link2' => $group_link));
             }
           } else {
-            $group_link = l(t('here'), $shared_view ? "phase/{$phase_node->nid}" : "inquiry/$inquiry_nid/participants", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
+            $group_link = l(t('Create or join'), $shared_view ? "phase/{$phase_node->nid}" : "inquiry/$inquiry_nid/participants", array('attributes' => array('class' => "nquire_button_link nquire_button_link_phase_banner")));
             $data['phase']['sharing'] .= $shared_view ?
-                    t('This is the content shared by other groups. Click !link to go back.', array('!link' => $link)) :
-                    t('Activities in this phase are carried out in groups. Click !link to see what other groups are doing. You cannot work on activities at this phase because you do not belong to any participant group yet. Click !group_link to join a group or create your own.', array('!link' => $link, '!link2' => $group_link));
+                    t('Shared content. !link to your activities.', array('!link' => $link)) :
+                    t('Group activities: !group_link a group. !link work from other groups.', array('!link' => $link, '!link2' => $group_link));
           }
           break;
         default:
-          $data['phase']['sharing'] .= t('Activities in this phase are done by all inquiry participants working together.');
+          $data['phase']['sharing'] .= t('All participants work together in this phase.');
           break;
       }
     }
@@ -118,6 +119,8 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
 
 
   $links_block = NULL;
+  $links_edit_content_click = FALSE;
+
   if ($access === 'edit') {
     $links_block_f = "{$activity_node->activity_type}_format_edit_links_block";
     if (function_exists($links_block_f)) {
@@ -127,10 +130,18 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
     if (!$links_block) {
       $links_position_f = "{$activity_node->activity_type}_links_block_position";
       $links_position = function_exists($links_position_f) ? $links_position_f($activity_node, $activity_is_being_edited) : 'after';
-      $links_block = array(
-          'position' => $links_position,
-          'content' => pi_activity_create_edit_links($activity_node, $activity_is_being_edited),
-      );
+
+      $links_edit_content_click_f = "{$activity_node->activity_type}_links_edit_content_click";
+      $content_link_mode = !$edit_mode && function_exists($links_edit_content_click_f) ? $links_edit_content_click_f() : FALSE;
+      $links_edit_content_click = $content_link_mode === TRUE || ($content_link_mode === 'create' && !$content_node);
+      
+
+      if (!$links_edit_content_click) {
+        $links_block = array(
+            'position' => $links_position,
+            'content' => pi_activity_create_edit_links($inquiry_info, $content_node, $activity_node, $edit_mode),
+        );
+      }
     }
   }
 
@@ -145,6 +156,7 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
       'phase_key' => $phase_key,
       'can_view' => $can_view,
       'shared_view' => $shared_view,
+      'content_click_edit' => $links_edit_content_click,
   );
 
   if ($can_view) {
