@@ -139,31 +139,24 @@ function pi_home_view($type) {
           $show_next = $show_page < $last_page;
 
           $paginator = '';
+          
+          $paginator_item = function($n, $label) use($show_page, $active_list, $keyword, $sort, $desc) {
+            return $n !== FALSE && $n != $show_page ? _pi_home_create_link($label, $active_list, $keyword, $sort, $desc, $n, 'nquire-paginator-item') : 
+              "<span class='nquire-paginator-active'>" . check_plain($label) . "</span>";
+          };
 
-          if ($show_previous) {
-            $paginator .= _pi_home_create_link('<', $active_list, $keyword, $sort, $desc, $show_page - 1) . '&nbsp;&nbsp;';
-          } else {
-            $paginator .= '<span style="color:gray">&lt;</span>&nbsp;&nbsp;';
-          }
+          $paginator .= $paginator_item($show_previous ? $show_page - 1 : FALSE, '<');
+          
           if ($show_first_page) {
-            $paginator .= _pi_home_create_link('1', $active_list, $keyword, $sort, $desc, 1) . '&nbsp;...';
+            $paginator .= $paginator_item(1, '1') . '...';
           }
           for ($i = $from_page; $i <= $to_page; $i++) {
-            if ($i == $show_page) {
-              $paginator .= '&nbsp;' . $i . '&nbsp;';
-            } else {
-              $paginator .= '&nbsp;' . _pi_home_create_link($i, $active_list, $keyword, $sort, $desc, $i) . '&nbsp;';
-            }
+            $paginator .= $paginator_item($i, $i);
           }
           if ($show_last_page) {
-            $paginator .= '&nbsp;...&nbsp;' . _pi_home_create_link($last_page, $active_list, $keyword, $sort, $desc, $last_page);
+            $paginator .= '...' . $paginator_item($last_page, $last_page);
           }
-          if ($show_next) {
-            $paginator .= '&nbsp;&nbsp;' . _pi_home_create_link('>', $active_list, $keyword, $sort, $desc, $show_page + 1);
-          } else {
-            $paginator .= '&nbsp;&nbsp;<span style="color:gray">&gt;</span>';
-          }
-
+          $paginator .= $paginator_item($show_next ? $show_page + 1 : FALSE, '>');
 
           $output .= '<p>' . $paginator . '</p>';
 
@@ -184,7 +177,7 @@ function pi_home_view($type) {
           }
 
           $content .= '<p>' . l($inquiry_data['title'], "inquiry/{$inquiry_data['nid']}", array('attributes' => array('style' => 'font-size: 1.5em;font-weight: bold;'))) . '</p>'
-                  . '<p><b>' . $inquiry_data['description'] . '</b></p>'
+                  . '<p>' . $inquiry_data['description'] . '</p>'
                   . '<small>' . t('Created by !user. ', array('!user' => l(nquire_commons_user_name_or_me($inquiry_data['uid']), 'user/' . $inquiry_data['uid'], array('html' => TRUE)))) . '<br/>'
                   . t('Number of participants: !n', array('!n' => $inquiry_data['usercount'])) . '</small>';
 
@@ -205,8 +198,8 @@ function pi_home_view($type) {
   return $output;
 }
 
-function _pi_home_create_link($title, $active_list, $keyword, $sort, $desc, $page) {
-  $args = array('query' => array());
+function _pi_home_create_link($title, $active_list, $keyword, $sort, $desc, $page, $classname='') {
+  $args = array('query' => array(), 'attributes' => array('class' => $classname));
   if ($keyword) {
     $args['query']['k'] = $keyword;
   }

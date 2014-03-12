@@ -30,8 +30,9 @@ function pi_methodology_access($op, $node) {
   return FALSE;
 }
 
-function pi_methodology_add_content_label() {
-  return t('Add new measure');
+function pi_methodology_add_content_label($content_node, $activity_node) {
+  $params = nquire_commons_decode_data($activity_node->parameters);
+  return $params['own_measures'] ? t('Add new measure') : FALSE;
 }
 
 function pi_methodology_edit_content_label() {
@@ -352,10 +353,10 @@ function _pi_methodology_get_measures_table($node, $editable) {
       if (count($list) > 0) {
         foreach ($list as $measure_nid) {
           $measure_node = node_load($measure_nid);
-          $label = '<b>' . check_plain($measure_node->title) . '</b> (' 
-                  . inquiry_available_features_name('measure', $measure_node->measure_type) . ') ' 
+          $label = '<b>' . check_plain($measure_node->title) . '</b> ('
+                  . inquiry_available_features_name('measure', $measure_node->measure_type) . ') '
                   . check_plain($measure_node->body);
-          
+
           if (!$measure_node->script_measure && $editable) {
             $label .= '<div style="padding-top: 5px;font-weight: bold;">' . pi_activity_build_link_for_child($measure_node->nid, t('Edit')) . '</div>';
           }

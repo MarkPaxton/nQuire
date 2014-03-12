@@ -351,10 +351,16 @@ function phptemplate_pi_activities_view_phase($data) {
   }
 
   if ($data['shared_view']) {
+    $empty = TRUE;
     foreach ($data['activities'] as $activity_data) {
       if (count($activity_data['shared_content']) > 0) {
         $output .= '<div>' . theme('pi_activities_view_shared_activity', $activity_data) . '</div>';
+        $empty = FALSE;
       }
+    }
+    
+    if ($empty) {
+      $output .= '<p>' . t('No content has been shared in this phase yet.') . '</p>';
     }
   } else {
     foreach ($data['activities'] as $activity_data) {
