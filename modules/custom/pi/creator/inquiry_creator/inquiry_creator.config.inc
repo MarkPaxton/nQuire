@@ -42,12 +42,12 @@ function theme_inquiry_creator_settings_panel($inquiry_node) {
 
   /* monitoring */
 
- /* $sections['supervised'] = array('title' => t('Inquiry supervision:'), 'items' => array());
+  $sections['supervised'] = array('title' => t('Inquiry supervision:'), 'items' => array());
   if ($inquiry_node->supervised) {
     $sections['supervised']['items'][] = t('This inquiry is monitored.');
   } else {
     $sections['supervised']['items'][] = t('This inquiry is not monitored.');
-  }*/
+  }
 
   /* groups */
 
@@ -169,7 +169,7 @@ function _inquiry_creator_settings_panel_form(&$form_state, $inquiry_node) {
 
 
 
-  /*$form['supervision_intro'] = array(
+  $form['supervision_intro'] = array(
       '#value' => '<b>' . t('Inquiry supervision:') . '</b>',
   );
   
@@ -179,7 +179,7 @@ function _inquiry_creator_settings_panel_form(&$form_state, $inquiry_node) {
       '#description' => t('Check this option if you wish to be the supervisor of this inquiry. This feature can be used to give the inquiry owner (e.g., a teacher) access to content that is private for the rest or participants.'),
       '#default_value' => nquire_commons_form_node_default_value($inquiry_node, 'supervised', $form_state, 'supervision', FALSE),
       '#required' => FALSE,
-  );*/
+  );
 
 
   $has_collaborative_phases = pi_inquiry_groupings_has_collaboration_phases($inquiry_node->nid, 'group');
@@ -213,7 +213,7 @@ function _inquiry_creator_settings_panel_form_submit($form, $form_state) {
     $inquiry->participants_selection = $new_participant_selection;
     $inquiry->participants_cohort = $new_participant_cohort;
 
-    //$inquiry->supervised = $form_state['values']['supervision'] ? TRUE : FALSE;
+    $inquiry->supervised = $form_state['values']['supervision'] ? TRUE : FALSE;
 
     if (isset($form_state['values']['group_creation'])) {
       $inquiry->group_creation = $form_state['values']['group_creation'];

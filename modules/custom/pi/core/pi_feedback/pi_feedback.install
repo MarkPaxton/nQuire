@@ -1,0 +1,86 @@
+<?php
+
+// $Id: pi_feedback.install,v 1.2 2009/06/11 09:55:10 ou_mbg Exp $
+
+/**
+ * @file
+ * Install....
+ */
+
+/**
+ * Implementation of pi_feedback_install().
+ *
+ * @return unknown_type
+ */
+function pi_feedback_install() {
+  // Create tables.
+  drupal_install_schema('pi_feedback');
+
+  variable_set("og_content_type_usage_pi_feedback", 'group_post');
+  //Options are status, promote, sticky, revision
+  variable_set("node_options_pi_feedback", array('status', 'revision'));
+  variable_set("comment_pi_feedback", COMMENT_NODE_DISABLED);
+  variable_set("upload_pi_feedback", 0);
+}
+
+/**
+ * Implementation of pi_feedback_uninstall().
+ */
+function pi_feedback_uninstall() {
+  // Remove tables.
+  drupal_uninstall_schema('pi_feedback');
+  variable_del('pi_feedback');
+
+  variable_del("og_content_type_usage_pi_feedback");
+  variable_del("node_options_pi_feedback");
+  variable_del("comment_pi_feedback");
+  variable_del("upload_pi_feedback");
+}
+
+/**
+ * Implementation of pi_feedback_schema().
+ */
+function pi_feedback_schema() {
+
+  $schema['pi_feedback'] = array(
+      'description' => t('Feedback'),
+      'fields' => array(
+          'nid' => array(
+              'description' => t('node id'),
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'size' => 'small',
+              'default' => 0,
+          ),
+          'vid' => array(
+              'description' => t('The current vid version identifier'),
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'size' => 'small',
+              'default' => 0,
+          ),
+          'feedback' => array(
+              'description' => t('Feedback'),
+              'type' => 'text',
+              'size' => 'normal',
+              'not null' => TRUE,
+          ),
+          'content_nid' => array(
+              'description' => t('The assessed content'),
+              'type' => 'int',
+              'unsigned' => TRUE,
+              'not null' => TRUE,
+              'size' => 'small',
+              'default' => 0,
+          ),
+      ),
+      'primary key' => array('vid'),
+      'indexes' => array(
+          'nid' => array('nid'),
+      ),
+  );
+
+  return $schema;
+}

@@ -358,7 +358,7 @@ function phptemplate_pi_activities_view_phase($data) {
         $empty = FALSE;
       }
     }
-    
+
     if ($empty) {
       $output .= '<p>' . t('No content has been shared in this phase yet.') . '</p>';
     }
@@ -434,6 +434,10 @@ function phptemplate_pi_activities_view_activity($activity_data) {
 
           $node_content = '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_content . '</div></td></tr>';
           break;
+      }
+
+      if ($activity_data['feedback']) {
+        $node_content .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['feedback'] . '</div></td></tr>';
       }
 
       if ($links) {
@@ -529,6 +533,7 @@ function phptemplate_pi_activities_view_shared_activity($activity_data) {
 
     $content_node_data = $shared_content_data['content'];
 
+    $output .= '<tr>';
     switch ($content_node_data['mode']) {
       case 'twocolumns':
         foreach ($content_node_data['rows'] as $row) {
@@ -548,6 +553,8 @@ function phptemplate_pi_activities_view_shared_activity($activity_data) {
         $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $content_node_data['content'] . '</div></td></tr>';
         break;
     }
+
+    $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $shared_content_data['feedback'] . '</div></td></tr>';
   }
 
   $output .= '</table></div>';

@@ -8,6 +8,7 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
       $ok = $node->type === 'pi_phase';
       break;
     case 'edit':
+    case 'feedback':
     case 'child_add':
     case 'child_edit':
     case 'child_delete':
@@ -25,7 +26,11 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
     $phase_node = $mode === 'phase' ? $node : $inquiry_info->getPhase($node->phase_nid);
     $activity_node = $mode === 'phase' ? NULL : $node;
 
-    $shared_view = $node->type === 'pi_phase' && arg(2) === 'shared' && $phase_node->collaboration !== 'all';
+    $feedback_edit = $node->type === 'pi_activity' && $mode === 'feedback';
+    $shared_view = $phase_node->collaboration !== 'all' &&
+            (($node->type === 'pi_phase' && arg(2) === 'shared') || $feedback_edit);
+
+
 
     pi_last_visited_phase_set($user->uid, $inquiry_nid, $phase_node->nid);
 
@@ -39,6 +44,7 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
     $data = array(
         'in_phase' => !$separate_page,
         'shared_view' => $shared_view,
+        'feedback_edit' => $feedback_edit,
         'phase' => array(
             'node' => $phase_node,
             'phase_key' => $phase_key,
@@ -89,7 +95,7 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
 
     foreach ($activities as $a_nid => $a_node) {
       $active_activity = $a_nid == $node->nid;
-      $data['activities'][$a_nid] = _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $separate_page, $a_node, $active_activity, $mode, $child_node, $shared_view);
+      $data['activities'][$a_nid] = _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $separate_page, $a_node, $active_activity, $mode, $child_node, $shared_view, $feedback_edit);
     }
 
     $output = theme('pi_activities_view_phase', $data);
@@ -100,7 +106,7 @@ function pi_activities_page($node, $mode, $child_node = NULL) {
   }
 }
 
-function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $separate_page, $activity_node, $active_activity, $mode, $child_node, $shared_view) {
+function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user, $phase_key, $separate_page, $activity_node, $active_activity, $mode, $child_node, $shared_view, $feedback_edit) {
   $access = $inquiry_access->getAccessToItem($activity_node);
   $reason = $inquiry_access->getAccessReason($activity_node);
   $inquiry_nid = $inquiry_info->getInquiryNid();
@@ -134,7 +140,7 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
       $links_edit_content_click_f = "{$activity_node->activity_type}_links_edit_content_click";
       $content_link_mode = !$edit_mode && function_exists($links_edit_content_click_f) ? $links_edit_content_click_f() : FALSE;
       $links_edit_content_click = $content_link_mode === TRUE || ($content_link_mode === 'create' && !$content_node);
-      
+
 
       if (!$links_edit_content_click) {
         $links_block = array(
@@ -174,14 +180,37 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
       $view_f = "{$activity_node->activity_type}_display_content_in_activity";
       $data['shared_content'] = array();
       $is_supervisor = $inquiry_info->userIsInquiryAdmin($user->uid);
+
       $content_nids = $content_manager->getSharedContent($activity_node->nid, $user->uid, $is_supervisor);
+      if ($feedback_edit && in_array($child_node->nid, $content_nids)) {
+        $content_nids = array($child_node->nid);
+      }
 
       foreach ($content_nids as $content_nid) {
         $content_node = node_load($content_nid);
         $actor = $content_manager->getContentAuthor($content_nid);
+
+        if ($is_supervisor) {
+          if ($feedback_edit) {
+            $feedback_content = drupal_get_form("pi_feedback_in_activity_form", $activity_node->phase_nid, $child_node->nid);
+          } else {
+            $feedback_node = pi_feedback_for_content($content_nid);
+            $feedback_path = "activity/{$activity_node->nid}/feedback/{$content_nid}";
+            if ($feedback_node) {
+              $feedback_content = '<div>' . nl2br(check_plain($feedback_node->feedback)) . '</div>'
+                      . l('Edit feedback', $feedback_path);
+            } else {
+              $feedback_content = l('Add feedback', $feedback_path);
+            }
+          }
+        } else {
+          $feedback_content = FALSE;
+        }
+
         $data['shared_content'][] = array(
             'actor' => $actor,
             'content' => $view_f($content_node, $options),
+            'feedback' => $feedback_content
         );
       }
     } else {
@@ -207,6 +236,10 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
 
       $view_f = "{$activity_node->activity_type}_display_content_in_activity";
       $data['content'] = $view_f($content_node, $options);
+      $feedback_node = pi_feedback_for_content($content_node->nid);
+      if ($feedback_node) {
+        $data['feedback'] = nl2br(check_plain($feedback_node->feedback));
+      }
     }
   }
 
