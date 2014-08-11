@@ -8,7 +8,7 @@ function inquiry_creator_copy_new() {
   $content = t('<h1 class="title">Copy existing inquiry</h1>')
           . '<p>' . t('Here you can select one existing inquiry.') . '</p>'
           . '<p>' . t('Title, description, front page and phases and activities from your selected inquiry will be used to create a new inquiry.') . '</p>'
-          . '<p>' . t('Please note that users and the content they created will not be copied in the new inquiry.') . '</p>'
+          . '<p>' . t('Please note that users and the content they created will not be copied into the new inquiry.') . '</p>'
           . '<ul>';
 
 
@@ -114,7 +114,7 @@ function inquiry_creator_copy_new_form_submit($form, $form_state) {
     $ids[$source_phase_node->nid] = $phase_node->nid;
 
     foreach ($source_info->getActivitiesForPhase($source_phase_nid) as $source_activity_node) {
-      $activity_node = inquiry_creator_create_activity_stub($phase_node->nid, $source_activity_node->activity_type, $source_activity_node->title, $source_activity_node->weight, $source_activity_node->body);
+      $activity_node = inquiry_creator_create_activity_stub($phase_node->nid, $source_activity_node->activity_type, $source_activity_node->title, $source_activity_node->weight, $source_activity_node->body, $source_activity_node);
       $ids[$source_activity_node->nid] = $activity_node->nid;
     }
   }
@@ -224,7 +224,7 @@ function inquiry_creator_copy_form_submit($form, $form_state) {
     $weight ++;
 
     foreach ($source_info->getActivitiesForPhase($source_phase_nid) as $source_activity_node) {
-      inquiry_creator_create_activity_stub($phase_node->nid, $source_activity_node->activity_type, $source_activity_node->title, $source_activity_node->weight, $source_activity_node->body);
+      inquiry_creator_create_activity_stub($phase_node->nid, $source_activity_node->activity_type, $source_activity_node->title, $source_activity_node->weight, $source_activity_node->body, $source_activity_node);
     }
   }
 

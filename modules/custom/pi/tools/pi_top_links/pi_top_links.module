@@ -146,9 +146,19 @@ function _pi_top_links_format_user_block() {
   global $user;
 
   if ($user->uid) {
-    $l1 = l(check_plain($user->name), "user/{$user->uid}/edit", array(
-        'attributes' => array('class' => 'pi-top-links-username'),
-    ));
+    $user_menu_main_path = "user/{$user->uid}";
+
+    $user_menu_item_data = array(
+        'checkaccess' => FALSE,
+        'title' => check_plain($user->name),
+        'children' => array(
+            "profile/{$user->uid}/events" => t('Updates'),
+            "user/{$user->uid}/edit" => t('Edit profile'),
+        ),
+    );
+            
+
+    $l1 = _pi_top_links_format_menu_item($user_menu_main_path, $user_menu_item_data);
 
     $l2 = l(t('logout'), "logout", array('attributes' => array('class' => 'pi-top-links-user-action')));
   } else {

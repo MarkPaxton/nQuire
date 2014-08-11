@@ -189,7 +189,7 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
       foreach ($content_nids as $content_nid) {
         $content_node = node_load($content_nid);
         $actor = $content_manager->getContentAuthor($content_nid);
-
+        
         if ($is_supervisor) {
           if ($feedback_edit) {
             $feedback_content = drupal_get_form("pi_feedback_in_activity_form", $activity_node->phase_nid, $child_node->nid);
@@ -197,8 +197,8 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
             $feedback_node = pi_feedback_for_content($content_nid);
             $feedback_path = "activity/{$activity_node->nid}/feedback/{$content_nid}";
             if ($feedback_node) {
-              $feedback_content = '<div>' . nl2br(check_plain($feedback_node->feedback)) . '</div>'
-                      . l('Edit feedback', $feedback_path);
+              $feedback_content = '<p>' . nl2br(check_plain($feedback_node->feedback)) . '</p>'
+                      . l('Edit feedback', $feedback_path, array('attributes' => array('class' => 'nquire_button_link nquire_button_link_form')));
             } else {
               $feedback_content = l('Add feedback', $feedback_path);
             }
@@ -238,7 +238,7 @@ function _pi_activities_get_activity_data($inquiry_info, $inquiry_access, $user,
       $data['content'] = $view_f($content_node, $options);
       $feedback_node = pi_feedback_for_content($content_node->nid);
       if ($feedback_node) {
-        $data['feedback'] = nl2br(check_plain($feedback_node->feedback));
+        $data['feedback'] = '<p>' . nl2br(check_plain($feedback_node->feedback)) . '</p>';
       }
     }
   }

@@ -10,12 +10,20 @@ function inquiry_basic_activities_designer_menu() {
   return $items;
 }
 
-function inquiry_basic_activities_designer_nquire_creator_activity_pi_read_information_create_activity(&$stub) {
+function inquiry_basic_activities_designer_nquire_creator_activity_pi_read_information_create_activity(&$stub, $original_activity) {
+
   $content_node = new stdClass();
   $content_node->type = 'pi_read_information';
   $content_node->uid = $stub->uid;
   $content_node->title = t('Information');
   $content_node->body = '';
+
+  if ($original_activity) {
+    $original_content_node = node_load($original_activity->referenced_node);
+    if ($original_content_node) {
+      $content_node->body = $original_content_node->body;
+    }
+  }
 
   node_save($content_node);
 
@@ -34,7 +42,7 @@ function inquiry_basic_activities_designer_nquire_creator_activity_pi_read_infor
       '#default_value' => nquire_commons_form_node_default_value($content_node, 'body', $form_state, 'activity-read-information', ''),
       '#required' => FALSE,
   );
-  
+
   $form['data']['information']['format'] = filter_form(2);
 }
 
@@ -161,7 +169,7 @@ function inquiry_basic_activities_designer_nquire_creator_activity_pi_methodolog
       $node = node_load($nid);
       return '<b>' . check_plain($node->title) . '&nbsp;&nbsp;&nbsp;' . nquire_commons_form_submit_link(t('edit'), "creator/{$design->nid}/activities/{$nid}");
     }, $data_activitiy_nids);
-    
+
     $info = '<p>' . t('When participants visit this activity, they will have the task of selecting/creating measures for the following activities.<br/>Edit them to select the instruments used to collect data, as well as the default measures available to all participants.') . '</p>'
             . theme('item_list', $items);
   }

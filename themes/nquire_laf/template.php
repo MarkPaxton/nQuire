@@ -437,7 +437,10 @@ function phptemplate_pi_activities_view_activity($activity_data) {
       }
 
       if ($activity_data['feedback']) {
-        $node_content .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $activity_data['feedback'] . '</div></td></tr>';
+        $node_content .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_feedback">'
+                . '<div><b>' . t('Feedback:') . '</b></div>'
+                . $activity_data['feedback']
+                . '</div></td></tr>';
       }
 
       if ($links) {
@@ -554,7 +557,12 @@ function phptemplate_pi_activities_view_shared_activity($activity_data) {
         break;
     }
 
-    $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_content">' . $shared_content_data['feedback'] . '</div></td></tr>';
+    if ($shared_content_data['feedback']) {
+      $output .= '<tr><td colspan="2" class="phase_activity_content_cell"><div class="phase_activity_feedback">'
+              . '<div><b>' . t('Feedback:') . '</b></div>'
+              . $shared_content_data['feedback']
+              . '</div></td></tr>';
+    }
   }
 
   $output .= '</table></div>';
